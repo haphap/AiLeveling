@@ -2,7 +2,7 @@
 
 [下载安装包](https://github.com/haphap/AiLeveling/releases) · Forever 练级助手 · 当前源码版本 `0.1.129-dev`
 
-根据当前任务、位置、等级和任务链自动衔接接取、目标与集中交付，以少跑路、多经验为目标。任务执行耗时视为相当，地面移动按直线距离÷跑速估算；任务进度使用游戏原生日志。完整首版按 [PLAN.md](PLAN.md) 推进，当前处于 C 覆盖与交付阶段。适用的 RestedXP 功能见 [功能对照](docs/RESTEDXP_PARITY.md)，装备扩展暂缓。
+根据当前任务、位置、等级和任务链自动衔接接取、目标与集中交付，以少跑路、多经验为目标。任务执行耗时视为相当，地面移动按直线距离÷跑速估算；任务进度使用游戏原生日志。完整首版按 [PLAN.md](https://github.com/haphap/AiLeveling/blob/main/PLAN.md) 推进，当前处于 C 覆盖与交付阶段。适用的 RestedXP 功能见 [功能对照](https://github.com/haphap/AiLeveling/blob/main/docs/RESTEDXP_PARITY.md)，装备扩展暂缓。
 
 ## 安装开发包
 
@@ -66,7 +66,7 @@
 
 副本页点“安排关联任务”，按当前资格补前置和接取，前往入口、完成本内目标，再集中交付。等队期间可做附近已接目标，“队伍就绪”后出发。任务组在本内交齐后保留离本步骤，出本恢复野外规划；也可“结束任务安排”或单独选择任务。副本页显示队伍职责、在线状态及本次进入后实际击败的首领。
 
-开启本地耗时学习后，详情显示从安排到交齐并离本的整次行程时间。同一构建、实例、难度和任务组累计历史平均；暂停、AFK、死亡、解散、手动改线、跳过任务及重载后的片段不计入平均。副本资料覆盖见 [DUNGEON_COVERAGE.md](docs/DUNGEON_COVERAGE.md)。
+开启本地耗时学习后，详情显示从安排到交齐并离本的整次行程时间。同一构建、实例、难度和任务组累计历史平均；暂停、AFK、死亡、解散、手动改线、跳过任务及重载后的片段不计入平均。副本资料覆盖见 [DUNGEON_COVERAGE.md](https://github.com/haphap/AiLeveling/blob/main/docs/DUNGEON_COVERAGE.md)。
 
 服务页可选择维修、商人、训练师、旅店和开通飞行点。与已安排 NPC 对话后，先处理任务，再打开对应服务窗口；训练只学习选定项目，旅店绑定由原生确认完成。物品、耐久、已学技能或飞行点状态更新后恢复任务；按住 Shift 保留手动操作。
 
@@ -102,7 +102,7 @@ python3 tools/prepare_dependencies.py --with-audit-source
 python3 tools/audit_data.py
 ```
 
-依赖保存在 `.dependencies/`，下载后校验 SHA256。盘点使用上游离线工具加载实际发行包，覆盖双阵营 × 九职业的动态修正分支；生成 [有效数据报告](docs/DATA_COVERAGE.md) 与逐任务 JSON。当前有效库为 5233 条任务，覆盖结论见现有报告；统一验收流程见 [ACCEPTANCE.md](docs/ACCEPTANCE.md)。
+依赖保存在 `.dependencies/`，下载后校验 SHA256。盘点使用上游离线工具加载实际发行包，覆盖双阵营 × 九职业的动态修正分支；生成 [有效数据报告](https://github.com/haphap/AiLeveling/blob/main/docs/DATA_COVERAGE.md) 与逐任务 JSON。当前有效库为 5233 条任务，覆盖结论见现有报告；统一验收流程见 [ACCEPTANCE.md](https://github.com/haphap/AiLeveling/blob/main/docs/ACCEPTANCE.md)。
 
 `python3 tools/build.py --release` 只用于完整首版验收后发布。代码语法、纯逻辑场景与实机结果分别记录。
 
