@@ -28,12 +28,12 @@ test("同NPC任务连续显示整组真实进度并保持行宽与点击",functi
     eq(#T.model.rows,3);eq(T.model.rows[1].questId,1);eq(T.model.rows[2].questId,3);eq(T.model.rows[3].questId,2)
     eq(T.rows[1].group.value,"治安官 · 已完成 1/2")
     eq(T.rows[2].group.shown,false);eq(T.rows[2].status.value,"可交付")
-    eq(T.rows[2].progress.value,"已完成 · 等同组任务一起交付")
-    assert(T.model.hint:find("先做完剩余任务",1,true))
+    assert(T.rows[2].progress.value:find("等「当前任务」完成，再到治安官一起交",1,true))
+    assert(T.model.deliverySummary:find("先做「当前任务」",1,true));assert(T.model.deliverySummary:find("全部完成后",1,true))
     eq(T.rows[1].number.point[3],T.rows[1].title.point[3]);eq(T.queuePanel.width,T.card.width)
     T.rows[2].scripts.OnClick();eq(B.char.locked,3)
     B.state.quests[1].ready=true;B.UI:RenderTracker()
-    eq(T.rows[1].group.value,"治安官 · 已完成 2/2");eq(T.rows[1].progress.value,"全部完成 · 一起交付")
+    eq(T.rows[1].group.value,"治安官 · 已完成 2/2");eq(T.rows[1].progress.value,"一起交给治安官（2项）")
     assert(loadfile("UI/Plan.lua"))("AiLeveling",B)
     local lines=table.concat(B.UI.Plan:Lines(),"\n");assert(lines:find("集中交付 · 治安官 · 已完成 2/2",1,true))
     B.state.quests[3]=nil;B.UI:RenderTracker();eq(T.rows[1].group.shown,false)
@@ -295,6 +295,35 @@ test("交错行程按任务数汇总并显示每个目标与交付步骤",functi
     assert(text:find("本次行程 · 2 项任务",1,true))
     assert(text:find("01  完成目标",1,true));assert(text:find("04  交付",1,true))
     assert(not text:find("估时",1,true));eq(B.state.quests[3].ready,nil)
+    B.finish()
+end)
+
+test("分散交付点明确现在就近交和等同NPC任务一起交并跟随真实导航",function()
+    local B=ready();assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
+    local a,b,c=unpack(B.plan.taskChoices)
+    local function finish(choice,npc,name,x)
+        choice.stages={{kind="turnin",questId=choice.questId,position={map=1,x=x,y=0.5,entityKind="npc",entityId=npc,entityName=name}}}
+        return choice.stages[1]
+    end
+    local ta=finish(a,100,"东谷守卫",0.51);local tb=finish(b,200,"闪金镇治安官",0.2);local tc=finish(c,200,"闪金镇治安官",0.2)
+    a.distance,b.distance,c.distance=10,300,300
+    B.state.quests[1].ready=true;B.action=ta
+    B.plan.taskQueue={steps={{choice=a,stage=ta},{choice=c,stage={kind="objective"}},{choice=c,stage=tc},{choice=b,stage=tb}}}
+    B.UI:RenderTracker();local T=B.UI.tracker
+    assert(T.model.deliverySummary:find("就近交付：到东谷守卫",1,true))
+    local rows={};for _,row in ipairs(T.model.rows) do rows[row.questId]=row end
+    assert(rows[2].delivery:find("等「后续目标」完成，再到闪金镇治安官一起交",1,true))
+    eq(rows[2].status,"可交付");eq(B.action,ta);eq(B.state.completed[1],nil)
+    B.state.quests[3].ready=true;B.plan.taskQueue.steps={{choice=a,stage=ta},{choice=b,stage=tb},{choice=c,stage=tc}}
+    B.UI:RenderTracker();assert(T.model.deliverySummary:find("再去闪金镇治安官",1,true))
+    B.action=tb;B.UI:RenderTracker()
+    assert(T.model.deliverySummary:find("一起交付：到闪金镇治安官交 2 项任务",1,true))
+    B.state.locked=2;B.state.quests[3].ready=false;B.UI:RenderTracker()
+    assert(T.model.deliverySummary:find("顺路先交：到闪金镇治安官",1,true))
+    B.state.locked=nil;B.action={kind="objective",questId=3,title=c.title};B.UI:RenderTracker()
+    assert(T.model.deliverySummary:find("先做「后续目标」",1,true));assert(T.model.deliverySummary:find("同组还差 1 项",1,true))
+    B.action={kind="service",title="维修"};B.UI:RenderTracker();eq(T.model.deliverySummary,nil)
+    B.action=ta;B.char.paused=true;B.UI:RenderTracker();eq(T.model.deliverySummary,nil)
     B.finish()
 end)
 

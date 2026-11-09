@@ -17,6 +17,97 @@ local function metrics(choice)
     return "经验 "..(xp and string.format("%.0f",xp) or "—").."  ·  路程 "..time
 end
 
+local function deliveryAdvice(state,plan,action,choices,byQuest)
+    local advice,ordered,seen,immediate={},{},{},{}
+    local leading=true
+    local function title(choice)
+        return (state.quests[choice.questId] or {}).title or choice.title or ("任务 #"..choice.questId)
+    end
+    local function recipient(choice)
+        local last=choice and choice.stages and choice.stages[#choice.stages]
+        local point=last and last.kind=="turnin" and (last.recipient or last.position)
+        return point and point.entityName
+    end
+    local function waiting(id)
+        local group=byQuest[id]
+        return group and not group.splitDelivery and group.ready<#group.choices and state.locked~=id and group
+    end
+    for id,choice in pairs(choices) do
+        local active=(state.quests or {})[id]
+        local name=recipient(choice)
+        if active and active.ready and name and not choice.itemShortage and not choice.lowValue and not choice.entryBlocked and
+            not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] then
+            local group=waiting(id)
+            if group then
+                local pending={}
+                for _,other in ipairs(group.choices) do
+                    if not (state.quests[other.questId] or {}).ready or (choices[other.questId] or {}).itemShortage then
+                        pending[#pending+1]="「"..title(other).."」"
+                    end
+                end
+                local names=#pending>0 and (table.concat(pending,"、",1,math.min(2,#pending))..(#pending>2 and "等任务" or "")) or "同组剩余任务"
+                advice[id]="等"..names.."完成，再到"..name.."一起交"
+            else
+                local together=byQuest[id]
+                advice[id]=together and not together.splitDelivery and together.ready==#together.choices and
+                    ("一起交给"..name.."（"..#together.choices.."项）") or ("交付给"..name)
+            end
+        end
+    end
+    local function add(choice,stage)
+        local id=choice and choice.questId
+        if not stage or stage.kind~="turnin" or not id or not (state.quests[id] or {}).ready then leading=false end
+        if id and advice[id] and not waiting(id) and not seen[id] and stage and stage.kind=="turnin" then
+            ordered[#ordered+1]=choice;seen[id]=true;immediate[id]=leading
+        end
+    end
+    if plan.taskQueue and plan.taskQueue.steps then
+        for _,step in ipairs(plan.taskQueue.steps) do
+            local choice=step.choice
+            add(choice,step.stage or choice and choice.stages and choice.stages[#choice.stages])
+        end
+    else
+        for _,choice in ipairs(plan.taskOrder or {}) do add(choice,choice.stages and choice.stages[#choice.stages]) end
+    end
+    local current=action and choices[action.questId]
+    if not current then return advice end
+    local task=current.executionAction or (current.actions or {})[1]
+    local turning=action.kind=="turnin" or action.kind=="transit" and task and task.kind=="turnin"
+    local summary
+    local group=byQuest[current.questId]
+    if turning and advice[current.questId] and not waiting(current.questId) then
+        local name=recipient(current)
+        local batch=not state.locked and group and not group.splitDelivery and group.ready==#group.choices and #group.choices>1
+        local nearest=current.distance~=nil
+        for id,choice in pairs(choices) do
+            if id~=current.questId and advice[id] and not waiting(id) and
+                (choice.distance==nil or current.distance==nil or choice.distance<current.distance) then nearest=false end
+        end
+        summary=batch and ("一起交付：到"..name.."交 "..#group.choices.." 项任务") or
+            ((nearest and "就近交付：到" or "顺路先交：到")..name.."交「"..title(current).."」")
+        advice[current.questId]=(batch and "本次一起交给" or "现在交给")..name
+        local nextName
+        for _,choice in ipairs(ordered) do
+            local target=recipient(choice)
+            if choice.questId==current.questId or batch and byQuest[choice.questId]==group then
+                advice[choice.questId]=(batch and "本次一起交给" or "现在交给")..name
+            else
+                advice[choice.questId]="之后交给"..target.." · 先交「"..title(current).."」"
+                if not nextName and target~=name and immediate[choice.questId] then nextName=target end
+            end
+        end
+        if nextName then summary=summary.."；再去"..nextName end
+    elseif action.kind=="objective" and (not (state.quests[current.questId] or {}).ready or current.itemShortage) then
+        if group and group.ready>0 and waiting(current.questId) then
+            summary="同组还差 "..(#group.choices-group.ready).." 项：先做「"..title(current).."」，全部完成后到"..group.title.."一起交"
+        elseif ordered[1] then
+            summary="先做「"..title(current).."」，已完成任务随后到"..recipient(ordered[1]).."交付"
+            for _,choice in ipairs(ordered) do advice[choice.questId]="先做「"..title(current).."」，之后交给"..recipient(choice) end
+        end
+    end
+    return advice,summary
+end
+
 function UI.TrackerModel(state,plan,action,paused)
     state,plan=state or {},plan or {}
     local quests=state.quests or {}
@@ -141,14 +232,17 @@ function UI.TrackerModel(state,plan,action,paused)
         if byQuest[row.questId] then emit(byQuest[row.questId]) else grouped[#grouped+1]=row end
     end
     model.rows=grouped
+    local deliveries,summary=deliveryAdvice(state,plan,action,choices,byQuest)
+    model.deliverySummary=summary
+    for _,row in ipairs(model.rows) do row.delivery=deliveries[row.questId] end
     if not action then
         if plan.complete then model.title="已达到 60 级";model.instruction="本次升级目标已完成。"
         elseif plan.selectionBlocked then model.title="所选行程等待处理";model.instruction=plan.selectionBlocked
         elseif not A.indexReady then model.title="正在整理任务";model.instruction="任务数据加载后显示当前步骤。"
         else model.title="选择下一项任务";model.instruction="点击下方任务开始，或打开详情查看行程。" end
     end
-    if paused then model.instruction="引导已暂停，点击继续恢复。";model.hint=nil end
-    if A.error then model.title="需要处理";model.instruction=A.error;model.hint=nil end
+    if paused then model.instruction="引导已暂停，点击继续恢复。";model.hint=nil;model.deliverySummary=nil end
+    if A.error then model.title="需要处理";model.instruction=A.error;model.hint=nil;model.deliverySummary=nil end
     return model
 end
 
@@ -267,10 +361,11 @@ function UI:RenderTracker()
     T.pause.text:SetText(A.char.paused and "继续" or "暂停")
     T.skip.text:SetText(action and action.kind=="service" and action.serviceKind=="repair" and "忽略维修" or "暂缓")
     self.title:SetText(model.title)
-    local lines={model.instruction}
+    local lines={model.deliverySummary or model.instruction}
+    if model.deliverySummary and action and action.kind~="turnin" then lines[#lines+1]=model.instruction end
     if model.destination then lines[#lines+1]=model.destination end
     if model.metrics then lines[#lines+1]="|cffffd474"..model.metrics.."|r" end
-    if model.hint and not A.char.paused then lines[#lines+1]="|cffc7d6e3"..model.hint.."|r" end
+    if model.hint and not A.char.paused and not (model.deliverySummary and model.includesCurrent) then lines[#lines+1]="|cffc7d6e3"..model.hint.."|r" end
     if plan.selectionBlocked then lines[#lines+1]=plan.selectionBlocked end
     if plan.lockedBlocked and not plan.unverified then lines[#lines+1]=plan.lockedBlocked end
     if plan.gearTargetBlocked then lines[#lines+1]=plan.gearTargetBlocked end
@@ -315,7 +410,7 @@ function UI:RenderTracker()
         row.status:SetText(item.deferred and (item.accepted and "已接·暂缓" or "未接·暂缓") or item.status)
         local color=item.deferred and palette.muted or (item.accepted and palette.green or palette.gold)
         row.status:SetTextColor(unpack(color));row.statusBack:SetColorTexture(color[1],color[2],color[3],0.16)
-        row.progress:SetText(item.progress)
+        row.progress:SetText(item.delivery or item.progress)
         row.metrics:SetText(item.metrics)
         row.candidate,row.revision=item.candidate,plan.revision
         local can=A.Selection.CanChoose(item.candidate,plan.revision)

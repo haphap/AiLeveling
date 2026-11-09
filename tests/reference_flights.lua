@@ -665,6 +665,7 @@ test("同一NPC五项任务全部目标完成后才连续集中交付",function(
     O.entityKind,O.entityId,O.entityName="npc",900,"治安官"
     for _,key in ipairs({"Eligibility","Gear","Dungeon","Supplies","State"}) do B[key]=A[key] end
     B.Navigation=nav;assert(loadfile("Planner/Planner.lua"))("AiLeveling",B)
+    assert(loadfile("UI/Main.lua"))("AiLeveling",B);assert(loadfile("UI/Tracker.lua"))("AiLeveling",B)
     local quests={}
     for id=1,5 do
         local q=F.Quest(id);q.verified=false;q.questLevel=20;q.taskFacts={level=20,xp={{1,10}}};quests[id]=q
@@ -678,6 +679,9 @@ test("同一NPC五项任务全部目标完成后才连续集中交付",function(
         eq(#queue.steps,unfinished+5);eq(queue.taskCount,5);eq(#queue.deliveryBatches,1)
         for i,step in ipairs(queue.steps) do eq(step.stage.kind,i<=unfinished and "objective" or "turnin") end
         eq(result.fallback.kind,unfinished>0 and "objective" or "turnin")
+        local model=B.UI.TrackerModel(s,result,result.fallback,false)
+        if unfinished>0 and unfinished<5 then assert(model.deliverySummary:find("全部完成后",1,true));assert(model.deliverySummary:find("还差 "..unfinished.." 项",1,true))
+        elseif unfinished==0 then assert(model.deliverySummary:find("一起交付：到治安官交 5 项任务",1,true)) end
         eq(s.completed[1],nil);return result
     end
     local result=check(5);assert(math.abs(result.taskQueue.seconds-100)<0.001)
