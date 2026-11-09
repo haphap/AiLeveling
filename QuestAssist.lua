@@ -4,6 +4,74 @@ local Q = A.QuestAssist
 BINDING_HEADER_AILEVELING = "AiLeveling"
 for i=1,4 do _G["BINDING_NAME_CLICK AiLevelingItem"..i..":LeftButton"] = "使用当前任务物品 "..i end
 
+function Q.DialogChoice(id,kind)
+    local state,plan=A.state,A.plan
+    if not state or not plan or state.locked and state.locked~=id then return end
+    local active=(state.quests or {})[id]
+    if kind=="accept" and active or kind=="turnin" and not (active and active.ready) then return end
+    for _,choice in ipairs(plan.taskChoices or {}) do
+        if choice.questId==id and not choice.lowValue and not choice.requireCheck and not choice.entryBlocked then
+            if kind=="accept" then return not choice.acceptBlocked and choice.status=="accept" or nil end
+            if A.TaskGuide and not state.locked then
+                local _,groups=A.TaskGuide.DeliveryGroups(plan.taskChoices,state,plan.taskOrder)
+                local group=groups[id]
+                if group and not group.splitDelivery and group.ready<#group.choices then return end
+            end
+            return not choice.itemShortage
+        end
+    end
+end
+
+-- Only act on a dialog the player opened; the client events still acknowledge progress.
+function Q:DialogEvent(event)
+    if event=="QUEST_FINISHED" or event=="GOSSIP_CLOSED" or event=="PLAYER_ENTERING_WORLD" then self.dialogDone=nil;return end
+    if event~="GOSSIP_SHOW" and event~="QUEST_DETAIL" and event~="QUEST_PROGRESS" and event~="QUEST_COMPLETE" then return end
+    if not A.ready or not A.settings or not A.char or A.char.paused or
+        InCombatLockdown and InCombatLockdown() or IsShiftKeyDown and IsShiftKeyDown() or
+        A.Navigation and A.Navigation.manual then return end
+    local function valid(id)
+        return (not canaccessvalue or canaccessvalue(id)) and type(id)=="number" and id>0 and id<2147483648 and id%1==0
+    end
+    local function once(key,fn,...)
+        if not fn then return end
+        self.dialogDone=self.dialogDone or {}
+        if self.dialogDone[key] then return end
+        self.dialogDone[key]=true
+        return pcall(fn,...)
+    end
+    if event=="GOSSIP_SHOW" then
+        if not C_GossipInfo then return end
+        for _,kind in ipairs({"turnin","accept"}) do
+            local enabled=kind=="accept" and A.settings.autoAccept or kind=="turnin" and A.settings.autoTurnIn
+            local getter=kind=="accept" and C_GossipInfo.GetAvailableQuests or C_GossipInfo.GetActiveQuests
+            if enabled and getter then
+                local ok,list=pcall(getter)
+                if ok and type(list)=="table" then
+                    for _,row in ipairs(list) do
+                        if type(row)=="table" and valid(row.questID) and (kind=="accept" or row.isComplete==true) and Q.DialogChoice(row.questID,kind) then
+                            local selectQuest=kind=="accept" and C_GossipInfo.SelectAvailableQuest or C_GossipInfo.SelectActiveQuest
+                            once("select:"..row.questID,selectQuest,row.questID)
+                            return
+                        end
+                    end
+                end
+            end
+        end
+        return
+    end
+    local id=GetQuestID and GetQuestID()
+    if not valid(id) then return end
+    if event=="QUEST_DETAIL" and A.settings.autoAccept and Q.DialogChoice(id,"accept") then
+        once("accept:"..id,AcceptQuest)
+    elseif event=="QUEST_PROGRESS" and A.settings.autoTurnIn and Q.DialogChoice(id,"turnin") and IsQuestCompletable and IsQuestCompletable() then
+        once("progress:"..id,CompleteQuest)
+    elseif event=="QUEST_COMPLETE" and A.settings.autoTurnIn and Q.DialogChoice(id,"turnin") then
+        local count=GetNumQuestChoices and GetNumQuestChoices()
+        local money=GetQuestMoneyToGet and GetQuestMoneyToGet()
+        if (count==0 or count==1) and type(money)=="number" and money<=0 then once("reward:"..id,GetQuestReward,count) end
+    end
+end
+
 function Q.Requirements(action,state,data)
     local rows,byId = {},{}
     if not action then return rows end

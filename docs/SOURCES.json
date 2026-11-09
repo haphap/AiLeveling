@@ -126,6 +126,18 @@
       "sha256": "b3b04221bcf7caf3197df40ece32c967a580644acf3490ba357c0f5dff434816",
       "scope": "QuestXP.db rows are base XP and quest level; level reduction and tier rounding independently implemented as a fallback; native rewards and existing matching curves retain priority. Compared against the upstream consumer for every added row at player levels 1-59. Buff multipliers are not inferred.",
       "code_copied": false
+    },
+    {
+      "name": "RestedXP feature baseline",
+      "url": "https://github.com/RestedXP/RXPGuides/tree/d583b89e455d73be6b93970579f074ecf6bb6326",
+      "commit": "d583b89e455d73be6b93970579f074ecf6bb6326",
+      "files": {
+        "SettingsPanel.lua": "f6a35a1c3fb9eefd4aabd757dc331d6a03191b18d2371bc9839021f242e7037a",
+        "readme.md": "89df8c0757ff49fa9c4ae390a02194a3020a37987488dd1bc8fbb697901c7bd4",
+        "Help.lua": "2659f8872461df65d9fd067a01ee8560bbaa4eb42a81556ec1ae0581b921a6ef"
+      },
+      "scope": "Feature inventory only. Independent automation based on native quest and gossip API; no program, guide, art or configuration copied into the addon. Complete parity remains unverified.",
+      "audit": "docs/RESTEDXP_PARITY.md"
     }
   ],
   "api_references": [
@@ -337,6 +349,28 @@
       "sha256": "4a92f2ad537b1811bc371750e3277bfa159029f750c69403bab1c63787cae8a9",
       "client_verified": false,
       "usage": "Forever原生ENCOUNTER_START／END事件参数，胜利success=1；不使用INSTANCE_LOCK弹窗作为通关事实"
+    },
+    {
+      "name": "Forever native quest dialog automation",
+      "sources": [
+        {
+          "file": "Interface/AddOns/Blizzard_UIPanels_Game/Mainline/QuestFrame.lua",
+          "sha256": "cf85d4094400843892802e48e8545be648121a24a84187ba4fc304339ae83879",
+          "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/QuestFrame.lua"
+        },
+        {
+          "file": "Interface/AddOns/Blizzard_UIPanels_Game/Shared/GossipFrameShared.lua",
+          "sha256": "89073a44f81864990cdaa1e6914bdaf64dd3942738ada5132d1e7abafe9e20a3",
+          "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_UIPanels_Game/Shared/GossipFrameShared.lua"
+        },
+        {
+          "file": "Interface/AddOns/Blizzard_APIDocumentationGenerated/GossipInfoDocumentation.lua",
+          "sha256": "22cd6a48eded91316753af2e40624e542a91c728c713636549b7d3a6ef7916a5",
+          "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_APIDocumentationGenerated/GossipInfoDocumentation.lua"
+        }
+      ],
+      "scope": "Available/active gossip quest IDs, accepting, completable progress and reward choice indexes. Native payment confirmation and multiple choices retained for manual handling.",
+      "clientVerified": false
     }
   ],
   "native_symbol_checks": {

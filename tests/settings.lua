@@ -1,6 +1,7 @@
 return function(test,eq,F,A,plan)
 local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","SlashCmdList","InCombatLockdown","GetTime","UnitClass","RAID_CLASS_COLORS",
     "geterrorhandler","C_Item","C_PlayerInfo","C_Container","GetQuestID","GetNumQuestChoices","GetQuestItemLink","GetQuestReward",
+    "AcceptQuest","CompleteQuest","GetQuestMoneyToGet","IsQuestCompletable","IsShiftKeyDown","C_GossipInfo",
     "PlaySound","SOUNDKIT","NUM_CONTAINER_FRAMES","ContainerFrameCombinedBags","AiLeveling"}
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
@@ -146,6 +147,53 @@ test("全部设置有原生控件且有效关闭值跨归一化保留",function(
     B.settings.fontScale=0/0;B.settings.density="bad";B.settings.detailPosition={"bad","CENTER",0,0}
     B:NormalizeSettings(B.settings);eq(B.settings.fontScale,1);eq(B.settings.density,"normal");eq(B.settings.detailPosition,nil)
     control(B,"gearPreference").button.scripts.OnClick();eq(B.settings.gearPreference,"xp");assert(B.refreshes>0)
+    B.finish()
+end)
+test("原生任务对话自动接交同NPC任务，保留整组交付、多选奖励及手动覆盖",function()
+    local B=setup();assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
+    local id,shift,count,money,complete=2,false,0,0,true
+    local calls={}
+    GetQuestID=function() return id end
+    IsShiftKeyDown=function() return shift end
+    AcceptQuest=function() calls[#calls+1]="accept:"..id end
+    CompleteQuest=function() calls[#calls+1]="progress:"..id end
+    GetNumQuestChoices=function() return count end
+    GetQuestMoneyToGet=function() return money end
+    IsQuestCompletable=function() return complete end
+    GetQuestReward=function(choice) calls[#calls+1]="reward:"..choice end
+    C_GossipInfo={GetAvailableQuests=function() return {{questID=99},{questID=2}} end,
+        GetActiveQuests=function() return {{questID=1,isComplete=true}} end,
+        SelectAvailableQuest=function(quest) calls[#calls+1]="select:"..quest end,
+        SelectActiveQuest=function(quest) calls[#calls+1]="active:"..quest end}
+    local accept={questId=2,status="accept",actions={{kind="accept"}}}
+    local point={entityKind="npc",entityId=9,entityName="交付NPC"}
+    local ready={questId=1,status="turnin",actions={{kind="turnin"}},stages={{kind="turnin",position=point}}}
+    local pending={questId=3,status="objective",actions={{kind="objective"}},stages={{kind="turnin",position=point}}}
+    B.plan={taskChoices={ready,pending,accept}}
+    B.state.quests[1].ready=true;B.state.quests[3]={objectives={}}
+    local function event(name) B.frame.scripts.OnEvent(nil,name) end
+    event("GOSSIP_SHOW");eq(calls[1],"select:2")
+    event("QUEST_DETAIL");event("QUEST_DETAIL");eq(#calls,2);eq(calls[2],"accept:2")
+    eq(B.state.quests[2],nil);eq(B.state.completed[2],nil)
+    event("QUEST_FINISHED");id=99;event("QUEST_DETAIL");eq(#calls,2)
+    id=2;shift=true;event("QUEST_DETAIL");eq(#calls,2);shift=false
+    B.char.paused=true;event("QUEST_DETAIL");eq(#calls,2);B.char.paused=false
+    B.combat(true);event("QUEST_DETAIL");eq(#calls,2);B.combat(false)
+    B.Navigation.manual={};event("QUEST_DETAIL");eq(#calls,2);B.Navigation.manual=nil
+    B.settings.autoAccept=false;event("QUEST_DETAIL");eq(#calls,2);B.settings.autoAccept=true
+    accept.acceptBlocked="日志满";event("QUEST_DETAIL");eq(#calls,2);accept.acceptBlocked=nil
+    accept.lowValue={};event("QUEST_DETAIL");eq(#calls,2);accept.lowValue=nil
+    B.state.locked=1;event("QUEST_DETAIL");eq(#calls,2);B.state.locked=nil
+    id=1;event("QUEST_PROGRESS");eq(#calls,2)
+    B.state.quests[3].ready=true;event("GOSSIP_SHOW");eq(calls[3],"active:1")
+    complete=false;event("QUEST_PROGRESS");eq(#calls,3);complete=true
+    event("QUEST_PROGRESS");eq(calls[4],"progress:1")
+    count=2;event("QUEST_COMPLETE");eq(#calls,4)
+    count=1;money=100;event("QUEST_COMPLETE");eq(#calls,4)
+    money=0;event("QUEST_COMPLETE");event("QUEST_COMPLETE");eq(calls[5],"reward:1");eq(#calls,5)
+    eq(B.state.completed[1],nil);eq(B.char.turnIns[1],nil)
+    event("QUEST_FINISHED");count=0;event("QUEST_COMPLETE");eq(calls[6],"reward:0")
+    event("GOSSIP_CLOSED");B.settings.autoTurnIn=false;event("QUEST_COMPLETE");eq(#calls,6)
     B.finish()
 end)
 test("字号与密度改变普通卡片并保留完整滚动说明",function()
