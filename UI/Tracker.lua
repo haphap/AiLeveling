@@ -459,7 +459,8 @@ function UI:RenderTracker()
         row.number:SetText(string.format("%02d",i+(model.includesCurrent and 0 or 1)));row.title:SetText(item.title)
         row.title:SetTextColor(unpack(item.deferred and palette.muted or palette.white))
         row.status:SetText(item.deferred and (item.accepted and "已接·暂缓" or "未接·暂缓") or item.status)
-        local color=item.deferred and palette.muted or (item.accepted and palette.green or palette.gold)
+        local color=item.deferred and palette.muted or
+            (item.status=="可交付" and palette.gold or item.accepted and palette.green or palette.muted)
         row.status:SetTextColor(unpack(color));row.statusBack:SetColorTexture(color[1],color[2],color[3],0.16)
         row.progress:SetText(item.delivery or item.progress)
         if item.shared then row.progress:SetTextColor(self:Accent()) else row.progress:SetTextColor(unpack(palette.muted)) end
