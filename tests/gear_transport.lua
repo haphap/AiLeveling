@@ -223,7 +223,7 @@ test("双手改双持时缺少搭配武器伤害不能认定为确定提升",fun
     local companion=item(3,"INVTYPE_WEAPONMAINHAND",15);companion.weaponDPS=nil
     s.bagEquipment={companion}
     local r=G.Upgrade(candidate,s);eq(r.delta,10);assert(r.provisional)
-    assert(table.concat(r.notes):find("武器伤害数据待补齐",1,true))
+    assert(table.concat(r.notes):find("武器伤害加载中",1,true))
     local direct=G.Loadout({[16]=companion,[17]=candidate},s);assert(direct.provisional)
     local content={gearSources={target={verified=true,kind="quest",questId=7,itemId=2}}}
     s.items={[2]=candidate}

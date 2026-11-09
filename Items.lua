@@ -65,7 +65,7 @@ local function effects(item,link)
                 item.effects[#item.effects+1]={kind="equip",text=(record.conditional and "条件被动：" or "装备被动：")..
                     (text or ("效果 #"..spell))}
             end
-            if #record.spells==0 then item.effects[#item.effects+1]={kind="equip",text="被动效果资料待核对"} end
+            if #record.spells==0 then item.effects[#item.effects+1]={kind="equip",text="被动效果"} end
         end
     end
 end

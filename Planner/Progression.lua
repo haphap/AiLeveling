@@ -18,15 +18,15 @@ function X.Advance(state,reward,content)
     local thresholds,source=X.Curve(state,content)
     result.curveSource=thresholds and source or nil
     thresholds=thresholds or {}
-    if result.uncertain then result.reason="后续等级经验门槛待核对";return result end
+    if result.uncertain then result.reason="等级预测暂不可用";return result end
     while result.level<60 do
         local required=result.maxXP or thresholds[result.level]
-        if not required or required<=0 then result.uncertain=true;result.reason="后续等级经验门槛待核对";break end
+        if not required or required<=0 then result.uncertain=true;result.reason="等级预测暂不可用";break end
         if result.xp<required then result.maxXP=required;break end
         result.xp,result.level=result.xp-required,result.level+1
         result.maxXP=thresholds[result.level]
         if result.level>=60 then result.xp,result.maxXP=0,0;break end
-        if not result.maxXP and result.xp>0 then result.uncertain=true;result.reason="后续等级经验门槛待核对";break end
+        if not result.maxXP and result.xp>0 then result.uncertain=true;result.reason="等级预测暂不可用";break end
         if not result.maxXP and result.xp==0 then break end
     end
     return result

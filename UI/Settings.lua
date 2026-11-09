@@ -38,7 +38,7 @@ function S:Create(parent)
     cycle(1,"role","副本职责",{"DAMAGER","TANK","HEALER"},{"输出","坦克","治疗"},2)
     check(1,"dungeons","允许自动推荐副本",3)
     cycle(1,"waitMinutes","等队估计",{0,5,10,15,20,30,45,60},{"0 分钟","5 分钟","10 分钟","15 分钟","20 分钟","30 分钟","45 分钟","60 分钟"},4)
-    cycle(1,"damageStyle","输出参考",{"auto","strength","agility","ranged","caster","hybrid"},{"按职业／混合","近战力量","近战敏捷","远程物理","施法输出","混合属性"},5)
+    cycle(1,"damageStyle","输出属性",{"auto","strength","agility","ranged","caster","hybrid"},{"按职业／混合","近战力量","近战敏捷","远程物理","施法输出","混合属性"},5)
     cycle(1,"gearPreference","装备偏好",{"nearby","xp"},{"接近经验率时比较装备","按经验率选择"},6)
     local auto=A.UI:Button(self.groups[1],"恢复自动选择",270,function()
         local ok,why=A.Selection:Automatic();if not ok then A:Message(why) end
@@ -46,14 +46,14 @@ function S:Create(parent)
     auto:SetPoint("TOPLEFT",position(7))
     local hint=A.UI:Text(self.groups[1],12)
     hint:SetPoint("TOPLEFT",286,0);hint:SetWidth(268)
-    hint:SetText("在行程页选择任务组合与顺序，在任务链页锁定目标或暂缓整链。\n\n等队时间由玩家手动估计。活动副本须先在副本页结束，再恢复自动升级。")
+    hint:SetText("在行程页选择任务组合与顺序，在任务链页锁定目标或暂缓整链。\n\n在副本页结束当前行程后，恢复自动升级。")
     cycle(2,"fontScale","字号",{0.85,1,1.1,1.2},{"85%","100%","110%","120%"},0)
     cycle(2,"scale","界面缩放",{0.75,0.85,1,1.15,1.3,1.5},{"75%","85%","100%","115%","130%","150%"},1)
     cycle(2,"alpha","透明度",{0.2,0.5,0.75,0.85,0.94,1},{"20%","50%","75%","85%","94%","100%"},2)
     cycle(2,"density","卡片密度",{"compact","normal","expanded"},{"紧凑","标准","展开"},3)
     check(2,"lockWindow","锁定窗口位置",4)
     cycle(2,"accent","强调色",{"teal","gold","blue"},{"青绿","金色","蓝色"},5)
-    check(2,"routes","显示目的地直线参考",6)
+    check(2,"routes","显示目的地连线",6)
     check(2,"arrow","显示方向箭头",7)
     check(2,"pins","显示世界地图点",8)
     check(2,"minimapPins","显示小地图点",9)
@@ -69,7 +69,7 @@ function S:Create(parent)
     check(3,"worldHighlight","高亮附近可交互物件",6)
     local binding=A.UI:Text(self.groups[3],12)
     binding:SetPoint("TOPLEFT",286,0);binding:SetWidth(268)
-    binding:SetText("在系统按键设置的 AiLeveling 分类中，为四个任务物品按钮指定快捷键。\n\n按钮组合在战斗外更新，战斗中保留预先配置。\n\n数量和缺失选项控制提示；必要携带条件始终参与行程判断。\n\n奖励建议只比较当前交付界面中的真实选项，由玩家确认领取。\n\n附近物件用光圈提示；可交互时显示系统已有快捷键。战斗中隐藏，启用 Lueur 时交由它显示。")
+    binding:SetText("在系统按键设置的 AiLeveling 分类中，为四个任务物品按钮指定快捷键。\n\n附近可交互物件会显示光圈和快捷键。")
     check(4,"learn","记录本地耗时统计",0)
     local reset=A.UI:Button(self.groups[4],"重置本地统计",270,function()
         A.char.samples={};A.char.sampleContext=nil
@@ -101,7 +101,6 @@ function S:Refresh()
     end
     local nodes=A.Data and A.Data.NodeCount and A.Data:NodeCount() or 0
     self.summary:SetText("版本："..A.version.."\n已索引任务："..(A.Data.count or 0).."\n自有目的地："..nodes..
-        "\n参考任务／奖励／经验："..(A.TaskGuide and table.concat({A.TaskGuide.Counts()},"／") or "0／0／0")..
-        "\n参考服务 NPC："..(A.Data.serviceCount or 0)..
-        "\n\n已接入原生背包与 DaylightUI Bags 高亮；其他背包适配待核对。\n\n地图使用 HBD 坐标与标记，其他地图／UI 插件共存继续实机验收。\n\n完整内容覆盖与客户端验收状态见数据页。")
+        "\n任务／奖励／经验："..(A.TaskGuide and table.concat({A.TaskGuide.Counts()},"／") or "0／0／0")..
+        "\n服务 NPC："..(A.Data.serviceCount or 0))
 end

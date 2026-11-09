@@ -102,7 +102,7 @@ test("装备页从当前真实奖励提供选择并在任务详情显示装备�
     local lines=table.concat(gear:Lines(),"\n");assert(gear.enabled);assert(lines:find("交付任务时选择此奖励",1,true))
     assert(not lines:find("获得概率区间",1,true));assert(not lines:find("分钟",1,true))
     B.UI.Plan.preview=find(B.plan,2)
-    lines=table.concat(B.UI.Plan:Lines(),"\n");assert(lines:find("属性参考提升 +7.0",1,true))
+    lines=table.concat(B.UI.Plan:Lines(),"\n");assert(lines:find("属性评分提升 +7.0",1,true))
     eq(B.Gear:SetTarget(gear.selected),true);B.plan={taskChoices={}}
     eq(#gear:Ids(),1);gear:Lines();eq(gear.selected,"reward:2:101")
 end)
@@ -174,10 +174,10 @@ test("低属性套装奖励保留效果比较与手动任务接续，不自动�
     gear.choose={SetEnabled=function() end};gear.selected=id
     s.bagEquipment={s.items[10399]}
     local lines=table.concat(gear:Lines(),"\n")
-    assert(lines:find("属性参考变化 -3.0",1,true));assert(lines:find("获得 2 件套效果",1,true))
-    assert(lines:find("参考变化 -3.0",1,true));eq(#gear:Ids(),1)
+    assert(lines:find("属性评分变化 -3.0",1,true));assert(lines:find("获得 2 件套效果",1,true))
+    eq(#gear:Ids(),1)
     B.UI.Plan.preview=c;lines=table.concat(B.UI.Plan:Lines(),"\n")
-    assert(lines:find("属性参考变化 -3.0",1,true));assert(lines:find("获得 2 件套效果",1,true))
+    assert(lines:find("属性评分变化 -3.0",1,true));assert(lines:find("获得 2 件套效果",1,true))
     eq(B.Gear:SetTarget(id),true);eq(plan(s,d,balanced,B).fallback.questId,2)
     s.bags[10399]=1;B.Gear:SyncTarget(s);eq(s.gearTarget,nil);eq(s.gearAcquired,10399)
     s.bags[10399]=nil;s.equipment[10]=nil

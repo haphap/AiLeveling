@@ -207,7 +207,7 @@ end
 
 function D.Evaluate(d,state,options,data)
     if not options.dungeons then return nil,"已关闭副本建议" end
-    if not d.verified then return nil,"副本行程待验证" end
+    if not d.verified then return nil,"此副本暂不可规划" end
     if data then
         local valid,reason=D.Workflow(d,data.content,state)
         if not valid then return nil,reason end
@@ -310,7 +310,7 @@ function D.Evaluate(d,state,options,data)
             itinerary[#itinerary+1]=D.Preparation(d)
             if not activity then itinerary[#itinerary+1]={kind="dungeonWaitEstimate",seconds=wait,stage="wait"} end
             itinerary[#itinerary+1]={kind="dungeonEnter",node=d.entryNode,seconds=0,stage="entry",dungeonId=d.id,title=d.title,
-                text="到入口后由玩家进入副本"}
+                text="前往入口，进入副本"}
             for _,action in ipairs(d.actions) do
                 if action.stage=="inside" and not questDone(action,forecast) then
                     local effect=copy(action)
@@ -389,7 +389,7 @@ function D.ActivePlan(d,state,data)
             position=node and data.content.nodes[node] and data.content.nodes[node].position}
     end
     local valid,reason = D.Workflow(d,data.content,state)
-    if not d.verified or not valid then return {gate("dungeonBlocked",reason or "副本内容待验证")} end
+    if not d.verified or not valid then return {gate("dungeonBlocked",reason or "此副本暂不可规划")} end
     if state.inInstance then
         local matching,why=D.InstanceMatches(d,state)
         if not matching then return {gate("dungeonBlocked",why)} end
@@ -404,7 +404,7 @@ function D.ActivePlan(d,state,data)
                 if action.stage=="before" and action.kind~="move" and not questDone(action,state) then prepared=false;break end
             end
             if prepared and A.Supplies then prepared=A.Supplies.Apply(D.Preparation(d),A.Supplies.Cursor(state),state.itemMetadata or {})~=nil end
-            if prepared then return {gate("dungeonWait","准备已就绪，等队期间可执行已验证的可中断任务")} end
+            if prepared then return {gate("dungeonWait","准备就绪，等队期间可做附近任务")} end
         end
         local options=copy(A.settings)
         options.minutes=math.max(0,session.budget-session.elapsed)/60
@@ -414,7 +414,7 @@ function D.ActivePlan(d,state,data)
         for _,action in ipairs(evaluation.previewActions or {}) do
             if action.kind~="dungeonPrepare" and (action.stage=="before" or (session.phase~="preparing" and action.stage=="entry")) then actions[#actions+1]=action end
         end
-        if session.phase=="preparing" then actions[#actions+1]=gate("dungeonWait","队伍就绪后点击“队伍就绪”；等待时可执行已验证的可中断任务") end
+        if session.phase=="preparing" then actions[#actions+1]=gate("dungeonWait","队伍就绪后点击“队伍就绪”；等待时可做附近任务") end
         return actions
     end
     local current,context = state.position and (state.position.node or state.position),copy(state)
@@ -452,8 +452,8 @@ function D.ActivePlan(d,state,data)
         end
     end
     if stage == "before" then
-        if session.phase == "preparing" then actions[#actions+1] = gate("dungeonWait","队伍就绪后点击“队伍就绪”；等待时可执行已验证的可中断任务")
-        else append(gate("dungeonEnter","到入口后由玩家进入副本",d.entryNode)) end
+        if session.phase == "preparing" then actions[#actions+1] = gate("dungeonWait","队伍就绪后点击“队伍就绪”；等待时可做附近任务")
+        else append(gate("dungeonEnter","前往入口，进入副本",d.entryNode)) end
     elseif stage == "inside" then actions[#actions+1] = gate("dungeonRun","继续本轮；完成后点击“本轮结束”，暂时离开会保留进度")
     else append(gate("dungeonEnd",incomplete and "相关任务尚未可交付，返程后按实际任务状态接续练级" or "返程完成，自动接续练级",d.returnNode)) end
     return routed()

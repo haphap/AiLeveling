@@ -117,8 +117,7 @@ function Q.Describe(rows,options,nameFor)
             if options.quantity~=false then quantity=row.countKnown and string.format(" %d/%d",row.have,row.count) or (" 背包 "..row.have) end
             local missing=options.missingChecks~=false and row.missing>0 and row.kind~="source"
             lines[#lines+1]=(kinds[row.kind] or "物品").."："..nameFor(row.id)..quantity..
-                (missing and (" · 缺少至少 "..row.missing.."；"..(row.recovery or "恢复来源待核对")) or "")
-            if row.kind=="source" then lines[#lines+1]="使用阶段与条件待核对" end
+                (missing and (" · 缺少 "..row.missing..(row.recovery and ("；"..row.recovery) or "")) or "")
             if row.missing==0 and (row.target or row.condition) then lines[#lines+1]=table.concat({row.target or "",row.condition or ""}," ") end
         end
     end
@@ -164,18 +163,18 @@ function Q:RewardLines()
         if id then items[i]=A.Items:Read(id,link) else items[i]={pending=true};unknown=true end
     end
     local best,pending,comparisons=Q.CompareRewards(items,A.state)
-    if pending or unknown then return {"任务 #"..self.rewardQuest.."：奖励比较所需的属性或武器资料尚未齐全。"} end
+    if pending or unknown then return {"任务 #"..self.rewardQuest.."：奖励属性加载中。"} end
     if comparisons then
         local lines={"任务 #"..self.rewardQuest.."：奖励需要权衡，请比较后选择。"}
         for _,entry in ipairs(comparisons) do
-            lines[#lines+1]=string.format("第 %d 项 %s · 属性参考变化 %+.1f",entry.index,
+            lines[#lines+1]=string.format("第 %d 项 %s · 属性评分变化 %+.1f",entry.index,
                 entry.item.link or entry.item.name or ("#"..entry.item.id),entry.comparison.delta)
             for _,note in ipairs(entry.comparison.notes or {}) do lines[#lines+1]=note end
         end
         return lines
     end
-    if not best then return {"任务 #"..self.rewardQuest.."：当前参考模型未见明确装备提升，可按其他需要选择奖励。"} end
-    return {string.format("任务 #%d 奖励建议：第 %d 项 %s · 属性参考变化 %+.1f；由玩家确认领取。",
+    if not best then return {"任务 #"..self.rewardQuest.."：没有装备提升，可按需选择奖励。"} end
+    return {string.format("任务 #%d 奖励建议：第 %d 项 %s · 属性评分变化 %+.1f。",
         self.rewardQuest,best.index,best.item.link or best.item.name or ("#"..best.item.id),best.comparison.delta)}
 end
 

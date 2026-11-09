@@ -97,7 +97,7 @@ function UI:Refresh()
     self.selector:SetEnabled(#ids>0)
     local candidate,reason
     if d and A.ready then
-        if d.reference then reason="可先准备关联任务；完整副本行程尚未开放。"
+        if d.reference then reason="选择并准备关联任务。"
         else candidate,reason=A.Dungeon.Evaluate(d,A.state,A.settings,A.Data) end
     end
     self.tasks=d and A.ready and A.Dungeon.Tasks(d,A.state,A.Data) or {}
@@ -148,13 +148,13 @@ function UI:Refresh()
     local lines = {}
     if session and session.phase~="complete" then
         local active = A.Content.dungeons[session.id]
-        lines[#lines+1] = (active and active.title or ("#"..session.id)).." · 第 "..session.round.." 轮 · "..(A.Dungeon.phases[session.phase] or "状态待核对")
+        lines[#lines+1] = (active and active.title or ("#"..session.id)).." · 第 "..session.round.." 轮 · "..(A.Dungeon.phases[session.phase] or "准备中")
         lines[#lines+1] = string.format("行程预算剩余 %.1f 分钟；再刷时重新计算收益与往返成本",math.max(0,session.budget-session.elapsed)/60)
     elseif batch and batch.id==self.selected then
         local count=0;for _ in pairs(batch.baselines) do count=count+1 end
         lines[#lines+1]="已安排 "..count.." 项任务，按当前进度接续准备、目标与交付。"
     elseif reason then lines[#lines+1]=reason
-    else lines[#lines+1]="接受后才执行副本行程；等队时间来自设置中的手动估计。" end
+    else lines[#lines+1]="点击接受，开始副本行程。" end
     if entryError then lines={entryError}
     elseif self.message then lines[#lines+1]=self.message end
     self.status:SetText(table.concat(lines,"\n"))
@@ -164,7 +164,7 @@ function UI:RepeatText()
     local session=A.char.dungeon
     if not session or not session.settled or A.state.inInstance then return nil end
     local d=A.Content.dungeons[session.id]
-    if not d then return "再刷资料待补齐" end
+    if not d then return "当前暂无再刷建议" end
     local options={}
     for key,value in pairs(A.settings) do options[key]=value end
     options.minutes=math.max(0,session.budget-session.elapsed)/60
@@ -176,7 +176,7 @@ function UI:RepeatText()
             return text.."\n建议转回野外行程："..alternative.title.."，预计经验效率更高。"
         end
     end
-    return text.."\n再刷由玩家明确接受，不执行自动重置或组队。"
+    return text.."\n点击再刷，安排下一轮。"
 end
 
 function UI:Lines()
@@ -222,12 +222,11 @@ function UI:Lines()
     if rewards.count>0 then
         lines[#lines+1]=string.format("%s %d 项 · 进行中 %d 项 · 可交付 %d 项",
             current and "本次有效任务" or "可准备任务",rewards.count,rewards.active,rewards.ready)
-        lines[#lines+1]=string.format("当前等级参考交付经验：%d%s",rewards.xp,
-            rewards.unknownXP>0 and ("（另有 "..rewards.unknownXP.." 项未计入）") or "")
+        if rewards.unknownXP==0 then lines[#lines+1]=string.format("交付经验：%d",rewards.xp) end
         if rewards.prepare>0 then lines[#lines+1]="其中 "..rewards.prepare.." 项需先完成前置。" end
         if rewards.upgrades>0 then lines[#lines+1]="其中 "..rewards.upgrades.." 项任务有装备提升。" end
     end
-    if rewards.excluded>0 then lines[#lines+1]="另有 "..rewards.excluded.." 项低收益任务，未计入建议收益。" end
+    if rewards.excluded>0 then lines[#lines+1]="另有 "..rewards.excluded.." 项低收益任务。" end
     local headings={"可交付", "已接任务", "可接任务", "尚未满足条件", "已交付"}
     local group
     for i,row in ipairs(self.tasks or {}) do
@@ -237,12 +236,12 @@ function UI:Lines()
         if selected then hint=hint.." · 已安排" end
         if row.lowValue then hint=hint.." · "..row.lowValue.suggestion end
         if row.xp then hint=hint.." · "..row.xp.." 经验" end
-        local detail=row.requireCheck and "需向发布者确认任务是否开放" or
+        local detail=row.requireCheck and "向任务发布者查看任务" or
             not row.allowed and row.group~=5 and row.reason or row.recipientName
         lines[#lines+1]=string.format("%s%02d  %s  ·  %s%s",i==self.taskIndex and "› " or "",i,row.title,hint,detail and ("\n     "..detail) or "")
         if row.gear then
             local reward=row.gear
-            lines[#lines+1]=string.format("     装备提升：%s · 属性参考 %+.1f",reward.item.link or reward.item.name or ("物品 #"..reward.item.id),reward.upgrade.delta)
+            lines[#lines+1]=string.format("     装备提升：%s · 属性评分 %+.1f",reward.item.link or reward.item.name or ("物品 #"..reward.item.id),reward.upgrade.delta)
         end
     end
     if #lines==0 then lines[1]="当前角色暂无适用的关联任务。" end

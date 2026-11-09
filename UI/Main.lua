@@ -258,7 +258,7 @@ function UI:TaskLines(compact)
         elseif quests[recommended].ready then reason="当前建议先到此目标交付，并释放任务栏位"
         elseif action.position then reason="优先当前地图内较近的已接目标"
         elseif action.areaId then reason=UI.ActionText(action,A.settings or {}):gsub("。$","")
-        else reason="继续当前日志目标，目标位置尚未提供" end
+        else reason="继续当前任务目标" end
         lines[#lines+1]="建议先做："..(quests[recommended].title or action.title or ("任务 #"..recommended)).."；"..reason.."。"
     elseif plan.selectionBlocked then lines[#lines+1]="所选行程条件不足，先处理行程页列出的条件。"
     elseif action and action.kind=="service" then lines[#lines+1]="建议先处理当前补给服务，再继续任务。" end

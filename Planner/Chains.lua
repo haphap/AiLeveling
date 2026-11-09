@@ -2,7 +2,7 @@ local _, A = ...
 A.Chains = {}
 local C=A.Chains
 C.labels={all="全部",any="任一",alternative="可替代",next="后续关联",parent="父任务进行",opens="开始后开放",
-    breadcrumb="指引",exclusive="互斥",closes="交付后关闭",disables="进行时禁接",unknown="关系待核对"}
+    breadcrumb="指引",exclusive="互斥",closes="交付后关闭",disables="进行时禁接",unknown="其他关系"}
 local forward={all=true,any=true,alternative=true,next=true,parent=true,opens=true,breadcrumb=true}
 local function valid(id) return type(id)=="number" and id>0 and id<2147483648 and id%1==0 end
 

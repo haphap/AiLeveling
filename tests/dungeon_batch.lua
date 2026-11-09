@@ -368,7 +368,7 @@ run("本次副本收益只统计所选根任务且远处低价值成员退出建
     B.plan=p;assert(loadfile("UI/Dungeon.lua"))("AiLeveling",B)
     B.UI.Dungeon.selected="ref";B.UI.Dungeon.tasks=B.Dungeon.Tasks(d,s,data)
     local lines=table.concat(B.UI.Dungeon:Lines(),"\n")
-    assert(lines:find("当前等级参考交付经验：1000",1,true));assert(lines:find("1 项低收益任务",1,true))
+    assert(lines:find("交付经验：1000",1,true));assert(lines:find("1 项低收益任务",1,true))
     assert(not lines:find("分钟",1,true));assert(not lines:find("经验/小时",1,true))
     B.Selection:Skip(1);p=plan(s,data,B.settings,B);eq(p.taskBatch.rewards.count,1);eq(p.taskBatch.rewards.excluded,0)
 end)

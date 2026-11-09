@@ -127,7 +127,7 @@ function UI:Lines()
     if A.char.paused then lines[#lines+1]="规划提示已暂停；执行所选行程会恢复提示。" end
     if A.Navigation.manual then lines[#lines+1]="当前导航到手动目的地；执行所选行程会解除手动导航。" end
     if A.char.itinerary then
-        lines[#lines+1]="已锁定任务组合与先后顺序；交通、补给和资源根据当前状态重新核算。实际交付后自动移除对应任务。"
+        lines[#lines+1]="已锁定任务组合与顺序。"
     elseif A.char.locked then lines[#lines+1]="当前锁定任务 #"..A.char.locked.."。" end
     if plan.selectionBlocked then lines[#lines+1]="所选行程暂不可执行："..plan.selectionBlocked.."。可处理所需服务或恢复自动选择。" end
     if A.UI.TaskLines then
@@ -139,7 +139,7 @@ function UI:Lines()
         if plan.complete then lines[#lines+1]="已达到 60 级，本次升级规划目标已完成。"
         elseif plan.selectionActive then lines[#lines+1]="任务组合与顺序继续保留；条件满足后重新计算所选行程。"
         elseif plan.sessionActive then lines[#lines+1]=plan.fallback and plan.fallback.text or "当前副本行程等待处理，可在副本页查看。"
-        else lines[#lines+1]="当前没有可执行建议；任务日志进度和已知目标位置会继续显示。" end
+        else lines[#lines+1]="当前暂无推荐任务。" end
         return lines
     end
     lines[#lines+1]=candidate.title
@@ -157,43 +157,41 @@ function UI:Lines()
         if pos then
             local map=C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(pos.map)
             lines[#lines+1]=string.format("%s · %.1f, %.1f",map and map.name or ("地图 #"..pos.map),pos.x*100,pos.y*100)
-        else lines[#lines+1]="当前目标坐标未提供；按下列任务日志说明推进。" end
+        else lines[#lines+1]="按下列任务目标继续。" end
         for _,objective in ipairs((A.state.quests[candidate.questId] or {}).objectives or {}) do
             if objective.text then lines[#lines+1]=(objective.finished and "[已完成] " or "[进行中] ")..objective.text end
         end
-        if candidate.referenceXP then lines[#lines+1]="数据库参考经验："..candidate.referenceXP.."（实际奖励以交付界面为准）" end
         if candidate.lowValue then
             lines[#lines+1]=candidate.lowValue.suggestion.."："..candidate.lowValue.reason
-            lines[#lines+1]="已移出自动优先队列；可点击执行继续此任务。放弃须在游戏任务日志中手动确认。"
+            lines[#lines+1]="点击执行可继续此任务；在任务日志中可放弃。"
         end
         if candidate.entryBlocked then lines[#lines+1]=candidate.entryBlocked end
-        if candidate.remainingXP then lines[#lines+1]=string.format("当前等级参考交付经验：%.0f",candidate.remainingXP) end
+        if candidate.remainingXP then lines[#lines+1]=string.format("交付经验：%.0f",candidate.remainingXP) end
         if candidate.forecast and not candidate.forecast.uncertain then
-            if candidate.forecast.level>=60 then lines[#lines+1]="仅计此任务交付经验：预计达到 60 级"
+            if candidate.forecast.level>=60 then lines[#lines+1]="交付后达到 60 级"
             elseif candidate.forecast.maxXP then
-                lines[#lines+1]=string.format("仅计此任务交付经验：预计 %d 级，进度 %.0f / %.0f",candidate.forecast.level,candidate.forecast.xp,candidate.forecast.maxXP)
-            else lines[#lines+1]=string.format("仅计此任务交付经验：预计 %d 级，后续经验门槛待核对",candidate.forecast.level) end
+                lines[#lines+1]=string.format("交付后：%d 级，进度 %.0f / %.0f",candidate.forecast.level,candidate.forecast.xp,candidate.forecast.maxXP)
+            else lines[#lines+1]=string.format("交付后：%d 级",candidate.forecast.level) end
         end
-        if candidate.groupReference and candidate.groupReference>1 then lines[#lines+1]="资料建议人数："..candidate.groupReference end
-        if candidate.requireCheck then lines[#lines+1]="资料含获取限制标记："..candidate.requireCheck.."；当前开放情况需向发布者确认。" end
+        if candidate.groupReference and candidate.groupReference>1 then lines[#lines+1]="建议人数："..candidate.groupReference end
         if candidate.rewards then
             local reward=candidate.rewards
             local function items(rows,label)
                 for _,item in ipairs(rows or {}) do
                     local name=C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(item.id)
                     local value=(candidate.gearSources or {})["reward:"..candidate.questId..":"..item.id]
-                    local upgrade=value and (value.upgrade.provisional and " · 武器资料待核对" or string.format(" · 属性参考%s %+.1f",value.upgrade.delta>0 and "提升" or "变化",value.upgrade.delta)) or ""
+                    local upgrade=value and (value.upgrade.provisional and "" or string.format(" · 属性评分%s %+.1f",value.upgrade.delta>0 and "提升" or "变化",value.upgrade.delta)) or ""
                     lines[#lines+1]=label..(name or ("物品 #"..item.id)).." ×"..item.count..upgrade
                     for _,note in ipairs(value and value.upgrade.notes or {}) do lines[#lines+1]=note end
                 end
             end
-            items(reward.items,"参考必得奖励：");items(reward.choices,"参考可选奖励：")
+            items(reward.items,"任务奖励：");items(reward.choices,"可选奖励：")
             if reward.money and reward.money~=0 then
-                lines[#lines+1]=(reward.money>0 and "参考奖励金币：" or "参考交付费用：")..math.abs(reward.money).." 铜"
+                lines[#lines+1]=(reward.money>0 and "奖励金币：" or "交付费用：")..math.abs(reward.money).." 铜"
             end
         end
         if candidate.stages then
-            lines[#lines+1]="剩余任务步骤（未来阶段按实际接取与完成情况更新）："
+            lines[#lines+1]="剩余任务步骤："
             for index,stage in ipairs(candidate.stages) do
                 local names={accept="接取",objective="目标",turnin="交付"}
                 local p=stage.position
@@ -225,7 +223,7 @@ function UI:Lines()
         end
         return lines
     end
-    if ongoing(candidate) then lines[#lines+1]="本轮副本行程进行中；剩余时间与经验等待实际进度确认。"
+    if ongoing(candidate) then lines[#lines+1]="本轮副本行程进行中。"
     else
         lines[#lines+1]=string.format("预计 %.1f 分钟 · %.0f 经验 · %.0f 经验／小时",candidate.seconds/60,candidate.xp,candidate.rate*3600)
         local walk,transit,execute,other=breakdown(candidate)
@@ -245,15 +243,14 @@ function UI:Lines()
         if r.hearthReady then
             local seconds=math.max(0,r.hearthReady-(r.now or 0))
             lines[#lines+1]=seconds==0 and "行程结束时炉石可用" or string.format("行程结束时炉石仍冷却 %.1f 分钟",seconds/60)
-        else lines[#lines+1]="行程结束时炉石状态未知" end
+        end
     end
-    if candidate.forecast then
-        lines[#lines+1]=candidate.forecast.uncertain and "交付经验预测：后续等级门槛待核对" or ("仅计行程交付经验预计等级："..candidate.forecast.level)
-        if candidate.forecast.curveSource and candidate.forecast.curveSource~="authored" then lines[#lines+1]="升级门槛：当前构建客户端参考表" end
+    if candidate.forecast and not candidate.forecast.uncertain then
+        lines[#lines+1]="交付后等级："..candidate.forecast.level
     end
     if candidate.gear then
         local g=candidate.gear
-        lines[#lines+1]=string.format("装备来源参考收益 %+.1f；获得概率 %.0f%%—%.0f%%",g.upgrade.delta,g.chanceLow*100,g.chanceHigh*100)
+        lines[#lines+1]=string.format("装备评分提升 %+.1f；获得概率 %.0f%%—%.0f%%",g.upgrade.delta,g.chanceLow*100,g.chanceHigh*100)
     end
     if candidate.requiresAcceptance then lines[#lines+1]="此方案包含副本；点击接受后进入准备、等队与实际进入流程。" end
     lines[#lines+1]="完整行动预览："

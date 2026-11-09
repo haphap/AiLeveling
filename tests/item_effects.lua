@@ -52,7 +52,7 @@ end) end)
 test("提示接口缺失或未列被动时从当前构建效果表保留说明，缺表关系保留未知",function() native(function()
     local B=fixture();C_TooltipInfo=nil
     local c=B.Items:Read(11815);eq(#c.effects,1);assert(c.effects[1].text:find("15600",1,true))
-    c=B.Items:Read(167648);assert(c.effects[1].text:find("待核对",1,true))
+    c=B.Items:Read(167648);assert(c.effects[1].text:find("被动效果",1,true))
     C_TooltipInfo={GetHyperlink=function() return {lines={{type=0,leftText="物品名"}}} end}
     c=B.Items:Read(11815);eq(#c.effects,1)
     for _,key in ipairs({"clientVersion","build","interface"}) do

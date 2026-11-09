@@ -69,7 +69,7 @@ function M.Offer(shop,id,needed)
         if row.quantity and offer.price~=nil and offer.extended==false then row.cost=row.quantity/offer.pack*offer.price end
         row.stock=offer.available and (offer.available==-1 or row.quantity and offer.available>=row.quantity) or false
         row.ready=row.cost~=nil and row.stock and offer.purchasable==true
-        row.reason=offer.extended and "需额外货币或物品，按商店要求核对" or
+        row.reason=offer.extended and "需要额外货币或物品" or
             (offer.extended==nil or not row.quantity or offer.price==nil or offer.available==nil or offer.purchasable==nil) and "商品资料待加载" or
             (not row.stock and "库存不足") or (offer.purchasable~=true and "当前尚不可购买") or nil
         if not best or (row.ready and not best.ready) or (row.ready==best.ready and
@@ -91,7 +91,7 @@ function M.Quote(action,state)
         for _,id in ipairs(ids) do
             local needed=math.max(0,action.serviceGoal.items[id]-(state.bags[id] or 0))
             if needed>0 then
-                local row=M.Offer(shop,id,needed) or {reason=shop.pending and "商品资料待加载" or "当前商品列表未找到，请核对商店筛选"}
+                local row=M.Offer(shop,id,needed) or {reason=shop.pending and "商品资料待加载" or "调整商店筛选以查看所需商品"}
                 row.id=id;result.items[#result.items+1]=row
                 if row.cost~=nil then result.cost=result.cost+row.cost else result.known=false end
                 if not row.ready then result.ready=false end
@@ -123,7 +123,7 @@ function M.CurrentService(state,kind,missing)
     return {reference=true,id="service:current:"..shop.npcId,kind="service",title=shop.name or ("NPC #"..shop.npcId),
         actions={{kind="service",serviceId="npc:"..shop.npcId,npcId=shop.npcId,serviceKind=kind,
             title=shop.name or ("NPC #"..shop.npcId),position={map=p.map,x=p.x,y=p.y,label="当前商店交互点"},
-            text="在当前商店完成所需服务；实际资源满足后继续原任务。",
+            text="在当前商店维修、整理背包或购买补给。",
             serviceGoal=kind=="repair" and {durability=0.2} or kind=="supply" and {items=targets} or {freeSlots=1}}}}
 end
 

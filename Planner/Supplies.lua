@@ -188,7 +188,7 @@ local function recover(issue,cursor,state,content,protected)
                 action.serviceKind,action.repairTo,action.moneyCost="repair",1,service.repair.costMax
                 action.seconds=service.repair.seconds
                 action.serviceGoal={durability=issue.durability}
-                action.text="由玩家维修装备；按费用上界预留金币"
+                action.text="维修装备。"
             elseif issue.kind=="items" and service.stock then
                 local gains,targets,cost={},{},0
                 for item,count in pairs(issue.missing) do
@@ -201,7 +201,7 @@ local function recover(issue,cursor,state,content,protected)
                 if next(gains) then
                     action.serviceKind,action.gainItems,action.moneyCost="supply",gains,cost
                     action.seconds=service.purchaseSeconds;action.serviceGoal={items=targets}
-                    action.text="由玩家购买所列必需物品；库存与价格按已验证来源估计"
+                    action.text="购买所列必需物品。"
                 end
             elseif (issue.kind=="space" or issue.kind=="finance") and service.vendorSeconds then
                 local sales,unsafe,income={},{},0
@@ -218,7 +218,7 @@ local function recover(issue,cursor,state,content,protected)
                     action.serviceKind,action.consumeItems,action.moneyGain="vendor",sales,income
                     action.seconds=service.vendorSeconds
                     action.serviceGoal=issue.kind=="finance" and {absentItems=sales} or {capacityItems=issue.capacityItems,freeSlots=issue.freeSlots}
-                    action.text="由玩家整理／出售无任务关联的灰色物品，腾出本段所需空间"
+                    action.text="整理背包或出售灰色物品。"
                 end
             end
             if action.seconds then
@@ -251,7 +251,7 @@ function S.Compile(actions,state,content)
                     local finished=funded and S.Apply(action,funded,metadata)
                     if finished then
                         sale.questId,sale.dungeonId,sale.stage=action.questId,action.dungeonId,action.stage
-                        sale.text="由玩家出售所列灰色物品，用于后续服务费用"
+                        sale.text="出售所列灰色物品。"
                         results[#results+1]={cursor=finished,actions={sale,action}}
                     end
                 end
@@ -414,7 +414,7 @@ function S.Fallback(state,data,blocked)
         end
     end
     if not need then return end
-    local text=need=="supply" and "缺少本段补给，到店核对库存与价格" or need=="repair" and "装备耐久较低，先维修再继续战斗" or "通用背包空间已满，先整理或出售不再需要的物品"
+    local text=need=="supply" and "购买所需补给" or need=="repair" and "维修装备" or "背包已满，整理背包或出售物品"
     local current=A.Merchant and A.Merchant.CurrentService(state,need,missing)
     if current then return current,text end
     local best
@@ -451,13 +451,13 @@ function S.Fallback(state,data,blocked)
         end
         if selected then
             local action={kind="service",serviceKind=need,serviceId="npc:"..selected.npcId,npcId=selected.npcId,
-                position=selected.position,title=selected.title,text=text.."。服务位置来自任务库，服务能力、费用和库存到店核对。",
+                position=selected.position,title=selected.title,text=text.."。",
                 serviceGoal=need=="repair" and {durability=0.2} or need=="supply" and {items=selected.targets} or {freeSlots=1}}
             best={id="service:npc:"..selected.npcId,title=selected.title,kind="service",reference=true,
                 actions={action}}
         end
     end
-    return best,best and text or (text.."；服务点或完整费用资料待补齐")
+    return best,text
 end
 
 local function number(value,minimum,maximum,integer)

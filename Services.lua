@@ -468,11 +468,11 @@ function S.Build(state,plan,automatic)
             return
         end
     end
-    local instruction=stop.kind=="bind" and "与所选旅店老板交谈，由你确认设置炉石；收到实际绑定事件后继续原任务。" or
-        stop.kind=="unlockFlight" and "与飞行管理员交谈，开通此飞行点；确认开通后继续原任务。航线和费用以飞行地图为准。" or
-        stop.learnKey and ("在原生训练窗口学习「"..stop.learnKey:match("^[^\031]+").."」；学会后继续原任务。") or
-        "与训练师交谈，打开详情的服务页选择要学习的项目；职业与条件以训练窗口为准。"
-    if automatic then instruction="建议把炉石设在这里，做完任务后回来集中交付。可在服务页取消。" end
+    local instruction=stop.kind=="bind" and "与旅店老板交谈，设置炉石。" or
+        stop.kind=="unlockFlight" and "与飞行管理员交谈，开通此飞行点。" or
+        stop.learnKey and ("向训练师学习「"..stop.learnKey:match("^[^\031]+").."」；学会后继续原任务。") or
+        "与训练师交谈，在服务页选择要学习的项目。"
+    if automatic then instruction="建议把炉石设在这里，做完任务后回来集中交付。" end
     local trainingCost
     if stop.kind=="train" and stop.learnKey and state.trainer and state.trainer.npcId==stop.npcId then
         for _,offer in ipairs(state.trainer.rows) do

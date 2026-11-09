@@ -42,7 +42,7 @@ end
 function UI:Lines()
     local lines={}
     local _,name=A.Gear.Model(A.state)
-    lines[#lines+1]="装备比较："..(name or "职业模型待核对")
+    lines[#lines+1]="装备比较："..(name or "选择职业与职责")
     local ids=self:Ids()
     local present=false;for _,id in ipairs(ids) do if id==self.selected then present=true;break end end
     if not present then self.selected=ids[1] end
@@ -55,15 +55,15 @@ function UI:Lines()
         if value then
             local itemName=value.item.link or value.item.name or ("物品 #"..source.itemId)
             if source.reference then
-                lines[#lines+1]=string.format("%s · 属性参考%s %+.1f",itemName,value.upgrade.delta>0 and "提升" or "变化",value.upgrade.delta)
+                lines[#lines+1]=string.format("%s · 属性评分%s %+.1f",itemName,value.upgrade.delta>0 and "提升" or "变化",value.upgrade.delta)
                 lines[#lines+1]=source.choice and "交付任务时选择此奖励。" or "交付任务后获得此奖励。"
             else
-                lines[#lines+1]=string.format("%s\n属性参考变化 %+.1f；获得概率区间 %.0f%%—%.0f%%",itemName,
+                lines[#lines+1]=string.format("%s\n属性评分变化 %+.1f；获得概率区间 %.0f%%—%.0f%%",itemName,
                     value.upgrade.delta,value.chanceLow*100,value.chanceHigh*100)
             end
             for _,note in ipairs(value.upgrade.notes) do lines[#lines+1]=note end
-            if source.kind=="dungeon" then
-                lines[#lines+1]=value.expectedAttemptsHigh and string.format("独立尝试的期望次数：%.1f—%.1f；每轮概率保持不变。",value.expectedAttemptsLow,value.expectedAttemptsHigh) or "获得份额或掉落概率尚未确认，期望尝试次数的上界未知。"
+            if source.kind=="dungeon" and value.expectedAttemptsHigh then
+                lines[#lines+1]=string.format("预计刷取：%.1f—%.1f 次",value.expectedAttemptsLow,value.expectedAttemptsHigh)
             end
             local route
             local fastest
@@ -76,7 +76,7 @@ function UI:Lines()
             elseif route then
                 lines[#lines+1]=string.format("来源行程 %.1f 分钟 · %.0f 经验／小时%s",route.seconds/60,route.rate*3600,
                     fastest and string.format("；较当前最高经验率方案多用 %+.1f 分钟",(route.seconds-fastest.seconds)/60) or "")
-            else lines[#lines+1]="当前没有已验证且满足条件的完整来源行程。" end
+            else lines[#lines+1]="当前暂无可用的获取行程。" end
         else lines[#lines+1]=reason end
     end
     if self.message then lines[#lines+1]=self.message end
@@ -89,7 +89,7 @@ function UI:Lines()
     table.sort(upgrades,function(a,b) return a.comparison.delta>b.comparison.delta end)
     for _,entry in ipairs(upgrades) do
         local c,item=entry.comparison,entry.item
-        lines[#lines+1]=string.format("%s · 参考变化 %+.1f%s",item.link or item.name or ("#"..item.id),c.delta,c.provisional and "（关键武器数据待核对）" or "")
+        lines[#lines+1]=string.format("%s · 属性评分变化 %+.1f",item.link or item.name or ("#"..item.id),c.delta)
         for _,note in ipairs(c.notes) do lines[#lines+1]=note end
     end
     if #upgrades==0 then lines[#lines+1]="当前没有属性提升或效果变化的可用搭配。" end
@@ -98,7 +98,7 @@ function UI:Lines()
         local item=A.state.equipment and A.state.equipment[slot]
         if item then
             local score=A.Gear.Score(item,A.state)
-            lines[#lines+1]=(item.link or item.name or ("物品 #"..item.id))..(score and string.format(" · 参考 %.1f",score) or " · 属性加载中")
+            lines[#lines+1]=(item.link or item.name or ("物品 #"..item.id))..(score and string.format(" · 评分 %.1f",score) or " · 属性加载中")
             local reference,skill=A.Gear.WeaponSkill(item,A.state)
             if reference and skill then
                 lines[#lines+1]=string.format("  %s熟练度 %d/%d（有效 %d）",reference.name,skill.rank,skill.maxRank,

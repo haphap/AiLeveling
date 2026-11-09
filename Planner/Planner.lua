@@ -67,7 +67,7 @@ function P.EvaluateMany(quests, state, data, options, from)
     for _, q in ipairs(quests) do
         local eligible, reason = A.Eligibility.Check(q, state, data)
         if not eligible then return nil, reason end
-        if not q.verified or not q.actions then return nil, "行动链尚未验证" end
+        if not q.verified or not q.actions then return nil, "此任务暂不可规划" end
         if options.mode == "relaxed" and q.requiresGroup and state.groupSize < q.requiresGroup then
             return nil, "轻松模式下队伍条件不足"
         end
@@ -117,7 +117,7 @@ function P.EvaluateMany(quests, state, data, options, from)
         action.position=action.position or (action.node and data.content.nodes[action.node].position)
         if action.kind=="turnin" then
             local q=questById[action.questId]
-            if type(q.xp)=="table" and context.xpUncertain then return nil,"预测等级未确认，交付经验待核对" end
+            if type(q.xp)=="table" and context.xpUncertain then return nil,"交付经验预测暂不可用" end
             local xp=type(q.xp)=="table" and q.xp[context.level] or q.xp
             if type(xp)~="number" or xp<0 or xp>=math.huge or xp~=xp then return nil,"当前等级经验未知" end
             rewards=rewards+xp
@@ -285,7 +285,7 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
                 choice.requireCheck=q.taskFacts.hidden
                 if choice.requireCheck then
                     choice.stagesComplete=false
-                    action.text="资料含节日、退役或获取限制标记，先到任务发布者确认当前是否开放。"
+                    action.text="向任务发布者查看此任务。"
                 end
             end
         end

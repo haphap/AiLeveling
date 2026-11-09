@@ -15,7 +15,7 @@ function H:InvalidateSample()
     if window then window.learn=false end
 end
 function H:Gate()
-    if self:InTransit() then return {kind="hearthCast",title="炉石返回中",text="等待施法与实际落地确认，落地后继续任务。"} end
+    if self:InTransit() then return {kind="hearthCast",title="炉石返回中",text="返回绑定地点后继续任务。"} end
 end
 
 function H:Event(event,unit,guid,spell)

@@ -46,12 +46,12 @@ local function skillNote(item,old,state)
     if not physicalWeapon(item,state) then return end
     local reference,skill,enabled=G.WeaponSkill(item,state)
     if not enabled then return end
-    if not reference then return "武器熟练度类型待核对，请先确认适用技能。" end
+    if not reference then return "在技能面板查看武器熟练度。" end
     local previous,previousSkill=G.WeaponSkill(old,state)
     if previous and previous.skill==reference.skill then return end
-    if not skill then return reference.name.."熟练度待确认，请先查看技能面板。" end
+    if not skill then return reference.name.."熟练度：在技能面板查看。" end
     local effective=skill.rank+skill.modifier+skill.tempPoints
-    if old and physicalWeapon(old,state) and not previousSkill then return "当前武器熟练度待确认，请先查看技能面板。" end
+    if old and physicalWeapon(old,state) and not previousSkill then return "在技能面板查看当前武器熟练度。" end
     local before=previousSkill and previousSkill.rank+previousSkill.modifier+previousSkill.tempPoints or skill.maxRank
     if effective<before then
         return string.format("%s熟练度 %d/%d（有效 %d），低于%s %d；换装后需先练习。",
@@ -77,7 +77,7 @@ function G.Score(item,state)
 end
 
 function G.Usable(item,state)
-    if item.pending then return nil,"装备资料尚未加载" end
+    if item.pending then return nil,"装备属性加载中" end
     if item.requiredLevel and item.requiredLevel>state.level then return false,"等级不足" end
     if item.classes and not item.classes[state.class] then return false,"职业不适配" end
     if item.roles and not item.roles[state.role] then return false,"职责不适配" end
@@ -104,14 +104,14 @@ function G.Compare(candidate,equipped,state)
     local ok,reason=G.Usable(candidate,state)
     if not ok then return nil,reason end
     local new,old=G.Score(candidate,state),equipped and G.Score(equipped,state) or 0
-    if not new or old==nil then return nil,"属性数据尚未齐全" end
-    return {delta=new-old,qualitative=true,label="属性参考变化（特殊效果另列）"}
+    if not new or old==nil then return nil,"装备属性加载中" end
+    return {delta=new-old,qualitative=true,label="属性评分变化"}
 end
 
 function G.Loadout(replacements,state)
     local after,removed,added,setUnknown={},0,0
     for slot,item in pairs(state.equipment) do
-        if item.pending then return nil,"当前装备资料尚未加载" end
+        if item.pending then return nil,"当前装备属性加载中" end
         if item.setUnknown then setUnknown=true end
         after[slot]=item
     end
@@ -148,7 +148,7 @@ function G.Loadout(replacements,state)
         end
     end
     local notes,sets={},{}
-    if setUnknown then notes[#notes+1]="有装备的套装归属待核对，先确认整套效果" end
+    if setUnknown then notes[#notes+1]="查看套装效果" end
     local function effects(item,verb)
         if not item then return end
         local prefix=(item.link or item.name or ("物品 #"..item.id)).." · "..verb.."："
@@ -177,14 +177,14 @@ function G.Loadout(replacements,state)
         for _,item in pairs(after) do if item.setId==id then afterCount=afterCount+1 end end
         if beforeCount~=afterCount then
             if type(info)~="table" or not info.bonuses then
-                notes[#notes+1]="套装 #"..id.."："..beforeCount.." → "..afterCount.." 件，需核对套装效果"
+                notes[#notes+1]="套装 #"..id.."："..beforeCount.." → "..afterCount.." 件"
             else
                 local rank=info.skill and (state.skills or {})[info.skill]
                 for _,bonus in ipairs(info.bonuses) do
                     local count,spell=bonus[1],bonus[2]
                     if (beforeCount>=count)~=(afterCount>=count) then
                         if info.skill and rank==nil then
-                            notes[#notes+1]=info.name.."：专业条件待核对，需 "..info.rank.." 点技能"
+                            notes[#notes+1]=info.name.."：需要 "..info.rank.." 点技能"
                         elseif not info.skill or rank>=info.rank then
                             local text=info.name.."："..(afterCount>=count and "获得 " or "失去 ")..count.." 件套效果"
                             local description=A.Items and A.Items.SpellText and A.Items:SpellText(spell)
@@ -203,9 +203,9 @@ function G.Loadout(replacements,state)
     for slot,item in pairs(replacements) do
         if missingWeapon(state.equipment[slot]) or missingWeapon(item) then missing=true;break end
     end
-    if missing then notes[#notes+1]="武器伤害数据待补齐，先核对武器收益" end
+    if missing then notes[#notes+1]="武器伤害加载中" end
     return {delta=added-removed,oldScore=removed,newScore=added,replacements=replacements,provisional=missing,
-        qualitative=true,notes=notes,label="属性参考变化；耗时仅使用明确校准模型"}
+        qualitative=true,notes=notes,label="属性评分变化"}
 end
 
 function G.Upgrade(candidate,state)
@@ -272,7 +272,7 @@ function G.Source(source,state,content,data)
     if not source.verified then
         local reference=source.reference and G.GetSource(source.id,data)
         if not reference or not reference.reference or reference.questId~=source.questId or reference.itemId~=source.itemId then
-            return nil,"装备来源待验证"
+            return nil,"当前暂无可用的装备来源"
         end
         source=reference
     end
@@ -310,8 +310,8 @@ function G:SetTarget(id)
     end
     if value.owned then return false,"已经携带目标物品，可直接比较装备" end
     if value.chanceHigh<=0 then return false,"当前来源无法获得目标物品" end
-    if value.upgrade.provisional then return false,"关键武器数据待核对" end
-    if value.upgrade.delta<=0 and #(value.upgrade.notes or {})==0 then return false,"当前参考模型未显示装备收益" end
+    if value.upgrade.provisional then return false,"武器属性加载中" end
+    if value.upgrade.delta<=0 and #(value.upgrade.notes or {})==0 then return false,"这件装备没有提升" end
     A.char.gearTarget=id
     local count=0
     for _,item in pairs(A.state.equipment) do if item.id==source.itemId then count=count+1 end end

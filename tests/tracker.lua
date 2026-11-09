@@ -255,7 +255,7 @@ test("低价值建议保留接取状态手动入口并为换行留出空间",fun
     row.progress.measuredHeight=60;B.UI:LayoutTracker();assert(row.height>=90)
     assert(loadfile("UI/Plan.lua"))("AiLeveling",B);B.UI.Plan.preview=c
     local lines=table.concat(B.UI.Plan:Lines(),"\n")
-    assert(lines:find("建议放弃",1,true));assert(lines:find("手动确认",1,true))
+    assert(lines:find("建议放弃",1,true));assert(lines:find("在任务日志中可放弃",1,true))
     B.finish()
 end)
 

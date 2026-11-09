@@ -60,13 +60,13 @@ test("套装专业要求使用真实技能等级，未知条件不猜生效",fun
     s.equipment={[5]=a,[7]=b};s.skills[197]=299
     local r=B.Gear.Upgrade(c,s);eq(#r.notes,0)
     s.skills[197]=300;r=B.Gear.Upgrade(c,s);assert(#r.notes>0);assert(r.notes[1]:find("获得",1,true))
-    s.skills[197]=nil;r=B.Gear.Upgrade(c,s);assert(r.notes[1]:find("专业条件待核对",1,true))
+    s.skills[197]=nil;r=B.Gear.Upgrade(c,s);assert(r.notes[1]:find("需要 ",1,true))
 end)
 
 test("已穿套装归属有冲突时不把不确定件数作为明确装备收益",function()
     local B,s=fixture();s.equipment[1]=item(B,1,"INVTYPE_HEAD");s.equipment[1].setUnknown=true
     local r=B.Gear.Upgrade(item(B,2,"INVTYPE_HAND",5),s)
-    assert(#r.notes>0);assert(r.notes[1]:find("套装归属待核对",1,true))
+    assert(#r.notes>0);assert(r.notes[1]:find("查看套装效果",1,true))
 end)
 test("套装专业状态采集与任务要求合并且按构建启用",function()
     local B,s=fixture();assert(loadfile("State.lua"))("AiLeveling",B)

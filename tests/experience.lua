@@ -66,8 +66,8 @@ test("任务预览保留交付等级预测与原生状态且隐藏内部来源�
     assert(loadfile("UI/Plan.lua"))("AiLeveling",B)
     B.char={};B.plan=result;B.state=s;B.UI.Plan.preview=choice
     local text=table.concat(B.UI.Plan:Lines(),"\n")
-    assert(text:find("仅计此任务交付经验：预计 2 级",1,true));assert(not text:find("当前构建客户端参考表",1,true))
+    assert(text:find("交付后：2 级",1,true));assert(not text:find("当前构建客户端参考表",1,true))
     choice.forecast={level=2,xp=0};text=table.concat(B.UI.Plan:Lines(),"\n")
-    assert(text:find("后续经验门槛待核对",1,true));assert(not text:find("0 / 0",1,true))
+    assert(text:find("交付后：2 级",1,true));assert(not text:find("后续经验门槛待核对",1,true));assert(not text:find("0 / 0",1,true))
 end)
 end

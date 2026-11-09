@@ -47,8 +47,8 @@ test("技能加成影响武器权衡，未知类型与缺失熟练度不假设�
     s.weaponSkills[44]={rank=100,maxRank=100,modifier=5,tempPoints=0}
     eq(#B.Gear.Upgrade(candidate,s).notes,0)
     s.weaponSkills[43].tempPoints=5;assert(#B.Gear.Upgrade(candidate,s).notes>0)
-    s.weaponSkills[44]=nil;assert(table.concat(B.Gear.Upgrade(candidate,s).notes):find("熟练度待确认",1,true))
-    candidate.subClassID=17;assert(table.concat(B.Gear.Upgrade(candidate,s).notes):find("类型待核对",1,true))
+    s.weaponSkills[44]=nil;assert(table.concat(B.Gear.Upgrade(candidate,s).notes):find("熟练度：在技能面板查看",1,true))
+    candidate.subClassID=17;assert(table.concat(B.Gear.Upgrade(candidate,s).notes):find("在技能面板查看武器熟练度",1,true))
     s.clientBuild="other";eq(#B.Gear.Upgrade(candidate,s).notes,0)
     s.clientBuild="70862";candidate.usable=false;eq(B.Gear.Upgrade(candidate,s),nil)
 end)

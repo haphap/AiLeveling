@@ -84,7 +84,7 @@ test("已安排训练显示实际缺少条件或资金且不自动学习或误�
     S:Snapshot(B.state);action=S.Build(B.state).fallback
     assert(action.text:find("等级 30、炼金术 75、初级炼金术",1,true));eq(B.char.serviceStop,stop)
     e.rows[1].skillMet=true;e.rows[1].abilities[1].met=true;e.rows[1].level=10;B.state.money=40
-    S:Snapshot(B.state);action=S.Build(B.state).fallback;assert(action.text:find("原生训练窗口学习",1,true))
+    S:Snapshot(B.state);action=S.Build(B.state).fallback;assert(action.text:find("向训练师学习",1,true))
     e.rows[1].status="used";S:Snapshot(B.state);eq(B.char.serviceStop,nil)
     finish()
 end)
@@ -245,7 +245,7 @@ test("自动旅店安排从完整任务规划进入行动并在原生绑定后�
     local B,s,inns,finish,e,rebuild=automaticFixture();local S=B.Services
     local p=rebuild();eq(p.automaticService.npcId,2);eq(p.fallback.serviceKind,"bind");eq(p.serviceResume.questId,42)
     eq(B.char.serviceStop,nil);eq(s.hearthPoint.x,0);eq(s.quests[42].objectives[1].finished,false)
-    assert(p.fallback.text:find("服务页取消",1,true))
+    assert(p.fallback.text:find("做完任务后回来集中交付",1,true))
     s.position={map=1,x=0.8,y=0};e.npc=2;rebuild()
     S:Event("HEARTHSTONE_BOUND");eq(B.Hearth.landing,nil)
     S:Event("CONFIRM_BINDER","交付地旅店");assert(S.binding)

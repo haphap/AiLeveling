@@ -128,7 +128,7 @@ function UI:Draw(graph)
             card:SetScript("OnEnter",function(f)
                 GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(f.node.title)
                 GameTooltip:AddLine(status[f.node.status] or f.node.status,1,1,1)
-                GameTooltip:AddLine(f.node.eligible and "当前资格已满足" or (f.node.reason or "条件待核对"),1,1,1,true)
+                GameTooltip:AddLine(f.node.eligible and "当前资格已满足" or (f.node.reason or "查看任务条件"),1,1,1,true)
                 GameTooltip:Show()
             end)
             card:SetScript("OnLeave",function() GameTooltip:Hide() end)
@@ -190,10 +190,10 @@ function UI:Details()
     local node=self.graph and self.graph.byId[self.focus]
     if not node then lines[#lines+1]="输入任务 ID，或返回当前任务后浏览关联。";return lines end
     lines[#lines+1]=node.title.." ["..(status[node.status] or node.status).."]"
-    lines[#lines+1]=node.eligible and "当前资格已满足" or (node.reason or "条件待核对")
-    lines[#lines+1]="全部：须满足每项；任一：交付其中一项；负号组前置须精确交付；后续关联不代替资格判断。"
+    lines[#lines+1]=node.eligible and "当前资格已满足" or (node.reason or "查看任务条件")
+    lines[#lines+1]="全部：完成所有前置任务；任一：完成其中一个前置任务。"
     if self.graph.truncated or self.graph.edgesTruncated then lines[#lines+1]="当前视图已限量；点击节点重新聚焦，或通过关联选择器逐项查看未画出的关系。" end
-    if self.graph.cycle then lines[#lines+1]="当前视图发现依赖／后续循环，需要核对数据。" end
+    if self.graph.cycle then lines[#lines+1]="任务关系存在循环。" end
     local roots={}
     for root in pairs(A.char.deferredChains or {}) do roots[#roots+1]=root end
     table.sort(roots)

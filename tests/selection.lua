@@ -212,7 +212,7 @@ test("进行中的副本剩余估计未知时不显示零分钟完成",function(
     B.plan.alternatives={};B.char.dungeon={phase="running"}
     B.UI:SelectTab(1)
     local text=table.concat(B.lines,"\n")
-    assert(text:find("剩余时间与经验等待实际进度确认",1,true));eq(text:find("预计 0.0 分钟",1,true),nil)
+    assert(text:find("本轮副本行程进行中",1,true));eq(text:find("预计 0.0 分钟",1,true),nil)
     eq(B.UI.Plan.choose.enabled,false)
 end)
 test("达到等级目标时行程页说明完成而非报告数据缺口",function()
