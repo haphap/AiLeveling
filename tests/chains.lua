@@ -100,6 +100,9 @@ test("自有新增任务进入等级资格和关系索引且不改上游 ID 表"
     repeat local ok,why=coroutine.resume(co);assert(ok,why) until coroutine.status(co)=="dead"
     eq(B.Data.count,3);eq(B.Data.byLevel[21][1],2);eq(B.Data.requirements.skills[123],true)
     local candidates=B.Data:Candidates({level=30,quests={}});eq(#candidates,1);eq(candidates[1],3)
+    candidates=B.Data:Candidates({level=30,quests={},completed={[1]=true}});eq(table.concat(candidates,","),"2,3")
+    candidates=B.Data:Candidates({level=30,quests={[1]={}},completed={}});eq(table.concat(candidates,","),"1,3")
+    candidates=B.Data:Candidates({level=30,quests={},completed={[1]=true,[2]=true}});eq(table.concat(candidates,","),"3")
     eq(B.Data.requirements.reputations[72],true)
     assert(edge(B.Data.chainIndex,1,2,"all"));eq(B.Data:GetQuest(2).title,"自有任务")
     source.name="另一个角色上下文";assert(B.Data:Connect(db));eq(B.Data:GetQuest(1).title,"另一个角色上下文")

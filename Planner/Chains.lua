@@ -10,6 +10,24 @@ function C.NewIndex()
     return {outgoing={},incoming={},edges={},keys={},nodes={},descendants={}}
 end
 
+function C.Followups(state,index)
+    local ids,seen={},{}
+    local quests,completed=state.quests or {},state.completed or {}
+    for _,known in ipairs({quests,completed}) do
+        for id,value in pairs(known) do
+            if value then
+                for _,edge in ipairs(index.outgoing[id] or {}) do
+                    if forward[edge.kind] and (completed[id] and edge.kind~="parent" or
+                        quests[id] and (edge.kind=="parent" or edge.kind=="opens")) and not seen[edge.to] then
+                        seen[edge.to]=true;ids[#ids+1]=edge.to
+                    end
+                end
+            end
+        end
+    end
+    table.sort(ids);return ids
+end
+
 -- Return executable frontiers of viable prerequisite branches, without projecting completion.
 function C.Preparation(id,data,state)
     local memo,visiting={},{}

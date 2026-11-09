@@ -41,6 +41,20 @@ test("跨区未接任务按完整移动收益比较并从接取衔接到交付�
     s.quests[2]=nil;s.completed[2]=true
     p=plan(s,d,nil,B);eq(p.fallback.questId,1);eq(p.fallback.position.map,1)
     q[1].preQuestGroup={4};p=plan(s,d,nil,B);eq(p.fallback,nil)
+    s.level=30;s.quests={};s.completed={};q[1].preQuestGroup=nil
+    q[2].questLevel=10;q[2].preQuestGroup={1};q[3].questLevel=40;q[3].preQuestGroup={2}
+    d.byLevel={[20]={1},[10]={2},[40]={3}};d.chainIndex=B.Chains.NewIndex()
+    for _,quest in pairs(q) do B.Chains.IndexQuest(d.chainIndex,quest,d) end
+    local indexed={Chains=B.Chains};assert(loadfile("Data/Questie.lua"))("AiLeveling",indexed)
+    d.Candidates=indexed.Data.Candidates
+    d.Target=function(_,quest) return {map=2,x=quest.id/10,y=0,objectiveIndex=1} end
+    eq(plan(s,d,nil,B).fallback,nil)
+    s.completed[1]=true;p=plan(s,d,nil,B);eq(p.fallback.questId,2);eq(p.fallback.kind,"accept")
+    s.quests[2]={objectives={{text="后续目标",numRequired=1,numFulfilled=0}}}
+    p=plan(s,d,nil,B);eq(p.fallback.kind,"objective");eq(s.completed[2],nil)
+    s.quests[2].ready=true;p=plan(s,d,nil,B);eq(p.fallback.kind,"turnin")
+    s.quests[2]=nil;s.completed[2]=true;eq(plan(s,d,nil,B).fallback,nil)
+    s.level=40;p=plan(s,d,nil,B);eq(p.fallback.questId,3);eq(p.fallback.kind,"accept");eq(s.completed[3],nil)
 end)
 
 test("自动行程顺路接取合算任务并按原生进度继续整组交付",function()

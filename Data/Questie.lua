@@ -213,8 +213,15 @@ function D:Candidates(snapshot)
             if id and id>0 then add(id) end
         end
     end
+    local minimum=math.max(0,snapshot.level-8)
+    if self.chainIndex then
+        for _,id in ipairs(A.Chains.Followups(snapshot,self.chainIndex)) do
+            local q=self:GetQuest(id)
+            if q and (q.questLevel or 0)<minimum and (not (snapshot.completed or {})[id] or q.repeatable) then add(id) end
+        end
+    end
     for _,id in ipairs(self.byLevel[-1] or {}) do add(id) end
-    for level = math.max(0, snapshot.level - 8), snapshot.level + 2 do
+    for level = minimum, snapshot.level + 2 do
         for _, id in ipairs(self.byLevel[level] or {}) do add(id) end
     end
     if snapshot.locked then add(snapshot.locked) end
