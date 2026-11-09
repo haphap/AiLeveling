@@ -252,7 +252,6 @@ function T:Update()
         end
         self.groundPosition=nil
         A.jobs.plan=nil
-        A.Observations:Reset()
         A.Navigation:RefreshPins()
         A.QuestAssist:Update()
         A:RequestRefresh()

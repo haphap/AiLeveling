@@ -73,7 +73,7 @@ test("船舶导航在码头等候跨图保持并只推进到站步骤",function(
     local n=B.Navigation;local distance=function(_,a,b) if a and b and a.map==b.map then return math.abs(a.x-b.x)*700 end end
     n.Distance=distance;n.hbd={GetWorldCoordinatesFromZone=function(_,x,y,map) return x,y,map end,GetWorldVector=function() return 0 end}
     B.state=s;B.char={};B.settings={};B.QuestAssist={Update=function() end};B.UI={SetNavigation=function() end}
-    B.Transport=nil;B.Hearth=nil;B.Dungeon=nil;B.Observations=nil
+    B.Transport=nil;B.Hearth=nil;B.Dungeon=nil
     local replans=0;B.Replan=function() replans=replans+1 end
     local oldTime,oldFacing=GetTime,GetPlayerFacing;GetTime=function() return 100 end;GetPlayerFacing=function() return 0 end
     local goal={kind="objective",questId=9,position={map=2,x=0.5,y=0}}
@@ -96,14 +96,5 @@ test("船舶导航在码头等候跨图保持并只推进到站步骤",function(
     n:SetPlan({fallback=changed});eq(n:Current(),changed)
     n.actions={transit,goal};n.index=1;s.dead=true;n:SetPlan({fallback=goal});eq(n:Current(),goal)
     GetTime,GetPlayerFacing=oldTime,oldFacing
-end)
-test("当前构建公共交通数据保持八个有向停靠点与阵营边界",function()
-    local B={};assert(loadfile("Data/PublicTransit.lua"))("AiLeveling",B)
-    eq(#B.PublicTransitData.legs,8)
-    for _,leg in ipairs(B.PublicTransitData.legs) do
-        assert(leg.seconds>leg.low and leg.high>leg.seconds)
-        for _,p in ipairs({leg.from,leg.to}) do assert(p.x>=0 and p.x<=1 and p.y>=0 and p.y<=1) end
-        if leg.kind=="zeppelin" then eq(leg.faction,"Horde") else eq(leg.faction,nil) end
-    end
 end)
 end

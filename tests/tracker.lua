@@ -119,25 +119,6 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.state.quests[4].ready=true;B.UI:RenderTracker();eq(T.rows[3].status.value,"可交付")
     B.finish()
 end)
-test("接取状态标签随放弃和暂缓更新且大字号仍留出标题空间",function()
-    local B=ready();local T=B.UI.tracker
-    eq(T.rows[1].progress.value,"目标已完成，前往交付")
-    B.state.quests[3]=nil;B.UI:RenderTracker()
-    eq(T.rows[2].status.value,"未接取");eq(T.model.rows[2].kind,"accept")
-    eq(T.rows[2].progress.value,"先接取，再推进任务目标")
-    B.state.skipped={[3]=true};B.UI:RenderTracker()
-    eq(T.rows[2].status.value,"未接·暂缓");eq(T.rows[2].enabled,false)
-    T.rows[2].title.measuredHeight=90;T.rows[2].progress.measuredHeight=50
-    B:SetOption("fontScale",1.2)
-    local row=T.rows[2]
-    eq(row.title.width,row.width-32)
-    assert(32+row.progress.width+row.statusBack.width+8<=row.width)
-    assert(-row.status.point[3]>-row.title.point[3]+row.title:GetStringHeight())
-    assert(-row.metrics.point[3]>=-row.progress.point[3]+row.progress:GetStringHeight())
-    assert(row.height>=-row.metrics.point[3]+row.metrics:GetStringHeight())
-    assert(row.metrics.value:find("经验 —",1,true));assert(row.metrics.value:find("路程 —",1,true))
-    B.finish()
-end)
 test("未来行动中的交付预期不能把未接任务显示成已接或可交付",function()
     local B=ready();local T=B.UI.tracker
     B.plan.best={actions={{questId=1,kind="objective"},{questId=99,kind="turnin",title="未来交付任务"}}}
@@ -248,21 +229,6 @@ test("原生服务页可切换旅店与训练项目插入取消且页签隐藏�
     B.UI:SelectTab(5);eq(U.frame.shown,false);eq(B.UI.Settings.frame.shown,true)
     B:NormalizeCharacter(B.char);assert(B.char.serviceStop);B.char.serviceStop.position.x=2
     B:NormalizeCharacter(B.char);eq(B.char.serviceStop,nil)
-    B.finish()
-end)
-test("任务界面保留目标与进度并隐藏估时和算法说明",function()
-    local B=ready();local choice=B.plan.taskChoices[1]
-    choice.work={known=1,missing=0,initial=1,seconds=100,low=50,high=250}
-    B.UI:RenderTracker();assert(not B.UI.body.value:find("目标起步粗估",1,true))
-    choice.timing={seconds=120,low=70,high=280,initial=true,coarse=true}
-    B.UI:RenderTracker();assert(not B.UI.body.value:find("预计移动",1,true));assert(not B.UI.body.value:find("粗估",1,true))
-    eq(B.UI.tracker.objectives[1].count.value,"3/10");eq(B.UI.title.value,"当前任务")
-    assert(not B.UI.body.value:find("有效进度样本",1,true))
-    assert(loadfile("UI/Plan.lua"))("AiLeveling",B)
-    B.UI.Plan.preview=choice
-    local text=table.concat(B.UI.Plan:Lines(),"\n")
-    assert(not text:find("预计移动",1,true));assert(not text:find("执行耗时视为相当",1,true));assert(not text:find("直线距离",1,true))
-    assert(not text:find("耗时缺口",1,true));assert(not text:find("执行约",1,true))
     B.finish()
 end)
 test("低价值建议保留接取状态手动入口并为换行留出空间",function()

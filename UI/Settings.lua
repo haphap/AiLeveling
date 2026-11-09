@@ -78,8 +78,8 @@ function S:Create(parent)
     binding:SetText("按住 Shift 可临时手动接交、选择航线、训练或绑定。多选奖励由你选择。\n\n快捷键在系统按键设置的 AiLeveling 分类中设置。目标按钮左键选中、右键标记；战斗外滚轮或中键切换，悬停查看名单。已有标记保留。")
     check(4,"learn","记录本地耗时统计",0)
     local reset=A.UI:Button(self.groups[4],"重置本地统计",270,function()
-        A.char.samples={};A.char.sampleContext=nil
-        A.Observations:Reset();A.Dungeon.runSample=nil;A.Transport:InvalidateSample()
+        A.char.samples={}
+        A.Dungeon.runSample=nil;A.Transport:InvalidateSample()
         if A.Hearth then A.Hearth:InvalidateSample() end
         if A.ready then A.State:Refresh(true) end
     end)

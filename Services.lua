@@ -495,7 +495,7 @@ function S:Pick(row,revision)
     end
     self.binding,self.message=nil,nil
     A.char.paused=false;A.Navigation.manual=nil
-    A.Observations:Reset();A.State:Refresh(true)
+    A.State:Refresh(true)
     return true
 end
 function S:Cancel()

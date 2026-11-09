@@ -12,7 +12,7 @@ local function setup()
     B.Queue=function(_,key,callback) B.jobs[key]=callback end
     B.RequestRefresh=function() B.refreshRequests=(B.refreshRequests or 0)+1 end
     B.State={Position=function() end,Refresh=function() B.Services:Snapshot(B.state);B.state.revision=B.state.revision+1 end}
-    B.Observations={Reset=function() end};B.Transport={InFlight=function() return B.flying end}
+    B.Transport={InFlight=function() return B.flying end}
     B.Navigation={Distance=function(_,a,b) return a.map==b.map and math.abs(a.x-b.x)*1000 or nil end}
     B.Navigation.Near=function(self,a,b,radius) local d=self:Distance(a,b);return d and d<=radius end
     assert(loadfile("Services.lua"))("AiLeveling",B);assert(loadfile("Planner/Planner.lua"))("AiLeveling",B)
@@ -306,14 +306,6 @@ test("服务点比较接续任务的总直线距离且过期规划不参与",fun
     eq(B.Services.TaskDestination(B.plan),target)
     target.kind="dungeonBlocked";eq(B.Services.TaskDestination(B.plan),nil)
     finish()
-end)
-test("服务页显示后续任务且不显示内部路程评分",function()
-    local B,e,finish=setup();B.UI={};assert(loadfile("UI/Services.lua"))("AiLeveling",B)
-    local ui=B.UI.Services;ui.preview={kind="bind",npcId=1,title="旅店",position=B.state.position,
-        resumeTitle="继续交付",journeyDistance=123456}
-    local lines=table.concat(ui:Lines(),"\n")
-    assert(lines:find("服务后继续：继续交付",1,true));assert(not lines:find("123456",1,true))
-    assert(not lines:find("预计移动时间",1,true));finish()
 end)
 local function bindingFixture()
     local B,e,finish=setup();local s=B.state

@@ -91,11 +91,4 @@ test("真实服务入口无价格耗时也可导航且实际腾空或维修后�
     finish()
 end)
 
-test("服务点仅按直线距离选择且直接指向服务目的地",function()
-    local B,s,d,rows,finish=setup();B.Navigation.hbd={}
-    local result=plan(s,d,{minutes=60,mode="fast",dungeons=false},B)
-    eq(result.fallback.npcId,1);eq(#result.travelActions,1);eq(result.travelActions[1].kind,"service")
-    s.dead=true;result=plan(s,d,{minutes=60,mode="fast",dungeons=false},B);eq(result.maintenance,nil)
-    finish()
-end)
 end

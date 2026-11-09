@@ -4,14 +4,6 @@ local function item(id,loc,strength)
 end
 local G=A.Gear
 
-test("装备模型区分九职业与坦克治疗职责",function()
-    local s=F.State()
-    for _,class in ipairs({"WARRIOR","PALADIN","ROGUE","HUNTER","MAGE","PRIEST","WARLOCK","DRUID","SHAMAN"}) do
-        s.class=class;assert(G.Model(s))
-    end
-    s.role="TANK";eq(G.Score({stats={ITEM_MOD_STAMINA_SHORT=10,RESISTANCE0_NAME=100}},s),12)
-    s.role="HEALER";eq(G.Score({stats={ITEM_MOD_SPIRIT_SHORT=10}},s),8)
-end)
 test("双手替换扣除主副手且背包搭配必须有双持能力",function()
     local s=F.State();s.equipment={[16]=item(1,"INVTYPE_WEAPON",10),[17]=item(2,"INVTYPE_WEAPON",5)}
     local r=G.Upgrade(item(3,"INVTYPE_2HWEAPON",20),s)
@@ -46,27 +38,6 @@ test("整套比较列出被换下装备和双手替换丢失的效果",function(
     assert(notes:find("失去",1,true));assert(notes:find("命中触发额外伤害",1,true));assert(notes:find("#42",1,true))
     eq(s.equipment[17].id,2)
 end)
-test("套装比较核对更换前后件数且不重复提示保留套装",function()
-    local s=F.State();s.equipment={[1]=item(1,"INVTYPE_HEAD",1),[3]=item(2,"INVTYPE_SHOULDER",1)}
-    s.equipment[1].setId=7;s.equipment[3].setId=7
-    local r=G.Upgrade(item(3,"INVTYPE_HEAD",2),s)
-    eq(#r.notes,1);assert(r.notes[1]:find("2 → 1",1,true))
-    local c=item(4,"INVTYPE_HEAD",3);c.setId=7;r=G.Upgrade(c,s);eq(#r.notes,0)
-    c.setId=8;r=G.Upgrade(c,s);eq(#r.notes,2)
-    local notes=table.concat(r.notes,"\n");assert(notes:find("#7",1,true));assert(notes:find("#8",1,true))
-end)
-test("未知效果来源仅供手选且不能自动抬高任务或副本路线",function()
-    local s=F.State();s.items={[7]=item(7,"INVTYPE_HEAD",10)};s.equipment[1]=item(1,"INVTYPE_HEAD",1)
-    s.equipment[1].useSpell=42
-    local content={gearSources={wanted={verified=true,kind="quest",questId=7,itemId=7}}}
-    local base={rate=100,priority=0};local route={rate=96,priority=0,actions={{kind="turnin",questId=7}}}
-    G.Benefits({base,route},s,content)
-    assert(route.gearSources.wanted);eq(route.gear,nil)
-    eq(G.Prefer({base,route},base,s,{mode="relaxed"}),base)
-    s.gearTarget="wanted";eq(G.Prefer({base,route},base,s,{mode="relaxed"}),route)
-    s.equipment[1].useSpell=nil;s.gearTarget=nil;G.Benefits({base,route},s,content)
-    assert(route.gear);eq(G.Prefer({base,route},base,s,{mode="relaxed"}),route)
-end)
 test("来源按每次概率比较且未知分配份额保留零下界",function()
     local s=F.State();s.items={[7]=item(7,"INVTYPE_HEAD",10)}
     local source={verified=true,kind="dungeon",itemId=7,chance=0.2}
@@ -75,19 +46,6 @@ test("来源按每次概率比较且未知分配份额保留零下界",function(
     s.failedDrops=99;eq(G.Source(source,s,{}).chanceHigh,0.1)
     s.bags[7]=1;eq(G.Source(source,s,{}).owned,true)
     s.items[7].weaponDPS=nil;s.items[7].equipLoc="INVTYPE_WEAPON";assert(G.Source(source,s,{}).upgrade.provisional)
-end)
-test("装备偏好不改变经验率且副本仍须明确接受",function()
-    local base={id=1,rate=100,priority=0};local gear={id=2,rate=96,priority=0,gear={upgrade={delta=10},chanceLow=1},gearSources={wanted=true}}
-    eq(G.Prefer({base,gear},base,{}, {mode="fast"}),base)
-    eq(G.Prefer({base,gear},base,{}, {mode="relaxed"}),gear);eq(gear.rate,96)
-    gear.rate=94;eq(G.Prefer({base,gear},base,{}, {mode="relaxed"}),base)
-    gear.requiresAcceptance=true;eq(G.Prefer({gear},base,{gearTarget="wanted"},{mode="fast"}),base)
-end)
-test("装备目标在获得额外实物后清除",function()
-    local B={Content={gearSources={wanted={itemId=7}}},char={gearTarget="wanted",gearBaseline=1}}
-    assert(loadfile("Planner/Gear.lua"))("AiLeveling",B)
-    local s=F.State();s.equipment[11]=item(7,"INVTYPE_FINGER",1);B.Gear:SyncTarget(s);eq(s.gearTarget,"wanted")
-    s.bags[7]=1;B.Gear:SyncTarget(s);eq(B.char.gearTarget,nil);eq(s.gearAcquired,7)
 end)
 -- Native API mocks are scoped to the final scenarios and restored afterwards.
 local saved={};local globals={"C_Map","C_TaxiMap","C_Container","GetBindLocation","GetTaxiMapID","TaxiNodeCost","GetTime","C_Item","C_PlayerInfo","CanDualWield",

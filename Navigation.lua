@@ -64,7 +64,6 @@ end
 function N:Advance()
     local action = self.actions and self.actions[self.index]
     if A.Dungeon then A.Dungeon:Arrived(action) end
-    if A.Observations then A.Observations:Finish(true) end
     self.index, self.transitDeparted = self.index + 1, nil
     self:RefreshPins()
     A.QuestAssist:Update()

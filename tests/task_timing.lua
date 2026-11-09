@@ -1,6 +1,6 @@
 return function(test,eq,F,A)
 local function timingFixture()
-    local B={Travel=A.Travel,Observations=setmetatable({},{__index=function() error("排序不得读取执行或接交样本") end}),
+    local B={Travel=A.Travel,
         Estimates=setmetatable({},{__index=function() error("排序不得读取执行或掉率模型") end}),
         Navigation={Distance=function(_,a,b) if a and b and a.map==b.map then return math.abs(a.x-b.x) end end}}
     assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)

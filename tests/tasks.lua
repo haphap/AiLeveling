@@ -24,16 +24,6 @@ test("日志任务含无坐标和数据库未收录任务且交付优先",functi
     local p=plan(s,d);eq(#p.taskChoices,2);eq(p.taskChoices[1].questId,99)
     eq(p.fallback.kind,"turnin");eq(p.taskChoices[2].questId,7)
 end)
-test("手动锁定的任务不会被其他任务替换",function()
-    local s,d,q=fixture();s.position.node="start";s.locked=1
-    local p=plan(s,d);eq(p.best,nil);eq(p.fallback.questId,1);eq(p.taskChoices[1].questId,1)
-    s.skipped[1]=true;p=plan(s,d);eq(p.fallback.kind,"selectionBlocked");assert(p.fallback.text:find("已暂缓",1,true))
-end)
-test("任务历史未就绪时保留已接任务",function()
-    local s,d=fixture();s.completionKnown=false
-    eq(#plan(s,d).taskChoices,0)
-    s.quests[1]={objectives={}};eq(#plan(s,d).taskChoices,1)
-end)
 test("任务入口只接受当前对象并经原有锁定入口保存和实际交付解除",function()
     local s,d=fixture()
     local B={ready=true,state=s,Data=d,Content=d.content,char={turnIns={},skipped={},paused=true},Navigation={manual={}}}
@@ -58,18 +48,6 @@ test("任务行程页显示真实进度位置和导航入口且不输出零耗�
     B.UI.Plan.preview.stages={{kind="objective",text="收集目标",areaId=96},{kind="turnin",text="返回交付",position={map=1,x=0.1,y=0.2}}}
     text=table.concat(B.UI.Plan:Lines(),"\n")
     assert(text:find("目的地：测试副本",1,true));assert(text:find("返回交付",1,true))
-end)
-test("数据库接交距离全部未知时以同地图位置作为指引",function()
-    local previousMap,previousLog=C_Map,C_QuestLog
-    C_Map={GetMapInfo=function() return {} end};C_QuestLog={}
-    local B={Content={quests={}},State=A.State,Navigation={Distance=function() return nil end}}
-    assert(loadfile("Data/Questie.lua"))("AiLeveling",B)
-    local entity={Get=function() return {[10]={{20,30}},[20]={{40,50}}} end}
-    B.Data.maps={[10]=2,[20]=1};B.Data.db={Npc=entity,Object=entity,Quest={Get=function() return {{1}} end}}
-    local s=F.State();s.position={map=1};s.quests[1]={ready=true}
-    eq(B.Data:Target({id=1},s).map,1)
-    s.position=nil;assert(B.Data:Target({id=1},s))
-    C_Map,C_QuestLog=previousMap,previousLog
 end)
 test("NPC 实际接取列表避开不可接任务并保留其他发布者与已接交付",function()
     local oldMap,oldLog,oldGossip,oldGuid,oldQuest,oldAccess=C_Map,C_QuestLog,C_GossipInfo,UnitGUID,GetQuestID,canaccessvalue

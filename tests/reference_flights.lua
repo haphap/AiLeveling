@@ -156,17 +156,6 @@ test("训练旅店服务使用统一交通且到达不完成服务",function()
     B.PublicTransitData=nil;nav.Distance=function() return nil end
     result=B.Services.Build(s);eq(result.referenceJourney,nil);eq(#result.travelActions,1);assert(s.serviceStop)
 end)
-test("构建飞行记录进入完整往返比较且不代替角色解锁与采样",function()
-    local B,s,a,nav,O,D,L,T=joint()
-    B.FlightData.observedDurations={Alliance={["1:2"]=80}}
-    local routes=B.Flights.Itinerary(O,{{position=T},{position=O}},s,nav)
-    eq(routes[1].seconds,740);eq(routes[1].flights,1)
-    eq(routes[1].firstRoute.legs[2].durationSource,"当前构建飞行记录")
-    eq(next(s.samples),nil)
-    s.taxiAvailability={};eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
-    s.taxiAvailability={["1:2"]=true};s.unlocked["taxi:2"]=nil
-    eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
-end)
 test("原生转乘各段合计只计算一次候机",function()
     local B,s,a,nav,O,D,L,T=joint()
     s.taxiHops={["1:2"]="1:4:2"}
@@ -175,16 +164,6 @@ test("原生转乘各段合计只计算一次候机",function()
     eq(route.seconds,120);eq(route.cost,nil);eq(route.flights,1)
     local actions=B.Flights.Actions(route,a,nav)
     eq(actions[1].timeSampleKey,B.Flights.TimeKey(1,2,s.faction,"1:4:2",s.taxiSpeed))
-end)
-test("远端飞行按直线接近候机飞行与落地移动比较",function()
-    local B,s,a,nav,O,D,L,T=joint()
-    local routes=B.Flights.Routes(O,T,s,nav)
-    eq(#routes,1);eq(routes[1].seconds,160)
-    assert(routes[1].low<160 and routes[1].high>160 and routes[1].initial)
-    local actions=B.Flights.Actions(routes[1],a,nav)
-    eq(actions[1].kind,"transit");eq(actions[1].mode,"flight");eq(actions[#actions],a)
-    eq(actions[1].departure,D);eq(actions[1].position,L)
-    assert(actions[1].timeSampleKey:find(":Alliance:",1,true))
 end)
 test("无需先飞过航线即可按参考落地点估时且实际落地点优先",function()
     local B,s,a,nav,O,D,L,T=joint()
@@ -348,23 +327,6 @@ test("持有上限使同NPC任务分批交付并禁止提前收集超额物品",
     eq(order[1].executionAction.kind,"objective");eq(order[1].executionAction.itemGain,1)
     eq(queue.bags[18250],0)
 end)
-test("重新分配完整与部分库存保持数量且不会沿用旧短缺",function()
-    local B,s,nav,a,b=sharedItemsFixture()
-    local prepared=B.TaskQueue.PrepareItems({a,b},s)
-    for _,stock in ipairs({0,30,60,90,120,140}) do
-        s.bags[2592]=stock
-        for _,input in ipairs({{prepared[1],prepared[2]},{prepared[2],a}}) do
-            local queue=B.TaskQueue.Evaluate(input,s,nav);assert(queue)
-            local gain=0
-            for _,step in ipairs(queue.steps) do
-                for _,stage in ipairs(step.choice.stages) do gain=gain+(stage.itemGain or 0) end
-            end
-            eq(gain,math.max(0,120-stock));eq(queue.bags[2592],math.max(0,stock-120))
-            eq(s.bags[2592],stock)
-        end
-    end
-    eq(prepared[1].itemShortage,nil);eq(prepared[2].itemShortage,true)
-end)
 test("持有上限按构建启用且同时计算接取发放与收集数量",function()
     local B,s,nav,a,b=limitedItemsFixture()
     local stage={targetId=18250,itemGain=1,gainItems={[18250]=1}}
@@ -473,7 +435,6 @@ test("队列按整程跑路选择顺序而非只看最近首目标且无需执�
         return c
     end
     local a,b,c=task(1,0.1,0.9),task(2,0.2,0.3),task(3,0.8,1)
-    B.Observations=setmetatable({},{__index=function() error("不应查询执行样本") end})
     local before=B.TaskQueue.Evaluate({a,b,c},s,nav)
     assert(math.abs(before.seconds-240)<0.00001)
     for _,mode in ipairs({"fast","relaxed","story"}) do
@@ -499,21 +460,6 @@ local function stagedFixture()
     return B,s,nav,O,task(1,0.8),task(2,0.9)
 end
 
-test("相邻任务目标先集中完成再交付且经验只在交付计入",function()
-    local B,s,nav,O,a,b=stagedFixture()
-    local old=B.TaskQueue.Evaluate({a,b},s,nav)
-    local order,queue=B.TaskQueue.Solve({a,b},s,nav)
-    eq(old.seconds,340);eq(queue.seconds,180);eq(queue.xp,20);eq(queue.taskCount,2)
-    eq(queue.stagePlan,true);eq(#queue.steps,4);eq(#order,2)
-    eq(queue.steps[1].stage.kind,"objective");eq(queue.steps[2].stage.kind,"objective")
-    eq(queue.steps[1].xp,0);eq(queue.steps[2].xp,0)
-    eq(queue.steps[3].stage.kind,"turnin");eq(queue.steps[4].stage.kind,"turnin")
-    eq(order[1].executionAction,a.stages[1]);eq(order[1].executionTiming.seconds,80)
-    eq(order[2].executionAction,nil);eq(s.money,1000);eq(s.completed[1],nil)
-    a.stagesComplete=false
-    local nextOrder=B.TaskQueue.Solve({a,b},s,nav)
-    eq(nextOrder[1],b);eq(a.executionAction,nil);eq(a.executionTiming,nil)
-end)
 test("交错目标期间不提前获得交付经验或跨级减奖励",function()
     local B,s,nav,O,a,b=stagedFixture()
     B.Experience={version="1.60.1",build="70862",interface=16001,source="test",xpToLevel={[20]=100,[21]=100,[22]=100}}

@@ -1,7 +1,7 @@
 io.stdout:setvbuf("line")
 local A, passed = {}, 0
 local function load(path) assert(loadfile(path))("AiLeveling", A) end
-for _, path in ipairs({"State.lua","Items.lua","Merchant.lua","Services.lua","Transport.lua","Instances.lua","Observations.lua","Data/Content.lua","Data/Questie.lua","Planner/Eligibility.lua",
+for _, path in ipairs({"State.lua","Items.lua","Merchant.lua","Services.lua","Transport.lua","Instances.lua","Data/Content.lua","Data/Questie.lua","Planner/Eligibility.lua",
     "Planner/Chains.lua","Planner/Travel.lua","Planner/Gear.lua","Planner/Progression.lua","Planner/Supplies.lua","Planner/Dungeon.lua","Planner/Planner.lua",
     "Planner/Selection.lua","QuestAssist.lua", "Data/Audit.lua","Data/Experience.lua","Planner/Estimates.lua"}) do load(path) end
 local F = dofile("tests/fixtures.lua")
@@ -170,26 +170,6 @@ test("带符号组前置区分指定交付与互斥分支替代",function()
     eq(A.Eligibility.Check(q,s,data),true)
     q.preQuestGroup={-1};eq(A.Eligibility.Check(q,s,data),false)
     s.completed[1]=true;eq(A.Eligibility.Check(q,s,data),true)
-end)
-test("恢复采样仅在确认后结算且排除挂机与中断",function()
-    local o=A.Observations
-    A.char={samples={}};A.RequestRefresh=function() end
-    for _,kind in ipairs({"objective","move"}) do
-        o:Tick(0,{kind=kind,questId=1,referenceSeconds=10},true,true);eq(o.current,nil)
-    end
-    local action={kind="service",serviceId="recovery",referenceSeconds=10}
-    o:Reset();o:Tick(0,action,true,true)
-    for i=1,10 do o:Tick(i,action,true,true) end
-    o:Finish(false);eq(A.char.samples.recovery,nil)
-    o:Tick(20,action,true,true)
-    for i=21,30 do o:Tick(i,action,true,true) end
-    o:Finish(true);eq(A.char.samples.recovery.n,1);eq(A.char.samples.recovery.mean,1)
-    o:Finish(true);eq(A.char.samples.recovery.n,1)
-    o:Tick(100,action,true,true)
-    for i=101,140 do o:Tick(i,action,false,true) end
-    o:Finish(true);eq(A.char.samples.recovery.n,1)
-    o:Tick(200,action,true,true);o:Tick(210,action,true,true)
-    o:Finish(true);eq(A.char.samples.recovery.n,1)
 end)
 test("有效审计将空接取集合记为缺口并保留任务 ID",function()
     local q=F.Quest(1);q.startedBy={};q.finishedBy={};q.preQuestGroup={-2}

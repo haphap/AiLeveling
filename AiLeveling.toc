@@ -17,7 +17,6 @@ Services.lua
 Transport.lua
 Hearth.lua
 Instances.lua
-Observations.lua
 LevelingTracker.lua
 Data/Content.lua
 Data/TaskFacts.lua

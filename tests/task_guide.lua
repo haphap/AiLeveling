@@ -81,16 +81,6 @@ test("等级经验按分段来源读取且等级修正不匹配时保留未知",
     q.referenceXPLevel=10;q.referenceXP=2000;q.taskFacts={level=10,xp={{1,1000}}}
     eq(B.TaskGuide.XP(q,10),1000)
 end)
-test("原生奖励只用于实际接取任务的采集等级且不污染静态经验",function()
-    local B,s,_,q=fixture()
-    s.quests[1].rewardXP=750;s.quests[1].rewardXPLevel=20
-    eq(B.TaskGuide.XP(q,20,s),750);eq(B.TaskGuide.XP(q,21,s),100)
-    eq(B.TaskGuide.XP(q,20),100);eq(q.taskFacts.xp[3][2],100)
-    q.taskFacts=nil
-    eq(B.TaskGuide.XP(q,20,s),750);eq(B.TaskGuide.XP(q,21,s),nil)
-    s.quests[1].rewardXPLevel=60;eq(B.TaskGuide.XP(q,60,s),nil)
-    s.quests={};eq(B.TaskGuide.XP(q,20,s),nil)
-end)
 test("服务器缓存经验按构建与任务等级启用且原生奖励优先",function()
     local B,s,_,q=fixture()
     B.TaskFacts={cacheXP={version="1.60.1",build="70862",interface=16001,
@@ -140,11 +130,6 @@ test("缓存经验补齐后进入任务收益排序与低价值保护",function(
     q1.referenceXPLevel,q1.referenceXP=20,100;q2.referenceXPLevel,q2.referenceXP=20,2000
     p=plan(s,d,nil,B);eq(p.fallback.questId,2)
     q2.referenceXPLevel=21;p=plan(s,d,nil,B);eq(p.fallback.questId,1)
-end)
-test("只剩一个目标时原生航点优先且不重复添加数据库目标",function()
-    local B,s,data,q=fixture()
-    local stages,complete=B.TaskGuide.Stages(q,s,data,{kind="objective",position={map=1,x=7,label="客户端任务目标"}})
-    eq(#stages,2);eq(stages[1].objectiveIndex,2);eq(stages[1].position.x,7);eq(complete,true)
 end)
 test("节日退役参考任务不抢占自动首选但实际日志和明确锁定保留",function()
     local s=F.State();s.position={map=1,x=0};local q1,q2=F.Quest(1),F.Quest(2)

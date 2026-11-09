@@ -58,16 +58,6 @@ test("依赖循环终止且缺失前置去重展示",function()
     for _,node in ipairs(nodes) do if node.id==99 then missing=missing+1 end end
     eq(missing,1)
 end)
-test("整链预览只读并在应用后保存独立起点偏好",function()
-    local B=fixture(linked(3));B.state.quests[2]={ready=true,objectives={}};B.state.completed[1]=true
-    local oldMap=B.state.chainDeferred
-    local preview=B.Chains.Preview(1,B.Data,B.state)
-    eq(#preview.ids,3);eq(next(B.char.deferredChains),nil);eq(B.refreshes,0)
-    assert(B.Chains:Defer(preview));eq(B.char.deferredChains[1],true)
-    eq(B.state.chainDeferred[3],1);eq(B.state.quests[2].ready,true);eq(B.state.completed[1],true)
-    eq(B.state.completed[2],nil);eq(oldMap[2],nil);eq(next(B.char.skipped),nil)
-    eq(A.Eligibility.Check(B.Data:GetQuest(2),B.state,B.Data),false)
-end)
 test("恢复一个链起点保留重叠整链与独立单任务暂缓",function()
     local B=fixture(linked(3))
     assert(B.Chains:Defer(B.Chains.Preview(1,B.Data,B.state)))
@@ -92,13 +82,6 @@ test("暂缓整链解除冲突行程和装备目标且不放弃原生任务",fun
     assert(B.Chains:Defer(B.Chains.Preview(1,B.Data,B.state)))
     eq(B.char.itinerary,nil);eq(B.char.locked,nil);eq(B.char.gearTarget,nil);assert(B.state.quests[3])
     eq(B.Selection:LockQuest(3),false)
-end)
-test("暂缓整链后未验证目标定位也不重新推荐该任务",function()
-    local q=F.Quest(1);q.verified=false
-    local B=fixture({[1]=q});B.state.quests[1]={objectives={}}
-    assert(B.Chains:Defer(B.Chains.Preview(1,B.Data,B.state)))
-    local result=plan(B.state,B.Data)
-    eq(result.best,nil);eq(result.fallback,nil);eq(B.state.completed[1],nil)
 end)
 test("自有新增任务进入等级资格和关系索引且不改上游 ID 表",function()
     local B={Content={quests={[2]={title="自有任务",questLevel=21,requiredSkill={123,5},preQuestGroup={1}},

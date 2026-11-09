@@ -39,6 +39,7 @@ end
 function A:NormalizeCharacter(char)
     if self.LevelingTracker then self.LevelingTracker.Normalize(char) end
     char.ignoreRepair=char.ignoreRepair==true or nil
+    char.sampleContext=nil
     for _,key in ipairs({"skipped","deferredChains","samples","turnIns","pendingResets"}) do if type(char[key])~="table" then char[key]={} end end
     for _,key in ipairs({"skipped","deferredChains"}) do
         for id,value in pairs(char[key]) do
@@ -50,7 +51,7 @@ function A:NormalizeCharacter(char)
         local valid=type(kind)=="string" and type(sample)=="table" and type(sample.n)=="number" and
             sample.n>=0 and sample.n<=100 and sample.n%1==0 and type(sample.mean)=="number" and
             sample.mean>0 and sample.mean<math.huge and type(sample.m2)=="number" and sample.m2>=0 and sample.m2<math.huge
-        if valid and (kind=="quest" or kind=="move" or kind:sub(1,4)=="task") then valid=false end
+        if valid and (kind=="quest" or kind=="move" or kind=="recovery" or kind:sub(1,4)=="task") then valid=false end
         if valid and kind:sub(1,11)=="flighttime:" then
             local route,speed=kind:match("^(.-):speed:([^:]+)$")
             valid=#kind<=128 and sample.unit=="seconds" and sample.mean>=1 and sample.mean<=7200 and
@@ -134,7 +135,7 @@ function A:SetOption(key, value)
     self.settings[key] = value
     if key=="levelingStats" and self.LevelingTracker then self.LevelingTracker:Update("option") end
     if key=="learn" then
-        self.Observations:Reset(); self.Dungeon.runSample=nil;self.Transport:InvalidateSample()
+        self.Dungeon.runSample=nil;self.Transport:InvalidateSample()
         if self.Hearth then self.Hearth:InvalidateSample() end
     end
     self.UI:ApplyStyle()
@@ -157,7 +158,6 @@ function A:RestoreSettings()
     if self.UI.navFrame then self.UI.navFrame:ClearAllPoints();self.UI.navFrame:SetPoint("CENTER",UIParent,"CENTER",0,-110) end
     self.UI:ApplyStyle()
     self.UI.Settings:Refresh()
-    self.Observations:Reset()
     self.Transport:InvalidateSample()
     if self.Hearth then self.Hearth:InvalidateSample() end
     if self.ready then self.State:Refresh(true) end
@@ -172,7 +172,6 @@ function A:TogglePause()
     if self.LevelingTracker then self.LevelingTracker:Update("pause") end
     self.char.paused = not self.char.paused
     if self.LevelingTracker then self.LevelingTracker:Update("pause") end
-    self.Observations:Reset()
     self.Transport:InvalidateSample()
     if self.Hearth then self.Hearth:InvalidateSample() end
     if self.WorldInteract then self.WorldInteract:Refresh() end
@@ -370,10 +369,6 @@ frame:SetScript("OnEvent", function(_, event, ...)
             A.Transport.dirty=true
             if event=="UPDATE_FACTION" or event=="TAXI_NODE_STATUS_CHANGED" then A.Transport:InvalidateFlights() end
         end
-        if A.Observations and (event == "QUEST_LOG_UPDATE" or event == "BAG_UPDATE_DELAYED") then
-            A.Observations.progressAt = GetTime()
-        end
-        if A.Observations and (event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_UNGHOST") then A.Observations:Reset() end
         if event=="PLAYER_ENTERING_WORLD" then A.Dungeon.lastTick=nil;A.Instances:Request();A.Transport:World() end
         A:RequestRefresh()
     end
@@ -413,7 +408,6 @@ frame:SetScript("OnUpdate", function(_, elapsed)
         if A.Hearth then A.Hearth:Update() end
         A.Instances:Update()
         A.Dungeon:Update()
-        A.Observations:Update()
         if A.LevelingTracker then A.LevelingTracker:Update() end
         A.Navigation:Update()
         if A.Routes then A.Routes:Update() end
@@ -444,7 +438,7 @@ SlashCmdList.AILEVELING = function(command)
             A.Navigation.manual = {map=map,x=x/100,y=y/100}
             A.Transport:InvalidateSample()
             if A.Hearth then A.Hearth:InvalidateSample() end
-            A.Observations:Reset(); A.QuestAssist:Update()
+            A.QuestAssist:Update()
             A.Navigation:RefreshPins(); A.dirty = true
         else A:Message("格式：/ail way 地图ID 横坐标 纵坐标（0—100）") end
     elseif command == "audit" then

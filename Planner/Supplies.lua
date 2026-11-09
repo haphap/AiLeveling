@@ -189,7 +189,7 @@ local function recover(issue,cursor,state,content,protected)
     for _,id in ipairs(ids(content.services)) do
         local service=content.services[id]
         if S.Available(service,{level=cursor.level,faction=state.faction,unlocked=cursor.unlocked},content) then
-            local action={kind="service",serviceId=id,node=service.node,title=service.title,sampleKind="recovery"}
+            local action={kind="service",serviceId=id,node=service.node,title=service.title}
             if issue.kind=="repair" and cursor.durability~=nil and service.repair then
                 action.serviceKind,action.repairTo="repair",1
                 action.seconds=service.repair.seconds
@@ -226,8 +226,6 @@ local function recover(issue,cursor,state,content,protected)
                 end
             end
             if action.seconds then
-                action.referenceSeconds=action.seconds
-                action.seconds=A.State.Estimate(action.seconds,state.samples and state.samples.recovery)
                 results[#results+1]=action
             end
         end
@@ -392,7 +390,7 @@ function S.Fallback(state,data)
                 for _,action in ipairs(route.actions) do actions[#actions+1]=action end
                 actions[#actions+1]={kind="service",serviceKind=need,serviceId=id,node=point.node,
                     position=data.content.nodes[point.node].position,title=point.title,text=text.."。",
-                    serviceGoal=need=="repair" and {durability=0.2} or {freeSlots=1},referenceSeconds=seconds,sampleKind="recovery"}
+                    serviceGoal=need=="repair" and {durability=0.2} or {freeSlots=1}}
                 local total=route.seconds+seconds
                 if not best or total<best.seconds then best={id="service:"..id,title=point.title,kind="service",actions=actions,seconds=total,xp=0,rate=0} end
             end

@@ -51,15 +51,6 @@ test("副本出发补齐物品与耐久并保留内部消耗和返程资源",fun
     eq(services,2)
 end)
 
-test("服务完成由实际状态推进且完成采样在重算前确认",function()
-    local B={Supplies=S,char={samples={}},settings={learn=true},Navigation={},State=A.State,RequestRefresh=function() end}
-    assert(loadfile("Observations.lua"))("AiLeveling",B)
-    local action={kind="service",serviceId="smith",serviceKind="repair",referenceSeconds=10,serviceGoal={durability=0.2}}
-    local o=B.Observations;o:Tick(0,action,true,true);for i=1,10 do o:Tick(i,action,true,true) end
-    o:Refresh({durability=0.1});eq(B.char.samples.recovery,nil)
-    o:Refresh({durability=1});eq(B.char.samples.recovery.n,1);eq(B.char.samples.recovery.mean,1)
-    o:Refresh({durability=1});eq(B.char.samples.recovery.n,1)
-end)
 test("服务资源格式拒绝负数物品与空完成条件",function()
     eq(S.ValidAction({gainItems={[100]=-1}}),false)
     eq(S.ValidAction({kind="service",serviceGoal={}}),false)

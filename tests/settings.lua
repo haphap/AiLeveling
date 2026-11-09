@@ -60,7 +60,6 @@ local function setup(fullUI)
     B.action={kind="objective",questId=1,objectiveIndex=1}
     local nav={};assert(loadfile("Navigation.lua"))("AiLeveling",nav)
     B.Navigation={Current=function() return B.action end,RefreshPins=function() end,Target=nav.Navigation.Target}
-    B.Observations={Reset=function() end,TalkOpened=function() end,TalkConfirmed=function() end}
     B.Dungeon={};B.Transport={InvalidateSample=function() end,InFlight=function() return false end}
     B.State={Refresh=function() B.refreshes=(B.refreshes or 0)+1;B.state.revision=B.state.revision+1 end}
     B.Gear=A.Gear;B.ready=true
@@ -149,8 +148,9 @@ test("全部设置有原生控件且有效关闭值跨归一化保留",function(
     B.settings.fontScale=0/0;B.settings.density="bad";B.settings.detailPosition={"bad","CENTER",0,0}
     B:NormalizeSettings(B.settings);eq(B.settings.fontScale,1);eq(B.settings.density,"normal");eq(B.settings.detailPosition,nil)
     control(B,"gearPreference").button.scripts.OnClick();eq(B.settings.gearPreference,"xp");assert(B.refreshes>0)
-    for _,key in ipairs({"quest","move","taskwork:old","tasktalk:v1:turnin:fast"}) do B.char.samples[key]={n=3,mean=10,m2=0} end
-    B:NormalizeCharacter(B.char);eq(next(B.char.samples),nil)
+    for _,key in ipairs({"quest","move","recovery","taskwork:old","tasktalk:v1:turnin:fast"}) do B.char.samples[key]={n=3,mean=10,m2=0} end
+    B.char.sampleContext="old equipment context"
+    B:NormalizeCharacter(B.char);eq(next(B.char.samples),nil);eq(B.char.sampleContext,nil)
     B.finish()
 end)
 test("原生任务对话自动接交同NPC任务，保留整组交付、多选奖励及手动覆盖",function()

@@ -65,7 +65,7 @@ return function(test,eq,F,A,C)
         C.char={skipped={[1]=true},samples={},dungeon={id=42}}
         C.state={completed={[7]=true}}
         C.UI={frame={ClearAllPoints=function() end,SetPoint=function() end},ApplyStyle=function() end,Settings={Refresh=function() end}}
-        C.Observations={Reset=function() end};C.Navigation={RefreshPins=function() end};C.State={Refresh=function() end}
+        C.Navigation={RefreshPins=function() end};C.State={Refresh=function() end}
         C.Transport={InvalidateSample=function() end}
         C:RestoreSettings()
         eq(C.settings.mode,"relaxed");eq(C.settings.position,nil)

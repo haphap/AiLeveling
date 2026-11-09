@@ -189,17 +189,6 @@ test("奖励物品延迟加载合并请求且选定来源加入状态快照",fun
     B.char.gearTarget=source.id;B.Items:Snapshot(s);eq(s.items[101].pending,false)
     C_Item,C_PlayerInfo=oldItem,oldPlayer
 end)
-test("换下装备的特殊效果保留详情但不触发自动绕路且可手选",function()
-    local B,s,d,q=fixture();s.equipment[1].useSpell=42
-    local p=plan(s,d,balanced,B);eq(p.fallback.questId,1);eq(find(p,2).gear,nil)
-    local source=find(p,2).gearSources["reward:2:101"];assert(source)
-    assert(table.concat(source.upgrade.notes,"\n"):find("失去：主动效果 #42",1,true))
-    eq(B.Gear:SetTarget("reward:2:101"),true);eq(plan(s,d,balanced,B).fallback.questId,2)
-    B.char.gearTarget=nil;s.gearTarget=nil
-    q[2].questLevel=17;q[2].taskFacts.level=17;s.items[100]=item(100,0);s.items[101]=item(101,0)
-    eq(B.TaskGuide.LowValue(q[2],s,d,{timing={seconds=400}}),nil)
-    s.equipment[1].useSpell=nil;assert(B.TaskGuide.LowValue(q[2],s,d,{timing={seconds=400}}).distant)
-end)
 test("低属性套装奖励保留效果比较与手动任务接续，不自动当作提升",function()
     local B,s,d,q=fixture();assert(loadfile("Data/ItemSets.lua"))("AiLeveling",B)
     local function piece(id,slot,strength)

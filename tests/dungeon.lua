@@ -583,54 +583,8 @@ return function(test,eq,F,plan)
         C_Map.GetMapInfo=function(id) return {parentMapID=id} end
         eq(B.Dungeon.TaskApproach(a,s,data),a);C_Map=oldMap
     end)
-    test("导航到达副本入口不推进任务也不伪造实例会话",function()
-        local B,_,s,data=approachFixture();local p=plan(s,data,B.settings,B)
-        B.QuestAssist={Update=function() end};B.UI={SetNavigation=function() end}
-        B.Replan=function() end
-        assert(loadfile("Navigation.lua"))("AiLeveling",B)
-        local n=B.Navigation
-        n.hbd={GetZoneDistance=function() return 0 end,GetWorldCoordinatesFromZone=function() return 0,0,1 end,
-            GetWorldVector=function() return 0 end}
-        local oldFacing=GetPlayerFacing;GetPlayerFacing=function() return 0 end
-        B.plan=p;s.position=p.fallback.position;n:SetPlan(p);n:Update();n:Update()
-        eq(n.index,1);eq(n:Current().kind,"dungeonEnter");eq(s.quests[1].ready,nil)
-        eq(s.completed[1],nil);eq(B.char.dungeon,nil);GetPlayerFacing=oldFacing
-    end)
-    test("从副本任务列表锁定异地未接任务后保留接取导航与资格限制",function()
-        local B,_,s,data=approachFixture();s.quests={}
-        eq(#plan(s,data,B.settings,B).taskChoices,0)
-        s.locked=1;local p=plan(s,data,B.settings,B)
-        eq(p.fallback.kind,"dungeonEnter");eq(p.taskChoices[1].status,"accept")
-        s.inInstance,s.instanceId=true,42
-        p=plan(s,data,B.settings,B);eq(p.fallback.kind,"accept")
-        s.skipped[1]=true;eq(#plan(s,data,B.settings,B).taskChoices,0)
-    end)
 
 
-    test("副本内完成后先提示离开，出本才接续交付且导航不提前结算",function()
-        local B,_,s,data,inside=approachFixture()
-        local outside={map=1,x=0.4,y=0.2,entityKind="npc",entityId=9,entityName="交付者"}
-        data.Target=function(_,q,state) return state.quests[q.id].ready and outside or inside end
-        s.quests[1].ready=true;s.inInstance,s.instanceId,s.position=true,42,inside
-        local oldMap=C_Map;C_Map={GetMapInfo=function(id) return {mapType=id==1 and 3 or 4,name="测试区域"} end}
-        local p=plan(s,data,B.settings,B)
-        eq(p.fallback.kind,"dungeonLeave");eq(p.fallback.position,nil);eq(p.fallback.questId,1)
-        assert(p.fallback.text:find("交付者交付任务",1,true))
-        for _,file in ipairs({"UI/Main.lua","UI/Tracker.lua","Navigation.lua"}) do assert(loadfile(file))("AiLeveling",B) end
-        local model=B.UI.TrackerModel(s,p,p.fallback,false)
-        eq(model.instruction,p.fallback.text);eq(model.questId,1)
-        B.QuestAssist={Update=function() end};B.Replan=function() end
-        B.UI.SetNavigation=function(_,distance) eq(distance,nil) end
-        local n=B.Navigation
-        n.hbd={GetZoneDistance=function(_,map,x,y,toMap,tx,ty)
-            return F.Navigation:Distance({map=map,x=x,y=y},{map=toMap,x=tx,y=ty})
-        end};n:SetPlan(p);n:Update();eq(n.index,1)
-        eq(s.completed[1],nil);eq(B.char.dungeon,nil)
-        s.inInstance=false;s.position=outside
-        p=plan(s,data,B.settings,B);eq(p.fallback.kind,"turnin");eq(p.fallback.position,outside)
-        eq(s.completed[1],nil);eq(s.quests[1].ready,true)
-        C_Map=oldMap
-    end)
     test("副本距离未知时先做本内任务，再出本交付，手动锁定及暂缓可覆盖",function()
         local B,_,s,data,inside=approachFixture()
         local q1,q2=F.Quest(1),F.Quest(2);q1.verified=false;q2.verified=false

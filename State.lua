@@ -294,7 +294,6 @@ function State:Refresh(force)
     for _,item in ipairs(s.bagEquipment) do fingerprint[#fingerprint+1]="g"..item.instanceKey..":"..tostring(item.link)..":"..tostring(item.pending) end
     self:Position(s)
     if A.Services then fingerprint[#fingerprint+1]=A.Services:Snapshot(s) end
-    if A.Observations then A.Observations:Context(s); A.Observations:Refresh(s) end
     for kind, sample in pairs(A.char.samples) do
         s.samples[kind] = {}
         for key, value in pairs(sample) do s.samples[kind][key] = value end

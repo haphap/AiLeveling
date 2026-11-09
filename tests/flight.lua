@@ -27,7 +27,6 @@ local function fixture(actions)
     end}
     assert(loadfile("Transport.lua"))("AiLeveling",B)
     assert(loadfile("Navigation.lua"))("AiLeveling",B)
-    assert(loadfile("Observations.lua"))("AiLeveling",B)
     local route=A.Travel.Route(content,"a","b",{now=0,money=100})
     B.plan={best={actions=actions or route.actions}}
     B.Navigation:SetPlan(B.plan)
@@ -193,14 +192,11 @@ test("飞行保留手动目的地且不混入步行校准",function()
     local B=fixture({{kind="move",position=position(1),referenceSeconds=10}})
     B.Navigation.manual=position(0.7)
     start(B);eq(B.Navigation:Current().kind,"flight")
-    B.Observations:Update();eq(B.Observations.current,nil)
     finish(B);eq(B.Navigation:Current().kind,"manual");eq(B.Navigation.manual.x,0.7);eq(next(B.char.samples),nil)
 end)
-test("航线校准按内容版本隔离且不受装备上下文降权",function()
+test("航线校准按内容版本隔离",function()
     local B=fixture();local key=A.Travel.FlightKey("f","v1")
     B.char.samples[key]={n=10,mean=2,m2=0,unit="ratio"}
-    B.char.sampleContext="old"
-    B.Observations:Context({class="MAGE",role="DAMAGER",level=20,equipment={}})
     eq(B.char.samples[key].n,10)
     local route=A.Travel.Route(B.Content,"a","b",{now=0,money=100,samples=B.char.samples})
     eq(route.seconds,15)
