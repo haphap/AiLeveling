@@ -142,7 +142,7 @@ function G.Stages(q,state,data,first)
             local stage=add("objective",position,o.text or "按任务日志完成目标",index,false,areaId)
             stage.have,stage.need=o.numFulfilled,o.numRequired
             local identity=identities[index]
-            if identity then stage.targetKind,stage.targetId,stage.objectiveType=identity.kind,identity.id,identity.objectiveType end
+            if identity then stage.targetKind,stage.targetId,stage.objectiveType,stage.npcIds=identity.kind,identity.id,identity.objectiveType,identity.npcIds end
             added=added+1
         end
         if currentIndex then objective(currentIndex,(active.objectives or {})[currentIndex]) end
@@ -175,6 +175,60 @@ function G.Stages(q,state,data,first)
     local finishArea=not finish and data.UnmappedTargetArea and data:UnmappedTargetArea(q,lookup)
     reward(add("turnin",finish,"目标全部完成后，前往交付。",nil,true,finishArea))
     return stages,complete
+end
+
+function G.SharedObjectives(action,choices,state)
+    if not action or action.kind~="objective" then return end
+    local active=(state.quests or {})[action.questId]
+    if not active or active.ready then return end
+    local index=action.objectiveIndex
+    if not index then
+        for i,objective in ipairs(active.objectives or {}) do
+            if not objective.finished then if index then return end;index=i end
+        end
+    end
+    local function included(choice)
+        local quest=(state.quests or {})[choice.questId]
+        return quest and not quest.ready and not choice.lowValue and not choice.entryBlocked and
+            not (state.skipped or {})[choice.questId] and not (state.chainDeferred or {})[choice.questId]
+    end
+    local function usable(stage)
+        if not stage.targetId then return end
+        if stage.targetKind=="item" or stage.targetKind=="object" then return true end
+        return (stage.targetKind=="npc" or stage.targetKind=="killcredit") and
+            (not stage.objectiveType or stage.objectiveType=="monster" or stage.objectiveType=="killcredit")
+    end
+    local source
+    for _,choice in ipairs(choices or {}) do
+        if choice.questId==action.questId and included(choice) then
+            for _,stage in ipairs(choice.stages or {}) do
+                if stage.kind=="objective" and stage.objectiveIndex==index and usable(stage) then source=stage;break end
+            end
+        end
+    end
+    if not source then return end
+    local npc=source.targetKind=="npc" and source.targetId or source.targetKind=="killcredit" and
+        source.position and source.position.entityKind=="npc" and source.position.entityId
+    local matches,seen={},{}
+    for _,choice in ipairs(choices or {}) do
+        if not seen[choice.questId] and included(choice) then
+            for _,stage in ipairs(choice.stages or {}) do
+                local objective=stage.objectiveIndex and (state.quests[choice.questId].objectives or {})[stage.objectiveIndex]
+                if stage.kind=="objective" and objective and not objective.finished and usable(stage) then
+                    local same=stage.targetKind==source.targetKind and stage.targetId==source.targetId or npc and stage.targetKind=="npc" and stage.targetId==npc
+                    if not same and npc and stage.targetKind=="killcredit" then
+                        for _,id in ipairs(stage.npcIds or {}) do if id==npc then same=true;break end end
+                    end
+                    if same then
+                        local entry={questId=choice.questId,objectiveIndex=stage.objectiveIndex}
+                        if choice.questId==action.questId then table.insert(matches,1,entry) else matches[#matches+1]=entry end
+                        seen[choice.questId]=true;break
+                    end
+                end
+            end
+        end
+    end
+    if #matches>1 and seen[action.questId] then return matches,source.targetKind end
 end
 
 -- Group by the actual recipient, never by the quest giver or just a shared coordinate.

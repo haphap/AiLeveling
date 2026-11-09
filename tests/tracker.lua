@@ -43,7 +43,8 @@ test("原生可交付但共用物品不足时显示补齐提示和整批数量",
     local B=ready();assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
     B.state.bags={[2592]=60};B.state.quests[1].ready=true;B.state.quests[3].ready=true
     for _,id in ipairs({1,3}) do
-        B.plan.taskChoices[id].stages={{kind="turnin",recipient={entityKind="npc",entityId=99,entityName="收件人"}}}
+        B.plan.taskChoices[id].stages={{kind="turnin",recipient={entityKind="npc",entityId=99,entityName="收件人"},
+            itemRequirements={{targetId=2592,need=60}}}}
     end
     B.plan.taskChoices[1].itemShortage=true
     B.action.targetId=2592;B.action.itemGain=60;B.action.text="还需收集60块毛料"
@@ -51,6 +52,7 @@ test("原生可交付但共用物品不足时显示补齐提示和整批数量",
     local model=B.UI.tracker.model
     eq(model.objectives[#model.objectives].have,60);eq(model.objectives[#model.objectives].need,120)
     assert(model.hint:find("1/2",1,true));eq(model.rows[1].progress,"共用物品不足 · 先补齐再一起交付")
+    B.action.itemGain=1;B.UI:RenderTracker();eq(B.UI.tracker.model.objectives[#model.objectives].need,120)
     eq(B.state.quests[1].ready,true);B.finish()
 end)
 test("受持有上限限制时仍按NPC归组并提示先交付已备齐任务",function()
@@ -70,6 +72,8 @@ test("受持有上限限制时仍按NPC归组并提示先交付已备齐任务",
     eq(model.rows[1].groupTitle,"收件人 · 已完成 1/2")
     assert(loadfile("UI/Plan.lua"))("AiLeveling",B)
     assert(table.concat(B.UI.Plan:Lines(),"\n"):find("分批交付 · 收件人",1,true))
+    B.action.kind="objective";B.action.targetId=18250;B.action.itemGain=1;B.state.bags[18250]=0
+    B.UI:RenderTracker();model=B.UI.tracker.model;eq(model.objectives[#model.objectives].need,1)
     B.finish()
 end)
 test("步骤界面突出当前任务真实进度且后续列表去重可点击",function()

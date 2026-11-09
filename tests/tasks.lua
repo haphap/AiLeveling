@@ -183,12 +183,42 @@ test("任务总览分开已接和未接且顺序与预览使用真实日志状�
     text=table.concat(B.UI:TaskLines(),"\n");assert(text:find("已接取 0 项",1,true));assert(text:find("未接取 1 项",1,true))
 end)
 test("任务总览仅按确认的共享目标建议一起推进且飞行时不催促地面任务",function()
-    local s=F.State();s.quests={[1]={title="任务甲"},[2]={title="任务乙"}}
-    local action={questId=1,kind="objective",sharedObjectives={{questId=1},{questId=2}}}
-    local B={state=s,char={},plan={best={}},Navigation={Current=function() return action end},Transport={InFlight=function() return false end}}
+    local s,d=fixture();local kind,alias="npc",false;local ids={200,200,300}
+    s.quests={}
+    for id=1,3 do s.quests[id]={title=({"任务甲","任务乙","同坐标其他任务"})[id],
+        objectives={{type="monster",text="目标 "..id,numRequired=10,numFulfilled=id,finished=false}}} end
+    d.Candidates=function() return {1,2,3} end
+    d.Target=function(_,q,state) return {map=1,x=0.6,y=0.5,objectiveIndex=1,entityKind="npc",
+        entityId=(state.quests[q.id] or {}).ready and 1000+q.id or ids[q.id]} end
+    d.ObjectiveTargets=function(_,q) local p=d:Target(q,s);return {p} end
+    d.ObjectiveIdentities=function(_,q)
+        return {{kind=alias and q.id==2 and "killcredit" or kind,id=alias and q.id==2 and 900 or ids[q.id],
+            npcIds=alias and {200,201} or nil,objectiveType=kind=="item" and "item" or "monster"}}
+    end
+    local B={};for key,value in pairs(A) do B[key]=value end
+    B.state=s;B.char={};B.Transport={InFlight=function() return false end}
+    B.Navigation={Distance=A.Navigation.Distance,Current=function() return B.plan.fallback end}
+    assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
+    assert(loadfile("Planner/Planner.lua"))("AiLeveling",B)
     assert(loadfile("UI/Main.lua"))("AiLeveling",B)
+    assert(loadfile("UI/Tracker.lua"))("AiLeveling",B)
+    B.plan=plan(s,d,nil,B)
     assert(table.concat(B.UI:TaskLines(),"\n"):find("可一起推进：任务甲、任务乙",1,true))
-    action.sharedObjectives=nil;assert(not table.concat(B.UI:TaskLines(),"\n"):find("可一起推进",1,true))
+    local model=B.UI.TrackerModel(s,B.plan,B.plan.fallback,false)
+    assert(model.hint:find("任务乙",1,true));eq(model.rows[1].questId,2);eq(model.rows[1].shared,true)
+    assert(model.rows[1].progress:find("一起推进",1,true));eq(model.rows[2].shared,nil)
+    alias=true;B.plan=plan(s,d,nil,B);assert(table.concat(B.UI:TaskLines(),"\n"):find("可一起推进：任务甲、任务乙",1,true))
+    ids[3]=200;B.plan=plan(s,d,nil,B);s.quests[1].objectives[1].finished=true
+    assert(not table.concat(B.UI:TaskLines(),"\n"):find("可一起推进",1,true))
+    s.quests[1].objectives[1].finished=false;ids[3]=300;B.plan=plan(s,d,nil,B)
+    s.quests[2].objectives[1].finished=true
+    assert(not table.concat(B.UI:TaskLines(),"\n"):find("可一起推进",1,true))
+    s.quests[2].objectives[1].finished=false;s.skipped[2]=true
+    assert(not table.concat(B.UI:TaskLines(),"\n"):find("可一起推进",1,true));s.skipped[2]=nil
+    alias,kind=false,"item";for _,active in pairs(s.quests) do active.objectives[1].type="item" end
+    s.bags[200]=2;B.plan=plan(s,d,nil,B)
+    model=B.UI.TrackerModel(s,B.plan,B.plan.fallback,false)
+    assert(model.hint:find("一并收集",1,true));eq(s.bags[200],2);eq(s.quests[1].ready,nil);eq(s.completed[1],nil)
     B.Transport.InFlight=function() return true end
     assert(not table.concat(B.UI:TaskLines(),"\n"):find("建议先做",1,true))
 end)

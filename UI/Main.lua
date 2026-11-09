@@ -301,9 +301,10 @@ function UI:TaskLines(compact)
         end
         if #titles>0 then lines[#lines+1]="建议顺序："..table.concat(titles," → ").."。" end
     end
-    if not suspended and action and action.sharedObjectives and #action.sharedObjectives>1 then
+    local shared=A.TaskGuide and A.TaskGuide.SharedObjectives and A.TaskGuide.SharedObjectives(action,plan.taskChoices,state)
+    if not suspended and shared then
         local titles={}
-        for _,objective in ipairs(action.sharedObjectives) do
+        for _,objective in ipairs(shared) do
             local q=quests[objective.questId]
             titles[#titles+1]=q and q.title or ("任务 #"..objective.questId)
         end

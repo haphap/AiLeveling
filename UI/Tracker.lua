@@ -139,13 +139,26 @@ function UI.TrackerModel(state,plan,action,paused)
     end
     if action and action.itemGain and action.itemGain>0 then
         local have=(state.bags or {})[action.targetId] or 0
-        model.objectives[#model.objectives+1]={text="这批任务所需物品",done=false,have=have,need=have+action.itemGain}
+        local total,seen=0,{}
+        for _,choice in ipairs(plan.taskOrder or plan.taskChoices or {}) do
+            local id=choice.questId
+            if quests[id] and not seen[id] and not choice.lowValue and not choice.entryBlocked and
+                not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] and (not state.locked or state.locked==id) then
+                seen[id]=true
+                local last=choice.stages and choice.stages[#choice.stages]
+                for _,requirement in ipairs(last and last.itemRequirements or {}) do
+                    if requirement.targetId==action.targetId then total=total+(requirement.need or 0) end
+                end
+            end
+        end
+        local need=math.max(have+action.itemGain,total)
+        local limit=A.TaskGuide and A.TaskGuide.ItemLimit and A.TaskGuide.ItemLimit(action.targetId,state)
+        if limit then need=math.min(need,limit) end
+        model.objectives[#model.objectives+1]={text="本次所需物品",done=false,have=have,need=need}
     end
     if plan.preparingQuest then model.hint="先完成「"..plan.preparingQuest.title.."」的前置准备"
     elseif action and action.pickupResume then model.hint="顺路接取，与「"..action.pickupResume.."」一并安排"
     elseif action and action.referenceFlight then model.hint="从当前飞行点前往任务区域，落地后继续目标指引"
-    elseif action and action.sharedObjectives and #action.sharedObjectives>1 then
-        model.hint="此目标可同时推进 "..#action.sharedObjectives.." 个任务"
     elseif plan.serviceDeferred then model.hint=plan.serviceDeferred
     elseif plan.taskBatch and plan.taskBatch.waiting then model.hint="等队时先做附近任务；队伍就绪后继续副本"
     elseif plan.taskBatch then model.hint=plan.taskBatch.title.." · 任务安排剩余 "..plan.taskBatch.remaining.." 项"
@@ -164,6 +177,18 @@ function UI.TrackerModel(state,plan,action,paused)
         model.hint=currentGroup.splitDelivery and "物品持有上限限制：先交付已备齐任务，再继续收集" or
             currentGroup.ready==#currentGroup.choices and "整组已完成，前往 "..currentGroup.title.." 集中交付" or
             string.format("同组已完成 %d/%d，先做完剩余任务再集中交付",currentGroup.ready,#currentGroup.choices)
+    end
+    local shared,sharedKind
+    if not paused and A.TaskGuide and A.TaskGuide.SharedObjectives then shared,sharedKind=A.TaskGuide.SharedObjectives(action,plan.taskChoices,state) end
+    local sharedByQuest={}
+    if shared then
+        local titles={}
+        for _,entry in ipairs(shared) do
+            sharedByQuest[entry.questId]=true
+            if entry.questId~=action.questId then titles[#titles+1]="「"..(quests[entry.questId].title or (choices[entry.questId] or {}).title or ("任务 #"..entry.questId)).."」" end
+        end
+        local summary=(sharedKind=="item" and "一并收集：" or "一起推进：")..table.concat(titles,"、",1,math.min(2,#titles))..(#titles>2 and ("等 "..#titles.." 项任务") or "")
+        model.hint=(model.hint and (model.hint.."\n") or "")..summary
     end
     local seen={}
     if action and action.questId and not currentGroup then seen[action.questId]=true end
@@ -189,7 +214,11 @@ function UI.TrackerModel(state,plan,action,paused)
             accepted=q~=nil,status=status,metrics=metrics(candidate),
             progress=q and (q.ready and "目标已完成，前往交付" or (#counts>0 and table.concat(counts," · ") or "查看任务日志中的目标")) or
                 (candidate and candidate.acceptBlocked or candidate and candidate.requireCheck and "先确认任务当前是否开放" or
-                    step.position and step.position.startItemId and step.text or "先接取，再推进任务目标"),deferred=deferred,candidate=candidate}
+                    step.position and step.position.startItemId and step.text or "先接取，再推进任务目标"),deferred=deferred,candidate=candidate,shared=sharedByQuest[id]}
+        if sharedByQuest[id] then
+            local row=model.rows[#model.rows]
+            row.progress=(sharedKind=="item" and "一并收集 · " or "一起推进 · ")..row.progress
+        end
         if candidate and candidate.lowValue then
             local row=model.rows[#model.rows]
             row.progress=candidate.lowValue.suggestion.." · "..(candidate.lowValue.summary or "低经验／无装备提升／无任务线")
@@ -436,6 +465,7 @@ function UI:RenderTracker()
         local color=item.deferred and palette.muted or (item.accepted and palette.green or palette.gold)
         row.status:SetTextColor(unpack(color));row.statusBack:SetColorTexture(color[1],color[2],color[3],0.16)
         row.progress:SetText(item.delivery or item.progress)
+        if item.shared then row.progress:SetTextColor(self:Accent()) else row.progress:SetTextColor(unpack(palette.muted)) end
         row.metrics:SetText(item.metrics)
         row.candidate,row.revision,row.questId=item.candidate,plan.revision,item.questId
         row.lockable=not item.deferred and A.Selection.CanChoose(item.candidate,plan.revision)==true
