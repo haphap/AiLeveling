@@ -1030,3 +1030,15 @@ TaskGuide.Stages现在将本轮已取得的未接目标描述、位置与区域�
 最终验证：537回归、两阵营实际Questie API联跑、49个TOC Lua与修改checker语法、开发内容、生成一致性和diff检查通过。日志dist/requirements-regression.log、requirements-generated.log、requirements-content.log、requirements-final-check-alliance.log、requirements-final-check-horde.log；数据差异诊断dist/compare-requirements.lua确认只新增六记录。未操作游戏、依赖或实际SavedVariables。
 
 同一牛头人德鲁伊从1级起连续诊断由8级49交付／18415已知任务XP推进至13级108交付／56785已知任务XP，5条未知XP未累计；97225、97246之后的真实任务接续通过，下一停点97275缺结构目标。另一个暗夜精灵德鲁伊连续诊断在本批中由7级36交付推进至37交付，490通过后停99047缺结构目标，已知任务XP13285，1条未知XP未累计。两个角色独立，数量不能合并为全角色或1—60覆盖。诊断仅模拟任务事件与交付XP，不模拟击杀／探索经验，实机与全程覆盖继续。终态日志dist/requirements-final-continuous-horde.log、requirements-final-continuous-alliance.log。下一步核对97275／99047的实际任务要求，并继续自动行程接续与其余适用功能。完整R01—R13／W01—W10目标active。装备继续暂缓、指南导入不恢复；未升版、发布或安装，客户端仍0.1.129-dev。
+
+## 2026-11-09 发放药水与求助任务接续（未发布）
+
+上一目标回合7fed9e8为progress，六条需求补全已提交推送。本轮从干净工作树接续，核对97275“伍特急什么”和99047“尚存一息”的固定Questie API及Wowhead Forever原始页面。97275接取时提供277566药水1瓶，交给11046伍特；99047前往6094拜恩希求助，无额外收集。新增这两条参考需求，继续使用既有发放物品／DeliveryOnly路径；没有新规划规则、XP值、资格条件或脚本。来源URL、任务等级、发放物品匹配和构建未知范围仍由既有审计记录。99050后续三物品要求已存在于固定EG缓存，核对后未重复添加。
+
+复用并合并现有实际API检查：原99101发放物品场景改为99101／97275循环；97246交谈场景按阵营同时检查99047。不增加单元场景或工具入口。537回归、两阵营实库联跑、49个TOC语法、生成一致性、开发内容与diff检查通过。日志dist/handoff-quests-regression.log、handoff-quests-generated.log、handoff-quests-content.log、handoff-quests-check-alliance.log、handoff-quests-check-horde.log。
+
+牛头德鲁伊当前连续诊断由13级108交付推进至20级214交付、179655已知交付XP，6条未知XP未累计，下一停点98405缺结构目标。暗夜德鲁伊由7级37交付推进至13级112交付、62595已知交付XP，2条未知XP未累计，随后无可自动选取任务。两角色独立，诊断不统计击杀／探索经验，未据此宣称全程完成。终态日志dist/handoff-quests-continuous-horde.log、handoff-quests-continuous-alliance.log。
+
+核对暗夜空行程：当前938候选中104项满足资格，绝大多数在另一大陆且诊断未模拟交通解锁；2项可定位选择均不适用自动首选。相同原生进度／地点的等级场景，13级无下一步，14级10项并选择黑海岸2138，15级17项选择1486，16级26项选择4763。候选以任务等级+2为上界，本组只累积交付XP的低等级停点不能用于修改任务事实或标记完成。未放宽运行时危险任务范围、补造击杀经验或跳过任务。下一步需要实际角色等级事件及交通解锁支持的连续覆盖证据。临时分析dist/empty-nightelf-analysis-final.log、empty-nightelf-state.lua、empty-level-gate.log；均为离线假角色，未读写游戏存档。首次临时分析误读nil hidden字段后修正，不是插件运行错误。
+
+本轮继续完整目标active，当前准备对更新后的需求数据做一次所有支持角色的连续诊断，集中更新下一批实际停点；此检查仍不是1—60或客户端验收。装备暂缓、指南导入不恢复、不发布安装，客户端仍129。

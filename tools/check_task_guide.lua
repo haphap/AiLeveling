@@ -219,28 +219,31 @@ do
 end
 
 if faction=="Horde" then
-    local q=A.Data:GetQuest(99101)
-    local context=dofile(root.."/tests/fixtures.lua").State()
-    context.faction,context.classMask,context.raceMask=faction,s.classMask,s.raceMask
-    context.clientVersion,context.clientBuild,context.interface="1.60.1","70862",16001
-    context.position=A.Data:EntityPoints(db.Npc,3222)[1]
-    assert(q.questLevel==9 and q.sourceItemId==286104 and not A.TaskGuide.XP(q,context.level,context))
-    local descriptions,_,complex=A.Data:ReferenceObjectiveTargets(q,context)
-    assert(not complex and #descriptions==1 and descriptions[1].targetId==286104 and
-        descriptions[1].numRequired==1 and descriptions[1].providedOnAccept)
-    local first={kind="accept",questId=q.id,title=q.title,position=assert(A.Data:Target(q,context))}
-    local stages,complete=A.TaskGuide.Stages(q,context,A.Data,first)
-    assert(complete and #stages==2 and stages[2].kind=="turnin" and
-        stages[2].itemRequirements[1].need==1 and stages[2].itemRequirements[1].providedOnAccept)
-    assert(not context.quests[q.id] and not context.completed[q.id] and not context.bags[286104])
-    local saved=q.sourceItemId;q.sourceItemId=nil
-    assert(not A.Data:CacheQuest(q,context));q.sourceItemId=saved
-    local inventory=dofile(root.."/tools/continuous_inventory.lua")
-    local active=assert(inventory.Accept(q,context,A.Data))
-    assert(active.ready and context.bags[286104]==1 and not context.completed[q.id])
-    inventory.TurnIn(q.id,context)
-    assert(context.completed[q.id] and context.bags[286104]==0 and not context.quests[q.id])
-    print("Horde: real #99101 previews accept + delivery; supplied report count is one; no XP invented; simulated turn-in consumes it")
+    for _,id in ipairs({99101,97275}) do
+        local q=A.Data:GetQuest(id)
+        local supplied=q.sourceItemId
+        local context=dofile(root.."/tests/fixtures.lua").State()
+        context.faction,context.classMask,context.raceMask=faction,s.classMask,s.raceMask
+        context.clientVersion,context.clientBuild,context.interface="1.60.1","70862",16001
+        context.position=A.Data:EntityPoints(db.Npc,q.startedBy[1][1])[1]
+        assert(A.Data:CacheQuest(q,context) and supplied>0 and not A.TaskGuide.XP(q,context.level,context))
+        local descriptions,_,complex=A.Data:ReferenceObjectiveTargets(q,context)
+        assert(not complex and #descriptions==1 and descriptions[1].targetId==supplied and
+            descriptions[1].numRequired==1 and descriptions[1].providedOnAccept)
+        local first={kind="accept",questId=q.id,title=q.title,position=assert(A.Data:Target(q,context))}
+        local stages,complete=A.TaskGuide.Stages(q,context,A.Data,first)
+        assert(complete and #stages==2 and stages[2].kind=="turnin" and
+            stages[2].itemRequirements[1].need==1 and stages[2].itemRequirements[1].providedOnAccept)
+        assert(not context.quests[q.id] and not context.completed[q.id] and not context.bags[supplied])
+        local saved=q.sourceItemId;q.sourceItemId=nil
+        assert(not A.Data:CacheQuest(q,context));q.sourceItemId=saved
+        local inventory=dofile(root.."/tools/continuous_inventory.lua")
+        local active=assert(inventory.Accept(q,context,A.Data))
+        assert(active.ready and context.bags[supplied]==1 and not context.completed[q.id])
+        inventory.TurnIn(q.id,context)
+        assert(context.completed[q.id] and context.bags[supplied]==0 and not context.quests[q.id])
+        print("Horde: real #"..id.." previews accept + delivery; supplied item count is one; simulated turn-in consumes it")
+    end
 end
 
 do
@@ -285,8 +288,9 @@ do
     end
 end
 
-if faction=="Horde" then
-    local q=assert(A.Data:GetQuest(97246))
+do
+    local id,recipient=faction=="Horde" and 97246 or 99047,faction=="Horde" and 3368 or 6094
+    local q=assert(A.Data:GetQuest(id))
     local context=dofile(root.."/tests/fixtures.lua").State()
     context.faction,context.classMask,context.raceMask=faction,s.classMask,s.raceMask
     context.clientVersion,context.clientBuild,context.interface="1.60.1","70862",16001
@@ -294,9 +298,9 @@ if faction=="Horde" then
     assert(A.Data:DeliveryOnly(q,context) and not A.TaskGuide.XP(q,context.level,context))
     local stages,complete=A.TaskGuide.Stages(q,context,A.Data,
         {kind="accept",questId=q.id,title=q.title,position=assert(A.Data:Target(q,context))})
-    assert(complete and #stages==2 and stages[2].kind=="turnin" and stages[2].position.entityId==3368)
+    assert(complete and #stages==2 and stages[2].kind=="turnin" and stages[2].position.entityId==recipient)
     context.quests[q.id]={objectives={}}
     local target=assert(A.Data:Target(q,context))
-    assert(target.entityId==3368 and not context.quests[q.id].ready and not context.completed[q.id])
-    print("Horde: real #97246 continues to Borstan for conversation and waits for native completion")
+    assert(target.entityId==recipient and not context.quests[q.id].ready and not context.completed[q.id])
+    print(faction..": real #"..id.." continues to the recipient for conversation and waits for native completion")
 end

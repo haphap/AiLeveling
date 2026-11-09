@@ -98,6 +98,11 @@ def load():
          'url': 'https://www.wowhead.com/forever/quest=490/bounty-gnarlpine-furbolg'},
         {'id': 97246, 'level': 15, 'sourceItemId': 0, 'objectives': [],
          'url': 'https://www.wowhead.com/forever/quest=97246/meal-appeal'},
+        {'id': 97275, 'level': 15, 'sourceItemId': 277566,
+         'objectives': [{'kind': 'item', 'id': 277566, 'count': 1}],
+         'url': 'https://www.wowhead.com/forever/quest=97275/whuuts-the-rush'},
+        {'id': 99047, 'level': 9, 'sourceItemId': 0, 'objectives': [],
+         'url': 'https://www.wowhead.com/forever/quest=99047/not-dead-yet'},
     ]
     for fact in supplements:
         fact.update(checked='2026-11-09', captureBuild=None)
