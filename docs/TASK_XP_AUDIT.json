@@ -115,6 +115,7 @@
       "id": 97583,
       "level": 1,
       "sourceItemId": 0,
+      "companionReward": 275682,
       "objectives": [
         {
           "kind": "item",
@@ -123,6 +124,7 @@
         }
       ],
       "url": "https://www.wowhead.com/forever/quest=97583/wriggle",
+      "rewardURL": "https://www.wowhead.com/forever/item=275682/excitable-slime",
       "checked": "2026-11-09",
       "captureBuild": null
     },
@@ -2524,5 +2526,5 @@
   },
   "scope": "Base rewards only; native current-level rewards take priority. No character XP bonuses inferred.",
   "flagReference": "https://master.trinitycore.net/d8/d60/structquestobjective",
-  "transformation": "IDs, fixed levels, XP curves and monster/object/item/area-trigger requirements. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; payment quests remain complex objectives. No text, eligibility or item rewards copied."
+  "transformation": "IDs, fixed levels, XP curves and monster/object/item/area-trigger requirements. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; payment quests remain complex objectives. Checked companion reward IDs classify optional repeats without inferring XP. No text, eligibility or other item rewards copied."
 }

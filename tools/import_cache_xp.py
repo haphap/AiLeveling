@@ -90,9 +90,10 @@ def load():
         {'id': 91733, 'level': 10, 'sourceItemId': 0,
          'objectives': [{'kind': 'item', 'id': item, 'count': 1} for item in (247817, 247813, 247818)],
          'url': 'https://www.wowhead.com/forever/quest=91733/downstream'},
-        {'id': 97583, 'level': 1, 'sourceItemId': 0,
+        {'id': 97583, 'level': 1, 'sourceItemId': 0, 'companionReward': 275682,
          'objectives': [{'kind': 'item', 'id': 278265, 'count': 1}],
-         'url': 'https://www.wowhead.com/forever/quest=97583/wriggle'},
+         'url': 'https://www.wowhead.com/forever/quest=97583/wriggle',
+         'rewardURL': 'https://www.wowhead.com/forever/item=275682/excitable-slime'},
         {'id': 490, 'level': 8, 'sourceItemId': 0,
          'objectives': [{'kind': 'item', 'id': 5220, 'count': 15}],
          'url': 'https://www.wowhead.com/forever/quest=490/bounty-gnarlpine-furbolg'},
@@ -115,6 +116,8 @@ def load():
         assert str(fact['id']) not in curves
         curves[str(fact['id'])] = dict(level=fact['level'], sourceItemId=fact['sourceItemId'],
                                       objectives=fact['objectives'], complex=False)
+        if 'companionReward' in fact:
+            curves[str(fact['id'])]['companionReward'] = fact['companionReward']
     located, rejected = [], []
     for id, objectives in locations['quests'].items():
         for index, observed in objectives.items():
@@ -184,5 +187,5 @@ def load():
                                 rejected=rejected_uses, scope='Successful item spells followed by quest progress. Use purpose and observed targets only; no required quantities, consumption or recovery inferred.'),
                   scope='Base rewards only; native current-level rewards take priority. No character XP bonuses inferred.',
                   flagReference='https://master.trinitycore.net/d8/d60/structquestobjective',
-                  transformation='IDs, fixed levels, XP curves and monster/object/item/area-trigger requirements. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; payment quests remain complex objectives. No text, eligibility or item rewards copied.')
+                  transformation='IDs, fixed levels, XP curves and monster/object/item/area-trigger requirements. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; payment quests remain complex objectives. Checked companion reward IDs classify optional repeats without inferring XP. No text, eligibility or other item rewards copied.')
     return data, report

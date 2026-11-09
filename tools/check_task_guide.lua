@@ -410,4 +410,16 @@ if faction=="Horde" then
     assert(A.Data:Target(courier,context).entityId==recipient.entityId)
     assert(not context.quests[courier.id].ready and not context.completed[courier.id])
     print("Horde: real #79007 continues to one of its actual object recipients; native completion remains required")
+    local pet=assert(A.Data:GetQuest(97583))
+    context.level,context.quests,context.completed=8,{}, {[pet.id]=true}
+    context.position=assert(A.Data:Target(pet,context))
+    assert(A.Data:CacheQuest(pet,context).companionReward==275682 and A.TaskGuide.XP(pet,8,context)==nil)
+    assert(A.TaskGuide.LowValue(pet,context,A.Data))
+    local continued=run(function() return A.Planner.Build(context,A.Data,options) end)
+    assert(continued.fallback and continued.fallback.questId~=pet.id)
+    context.locked=pet.id;assert(not A.TaskGuide.LowValue(pet,context,A.Data));context.locked=nil
+    context.quests[pet.id]={objectives={}};assert(not A.TaskGuide.LowValue(pet,context,A.Data));context.quests={}
+    context.clientBuild="other";assert(not A.TaskGuide.LowValue(pet,context,A.Data));context.clientBuild="70862"
+    context.completed={};assert(not A.TaskGuide.LowValue(pet,context,A.Data))
+    print("Horde: real #97583 companion repeat yields to leveling after turn-in; XP stays unknown; first-run, active and manual remain")
 end

@@ -128,6 +128,14 @@ test("低价值已接任务不会阻止推荐未接的有效任务",function()
     q.taskFacts.rewards.items={};q.taskFacts.rewards.choices={{id=900,count=1}};eq(B.TaskGuide.LowValue(q,s,d),nil)
     q.taskFacts.rewards.choices={};q.taskFacts.rewards.srcItem={id=900,count=1};eq(B.TaskGuide.LowValue(q,s,d),nil)
     q.taskFacts.rewards.srcItem=nil;s.completed={};eq(B.TaskGuide.LowValue(q,s,d),nil)
+    q.taskFacts=nil;s.completed[1]=true
+    d.CacheQuest=function(_,quest) if quest.id==1 then return {companionReward=900} end end
+    result=plan(s,d,nil,B);eq(result.fallback.questId,2);assert(result.taskChoices[2].lowValue)
+    eq(result.taskChoices[2].remainingXP,nil)
+    s.locked=1;eq(plan(s,d,nil,B).fallback.questId,1);s.locked=nil
+    s.quests[1]={objectives={}};eq(B.TaskGuide.LowValue(q,s,d),nil);s.quests={}
+    q.taskFacts={level=20,xp={{1,1000}}};eq(B.TaskGuide.LowValue(q,s,d),nil)
+    q.taskFacts=nil;s.completed={};eq(B.TaskGuide.LowValue(q,s,d),nil)
 end)
 test("低价值任务不被整程重排重新提升到首位",function()
     local B,s,q,d=fixture()
