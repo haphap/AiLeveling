@@ -33,6 +33,8 @@ test("任务入口只接受当前对象并经原有锁定入口保存和实际�
     eq(B.Selection.CanChoose({kind="task",questId=c.questId},1),false)
     eq(B.Selection:Lock(c,1),true);eq(B.char.locked,c.questId);eq(B.char.itinerary,nil);eq(B.char.paused,false);eq(B.Navigation.manual,nil)
     s.completed[c.questId]=true;B.Selection:Snapshot(s);eq(B.char.locked,nil)
+    B.char.locked=99;s.locked=99;s.completed[99]=true
+    B.Selection:Snapshot(s);eq(B.char.locked,nil);eq(s.locked,nil)
 end)
 test("任务行程页显示真实进度位置和导航入口且不输出零耗时方案",function()
     local s,d=fixture();s.quests[1]={title="进行中任务",objectives={{text="目标 1/3",finished=false}}}
@@ -51,20 +53,24 @@ test("任务行程页显示真实进度位置和导航入口且不输出零耗�
 end)
 test("NPC 实际接取列表避开不可接任务并保留其他发布者与已接交付",function()
     local oldMap,oldLog,oldGossip,oldGuid,oldQuest,oldAccess=C_Map,C_QuestLog,C_GossipInfo,UnitGUID,GetQuestID,canaccessvalue
-    C_Map={GetMapInfo=function() return {} end};C_QuestLog={};canaccessvalue=nil
+    local oldName,oldTitle=UnitName,GetTitleText
+    C_Map={GetMapInfo=function() return {} end,GetBestMapForUnit=function() return 1 end,
+        GetPlayerMapPosition=function() return {x=0.1,y=0.5} end};C_QuestLog={};canaccessvalue=nil
     local npc,list=11,{}
     UnitGUID=function(unit) eq(unit,"npc");return "Creature-0-1-2-3-"..npc.."-00000001" end
     C_GossipInfo={GetAvailableQuests=function() return list end}
-    local B={Content={quests={}},Navigation=F.Navigation,Merchant=A.Merchant}
+    UnitName=function() return "实际发布者" end
+    local B={Content={quests={}},Navigation={Distance=F.Navigation.Distance,AttachNode=function() end},Merchant=A.Merchant}
     assert(loadfile("State.lua"))("AiLeveling",B)
     assert(loadfile("Data/Questie.lua"))("AiLeveling",B)
     local sources,q={{11}},{id=1,title="待接任务",questLevel=20,requiredLevel=1,zoneOrSort=10}
     local entity={Get=function(id,key) if key=="name" then return "发布者 "..id end return {[10]={{id,50}}} end}
-    local d=B.Data;d.maps={[10]=1};d.content=F.Data({}).content
-    d.db={Enum={npcFlags={}},Npc=entity,Object=entity,Quest={Get=function(_,key)
+    local d=B.Data;d.maps={[10]=1};d.content=F.Data({}).content;d.content.quests={}
+    d.db={Enum={npcFlags={}},Npc=entity,Object=entity,Quest={GetAll=function() end,Get=function(id,key)
+        if id~=1 then return end
         if key=="startedBy" or key=="finishedBy" then return sources end
     end}}
-    d.GetQuest=function(_,id) if id==q.id then return q end end;d.byLevel={[20]={1}}
+    d.cache={[1]=q};d.byLevel={[20]={1}}
     local s=F.State();s.position={map=1,x=0,y=0.5}
     eq(plan(s,d).fallback.questId,1)
     B.State:QuestOffersEvent("GOSSIP_SHOW");s.questOffers=B.State.questOffers
@@ -105,11 +111,32 @@ test("NPC 实际接取列表避开不可接任务并保留其他发布者与已�
     q.taskFacts={hidden=true}
     eq(d:Target(q,s).entityId,12)
     local offered=plan(s,d);eq(offered.taskChoices[1].requireCheck,false);eq(offered.fallback.questId,1)
+    sources={};eq(d:Target(q,s).entityId,12);sources={{11,12}}
     B.State:QuestOffersEvent("PLAYER_LEVEL_UP");s.questOffers=B.State.questOffers
     s.locked=1;eq(plan(s,d).taskChoices[1].requireCheck,true);s.locked=nil
     s.quests[1]={objectives={}};q.zoneOrSort=0
     assert(d:Target(q,s).approximate);eq(plan(s,d).fallback.kind,"objective")
     s.quests[1].ready=true;eq(plan(s,d).fallback.kind,"turnin");eq(s.completed[1],nil)
+    -- A server-offered task absent from the database enters at this NPC, then the native log takes over.
+    s.quests={};s.completed[1]=true;B.State:QuestOffersEvent("PLAYER_LEVEL_UP")
+    npc=11;list={{questID=99,title="服务器新任务",questLevel=38}}
+    B.State:QuestOffersEvent("GOSSIP_SHOW");s.questOffers=B.State.questOffers
+    local fresh=plan(s,d);eq(fresh.fallback.kind,"accept");eq(fresh.fallback.questId,99)
+    eq(fresh.fallback.title,"服务器新任务");eq(fresh.taskChoices[1].level,38)
+    eq(fresh.fallback.position.entityId,11);eq(fresh.fallback.position.entityName,"实际发布者")
+    eq(d:GetQuest(99),nil)
+    B.State:QuestOffersEvent("QUEST_ACCEPTED");s.questOffers=B.State.questOffers
+    s.quests[99]={title="服务器新任务",level=38,objectives={{text="目标",numRequired=1,numFulfilled=0}}}
+    C_QuestLog.GetNextWaypoint=function() return 1,0.8,0.9 end
+    eq(plan(s,d).fallback.kind,"objective")
+    s.quests[99].ready=true;C_QuestLog.ReadyForTurnIn=function() return true end
+    local turnin=plan(s,d).fallback;eq(turnin.kind,"turnin");eq(turnin.position.x,0.8)
+    B.state=s;B.char={turnIns={}};B.State:TurnedIn(99);s.quests[99]=nil
+    eq(#plan(s,d).taskChoices,0);eq(d:GetQuest(99,s),nil)
+    GetQuestID=function() return 100 end;GetTitleText=function() return "直接提供的任务" end
+    B.State:QuestOffersEvent("QUEST_DETAIL");s.questOffers=B.State.questOffers
+    eq(plan(s,d).fallback.questId,100);eq(plan(s,d).fallback.title,"直接提供的任务")
+    UnitName,GetTitleText=oldName,oldTitle
     C_Map,C_QuestLog,C_GossipInfo,UnitGUID,GetQuestID,canaccessvalue=oldMap,oldLog,oldGossip,oldGuid,oldQuest,oldAccess
 end)
 test("接交点目标分布与物品来源按跨区域直线距离选择",function()

@@ -1282,3 +1282,10 @@ Core.OnUpdate 原来仅恢复 index 和 plan，已排队的 quest:dialog 和 ser
 - 扩展已有任务组和区域兜底流程，运行回归通过；双阵营真实QuestieDB检查、95775实际四目标的区域→入口→本内接续、目录生成及准入资料检查通过。检查脚本补上实际已有的settings依赖，未新增场景或模拟器能力。日志dist/new-dungeons-regression.log、dist/new-dungeons-{alliance,horde}.log、dist/new-dungeon-provider-check.log。
 - 塑造者之台的固定任务关联仍缺；其余新增关联中20项未被QuestieDB 1.0.12收录，实际已接任务由原生日志继续，未凭缓存猜未接资格和交付NPC。EG Link固定新提交23f96364同构建缓存也无塑造者任务正文。来源与哈希见SOURCES.json及DUNGEON_COVERAGE.json。
 - 开发继续，验收统一后置；未打包、发布、安装或改动实际存档。
+
+## 2026-11-10 原生新任务从接取到交付
+
+- 修复NPC实际提供、数据库未收录的任务被规划丢弃。原有QuestOffersEvent保留原生标题、等级、重复标记及对话位置；GetQuest只在对应快照中补缺，不写入数据库缓存或存档。数据库缺发布者位置时也优先使用实际提供位置。副本关联任务复用同一入口。
+- 接取后原生任务日志与目标航点接管，交付由QUEST_TURNED_IN确认；修复缺DB的锁定任务交完后没有解除锁定。未观察到的未接任务继续由任务数据库决定，不猜资格、前置或收件人。
+- 原生字段依据固定[Forever GossipInfoDocumentation](https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_APIDocumentationGenerated/GossipInfoDocumentation.lua)的GossipQuestUIInfo；直接任务窗标题沿用同版本原生QuestInfo的GetTitleText。
+- 扩展已有NPC提供→接取→目标→交付流程及锁定解除检查，dist/native-offers-regression.log通过；开发结构与diff检查通过。首次检查的缺quests错误来自旧夹具覆盖GetQuest后省略真实容器，现已让该流程直接使用实际GetQuest。无新增独立场景，未打包、发布或安装。

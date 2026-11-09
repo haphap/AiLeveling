@@ -23,23 +23,41 @@ function State:QuestOffersEvent(event)
     end
     local offers={}
     local previous=self.questOffers and self.questOffers[npc]
+    local location={};self:Position(location)
+    local point=location.position
+    if point then
+        point.entityKind,point.entityId,point.approximate="npc",npc,true
+        local name=UnitName and UnitName("npc")
+        if (not canaccessvalue or canaccessvalue(name)) and type(name)=="string" then point.entityName=name end
+    end
+    local function offer(id,title,level,repeatable)
+        if canaccessvalue and not canaccessvalue(title) or type(title)~="string" then title=nil end
+        if canaccessvalue and not canaccessvalue(level) or type(level)~="number" then level=nil end
+        return {id=id,title=title or ("任务 #"..id),questLevel=level,nativeOffer=point,
+            repeatable=(not canaccessvalue or canaccessvalue(repeatable)) and repeatable==true}
+    end
     if event=="GOSSIP_SHOW" then
         if not C_GossipInfo or not C_GossipInfo.GetAvailableQuests then return end
         local ok,list=pcall(C_GossipInfo.GetAvailableQuests)
         if not ok or type(list)~="table" then return end
         for _,quest in pairs(list) do
             if type(quest)~="table" or not valid(quest.questID) then return end
-            offers[quest.questID]=true
+            offers[quest.questID]=offer(quest.questID,quest.title,quest.questLevel,quest.repeatable)
         end
     else
         -- A direct quest window is also an offer when the NPC skipped gossip.
         local id=GetQuestID and GetQuestID()
         if not valid(id) or previous and previous[id] then return end
-        for quest in pairs(previous or {}) do offers[quest]=true end
-        offers[id]=true
+        for quest,info in pairs(previous or {}) do offers[quest]=info end
+        offers[id]=offer(id,GetTitleText and GetTitleText())
     end
     local same=previous~=nil
-    for id in pairs(offers) do if not previous or not previous[id] then same=false end end
+    for id,info in pairs(offers) do
+        local old=previous and previous[id]
+        local p,op=info.nativeOffer,old and old.nativeOffer
+        if not old or info.title~=old.title or info.questLevel~=old.questLevel or info.repeatable~=old.repeatable or
+            (p~=nil)~=(op~=nil) or p and op and (p.map~=op.map or p.x~=op.x or p.y~=op.y) then same=false end
+    end
     for id in pairs(previous or {}) do if not offers[id] then same=false end end
     if same then return end
     local snapshot={}

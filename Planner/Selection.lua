@@ -10,7 +10,7 @@ end
 function S:Snapshot(state)
     local id=A.char.locked
     local q=id and A.Data:GetQuest(id)
-    if q and not q.repeatable and state.completed[id] and not state.quests[id] then self:Clear();state.locked=nil end
+    if id and (not q or not q.repeatable) and state.completed[id] and not state.quests[id] then self:Clear();state.locked=nil end
     return ""
 end
 

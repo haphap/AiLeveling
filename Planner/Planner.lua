@@ -22,7 +22,7 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         if seen[id] then return end
         seen[id]=true
         local active=state.quests[id]
-        local q=data:GetQuest(id)
+        local q=data:GetQuest(id,state)
         if not q and active then q={id=id,title=active.title or ("任务 #"..id),questLevel=active.level} end
         if not q or not A.Eligibility.Check(q,state,data) then return end
         local position=data:Target(q,state)

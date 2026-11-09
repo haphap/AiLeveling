@@ -190,11 +190,16 @@ function D:ServicePoints(state,kind,missing)
     return result
 end
 
-function D:GetQuest(id)
+function D:GetQuest(id,state)
     if self.cache[id] then return self.cache[id] end
     local values = self.db.Quest.GetAll(id, fields)
     local overlay = self.content.quests[id]
-    if not values and not overlay then return nil end
+    if not values and not overlay then
+        for _,offers in pairs(state and state.questOffers or {}) do
+            if type(offers[id])=="table" then return offers[id] end
+        end
+        return nil
+    end
     local q = { id = id }
     for i, key in ipairs(fields) do q[key] = values and values[i] end
     q.repeatable = math.floor((q.specialFlags or 0) / 1) % 2 == 1
@@ -316,6 +321,12 @@ function D:Target(q, state)
     if active and status ~= "ready" then
         local point=nativeWaypoint(q.id)
         if point then return point end
+    end
+    if not active then
+        for _,offers in pairs(state.questOffers or {}) do
+            local offered=offers[q.id]
+            if type(offered)=="table" and offered.nativeOffer then return offered.nativeOffer end
+        end
     end
     local group = status == "ready" and "finishedBy" or "startedBy"
     if status == "active" then

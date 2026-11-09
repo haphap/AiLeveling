@@ -226,7 +226,7 @@ function D.Tasks(d,state,data)
     local rows={}
     for id,relation in pairs(refs) do
         local active=state.quests[id]
-        local q=data:GetQuest(id) or active and {id=id,title=active.title,questLevel=active.level}
+        local q=data:GetQuest(id,state) or active and {id=id,title=active.title,questLevel=active.level}
         if q and (active or A.Eligibility.InMask(q.requiredRaces,state.raceMask)==true and
             A.Eligibility.InMask(q.requiredClasses,state.classMask)==true) then
             local status=A.State.Status(state,id)
