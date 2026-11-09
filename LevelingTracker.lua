@@ -30,6 +30,17 @@ function T:Row(level,partial)
     return levels[level]
 end
 
+function T:Archive()
+    local guid=UnitGUID and UnitGUID("player")
+    if not guid or not A.db then return end
+    if type(A.db.levelingRuns)~="table" then A.db.levelingRuns={} end
+    local history=T.Normalize(A.char)
+    local name=UnitName("player")
+    history.name=(name or guid).." - "..GetRealmName()
+    A.db.levelingRuns[guid]=history
+    self.reportKey=guid
+end
+
 function T:Update(event)
     if not A.char or not A.settings or not UnitLevel or not UnitXP or not UnitXPMax then return end
     local now=GetTime()
@@ -42,13 +53,16 @@ function T:Update(event)
     if event=="PLAYER_DEAD" then self.dead=true
     elseif event=="PLAYER_ALIVE" or event=="PLAYER_UNGHOST" then self.dead=false end
     if A.settings.levelingStats==false then
+        self.gap=true
         self.last={level=level,xp=xp,maxXP=maxXP};self.lastAt=now;self.running=false;return
     end
     -- The level event can precede the new XP balance; settle it on XP update or the next tick.
     if event=="PLAYER_LEVEL_UP" and last then level,xp,maxXP=last.level,last.xp,last.maxXP end
-    local row=self:Row(level,not last and (level>1 or xp>0))
+    local row=self:Row(level,self.gap or not last and (level>1 or xp>0))
+    if self.gap then row.partial=true;self.gap=nil end
     if last then
         local previous=self:Row(last.level)
+        if (not self.running or not running) and (xp~=last.xp or level~=last.level) then row.partial=true end
         if self.running then
             local elapsed=math.max(0,now-self.lastAt)
             previous.seconds=previous.seconds+elapsed
@@ -72,6 +86,7 @@ function T:Update(event)
     if last and level==last.level and xp<last.xp then xp,maxXP=last.xp,last.maxXP end
     self.last={level=level,xp=xp,maxXP=maxXP};self.lastAt=now;self.running=running
     if death and running then row.deaths=row.deaths+1 end
+    if not self.reportKey or event=="PLAYER_LOGOUT" then self:Archive() end
 end
 
 function T:QuestTurnedIn()
@@ -84,6 +99,35 @@ local function duration(seconds)
     return string.format("%d:%02d:%02d",math.floor(seconds/3600),math.floor(seconds/60)%60,seconds%60)
 end
 
+function T:Comparisons(levels)
+    local lines,keys={},{}
+    for key,run in pairs(A.db and A.db.levelingRuns or {}) do
+        if type(key)=="string" and key~=self.reportKey and type(run)=="table" then keys[#keys+1]=key end
+    end
+    table.sort(keys)
+    for _,key in ipairs(keys) do
+        local run=A.db.levelingRuns[key]
+        local other=T.Normalize({leveling=run}).levels
+        local rows,total={},0
+        for level=1,59 do
+            local a,b=levels[level],other[level]
+            if a and b and a.completed and b.completed and not a.partial and not b.partial then
+                local delta=a.seconds-b.seconds;total=total+delta
+                rows[#rows+1]=string.format("%d→%d 级 · 本角色 %s · 对方 %s · %s",level,level+1,
+                    duration(a.seconds),duration(b.seconds),delta==0 and "相同" or (delta<0 and "快 " or "慢 ")..duration(math.abs(delta)))
+            end
+        end
+        lines[#lines+1]="对比 "..(run.name or key)
+        if #rows==0 then lines[#lines+1]="尚无共同的完整等级记录"
+        else
+            lines[#lines+1]=table.concat(rows,"\n")
+            lines[#lines+1]=#rows.." 个相同等级合计 · "..(total==0 and "相同" or (total<0 and "快 " or "慢 ")..duration(math.abs(total)))
+        end
+    end
+    if #lines==0 then return "" end
+    return "\n\n练级记录比较\n"..table.concat(lines,"\n\n")
+end
+
 function T:Report()
     self:Update("report")
     local levels=T.Normalize(A.char).levels
@@ -94,11 +138,11 @@ function T:Report()
         if row then
             seconds=seconds+row.seconds;xp=xp+row.xp;quests=quests+row.quests;deaths=deaths+row.deaths
             history[#history+1]=string.format("%d 级%s · %s\n  活动 %s · 经验 %d · 交付 %d · 死亡 %d",level,
-                row.partial and "（中途开始）" or "",row.completed and "已升级" or "记录中",duration(row.seconds),row.xp,row.quests,row.deaths)
+                row.partial and "（部分记录）" or "",row.completed and "已升级" or "记录中",duration(row.seconds),row.xp,row.quests,row.deaths)
         end
     end
-    return string.format("练级统计%s\n\n累计活动 %s · 经验 %d\n经验／小时 %d · 交付 %d · 死亡 %d\n本次登录 活动 %s · 经验 %d\n\n%s\n\n活动时间排除离线、暂停和 AFK。",
+    return string.format("练级统计%s\n\n累计活动 %s · 经验 %d\n经验／小时 %d · 交付 %d · 死亡 %d\n本次登录 活动 %s · 经验 %d\n\n%s%s\n\n活动时间排除离线、暂停和 AFK。",
         A.settings.levelingStats==false and "（已关闭）" or A.char.paused and "（已暂停）" or "",
         duration(seconds),xp,seconds>0 and xp*3600/seconds or 0,quests,deaths,
-        duration(self.sessionSeconds or 0),self.sessionXP or 0,table.concat(history,"\n\n"))
+        duration(self.sessionSeconds or 0),self.sessionXP or 0,table.concat(history,"\n\n"),self:Comparisons(levels))
 end

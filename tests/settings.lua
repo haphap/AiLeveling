@@ -5,7 +5,7 @@ local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","
     "PlaySound","SOUNDKIT","NUM_CONTAINER_FRAMES","ContainerFrameCombinedBags","AiLeveling",
     "debugprofilestop","C_PlayerInteractionManager","UnitClassification","UnitName","UnitCanAttack","UnitIsDeadOrGhost","UnitOnTaxi","C_NamePlate","UIErrorsFrame","issecretvalue","canaccessvalue","Enum",
     "IsInGroup","IsInRaid","UnitIsGroupLeader","UnitIsConnected","FollowUnit",
-    "GetQuestLink","ChatFrameUtil","IsModifiedClick","QuestMapFrame_OpenToQuestDetails"}
+    "GetQuestLink","ChatFrameUtil","IsModifiedClick","QuestMapFrame_OpenToQuestDetails","GetRealmName"}
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
     for _,key in ipairs({"SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag",
@@ -570,6 +570,8 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
 end)
 test("练级统计按原生经验跨级结算，暂停AFK离线不计时并保留等级历史",function()
     local B=setup();local T=B.LevelingTracker
+    B:InitializeProfiles(B.settings,B.char)
+    UnitGUID=function() return "Player-1" end;UnitName=function() return "角色甲" end;GetRealmName=function() return "服务器" end
     local level,xp,maxXP,afk=20,900,1000,false
     UnitLevel=function() return level end;UnitXP=function() return xp end;UnitXPMax=function() return maxXP end
     UnitIsAFK=function(unit) eq(unit,"player");return afk end
@@ -610,11 +612,26 @@ test("练级统计按原生经验跨级结算，暂停AFK离线不计时并保�
     B.time(2010);xp=350;event(nil,"PLAYER_XP_UPDATE","player")
     eq(T.sessionSeconds,10);eq(T.sessionXP,30)
     local report=T:Report();assert(report:find("累计活动 0:01:20",1,true));assert(report:find("经验 220",1,true))
-    assert(report:find("20 级（中途开始） · 已升级",1,true));assert(report:find("交付 1 · 死亡 2",1,true))
+    assert(report:find("20 级（部分记录） · 已升级",1,true));assert(report:find("交付 1 · 死亡 2",1,true))
     B.char.leveling.levels[1]={seconds=0/0,xp=10,quests=0,deaths=0}
     B.char.leveling.levels[61]={seconds=1,xp=10,quests=0,deaths=0}
     T.Normalize(B.char);eq(B.char.leveling.levels[1],nil);eq(B.char.leveling.levels[61],nil)
     eq(B.char.leveling.levels[20].completed,true)
+    level=22;xp=0;B.time(2020);event(nil,"PLAYER_XP_UPDATE","player")
+    level=23;B.time(2120);event(nil,"PLAYER_XP_UPDATE","player")
+    eq(B.db.levelingRuns["Player-1"],B.char.leveling)
+    local original=B.char
+    B.char={};T.last,T.lastAt,T.reportKey=nil,nil,nil
+    UnitGUID=function() return "Player-2" end;UnitName=function() return "角色乙" end
+    level=21;xp=500;event(nil,"PLAYER_XP_UPDATE","player")
+    level=22;xp=0;B.time(2130);event(nil,"PLAYER_XP_UPDATE","player")
+    level=23;B.time(2250);event(nil,"PLAYER_XP_UPDATE","player")
+    local comparison=T:Report()
+    assert(comparison:find("对比 角色甲 - 服务器",1,true))
+    assert(comparison:find("22→23 级 · 本角色 0:02:00 · 对方 0:01:40 · 慢 0:00:20",1,true))
+    assert(comparison:find("1 个相同等级合计",1,true))
+    eq(B.db.levelingRuns["Player-1"],original.leveling)
+    eq(B.db.levelingRuns["Player-2"],B.char.leveling)
     B.finish()
 end)
 dofile("tests/tracker.lua")(test,eq,setup)
