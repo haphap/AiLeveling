@@ -19,6 +19,7 @@ Transport.lua
 Hearth.lua
 Instances.lua
 LevelingTracker.lua
+Party.lua
 Data/Content.lua
 Data/TaskFacts.lua
 Data/ItemLimits.lua

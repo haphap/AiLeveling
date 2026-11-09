@@ -6,14 +6,14 @@ function S:Create(parent)
     self.frame=CreateFrame("Frame",nil,parent)
     self.frame:SetPoint("TOPLEFT",18,-94);self.frame:SetPoint("BOTTOMRIGHT",-18,18)
     self.groups,self.controls={},{}
-    for i,name in ipairs({"路线规划","显示与导航","任务辅助","数据与兼容","背包整理"}) do
+    for i,name in ipairs({"路线规划","显示与导航","任务辅助","数据与兼容","背包整理","队伍协作"}) do
         local group=CreateFrame("Frame",nil,self.frame)
         group:SetPoint("TOPLEFT",0,-40);group:SetPoint("BOTTOMRIGHT")
         self.groups[i]=group
-        local b=A.UI:Button(self.frame,name,108,function()
+        local b=A.UI:Button(self.frame,name,90,function()
             for j,f in ipairs(self.groups) do f:SetShown(i==j) end
         end)
-        b:SetPoint("TOPLEFT",(i-1)*116,0);group:SetShown(i==1)
+        b:SetPoint("TOPLEFT",(i-1)*96,0);group:SetShown(i==1)
     end
     local function position(row) return math.floor(row/8)*286,-(row%8)*40 end
     local function check(group,key,label,row)
@@ -157,7 +157,25 @@ function S:Create(parent)
     self.groups[5]:SetScript("OnShow",function() self:RefreshBags() end)
     for _,event in ipairs({"BAG_UPDATE_DELAYED","GET_ITEM_INFO_RECEIVED","PLAYER_REGEN_DISABLED","PLAYER_REGEN_ENABLED"}) do self.groups[5]:RegisterEvent(event) end
     self.groups[5]:SetScript("OnEvent",function() if self.frame:IsShown() and self.groups[5]:IsShown() then self:RefreshBags() end end)
+    check(6,"partySync","与队友同步任务与进度",0)
+    check(6,"autoShareQuests","接取后自动共享任务",1)
+    check(6,"partyAnnouncements","队伍聊天：升级、完成及飞行",2)
+    local share=A.UI:Button(self.groups[6],"共享当前任务",270,function()
+        local action=A.Navigation:Current()
+        local _,why=A.Party:ShareQuest(action and action.questId)
+        A:Message(why)
+    end);share:SetPoint("TOPLEFT",position(3))
+    local hint=A.UI:Text(self.groups[6],12);hint:SetPoint("TOPLEFT",0,-176);hint:SetWidth(268)
+    hint:SetText("任务与进度在同样安装 AiLeveling 的队友之间显示。\n\n原生任务共享会向队友发送接取请求。按住 Shift 接任务可临时跳过自动共享。")
+    self.partyText=A.UI:Text(self.groups[6],13);self.partyText:SetPoint("TOPLEFT",286,0);self.partyText:SetWidth(268)
+    self.groups[6]:SetScript("OnShow",function() if A.Party then A.Party:RefreshUI() end end)
     self.frame:Hide()
+end
+
+function S:ShowParty()
+    A.UI.details:Show();A.UI:SelectTab(5)
+    for i,group in ipairs(self.groups) do group:SetShown(i==6) end
+    A.Party:RefreshUI()
 end
 
 function S:JunkItemID()
@@ -207,4 +225,5 @@ function S:Refresh()
         "\n任务／奖励／经验："..(A.TaskGuide and table.concat({A.TaskGuide.Counts()},"／") or "0／0／0")..
         "\n服务 NPC："..(A.Data.serviceCount or 0))
     if self.groups[5]:IsShown() then self:RefreshBags() end
+    if A.Party then A.Party:RefreshUI() end
 end

@@ -6,6 +6,7 @@ A.defaults = { minutes = 60, dungeons = true, role = "DAMAGER",
     scale = 1, alpha = 0.94, arrow = true, pins = true, items = true, highlight = true, worldHighlight = true, scanRares = true,
     combatFold = true, learn = true, waitMinutes = 10, damageStyle = "auto",
     fontScale=1,density="normal",lockWindow=false,routes=true,minimapPins=true,waypointUI=true,maxSoulShards=100,
+    partySync=true,autoShareQuests=false,partyAnnouncements=false,
     distanceUnits="yards",transportHints=true,quantity=true,missingChecks=true,rewardAdvice=true,sound=false,gearPreference="nearby",autoAccept=true,autoTurnIn=true,autoTaxi=true,autoTrain=true,autoBind=true,autoSellJunk=false,targets=true,levelingStats=true }
 A.jobs, A.dirty, A.requestedItems = {}, false, {}
 
@@ -330,6 +331,7 @@ function A:Initialize()
     if self.WorldInteract then self.WorldInteract:Initialize() end
     self.ready = true
     if self.RareScanner then self.RareScanner:Initialize() end
+    if self.Party then self.Party:Initialize() end
     self.State:Refresh(true)
     self:Queue("index", function()
         self.Data:BuildIndex()
@@ -358,6 +360,7 @@ local frame = CreateFrame("Frame")
 A.frame = frame
 frame:RegisterEvent("ADDON_LOADED")
 frame:SetScript("OnEvent", function(_, event, ...)
+    if A.ready and A.Party then A.Party:Event(event,...) end
     if A.ready and A.LevelingTracker and (event=="PLAYER_ENTERING_WORLD" or event=="PLAYER_XP_UPDATE" and (...)=="player" or
         event=="PLAYER_FLAGS_CHANGED" and (...)=="player" or event=="PLAYER_LEVEL_UP" or event=="PLAYER_DEAD" or
         event=="PLAYER_ALIVE" or event=="PLAYER_UNGHOST" or event=="PLAYER_LOGOUT") then A.LevelingTracker:Update(event) end
@@ -372,7 +375,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if not A.ready then return end
         for _, name in ipairs({"PLAYER_ENTERING_WORLD", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED",
             "QUEST_DATA_LOAD_RESULT", "QUEST_REMOVED", "QUEST_TURNED_IN", "QUEST_COMPLETE", "QUEST_PROGRESS", "QUEST_FINISHED", "GOSSIP_SHOW", "GOSSIP_CLOSED", "QUEST_DETAIL", "PLAYER_LEVEL_UP", "PLAYER_XP_UPDATE",
-            "PLAYER_EQUIPMENT_CHANGED", "BAG_UPDATE_DELAYED", "GROUP_ROSTER_UPDATE", "PARTY_LEADER_CHANGED", "UNIT_CONNECTION", "UNIT_NAME_UPDATE", "PLAYER_ROLES_ASSIGNED", "UNIT_SPEED", "PLAYER_TARGET_CHANGED", "PLAYER_FLAGS_CHANGED", "PLAYER_LOGOUT",
+            "PLAYER_EQUIPMENT_CHANGED", "BAG_UPDATE_DELAYED", "GROUP_ROSTER_UPDATE", "CHAT_MSG_ADDON", "PARTY_LEADER_CHANGED", "UNIT_CONNECTION", "UNIT_NAME_UPDATE", "PLAYER_ROLES_ASSIGNED", "UNIT_SPEED", "PLAYER_TARGET_CHANGED", "PLAYER_FLAGS_CHANGED", "PLAYER_LOGOUT",
             "ZONE_CHANGED_NEW_AREA", "PLAYER_DIFFICULTY_CHANGED", "PLAYER_ALIVE", "PLAYER_DEAD", "PLAYER_UNGHOST", "PLAYER_REGEN_ENABLED",
             "PLAYER_REGEN_DISABLED", "GET_ITEM_INFO_RECEIVED", "BAG_UPDATE_COOLDOWN", "BAG_OPEN", "BAG_CLOSED", "UPDATE_INVENTORY_DURABILITY", "MERCHANT_SHOW", "MERCHANT_CLOSED"}) do
             frame:RegisterEvent(name)
@@ -387,6 +390,8 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if C_TooltipInfo and (C_TooltipInfo.GetHyperlink or C_TooltipInfo.GetTrainerService) then frame:RegisterEvent("TOOLTIP_DATA_UPDATE") end
         if C_Spell and C_Spell.GetSpellDescription then frame:RegisterEvent("SPELL_TEXT_UPDATE") end
         A.Instances:Request()
+    elseif event=="CHAT_MSG_ADDON" then
+        return
     elseif event=="QUEST_COMPLETE" then
         A.QuestAssist:RewardDialog(true)
     elseif event=="QUEST_FINISHED" then
@@ -492,6 +497,7 @@ frame:SetScript("OnUpdate", function(_, elapsed)
         A.Dungeon:Update()
         if A.LevelingTracker then A.LevelingTracker:Update() end
         A.Navigation:Update()
+        if A.Party then A.Party:Update() end
         if A.Routes then A.Routes:Update() end
         if A.dirty then A.UI:Render(); A.dirty = false end
     end
@@ -505,6 +511,7 @@ SlashCmdList.AILEVELING = function(command)
     elseif command=="history" then A.UI:ShowText(A:QuestHistory())
     elseif command=="stats" and A.LevelingTracker then A.UI:ShowText(A.LevelingTracker:Report())
     elseif command=="bags" then A.UI.Settings:ShowBags()
+    elseif command=="party" then A.UI.Settings:ShowParty()
     elseif command == "pause" then A:TogglePause()
     elseif command == "resume" then
         A.Selection:Clear()
