@@ -99,9 +99,9 @@ local function deliveryAdvice(state,plan,action,choices,byQuest)
         if nextName then summary=summary.."；再去"..nextName end
     elseif action.kind=="objective" and (not (state.quests[current.questId] or {}).ready or current.itemShortage) then
         if group and group.ready>0 and waiting(current.questId) then
-            summary="同组还差 "..(#group.choices-group.ready).." 项：先做「"..title(current).."」，全部完成后到"..group.title.."一起交"
+            summary="同组还差 "..(#group.choices-group.ready).." 项，做完一起交"
         elseif ordered[1] then
-            summary="先做「"..title(current).."」，已完成任务随后到"..recipient(ordered[1]).."交付"
+            summary="完成当前任务后，到"..recipient(ordered[1]).."交付"
             for _,choice in ipairs(ordered) do advice[choice.questId]="先做「"..title(current).."」，之后交给"..recipient(choice) end
         end
     end
@@ -127,15 +127,8 @@ function UI.TrackerModel(state,plan,action,paused)
     if A.Navigation and A.Navigation.Target then point=A.Navigation.Target(action)
     else point=action and action.position end
     if point then
-        local map=C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
-        local parts={}
         local recipient=action.kind=="turnin" and action.recipient
-        local name=point.entityName or recipient and recipient.entityName
-        if name then parts[#parts+1]=name end
-        if map and map.name then parts[#parts+1]=map.name end
-        if point.x and point.y then parts[#parts+1]=string.format("%.1f, %.1f",point.x*100,point.y*100) end
-        if point.approximate then parts[#parts+1]="区域参考点" end
-        if #parts>0 then model.destination=table.concat(parts," · ") end
+        model.destination=point.entityName or recipient and recipient.entityName
     end
     if action and action.itemGain and action.itemGain>0 then
         local have=(state.bags or {})[action.targetId] or 0
@@ -419,9 +412,12 @@ function UI:RenderTracker()
     T.skip.text:SetText(action and action.kind=="manual" and "返回任务"
         or action and action.kind=="service" and action.serviceKind=="repair" and "忽略维修" or "暂缓")
     self.title:SetText(model.title)
-    local lines={model.deliverySummary or model.instruction}
-    if model.deliverySummary and action and action.kind~="turnin" then lines[#lines+1]=model.instruction end
-    if model.destination then lines[#lines+1]=model.destination end
+    local instruction=model.instruction
+    if model.kind=="objective" and #model.objectives>0 and not A.char.paused and not A.error and
+        not (action.position and action.position.sourceKind=="vendor") then instruction=nil end
+    local lines={model.deliverySummary or instruction}
+    if model.deliverySummary and instruction and model.kind~="turnin" then lines[#lines+1]=instruction end
+    if model.destination and model.kind~="objective" and not model.deliverySummary then lines[#lines+1]=model.destination end
     if model.metrics then lines[#lines+1]="|cffffd474"..model.metrics.."|r" end
     if model.hint and not A.char.paused and not (model.deliverySummary and model.includesCurrent) then lines[#lines+1]="|cffc7d6e3"..model.hint.."|r" end
     if plan.selectionBlocked then lines[#lines+1]=plan.selectionBlocked end

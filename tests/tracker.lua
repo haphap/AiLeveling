@@ -29,7 +29,7 @@ test("同NPC任务连续显示整组真实进度并保持行宽与点击",functi
     eq(T.rows[1].group.value,"治安官 · 已完成 1/2")
     eq(T.rows[2].group.shown,false);eq(T.rows[2].status.value,"可交付")
     assert(T.rows[2].progress.value:find("等「当前任务」完成，再到治安官一起交",1,true))
-    assert(T.model.deliverySummary:find("先做「当前任务」",1,true));assert(T.model.deliverySummary:find("全部完成后",1,true))
+    eq(T.model.deliverySummary,"同组还差 1 项，做完一起交")
     eq(T.rows[1].number.point[3],T.rows[1].title.point[3]);eq(T.queuePanel.width,T.card.width)
     T.rows[2].scripts.OnClick();eq(B.char.locked,3)
     B.state.quests[1].ready=true;B.UI:RenderTracker()
@@ -88,8 +88,8 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     local actions=B.Flights.Actions(route,action,B.Navigation)
     eq(#actions,1);eq(actions[1],action)
     B.action=actions[1];B.UI:RenderTracker()
-    assert(B.UI.body.value:find("消灭狗头人",1,true))
-    assert(B.UI.body.value:find("狗头人营地",1,true));assert(B.UI.body.value:find("60.0, 50.0",1,true))
+    assert(not B.UI.body.value:find(action.text,1,true));assert(not B.UI.body.value:find("60.0, 50.0",1,true))
+    eq(T.objectives[1].text.value,"狗头人 3/10")
     eq(B.UI.title.value,"当前任务");eq(T.objectives[1].count.value,"3/10");eq(T.objectives[1].ratio,0.3)
     eq(#T.model.rows,2);eq(T.rows[1].title.value,"后续交付");eq(T.rows[1].status.value,"可交付")
     eq(T.queuePanel.width,T.card.width)
@@ -283,7 +283,7 @@ test("交错行程按任务数汇总并显示每个目标与交付步骤",functi
     B.plan.taskQueue={stagePlan=true,taskCount=2,seconds=180,low=180,high=180,xp=200,xpKnown=true,
         steps={{choice=a,stage=oa},{choice=b,stage=ob},{choice=a,stage={kind="turnin"}},{choice=b,stage={kind="turnin"}}}}
     a.executionAction=oa;a.executionTiming={seconds=80,low=80,high=80};B.action=oa
-    B.UI:RenderTracker();assert(B.UI.body.value:find("目标甲",1,true))
+    B.UI:RenderTracker();eq(B.UI.tracker.objectives[1].text.value,B.state.quests[1].objectives[1].text)
     assert(not B.UI.body.value:find("先完成附近目标，再集中交付",1,true))
     assert(loadfile("UI/Plan.lua"))("AiLeveling",B);B.UI.Plan.preview=a
     local text=table.concat(B.UI.Plan:Lines(),"\n")
@@ -316,7 +316,7 @@ test("分散交付点明确现在就近交和等同NPC任务一起交并跟随�
     B.state.locked=2;B.state.quests[3].ready=false;B.UI:RenderTracker()
     assert(T.model.deliverySummary:find("顺路先交：到闪金镇治安官",1,true))
     B.state.locked=nil;B.action={kind="objective",questId=3,title=c.title};B.UI:RenderTracker()
-    assert(T.model.deliverySummary:find("先做「后续目标」",1,true));assert(T.model.deliverySummary:find("同组还差 1 项",1,true))
+    eq(T.model.deliverySummary,"同组还差 1 项，做完一起交")
     B.action={kind="service",title="维修"};B.UI:RenderTracker();eq(T.model.deliverySummary,nil)
     B.action=ta;B.char.paused=true;B.UI:RenderTracker();eq(T.model.deliverySummary,nil)
     B.finish()

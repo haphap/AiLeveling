@@ -485,7 +485,7 @@ test("同一NPC五项任务全部目标完成后才连续集中交付",function(
         for i,step in ipairs(queue.steps) do eq(step.stage.kind,i<=unfinished and "objective" or "turnin") end
         eq(result.fallback.kind,unfinished>0 and "objective" or "turnin")
         local model=B.UI.TrackerModel(s,result,result.fallback,false)
-        if unfinished>0 and unfinished<5 then assert(model.deliverySummary:find("全部完成后",1,true));assert(model.deliverySummary:find("还差 "..unfinished.." 项",1,true))
+        if unfinished>0 and unfinished<5 then eq(model.deliverySummary,"同组还差 "..unfinished.." 项，做完一起交")
         elseif unfinished==0 then assert(model.deliverySummary:find("一起交付：到治安官交 5 项任务",1,true)) end
         eq(s.completed[1],nil);return result
     end
