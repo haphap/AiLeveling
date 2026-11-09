@@ -721,8 +721,9 @@ function D:ReferenceObjectiveTargets(q,state)
                     local have=(state.bags or {})[row[1]] or 0
                     description.numFulfilled=have;description.finished=have>=need
                     local starters=q.startedBy or {}
-                    description.providedOnAccept=not state.quests[q.id] and need==1 and q.sourceItemId==row[1] and
-                        (#(starters[1] or {})+#(starters[2] or {})>0) and #(starters[3] or {})==0 or nil
+                    local supplied=#(starters[1] or {})+#(starters[2] or {})+#(starters[3] or {})>0
+                    for _,id in ipairs(starters[3] or {}) do if id==row[1] then supplied=false;break end end
+                    description.providedOnAccept=not state.quests[q.id] and need==1 and q.sourceItemId==row[1] and supplied or nil
                 end
             end
             local first=kind==2 and order.objectObjectiveFirst or kind==3 and order.itemObjectiveFirst

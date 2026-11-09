@@ -218,14 +218,17 @@ do
     print(faction..": real #60860 enters automatic choices only when offered; manual target and native ready delivery remain available")
 end
 
-if faction=="Horde" then
-    for _,id in ipairs({99101,97275}) do
+do
+    local ids=faction=="Horde" and {99101,97275} or {91741}
+    for _,id in ipairs(ids) do
         local q=A.Data:GetQuest(id)
         local supplied=q.sourceItemId
         local context=dofile(root.."/tests/fixtures.lua").State()
         context.faction,context.classMask,context.raceMask=faction,s.classMask,s.raceMask
         context.clientVersion,context.clientBuild,context.interface="1.60.1","70862",16001
-        context.position=A.Data:EntityPoints(db.Npc,q.startedBy[1][1])[1]
+        context.position=s.position
+        context.position=assert(A.Data:Target(q,context))
+        if id==91741 then assert(q.startedBy[3][1]==247834 and supplied~=247834) end
         assert(A.Data:CacheQuest(q,context) and supplied>0 and not A.TaskGuide.XP(q,context.level,context))
         local descriptions,_,complex=A.Data:ReferenceObjectiveTargets(q,context)
         assert(not complex and #descriptions==1 and descriptions[1].targetId==supplied and
@@ -242,7 +245,7 @@ if faction=="Horde" then
         assert(active.ready and context.bags[supplied]==1 and not context.completed[q.id])
         inventory.TurnIn(q.id,context)
         assert(context.completed[q.id] and context.bags[supplied]==0 and not context.quests[q.id])
-        print("Horde: real #"..id.." previews accept + delivery; supplied item count is one; simulated turn-in consumes it")
+        print(faction..": real #"..id.." previews accept + delivery; supplied item count is one; simulated turn-in consumes it")
     end
 end
 

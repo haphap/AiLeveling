@@ -150,6 +150,11 @@ test("掉落触发物品与多件未知发放数量仍需收集且事件保留",
     local B,q,s,rows=fixture();s.quests={};s.bags={};rows.objectives={[3]={{100,count=1}}}
     q.sourceItemId=100;q.startedBy={[3]={100}}
     eq(B.Data:ReferenceObjectiveTargets(q,s)[1].providedOnAccept,nil)
+    q.startedBy={[3]={99}}
+    eq(B.Data:ReferenceObjectiveTargets(q,s)[1].providedOnAccept,true)
+    eq(s.bags[100],nil);eq(s.completed[q.id],nil)
+    q.startedBy={[3]={99,100}}
+    eq(B.Data:ReferenceObjectiveTargets(q,s)[1].providedOnAccept,nil)
     q.startedBy=rows.startedBy;rows.objectives[3][1].count=2
     eq(B.Data:ReferenceObjectiveTargets(q,s)[1].providedOnAccept,nil)
     rows.objectives[3][1].count=1;rows.triggerEnd={"事件",{[12]={{20,30}}}}
