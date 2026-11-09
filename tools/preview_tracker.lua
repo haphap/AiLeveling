@@ -61,8 +61,9 @@ UIParent=widget("Root");UIParent:SetSize(canvasWidth,canvasHeight)
 CreateFrame=function(kind,_,parent) return widget(kind,parent) end
 STANDARD_TEXT_FONT="preview"
 C_Map={GetMapInfo=function() return {name="艾尔文森林"} end}
-local A={settings={fontScale=1,accent="teal",density="normal",arrow=true,distanceUnits="meters"},char={},indexReady=true,
-    state={level=8,xp=3200,maxXP=5040,position={map=1429},quests={
+RAID_CLASS_COLORS={PALADIN={r=0.96,g=0.55,b=0.73}}
+local A={settings={fontScale=1,density="normal",arrow=true,distanceUnits="meters"},char={},indexReady=true,
+    state={class="PALADIN",level=8,xp=3200,maxXP=5040,position={map=1429},quests={
         [7]={title="狗头人的威胁",objectives={{text="消灭狗头人歹徒",numFulfilled=6,numRequired=10}}},
         [33]={title="林中的群狼",objectives={{text="收集狼肉",numFulfilled=3,numRequired=8}}},
         [18]={title="矿工归来",ready=true,objectives={}},

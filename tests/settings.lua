@@ -1,5 +1,5 @@
 return function(test,eq,F,A,plan)
-local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","SlashCmdList","InCombatLockdown","GetTime",
+local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","SlashCmdList","InCombatLockdown","GetTime","UnitClass","RAID_CLASS_COLORS",
     "geterrorhandler","C_Item","C_PlayerInfo","C_Container","GetQuestID","GetNumQuestChoices","GetQuestItemLink","GetQuestReward",
     "PlaySound","SOUNDKIT","NUM_CONTAINER_FRAMES","ContainerFrameCombinedBags","AiLeveling"}
 local function widget()
@@ -178,8 +178,17 @@ test("多任务主卡片自动扩展并同时列出各任务摘要与当前建�
     assert(text:find("建议先做：任务甲",1,true));assert(text:find("狼 1/3",1,true))
     B.finish()
 end)
-test("强调色距离单位与交通提示实际联动",function()
-    local B=setup();local previous=B.UI.nav.color[1];B:SetOption("accent","gold");assert(B.UI.nav.color[1]~=previous)
+test("职业色距离单位与交通提示实际联动",function()
+    local B=setup()
+    RAID_CLASS_COLORS={PALADIN={r=0.96,g=0.55,b=0.73},MAGE={r=0.25,g=0.78,b=0.92}}
+    UnitClass=function() return "圣骑士","PALADIN" end
+    B.state.class=nil;B.settings.accent="blue";B:NormalizeSettings(B.settings);eq(B.settings.accent,nil)
+    B.UI:ApplyStyle();B.UI:RenderTracker();B.UI:SetNavigation(100,0,false)
+    eq(B.UI.nav.color[1],0.96);eq(B.UI.nav.color[3],0.73)
+    eq(B.UI.tracker.xpFill.color[2],0.55);eq(B.UI.tracker.rail.color[3],0.73)
+    eq(B.UI.tracker.step.color[1],0.96);eq(select("#",B.UI:Accent()),3)
+    B.state.class="MAGE";B.UI:ApplyStyle();B.UI:RenderTracker();B.UI:SetNavigation(100,0,false)
+    eq(B.UI.nav.color[1],0.25);eq(B.UI.tracker.rail.color[3],0.92)
     B:SetOption("distanceUnits","meters")
     B.UI:SetNavigation(100,nil,false);assert(B.UI.nav.value:find("91 米",1,true))
     local text=B.UI.ActionText({kind="transit",mode="flight",text="管理员条件"},B.settings);eq(text,"管理员条件")

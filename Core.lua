@@ -5,14 +5,15 @@ A.version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata
 A.defaults = { mode = "relaxed", minutes = 60, dungeons = true, role = "DAMAGER",
     scale = 1, alpha = 0.94, arrow = true, pins = true, items = true, highlight = true, worldHighlight = true,
     combatFold = true, learn = true, waitMinutes = 10, damageStyle = "auto",
-    fontScale=1,density="normal",lockWindow=false,accent="teal",routes=true,minimapPins=true,
+    fontScale=1,density="normal",lockWindow=false,routes=true,minimapPins=true,
     distanceUnits="yards",transportHints=true,quantity=true,missingChecks=true,rewardAdvice=true,sound=false,gearPreference="nearby" }
 A.jobs, A.dirty, A.requestedItems = {}, false, {}
 
 function A:NormalizeSettings(settings)
+    settings.accent=nil
     local choices={mode={relaxed=true,fast=true,story=true},role={DAMAGER=true,TANK=true,HEALER=true},
         damageStyle={auto=true,strength=true,agility=true,ranged=true,caster=true,hybrid=true},
-        density={compact=true,normal=true,expanded=true},accent={teal=true,gold=true,blue=true},
+        density={compact=true,normal=true,expanded=true},
         distanceUnits={yards=true,meters=true},gearPreference={nearby=true,xp=true}}
     local bounds={scale={0.75,1.5},alpha={0.2,1},minutes={15,240},waitMinutes={0,60},fontScale={0.85,1.2}}
     for key,default in pairs(self.defaults) do

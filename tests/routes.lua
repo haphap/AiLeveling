@@ -1,7 +1,7 @@
 return function(test,eq,F,A)
 local function point(x,y,map) return {map=map or 1,x=x,y=y} end
 local function engine()
-    local B={Travel=A.Travel,settings={routes=true,accent="teal"},char={},Navigation={index=1,actions={}},state={position=point(0,0)},
+    local B={Travel=A.Travel,settings={routes=true},char={},Navigation={index=1,actions={}},state={position=point(0,0)},
         Transport={InFlight=function() return false end},UI={}}
     assert(loadfile("Routes.lua"))("AiLeveling",B)
     return B

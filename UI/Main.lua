@@ -2,10 +2,12 @@ local _, A = ...
 A.UI = {fonts={}}
 local UI = A.UI
 local colors = { bg = {0.035, 0.05, 0.065, 0.96}, border = {0.13, 0.2, 0.24, 1} }
-local accents={teal={0.28,0.85,0.75},gold={0.95,0.73,0.3},blue={0.35,0.7,1}}
-
 function UI:Accent()
-    return unpack(accents[A.settings.accent] or accents.teal)
+    local class=A.state and A.state.class
+    if not class and UnitClass then local _,playerClass=UnitClass("player");class=playerClass end
+    local color=RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+    if color then return color.r,color.g,color.b end
+    return 1,1,1
 end
 
 function UI:RegisterFont(text,size,role)
