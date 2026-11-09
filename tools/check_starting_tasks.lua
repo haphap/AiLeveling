@@ -30,7 +30,7 @@ local anchors={[1]=7,[2]=788,[3]=179,[4]=456,[5]=363,[6]=747,[7]=179,[8]=788,[95
 local anchor=assert(A.Data:GetQuest(anchors[raceId]))
 s.position=nil;s.position=assert(A.Data:Target(anchor,s),"starting anchor has no position")
 local startMap=s.position.map
-local options={minutes=60,mode="fast",dungeons=false,role="DAMAGER"}
+local options={minutes=60,gearPreference="xp",dungeons=false,role="DAMAGER"}
 local function plan() return run(function() return A.Planner.Build(s,A.Data,options) end) end
 local function emit(stage,action)
     local p=action.position or {}

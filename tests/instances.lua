@@ -16,7 +16,7 @@ local function context()
         verified=true,minLevel=10,maxLevel=30,entryNode="goal",exitNode="goal",returnNode="start",actions={},runSeconds=600,xp=1000,waitSeconds=0}
     data.content.dungeons[1]=d
     local B={Navigation=F.Navigation,Content=data.content,Data=data,state=s,char={samples={},pendingResets={}},
-        settings={dungeons=true,minutes=60,mode="fast",role="DAMAGER"},RequestRefresh=function(self) self.refreshes=(self.refreshes or 0)+1 end}
+        settings={dungeons=true,minutes=60,gearPreference="xp",role="DAMAGER"},RequestRefresh=function(self) self.refreshes=(self.refreshes or 0)+1 end}
     for _,file in ipairs({"State.lua","Instances.lua","Planner/Travel.lua","Planner/Dungeon.lua"}) do assert(loadfile(file))("AiLeveling",B) end
     B.State.Refresh=function() B.Dungeon:Sync(s,{});B.Instances:Snapshot(s) end
     B.Instances:Capture();B.Instances:Snapshot(s)

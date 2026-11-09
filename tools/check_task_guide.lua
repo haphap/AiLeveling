@@ -31,7 +31,7 @@ s.clientVersion,s.clientBuild,s.interface="1.60.1","70862",16001
 s.maxXP=A.Experience.xpToLevel[1]
 s.level=1;s.faction=faction;s.classMask=db.Enum.classKeys.WARRIOR;s.raceMask=db.Enum.raceMaskById[faction=="Alliance" and 1 or 2]
 s.position={map=faction=="Alliance" and 1429 or 1411,x=0.5,y=0.5};s.completionKnown=true
-local options={minutes=60,mode="fast",dungeons=false,role="DAMAGER"}
+local options={minutes=60,gearPreference="xp",dungeons=false,role="DAMAGER"}
 local plan=run(function() return A.Planner.Build(s,A.Data,options) end)
 assert(plan.fallback and #plan.taskChoices>0)
 for _,c in ipairs(plan.taskChoices) do

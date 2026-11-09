@@ -5,7 +5,7 @@ local function timingFixture()
         Navigation={Distance=function(_,a,b) if a and b and a.map==b.map then return math.abs(a.x-b.x) end end}}
     assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
     assert(loadfile("Planner/Planner.lua"))("AiLeveling",B)
-    local s={position={map=1,x=0},runSpeed=7,mode="fast",quests={[1]={},[2]={}}}
+    local s={position={map=1,x=0},runSpeed=7,gearPreference="xp",quests={[1]={},[2]={}}}
     local choices={
         {questId=1,remainingXP=850,actions={{position={map=1,x=70}}},stagesComplete=true,
             work={missing=99,seconds=99999},stages={{kind="objective",questId=1,position={map=1,x=70}},

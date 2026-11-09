@@ -29,7 +29,7 @@ test("任务预览保留交付等级预测与原生状态且隐藏内部来源�
     local s=state();s.xp=399;s.position={map=1,x=0,y=0};s.quests[1]={title="实际日志任务",ready=true,objectives={}}
     local q=F.Quest(1);q.questLevel=1;q.taskFacts={level=1,xp={{1,170}},objectives={}}
     local d=F.Data({[1]=q});d.Target=function() return {map=1,x=0.1,y=0} end
-    local result=plan(s,d,{minutes=60,mode="relaxed",dungeons=false},B)
+    local result=plan(s,d,{minutes=60,dungeons=false},B)
     local choice=result.taskChoices[1]
     eq(choice.remainingXP,170);eq(choice.forecast.level,2);eq(choice.forecast.xp,169);eq(choice.forecast.maxXP,900)
     eq(s.completed[1],nil);eq(s.quests[1].ready,true)

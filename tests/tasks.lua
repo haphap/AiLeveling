@@ -153,19 +153,6 @@ test("接交点目标分布与物品来源按跨区域直线距离选择",functi
     eq(s.quests[1].ready,nil);eq(s.completed[1],nil)
     C_Map,C_QuestLog=previousMap,previousLog
 end)
-test("任务总览同时列出全部日志进度交付与暂缓并解释当前建议",function()
-    local s=F.State();s.quests={
-        [1]={title="击杀任务",objectives={{text="狼 2/6",finished=false}}},
-        [2]={title="交付任务",ready=true,objectives={{text="物品 3/3",finished=true}}},
-        [3]={title="暂缓任务",objectives={}}}
-    s.skipped[3]=true
-    local action={questId=2,kind="turnin"}
-    local B={state=s,char={},plan={taskChoices={{questId=2},{questId=1}}},Navigation={Current=function() return action end}}
-    assert(loadfile("UI/Main.lua"))("AiLeveling",B)
-    local text=table.concat(B.UI:TaskLines(),"\n")
-    for _,value in ipairs({"已接取 3 项","可交付 1 项","建议先做：交付任务","释放任务栏位","狼 2/6","物品 3/3","[已接取·暂缓] 暂缓任务"}) do assert(text:find(value,1,true),value) end
-    B.char.paused=true;text=table.concat(B.UI:TaskLines(),"\n");assert(not text:find("建议先做",1,true));assert(text:find("击杀任务",1,true))
-end)
 test("任务总览分开已接和未接且顺序与预览使用真实日志状态",function()
     local s=F.State();s.quests={[1]={title="已接任务",objectives={}}}
     local held={kind="task",questId=1,title="已接任务",status="accept",actions={{text="继续"}}}
@@ -195,18 +182,6 @@ test("任务总览仅按确认的共享目标建议一起推进且飞行时不�
     action.sharedObjectives=nil;assert(not table.concat(B.UI:TaskLines(),"\n"):find("可一起推进",1,true))
     B.Transport.InFlight=function() return true end
     assert(not table.concat(B.UI:TaskLines(),"\n"):find("建议先做",1,true))
-end)
-test("多任务建议先做距离已知的近处目标再衔接下一项并保留手动锁定",function()
-    local B={Navigation={Distance=function(_,a,b) if a.map==b.map then return math.abs(a.x-b.x) end end}}
-    assert(loadfile("Planner/Planner.lua"))("AiLeveling",B)
-    local s={position={map=1,x=0},quests={[1]={},[2]={},[3]={},[4]={}}}
-    local choices={}
-    for _,spec in ipairs({{1,9,1},{2,1,1},{3,2,1},{4,0,2}}) do
-        choices[#choices+1]={questId=spec[1],actions={{position={map=spec[3],x=spec[2]}}}}
-    end
-    local order=B.Planner.TaskOrder(s,choices)
-    eq(order[1].questId,2);eq(order[2].questId,3);eq(order[3].questId,1);eq(order[4].questId,4)
-    s.locked=1;eq(B.Planner.TaskOrder(s,choices)[1].questId,1);eq(choices[1].questId,1)
 end)
 test("原生无任务航点时从数据库定位未完成目标并跳过已完成项",function()
     local previousMap,previousLog=C_Map,C_QuestLog

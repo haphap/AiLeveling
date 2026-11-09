@@ -83,7 +83,7 @@ test("武器熟练度权衡抑制自动装备绕路而手选目标保持",functi
     local content={gearSources={wanted={verified=true,kind="quest",questId=7,itemId=7}}}
     local base={rate=100,priority=0};local route={rate=96,priority=0,actions={{kind="turnin",questId=7}}}
     B.Gear.Benefits({base,route},s,content);assert(route.gearSources.wanted);eq(route.gear,nil)
-    eq(B.Gear.Prefer({base,route},base,s,{mode="relaxed"}),base)
-    s.gearTarget="wanted";eq(B.Gear.Prefer({base,route},base,s,{mode="relaxed"}),route)
+    eq(B.Gear.Prefer({base,route},base,s,{}),base)
+    s.gearTarget="wanted";eq(B.Gear.Prefer({base,route},base,s,{}),route)
 end)
 end

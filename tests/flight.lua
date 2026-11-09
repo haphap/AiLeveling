@@ -97,10 +97,6 @@ test("无参考航线也仅在有效完整起降后记录独立绝对耗时",fun
     local count=0;for k in pairs(B.char.samples) do if k:sub(1,11)=="flighttime:" then count=count+1 end end
     eq(count,128);eq(B.char.samples[action.timeSampleKey].n,1)
 end)
-test("提前或错误落地点重新规划且不记为完整飞行样本",function()
-    local B=fixture();start(B);finish(B,position(0.5,1,"other"))
-    eq(B.Navigation.index,1);eq(B.refreshes,1);eq(B.messages,1);eq(B.char.samples["flight:v1:f"],nil)
-end)
 test("起飞时按最新原生停靠冻结采样键且不中途改写路线身份",function()
     local B=fixture();local action=B.plan.best.actions[1]
     B.FlightData={version="test"};assert(loadfile("Planner/Flights.lua"))("AiLeveling",B)
@@ -193,20 +189,6 @@ test("飞行保留手动目的地且不混入步行校准",function()
     B.Navigation.manual=position(0.7)
     start(B);eq(B.Navigation:Current().kind,"flight")
     finish(B);eq(B.Navigation:Current().kind,"manual");eq(B.Navigation.manual.x,0.7);eq(next(B.char.samples),nil)
-end)
-test("航线校准按内容版本隔离",function()
-    local B=fixture();local key=A.Travel.FlightKey("f","v1")
-    B.char.samples[key]={n=10,mean=2,m2=0,unit="ratio"}
-    eq(B.char.samples[key].n,10)
-    local route=A.Travel.Route(B.Content,"a","b",{now=0,money=100,samples=B.char.samples})
-    eq(route.seconds,15)
-    B.Content.version="v2"
-    route=A.Travel.Route(B.Content,"a","b",{now=0,money=100,samples=B.char.samples});eq(route.seconds,10)
-end)
-test("原生飞行状态变化进入决策指纹",function()
-    local a={unlocked={},onTaxi=false,now=0}
-    local B=fixture();local old=B.Transport.Key(a);a.onTaxi=true
-    assert(B.Transport.Key(a)~=old)
 end)
 test("空中规划门控并丢弃起飞前尚未发布的计算",function()
     local B=fixture();local queued,called

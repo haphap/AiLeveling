@@ -14,7 +14,7 @@ local function test(name, run)
 end
 local function eq(a,b) assert(a==b,tostring(a).." ~= "..tostring(b)) end
 local function plan(state,data,options,engine)
-    local co = coroutine.create(function() return (engine or A).Planner.Build(state,data,options or {minutes=60,mode="fast",dungeons=true,role="DAMAGER"}) end)
+    local co = coroutine.create(function() return (engine or A).Planner.Build(state,data,options or {minutes=60,gearPreference="xp",dungeons=true,role="DAMAGER"}) end)
     while true do
         local ok, result = coroutine.resume(co)
         assert(ok,result)
@@ -46,7 +46,7 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     A.Data={GetQuest=function(_,id) return F.Quest(id) end,Candidates=function() return {} end}
     A.state=F.State();local captured=A.state
     A.char={skipped={},samples={},turnIns={}}
-    A.settings={role="DAMAGER",mode="fast",minutes=60,dungeons=true}
+    A.settings={role="DAMAGER",gearPreference="xp",minutes=60,dungeons=true}
     A.indexReady=true;A.requestedItems={};A.State.confirmed={}
     A.Navigation={AttachNode=function() end}
     A.QuestAssist.Update=function() end

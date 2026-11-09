@@ -55,20 +55,20 @@ return function(test,eq,F,A,C)
         page,index=A.QuestAssist.Page({9},2);eq(index,1);eq(page[1],9)
     end)
     test("配置边界恢复损坏值且保留有效偏好",function()
-        local s={mode="custom",role="HEALER",scale=0/0,alpha=5,minutes=90,waitMinutes=-1,position={"invalid","CENTER",0,0}}
+        local s={mode="fast",gearPreference="nearby",role="HEALER",scale=0/0,alpha=5,minutes=90,waitMinutes=-1,position={"invalid","CENTER",0,0}}
         C:NormalizeSettings(s)
-        eq(s.mode,"relaxed");eq(s.role,"HEALER");eq(s.scale,1);eq(s.alpha,0.94)
+        eq(s.mode,nil);eq(s.gearPreference,"xp");eq(s.role,"HEALER");eq(s.scale,1);eq(s.alpha,0.94)
         eq(s.minutes,90);eq(s.waitMinutes,10);eq(s.position,nil)
     end)
     test("恢复设置保留角色事实、暂缓与副本选择",function()
-        C.settings={mode="story",scale=1.3,position={"CENTER","CENTER",1,2}}
+        C.settings={scale=1.3,position={"CENTER","CENTER",1,2}}
         C.char={skipped={[1]=true},samples={},dungeon={id=42}}
         C.state={completed={[7]=true}}
         C.UI={frame={ClearAllPoints=function() end,SetPoint=function() end},ApplyStyle=function() end,Settings={Refresh=function() end}}
         C.Navigation={RefreshPins=function() end};C.State={Refresh=function() end}
         C.Transport={InvalidateSample=function() end}
         C:RestoreSettings()
-        eq(C.settings.mode,"relaxed");eq(C.settings.position,nil)
+        eq(C.settings.mode,nil);eq(C.settings.position,nil)
         eq(C.state.completed[7],true);eq(C.char.skipped[1],true);eq(C.char.dungeon.id,42)
     end)
     test("损坏角色统计不影响有效交付历史与偏好",function()

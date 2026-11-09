@@ -140,7 +140,7 @@ print(string.format("RECIPIENTS %d independent quests without coordinates; %d sh
 -- All four remaining-objective combinations must preserve the same real instance.
 local q=assert(A.Data:GetQuest(914));local descriptions=A.Data:ReferenceObjectiveTargets(q,s)
 s.locked=914;s.level=30;s.position={map=1413,x=0.46,y=0.365}
-local function plan() return run(function() return A.Planner.Build(s,A.Data,{minutes=60,mode="fast",dungeons=false,role="DAMAGER"}) end) end
+local function plan() return run(function() return A.Planner.Build(s,A.Data,{minutes=60,gearPreference="xp",dungeons=false,role="DAMAGER"}) end) end
 for wanted=1,4 do
  s.quests={[914]={objectives={}}};s.inInstance=false
  for i,o in ipairs(descriptions) do local c={};for k,v in pairs(o) do c[k]=v end;c.finished=i~=wanted;s.quests[914].objectives[i]=c end

@@ -184,7 +184,7 @@ local function preparationFixture()
     local data,state=F.Data(quests),F.State()
     data.Target=function(_,q) return {map=q.id==1 and 1 or 2,x=q.id/10,y=0.5} end
     local B={Navigation=F.Navigation,Data=data,Content=data.content,state=state,char={locked=1,skipped={}},ready=true,
-        settings={minutes=60,mode="fast",dungeons=true,role="DAMAGER"}}
+        settings={minutes=60,gearPreference="xp",dungeons=true,role="DAMAGER"}}
     for _,file in ipairs({"State.lua","Planner/Eligibility.lua","Planner/Chains.lua","Planner/Travel.lua","Planner/Gear.lua",
         "Planner/Progression.lua","Planner/Supplies.lua","Planner/Dungeon.lua","Planner/DungeonTasks.lua",
         "Planner/TaskGuide.lua","Planner/TaskQueue.lua","Planner/Planner.lua","Planner/Selection.lua","UI/Main.lua","UI/Tracker.lua"}) do

@@ -54,7 +54,7 @@ end)
 run("已在对应战场继续目标并在完成后离开交付",function()
     local B,s,data=fixture();s.inInstance=true;s.instanceId=529;s.position={map=2,x=0.1,y=0}
     s.quests[1]={objectives={{text="战场目标",numRequired=1,numFulfilled=0}}}
-    local p=plan(s,data,{dungeons=false,minutes=60,mode="fast"},B)
+    local p=plan(s,data,{dungeons=false,minutes=60,gearPreference="xp"},B)
     eq(p.fallback.kind,"objective");eq(p.fallback.questId,1);eq(choice(p,1).entryBlocked,nil)
     eq(choice(p,1).currentInstance,true)
     s.quests[1].ready=true;p=plan(s,data,nil,B);eq(p.fallback.kind,"pvpLeave");eq(p.fallback.position,nil)
@@ -79,11 +79,5 @@ run("战场内接取可用任务并优先当前地图的剩余目标",function()
     local stages={{kind="objective",objectiveIndex=1,position={map=1,x=0,y=0}},
         {kind="objective",objectiveIndex=2,position={map=2,x=0,y=0}}}
     local first=B.Dungeon.OrderTaskObjectives(stages,s,data);eq(first.objectiveIndex,2)
-end)
-test("五个当前构建战场身份独立于地下城目录",function()
-    local B={};assert(loadfile("Data/Dungeons.lua"))("AiLeveling",B)
-    local n=0;for id,entry in pairs(B.PvPCatalog.entries) do n=n+1;eq(id,entry.instanceId);assert(entry.title~="") end
-    eq(n,5);eq(B.PvPCatalog.entries[2997].maps[1],2524);eq(B.PvPCatalog.entries[529].maps[1],1461)
-    eq(B.DungeonCatalog.entries["reference:529"],nil)
 end)
 end

@@ -5,7 +5,7 @@ return function(test,eq,F,plan)
             entryNode="goal",exitNode="goal",returnNode="start",actions={},runSeconds=600,waitSeconds=300,xp=1000}
         data.content.dungeons[1],data.content.version = d,"fixture"
         local B = {Navigation=F.Navigation,Content=data.content,Data=data,state=s,char={samples={}},
-            settings={minutes=60,mode="fast",dungeons=true,role="DAMAGER",learn=true},RequestRefresh=function() end}
+            settings={minutes=60,gearPreference="xp",dungeons=true,role="DAMAGER",learn=true},RequestRefresh=function() end}
         for _, file in ipairs({"State.lua","Planner/Eligibility.lua","Planner/Travel.lua","Planner/Gear.lua","Planner/Progression.lua","Planner/Supplies.lua","Planner/Dungeon.lua","Planner/DungeonTasks.lua","Planner/Planner.lua"}) do
             assert(loadfile(file))("AiLeveling",B)
         end

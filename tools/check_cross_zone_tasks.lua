@@ -43,7 +43,7 @@ s.level,s.maxXP,s.faction,s.class,s.raceId=12,A.Experience.xpToLevel[12],faction
 s.classMask,s.raceMask=db.Enum.classKeys[class],db.Enum.raceMaskById[raceId]
 s.spells,s.specializations,s.completionKnown={},{},true
 s.position={map=originMap,x=0.02,y=0.5}
-local options={minutes=60,mode="fast",dungeons=false,role="DAMAGER"}
+local options={minutes=60,gearPreference="xp",dungeons=false,role="DAMAGER"}
 local started=os.clock()
 local function plan() return run(function() return A.Planner.Build(s,A.Data,options) end) end
 if faction=="Horde" then

@@ -61,7 +61,7 @@ local d=catalog[faction=="Alliance" and "reference:36" or "reference:389"]
 A.state,A.char,A.ready=s,{turnIns={},skipped={}},true
 A.State.Refresh=function() A.Selection:Snapshot(s);A.Dungeon:TaskBatchSnapshot(s) end
 assert(A.Dungeon:StartTaskBatch(d.id))
-local p=run(function() return A.Planner.Build(s,A.Data,{minutes=60,mode="fast",dungeons=true,role="DAMAGER"}) end)
+local p=run(function() return A.Planner.Build(s,A.Data,{minutes=60,gearPreference="xp",dungeons=true,role="DAMAGER"}) end)
 assert(p.taskBatch.rewards.count>0 and p.taskBatch.rewards.xp>0)
 local r=p.taskBatch.rewards
 print(string.format("batch\t%s\t%d roots\t%d counted\t%d reference XP\t%d unknown\t%d need prerequisites",d.title,p.taskBatch.remaining,r.count,r.xp,r.unknownXP,r.prepare))

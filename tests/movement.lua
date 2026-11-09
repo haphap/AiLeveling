@@ -20,16 +20,13 @@ test("耗时未知时相邻区域的近任务仍按直线距离排序",function(
         return {questId=id,actions={{position=p}},stages={{position=p}},stagesComplete=true,work={missing=1}}
     end
     local far,near,other=choice(1,1,0.8),choice(2,2,0.1),choice(3,3,0.01)
-    for _,mode in ipairs({"fast","relaxed","story"}) do
-        s.mode=mode
-        local order=B.Planner.TaskOrder(s,{far,other,near})
-        eq(order[1],near);eq(order[2],far);eq(order[3],other)
-        eq(order[1].orderBasis,"movement-time")
-        near.stagesComplete=false
-        order=B.Planner.TaskOrder(s,{far,other,near})
-        eq(order[1],near);eq(order[1].orderBasis,"geometry")
-        near.stagesComplete=true
-    end
+    local order=B.Planner.TaskOrder(s,{far,other,near})
+    eq(order[1],near);eq(order[2],far);eq(order[3],other)
+    eq(order[1].orderBasis,"movement-time")
+    near.stagesComplete=false
+    order=B.Planner.TaskOrder(s,{far,other,near})
+    eq(order[1],near);eq(order[1].orderBasis,"geometry")
+    near.stagesComplete=true
     s.locked=1;eq(B.Planner.TaskOrder(s,{far,other,near})[1],far)
 end)
 test("当前位置未接入任何命名节点时仍可直线前往目的地",function()

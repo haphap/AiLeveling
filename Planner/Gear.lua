@@ -406,7 +406,7 @@ function G.TaskBenefits(choice,q,state,data)
 end
 
 function G.PreferTask(choices,state,options)
-    if state.locked or state.gearTarget or options.mode=="fast" or options.gearPreference=="xp" then return end
+    if state.locked or state.gearTarget or options.gearPreference=="xp" then return end
     local base,best,gain,rate
     for _,choice in ipairs(choices) do
         if not choice.lowValue and not choice.acceptBlocked and not choice.entryBlocked and not choice.requireCheck then
@@ -462,7 +462,7 @@ function G.Prefer(candidates,base,state,options)
         return base,"装备目标暂无可执行行程"
     end
     if not base then return nil end
-    if options.mode=="fast" or options.gearPreference=="xp" then return base end
+    if options.gearPreference=="xp" then return base end
     local best,gain=base,0
     for _,candidate in ipairs(candidates) do
         if not candidate.requiresAcceptance and (candidate.priority or 0)==(base.priority or 0) and candidate.rate>=base.rate*0.95 then

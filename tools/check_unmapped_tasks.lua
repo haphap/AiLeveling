@@ -68,7 +68,7 @@ s.clientVersion,s.clientBuild,s.faction,s.class,s.raceId="1.60.1","70862",factio
 s.classMask,s.raceMask=db.Enum.classKeys[class],db.Enum.raceMaskById[raceId]
 s.locked=id;s.quests={[id]={title=q.title,objectives={{type="event",text="按日志完成事件",numFulfilled=0,numRequired=1}}}}
 s.position={map=1458,x=0.5,y=0.5}
-local function plan() return run(function() return A.Planner.Build(s,A.Data,{minutes=60,mode="fast",dungeons=false,role="DAMAGER"}) end) end
+local function plan() return run(function() return A.Planner.Build(s,A.Data,{minutes=60,gearPreference="xp",dungeons=false,role="DAMAGER"}) end) end
 local p=plan();assert(p.fallback.kind=="dungeonEnter" and p.fallback.questId==id)
 assert(p.fallback.position.map==A.Data.maps[1497] and math.abs(p.fallback.position.x-0.7241)<0.000001)
 s.position=p.fallback.position;p=plan();assert(p.fallback.kind=="dungeonEnter" and not s.quests[id].ready)

@@ -26,7 +26,7 @@ local function fixture()
     return B,s,d,quests
 end
 local function find(p,id) for _,c in ipairs(p.taskChoices) do if c.questId==id then return c end end end
-local balanced={minutes=60,mode="relaxed",gearPreference="balanced",dungeons=false,role="DAMAGER"}
+local balanced={minutes=60,gearPreference="balanced",dungeons=false,role="DAMAGER"}
 
 test("同构建首领掉落进入比较与手选导航，击败不当作拿到装备且版本失配保留选择",function()
     local B,s,d=fixture()
@@ -90,8 +90,7 @@ end)
 test("装备偏好只在接近最高移动收益的未接任务间生效且不挤掉已接整组",function()
     local B,s,d,q=fixture()
     local p=plan(s,d,balanced,B);eq(p.fallback.questId,2);assert(p.preferenceApplied)
-    eq(plan(s,d,{minutes=60,mode="fast",gearPreference="balanced"},B).fallback.questId,1)
-    eq(plan(s,d,{minutes=60,mode="relaxed",gearPreference="xp"},B).fallback.questId,1)
+    eq(plan(s,d,{minutes=60,gearPreference="xp"},B).fallback.questId,1)
     q[2].taskFacts.xp={{1,900}};eq(plan(s,d,balanced,B).fallback.questId,1)
     q[2].taskFacts.xp={{1,1000}};s.items[101]=item(101,0);s.items[100]=item(100,0)
     eq(plan(s,d,balanced,B).fallback.questId,1)

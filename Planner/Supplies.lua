@@ -107,7 +107,7 @@ local function gain(cursor,id,count,metadata)
     return true
 end
 local function space(cursor,action,metadata)
-    local minimum=math.max(action.minFreeSlots or 0,action.reserveSlots or 0)
+    local minimum=action.minFreeSlots or 0
     if general(cursor.inventory)<minimum then return false,{kind="space",text="通用背包空间不足",freeSlots=minimum} end
     for _,id in ipairs(ids(action.gainItems)) do
         local ok,issue=gain(cursor,id,action.gainItems[id],metadata)
@@ -116,10 +116,6 @@ local function space(cursor,action,metadata)
             return false,issue
         end
         cursor.bags[id]=(cursor.bags[id] or 0)+action.gainItems[id]
-    end
-    local reserved=action.reserveSlots or 0
-    for _,bag in pairs(cursor.inventory.bags) do
-        if bag.family==0 then local used=math.min(reserved,bag.free);bag.free,reserved=bag.free-used,reserved-used end
     end
     return true
 end
@@ -145,13 +141,8 @@ function S.Apply(action,cursor,metadata)
     local ok,issue=space(projected,action,metadata)
     if not ok then return nil,issue end
     if action.repairTo then projected.durability=action.repairTo end
-    if action.durabilityLoss then
-        if not projected.durability then return nil,{kind="unknown",text="耐久消耗模型缺少当前耐久"} end
-        projected.durability=math.max(0,projected.durability-action.durabilityLoss)
-    end
     if action.unlockAfter then projected.unlocked[action.unlockAfter]=true end
     for _,key in ipairs(action.unlocksAfter or {}) do projected.unlocked[key]=true end
-    if action.levelAfter then projected.level=action.levelAfter end
     return projected
 end
 function S.Done(action,state)
@@ -427,13 +418,10 @@ function S.ValidAction(action)
             if not number(id,1,math.huge,true) or not number(count,1,math.huge,true) then return false,"物品 ID 或数量无效" end
         end
     end
-    for _,field in ipairs({"minFreeSlots","reserveSlots","lootSlots"}) do
-        if action[field]~=nil and not number(action[field],0,math.huge,true) then return false,"容量模型无效" end
-    end
+    if action.minFreeSlots~=nil and not number(action.minFreeSlots,0,math.huge,true) then return false,"容量模型无效" end
     for _,field in ipairs({"minDurability","repairTo"}) do
         if action[field]~=nil and not (number(action[field],0,1) and action[field]>0) then return false,"耐久模型无效" end
     end
-    if action.durabilityLoss~=nil and not number(action.durabilityLoss,0,1) then return false,"耐久消耗无效" end
     if action.kind=="service" then
         local goal=action.serviceGoal
         if type(goal)~="table" or not next(goal) then return false,"服务完成条件缺失" end

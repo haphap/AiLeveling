@@ -2,7 +2,7 @@ local addonName, A = ...
 _G.AiLeveling = A
 A.name = addonName
 A.version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addonName,"Version") or "dev"
-A.defaults = { mode = "relaxed", minutes = 60, dungeons = true, role = "DAMAGER",
+A.defaults = { minutes = 60, dungeons = true, role = "DAMAGER",
     scale = 1, alpha = 0.94, arrow = true, pins = true, items = true, highlight = true, worldHighlight = true, scanRares = true,
     combatFold = true, learn = true, waitMinutes = 10, damageStyle = "auto",
     fontScale=1,density="normal",lockWindow=false,routes=true,minimapPins=true,
@@ -11,7 +11,9 @@ A.jobs, A.dirty, A.requestedItems = {}, false, {}
 
 function A:NormalizeSettings(settings)
     settings.accent=nil
-    local choices={mode={relaxed=true,fast=true,story=true},role={DAMAGER=true,TANK=true,HEALER=true},
+    if settings.mode=="fast" then settings.gearPreference="xp" end
+    settings.mode=nil
+    local choices={role={DAMAGER=true,TANK=true,HEALER=true},
         damageStyle={auto=true,strength=true,agility=true,ranged=true,caster=true,hybrid=true},
         density={compact=true,normal=true,expanded=true},
         distanceUnits={yards=true,meters=true},gearPreference={nearby=true,xp=true}}
@@ -144,7 +146,7 @@ function A:SetOption(key, value)
     self.Navigation:RefreshPins()
     if self.QuestAssist then self.QuestAssist:Update(true) end
     if self.Routes then self.Routes:Update(true) end
-    if self.ready and (key=="mode" or key=="role" or key=="minutes" or key=="dungeons" or key=="waitMinutes" or key=="damageStyle" or key=="gearPreference") then self.State:Refresh(true)
+    if self.ready and (key=="role" or key=="minutes" or key=="dungeons" or key=="waitMinutes" or key=="damageStyle" or key=="gearPreference") then self.State:Refresh(true)
     else self:RequestRefresh() end
     self.dirty = true
 end

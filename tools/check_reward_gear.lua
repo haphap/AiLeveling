@@ -52,7 +52,7 @@ assert(quests>1000 and sources>1000)
 print(string.format("sources\t%d reward quests\t%d sources",quests,sources))
 A.state,A.char=s,{turnIns={},skipped={}}
 A.State.Refresh=function() s.gearTarget=A.char.gearTarget end
-local options={minutes=60,mode="relaxed",gearPreference="balanced",dungeons=false,role="DAMAGER"}
+local options={minutes=60,gearPreference="balanced",dungeons=false,role="DAMAGER"}
 local function plan() return run(function() return A.Planner.Build(s,A.Data,options) end) end
 for _,level in ipairs({6,12,20}) do
     s.level,s.maxXP=level,A.Experience.xpToLevel[level]

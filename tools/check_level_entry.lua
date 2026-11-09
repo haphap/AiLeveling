@@ -45,7 +45,7 @@ s.level,s.maxXP,s.faction,s.class,s.raceId=1,A.Experience.xpToLevel[1],faction,c
 s.classMask,s.raceMask=db.Enum.classKeys[class],db.Enum.raceMaskById[raceId]
 s.spells,s.specializations,s.completionKnown={},{},true
 
-local options={minutes=60,mode="fast",dungeons=false,role="DAMAGER"}
+local options={minutes=60,gearPreference="xp",dungeons=false,role="DAMAGER"}
 local function plan() return run(function() return A.Planner.Build(s,A.Data,options) end) end
 for level=1,60 do
     s.level,s.maxXP=level,A.Experience.xpToLevel[level]

@@ -215,7 +215,6 @@ function State:Refresh(force)
     s.skipped, s.locked, s.samples = A.char.skipped, A.char.locked, {}
     s.role, s.groupSize = A.settings.role, GetNumGroupMembers()
     s.damageStyle=A.settings.damageStyle or "auto"
-    s.mode=A.settings.mode
     self.Movement(s)
     s.now, s.freeSlots = GetTime(), 0
     s.groupSize = math.max(1, s.groupSize)
@@ -314,7 +313,7 @@ function State:Refresh(force)
         fingerprint[#fingerprint+1] = table.concat({d.id,d.round,d.phase,tostring(d.settled),math.floor(d.elapsed/30),table.concat(done,",")},":")
     end
     fingerprint[#fingerprint + 1] = table.concat({s.level, s.xp, tostring(s.maxXP), s.classId, s.raceId, s.groupSize,
-        tostring(s.inInstance), A.settings.mode, A.settings.role, A.settings.minutes,
+        tostring(s.inInstance), A.settings.role, A.settings.minutes,
         tostring(A.settings.dungeons), tostring(s.locked), tostring(s.instanceId), tostring(s.instanceDifficultyId), tostring(s.dead),
         tostring(A.settings.waitMinutes),s.damageStyle,tostring(s.gearTarget),tostring(A.settings.gearPreference),
         tostring(s.runSpeed),tostring(s.swimSpeed)}, ":")

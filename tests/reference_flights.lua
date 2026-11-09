@@ -236,7 +236,7 @@ local function queueFixture()
     B.Progression=A.Progression
     assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
     assert(loadfile("Planner/TaskQueue.lua"))("AiLeveling",B)
-    s.maxXP=1000000;s.xp=0;s.mode="relaxed"
+    s.maxXP=1000000;s.xp=0
     local function choice(id,point)
         return {questId=id,stagesComplete=true,stages={{position=point,kind="turnin"}},
             remainingXP=10,actions={{position=point}},status="turnin"}
@@ -412,14 +412,11 @@ test("队列按整程跑路选择顺序而非只看最近首目标且无需执�
     local a,b,c=task(1,0.1,0.9),task(2,0.2,0.3),task(3,0.8,1)
     local before=B.TaskQueue.Evaluate({a,b,c},s,nav)
     assert(math.abs(before.seconds-240)<0.00001)
-    for _,mode in ipairs({"fast","relaxed","story"}) do
-        s.mode=mode
-        local order,queue=B.TaskQueue.Solve({a,b,c},s,nav)
-        eq(order[1],a);eq(order[2],b);eq(order[3],c)
-        assert(math.abs(queue.seconds-100)<0.00001)
-        eq(queue.remaining,0);eq(b.orderBasis,"queue-movement")
-        eq(a.executionTiming.movementOnly,true)
-    end
+    local order,queue=B.TaskQueue.Solve({a,b,c},s,nav)
+    eq(order[1],a);eq(order[2],b);eq(order[3],c)
+    assert(math.abs(queue.seconds-100)<0.00001)
+    eq(queue.remaining,0);eq(b.orderBasis,"queue-movement")
+    eq(a.executionTiming.movementOnly,true)
     s.locked=1;local order=B.TaskQueue.Solve({a,b,c},s,nav);eq(order[1],a)
 end)
 local function stagedFixture()
@@ -540,7 +537,7 @@ test("三项窗口滚动到全队列且始终包含窗口外任务",function()
     for i=1,4 do assert(seen[i]) end
     assert(math.abs(queue.seconds-80)<0.000001);eq(s.position,O)
 end)
-test("位置未知的任务保留且所有模式都按移动时间比较并保留锁定",function()
+test("位置未知的任务保留并按移动时间比较且保留锁定",function()
     local B,s,nav,O,T,choice=queueFixture()
     local unknown,first,second=choice(777,O),choice(99,T),choice(98,O)
     unknown.stagesComplete=false
@@ -548,7 +545,7 @@ test("位置未知的任务保留且所有模式都按移动时间比较并保�
     eq(#order,3);eq(order[3],unknown);eq(#queue.steps,2);eq(queue.remaining,1)
     eq(unknown.executionTiming,nil)
     s.locked=777;eq(B.TaskQueue.Solve({unknown,first,second},s,nav),nil)
-    s.locked=nil;s.mode="story";eq(B.TaskQueue.Solve({unknown,first,second},s,nav)[3],unknown)
+    s.locked=nil;eq(B.TaskQueue.Solve({unknown,first,second},s,nav)[3],unknown)
     order,queue=B.TaskQueue.Solve({first,unknown,second},s,nav)
     eq(order[1],second);eq(order[2],first);eq(order[3],unknown);eq(#queue.steps,2);eq(queue.remaining,1)
 end)
@@ -563,19 +560,6 @@ test("队列连续升级保留客户端曲线口径且未知门槛后停止累�
     eq(queue.forecast.level,23);eq(queue.forecast.xp,90);eq(queue.xp,300);eq(queue.xpKnown,true)
     B.Experience.xpToLevel[21]=nil;queue=B.TaskQueue.Evaluate(order,s,nav,data)
     eq(queue.xpKnown,false);eq(queue.xp,100);eq(queue.forecast.uncertain,true);eq(s.level,20);eq(s.xp,90)
-end)
-test("实际规划入口把飞行段插入参考任务且保留原生交付条件",function()
-    local B,s,a,nav=fixture();local oldFlights,oldNav=A.Flights,A.Navigation
-    B.Travel=A.Travel;s.runSpeed=nil
-    A.Flights=B.Flights;A.Navigation=nav
-    s.quests={[99]={title="交付任务",ready=true,objectives={}}}
-    local d=F.Data({[99]={id=99,title="交付任务"}})
-    d.Target=function() return a.position end
-    local result=plan(s,d)
-    assert(result.referenceFlight);eq(result.travelActions[1].mode,"flight")
-    eq(result.fallback.kind,"turnin");eq(result.travelActions[#result.travelActions].kind,"turnin")
-    eq(s.completed[99],nil)
-    A.Flights,A.Navigation=oldFlights,oldNav
 end)
 test("原生飞行地图捕获独立快照并在世界变更或期限到期失效",function()
     local old={GetTime=GetTime,GetTaxiMapID=GetTaxiMapID,C_TaxiMap=C_TaxiMap,TaxiNodeCost=TaxiNodeCost,UnitOnTaxi=UnitOnTaxi}

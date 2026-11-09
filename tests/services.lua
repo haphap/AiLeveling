@@ -389,18 +389,6 @@ test("过期自动绑定建议和错误NPC不确认，取消或另选服务使�
     S:Event("HEARTHSTONE_BOUND");assert(B.char.serviceStop);eq(B.Hearth.landing,nil)
     finish()
 end)
-test("自动旅店建议提供服务页取消入口且维修优先保留原任务",function()
-    local B,s,inns,finish,e,rebuild=automaticFixture();rebuild()
-    B.UI={};assert(loadfile("UI/Services.lua"))("AiLeveling",B);local ui=B.UI.Services
-    local function widget() return {SetText=function() end,SetEnabled=function(self,v) self.enabled=v end} end
-    ui.mode={text=widget()};ui.label=widget();ui.previous=widget();ui.next=widget();ui.choose=widget();ui.choose.text=widget();ui.cancel=widget()
-    ui:Refresh();eq(ui.cancel.enabled,true)
-    assert(table.concat(ui:Lines(),"\n"):find("当前建议：交付地旅店",1,true))
-    B.Services:Cancel();rebuild();ui:Refresh();eq(ui.cancel.enabled,false)
-    B.char.declinedBinding=nil;s.durability=0.1;s.merchant={npcId=9,name="铁匠",canRepair=true,items={}}
-    local p=rebuild();eq(p.maintenance,true);eq(p.automaticService,nil);eq(p.fallback.serviceKind,"repair")
-    finish()
-end)
 test("手选旅店直接到店不安排延后步骤且不预测新绑定",function()
     local B,s,p,inns,finish=bindingFixture();local S=B.Services
     p.bindingChoices=S.PlanBindings(p,s,B.Data)

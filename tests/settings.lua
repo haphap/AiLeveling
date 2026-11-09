@@ -303,7 +303,7 @@ test("关闭数量与缺失文字不取消物品需求和规划约束",function(
     B:SetOption("quantity",false);B:SetOption("missingChecks",false)
     eq(Q.buttons[1].count.value,"");eq(Q.detailsText:find("2/5",1,true),nil);eq(Q.detailsText:find("缺少至少",1,true),nil)
     eq(Q.wanted[1],500)
-    local result=plan(B.state,B.Data,{minutes=60,mode="fast",missingChecks=false})
+    local result=plan(B.state,B.Data,{minutes=60,gearPreference="xp",missingChecks=false})
     eq(result.best,nil);eq(B.state.bags[500],2)
     B.finish()
 end)

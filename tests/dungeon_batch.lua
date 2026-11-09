@@ -15,7 +15,7 @@ local function fixture()
     end
     data.ObjectiveTargets=function(_,q) return {{map=q.id<=2 and 2 or 1,x=q.id/10,y=0.3,objectiveIndex=1}} end
     local B={Data=data,Content=data.content,state=s,char={turnIns={},skipped={}},Navigation=F.Navigation,ready=true,
-        settings={minutes=60,mode="fast",dungeons=true,role="DAMAGER"},
+        settings={minutes=60,gearPreference="xp",dungeons=true,role="DAMAGER"},
         DungeonCatalog={version="1.60.1",build="70862",entries={ref=d}}}
     for _,file in ipairs({"State.lua","Planner/Eligibility.lua","Planner/Chains.lua","Planner/Travel.lua","Planner/Gear.lua",
         "Planner/Progression.lua","Planner/Supplies.lua","Planner/Dungeon.lua","Planner/DungeonTasks.lua",

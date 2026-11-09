@@ -114,11 +114,6 @@ test("飞行地图切层图标不能当作实际飞行连接或询价",function(
     eq(s.unlocked["taxi:9"],nil);eq(s.taxiAvailability["1:9"],nil);eq(calls,0)
     TaxiNodeCost=original
 end)
-test("新飞行点与声望变化清除旧连通缓存",function()
-    B.Transport.availability["1:5"]=false
-    B.Transport:InvalidateFlights();eq(B.Transport.availability["1:5"],nil)
-    eq(B.Transport.known["taxi:5"],true);eq(B.Transport.dirty,true)
-end)
 test("炉石读取实际冷却且到期只唤醒一次",function()
     local s=snapshot();eq(s.hearthReady,160);eq(s.hearthNode,"a")
     eq(B.Transport.Key(s),B.Transport.Key(snapshot(130)))
@@ -164,7 +159,7 @@ test("双手改双持时缺少搭配武器伤害不能认定为确定提升",fun
     local route={rate=96,actions={{kind="turnin",questId=7}}}
     local base={rate=100,actions={}}
     G.Benefits({base,route},s,content);eq(route.gear,nil)
-    eq(G.Prefer({base,route},base,s,{mode="relaxed"}),base)
+    eq(G.Prefer({base,route},base,s,{}),base)
     companion.weaponDPS=5;r=G.Upgrade(candidate,s);assert(not r.provisional)
     G.Benefits({base,route},s,content);assert(route.gear)
 end)

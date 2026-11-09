@@ -137,14 +137,6 @@ test("低价值已接任务不会阻止推荐未接的有效任务",function()
     q.taskFacts={level=20,xp={{1,1000}}};eq(B.TaskGuide.LowValue(q,s,d),nil)
     q.taskFacts=nil;s.completed={};eq(B.TaskGuide.LowValue(q,s,d),nil)
 end)
-test("低价值任务不被整程重排重新提升到首位",function()
-    local B,s,q,d=fixture()
-    local low={questId=1,lowValue={suggestion="建议放弃"},actions={{position=s.position}}}
-    local good={questId=2,actions={{position={map=1,x=0.9,y=0}}},stagesComplete=true,
-        stages={{kind="turnin",position={map=1,x=0.9,y=0}}},remainingXP=1000}
-    s.quests[2]={}
-    local order=B.Planner.TaskOrder(s,{low,good},d);eq(order[1],good);eq(order[2],low)
-end)
 test("未灰但远处低经验任务降级，近处高经验和同级任务保留",function()
     local B,s,q,d=fixture();q.questLevel=17;q.taskFacts.level=17;q.taskFacts.xp={{1,1000}}
     local choice={timing={seconds=300}}

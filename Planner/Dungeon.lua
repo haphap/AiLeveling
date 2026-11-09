@@ -283,11 +283,10 @@ function D.Evaluate(d,state,options,data)
                 itinerary[#itinerary+1]=effect
             end
         end
-        itinerary[#itinerary+1]={kind="dungeonRun",seconds=run,arriveNode=d.exitNode,consumeItems=d.consumeItems,
-            reserveSlots=d.lootSlots,durabilityLoss=d.durabilityLoss}
+        itinerary[#itinerary+1]={kind="dungeonRun",seconds=run,arriveNode=d.exitNode,consumeItems=d.consumeItems}
         stage("after")
         itinerary[#itinerary+1]={kind="move",node=d.returnNode,seconds=0}
-        context.maxSeconds=options.minutes*60-(d.failureProbability or 0)*(d.recoverySeconds or 0)
+        context.maxSeconds=options.minutes*60
         local paths,reason
         if A.Supplies then paths,reason=A.Supplies.Itinerary(data.content,from,itinerary,context)
         else paths,reason=A.Travel.Itinerary(data.content,from,itinerary,context) end
@@ -295,7 +294,7 @@ function D.Evaluate(d,state,options,data)
         travel,resources,previewActions=paths[1].seconds-run-wait,paths[1].resources,paths[1].actions
     end
     if not travel then return nil,"往返路线待补齐" end
-    local seconds=travel+run+wait+(d.failureProbability or 0)*(d.recoverySeconds or 0)
+    local seconds=travel+run+wait
     if seconds>options.minutes*60 then return nil,"超出本次游戏时间" end
     if resources then resources.now=(state.now or 0)+seconds end
     local xp=d.xp

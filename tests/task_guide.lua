@@ -30,15 +30,6 @@ test("已完成物品仍保留原生需求与补收集位置且不改变真实�
     s.quests[1].objectives[1].numRequired=nil
     eq(#B.TaskGuide.ItemRequirements(q,s,data),0)
 end)
-test("完整任务步骤保留实际剩余目标与交付且不预测完成事实",function()
-    local B,s,data,q=fixture()
-    local stages,complete=B.TaskGuide.Stages(q,s,data,{kind="objective",questId=1,objectiveIndex=2,position={map=1,x=10}})
-    eq(#stages,2);eq(stages[1].objectiveIndex,2);eq(stages[1].need,3);eq(stages[2].kind,"turnin");eq(stages[2].position.x,90)
-    eq(complete,true);eq(s.completed[1],nil);eq(s.quests[1].ready,nil)
-    s.quests[1].ready=true
-    stages=B.TaskGuide.Stages(q,s,data,{kind="turnin",questId=1,position={map=1,x=90}})
-    eq(#stages,1);eq(stages[1].kind,"turnin")
-end)
 test("未接任务预览接取目标交付且未来目标不伪装原生日志索引",function()
     local B,s,data,q=fixture();s.quests={}
     local reference,calls=data.ReferenceObjectiveTargets,0

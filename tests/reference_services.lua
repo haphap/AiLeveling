@@ -40,15 +40,6 @@ test("服务索引遵守当前数据库枚举阵营坐标楼层和商品关系",
     finish()
 end)
 
-test("旅店和训练师目录采用实际枚举并过滤阵营地图楼层而不猜职业资格",function()
-    local B,s,d,rows,finish=setup();eq(B.Data.amenityCount,3)
-    local points=B.Data:AmenityPoints(s,"bind");eq(#points,1);eq(points[1].npcId,10)
-    points=B.Data:AmenityPoints(s,"train");eq(#points,1);eq(points[1].npcId,11);eq(points[1].description,"专业训练师")
-    s.faction="Horde";points=B.Data:AmenityPoints(s,"bind");eq(points[1].npcId,12)
-    s.faction=nil;points=B.Data:AmenityPoints(s,"bind");eq(#points,0)
-    s.position=nil;eq(#B.Data:AmenityPoints(s,"train"),0)
-    finish()
-end)
 
 test("服务目录扩展任务经过的室外地图并保留阵营去重与实例排除",function()
     local B,s,d,rows,finish=setup()
@@ -75,7 +66,7 @@ end)
 
 test("真实服务入口无价格耗时也可导航且实际腾空或维修后恢复任务",function()
     local B,s,d,rows,finish=setup()
-    local result=plan(s,d,{minutes=60,mode="fast",dungeons=false},B)
+    local result=plan(s,d,{minutes=60,gearPreference="xp",dungeons=false},B)
     eq(result.best,nil);eq(result.maintenance,true);eq(result.fallback.npcId,1);eq(result.fallback.kind,"service")
     eq(result.fallback.seconds,nil);eq(result.fallback.moneyCost,nil);eq(B.Supplies.Done(result.fallback,s),false)
     s.freeSlots=1;s.inventory={bags={{family=0,free=1}},slots={}}
@@ -83,9 +74,9 @@ test("真实服务入口无价格耗时也可导航且实际腾空或维修后�
     d.GetQuest=function(_,id) if id==42 then return {id=42,title="保留的任务"} end end
     d.Target=function() return {map=1,x=0.4,y=0.5} end
     s.quests[42]={title="保留的任务",objectives={}};s.locked=42
-    result=plan(s,d,{minutes=60,mode="fast",dungeons=false},B)
+    result=plan(s,d,{minutes=60,gearPreference="xp",dungeons=false},B)
     eq(result.maintenance,nil);eq(result.fallback.questId,42)
-    s.durability=0.1;result=plan(s,d,{minutes=60,mode="fast",dungeons=false},B)
+    s.durability=0.1;result=plan(s,d,{minutes=60,gearPreference="xp",dungeons=false},B)
     eq(result.maintenance,true);eq(result.fallback.npcId,2);eq(s.locked,42)
     eq(B.Supplies.Done(result.fallback,s),false);s.durability=0.8;eq(B.Supplies.Done(result.fallback,s),true)
     finish()

@@ -10,7 +10,7 @@ end
 local function dungeon(content,s)
     local d={id=1,instanceId=42,difficultyId=1,title="资源夹具副本",verified=true,minLevel=10,maxLevel=30,entryNode="goal",exitNode="goal",returnNode="home",actions={},runSeconds=600,xp=1000}
     content.dungeons={[1]=d}
-    local B={Navigation=F.Navigation,Content=content,Data=data({},content),state=s,char={samples={}},settings={dungeons=true,minutes=60,mode="fast",role="DAMAGER"},RequestRefresh=function() end}
+    local B={Navigation=F.Navigation,Content=content,Data=data({},content),state=s,char={samples={}},settings={dungeons=true,minutes=60,gearPreference="xp",role="DAMAGER"},RequestRefresh=function() end}
     for _,file in ipairs({"State.lua","Planner/Eligibility.lua","Planner/Travel.lua","Planner/Gear.lua","Planner/Progression.lua","Planner/Supplies.lua","Planner/Dungeon.lua","Planner/Planner.lua"}) do assert(loadfile(file))("AiLeveling",B) end
     B.State.Refresh=function() B.Dungeon:Sync(s,{}) end
     return B,d

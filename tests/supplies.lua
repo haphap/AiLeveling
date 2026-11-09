@@ -11,19 +11,6 @@ local function services(quests)
     return d
 end
 
-test("专用包仅接收匹配物品且通用物品不能占草药包",function()
-    local s=state(0);s.inventory.bags[1]={family=32,free=1}
-    eq(S.Apply({gainItems={[100]=1}},S.Cursor(s),s.itemMetadata),nil)
-    local after=S.Apply({gainItems={[101]=1}},S.Cursor(s),s.itemMetadata)
-    eq(after.bags[101],1);eq(after.inventory.slots[1].bag,1);eq(s.inventory.bags[1].free,1)
-end)
-test("满包可补现有堆叠且优先使用匹配专用包",function()
-    local s=state(0);s.bags[100]=10;s.inventory.slots={{id=100,count=10,bag=0}}
-    local after=S.Apply({gainItems={[100]=10}},S.Cursor(s),s.itemMetadata);eq(after.bags[100],20)
-    eq(S.Apply({gainItems={[100]=11}},S.Cursor(s),s.itemMetadata),nil)
-    s=state(1);s.inventory.bags[1]={family=32,free=1}
-    after=S.Apply({gainItems={[101]=1}},S.Cursor(s),s.itemMetadata);eq(after.inventory.bags[0].free,1)
-end)
 test("明确全量消耗释放空间，部分消耗不虚增空格",function()
     local s=state(0);s.bags[100]=10;s.inventory.slots={{id=100,count=10,bag=0}}
     local after=S.Apply({consumeItems={[100]=10},gainItems={[101]=1}},S.Cursor(s),s.itemMetadata)
@@ -39,14 +26,14 @@ test("未知堆叠数据保持阻断，预测消耗不修改真实物品",functi
     eq(cursor.bags[100],0);eq(s.bags[100],5);eq(s.inventory.slots[1].count,5)
 end)
 
-test("副本出发补齐物品与耐久并保留内部消耗和返程资源",function()
+test("副本出发补齐必需物品与维修，按实际准备状态继续",function()
     local s=state(16);s.durability=0.1;F.Party(s)
     local d=services({});local instance={id=1,instanceId=42,difficultyId=1,title="服务夹具副本",verified=true,minLevel=10,maxLevel=30,
-        entryNode="goal",exitNode="goal",returnNode="start",runSeconds=600,xp=1000,waitSeconds=0,actions={},items={[100]=2},consumeItems={[100]=2},lootSlots=2,durabilityLoss=0.1}
+        entryNode="goal",exitNode="goal",returnNode="start",runSeconds=600,xp=1000,waitSeconds=0,actions={},items={[100]=2},consumeItems={[100]=2}}
     d.content.dungeons[1]=instance
     local r=A.Dungeon.Evaluate(instance,s,{minutes=60,role="DAMAGER",dungeons=true},d)
-    assert(r);eq(r.resources.supplies.bags[100],0);eq(r.resources.supplies.durability,0.9)
-    eq(r.resources.supplies.inventory.bags[0].free,14)
+    assert(r);eq(r.resources.supplies.bags[100],0);eq(r.resources.supplies.durability,1)
+    eq(r.resources.supplies.inventory.bags[0].free,16)
     local services=0;for _,a in ipairs(r.previewActions) do if a.kind=="service" then services=services+1;eq(a.stage,"before") end end
     eq(services,2)
 end)

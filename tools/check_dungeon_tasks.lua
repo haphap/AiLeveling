@@ -54,7 +54,7 @@ A.State.Refresh=function() A.Selection:Snapshot(s);A.Dungeon:TaskBatchSnapshot(s
 assert(A.Dungeon:StartTaskBatch(d.id))
 assert(A.char.taskBatch.baselines[prepareId]==0 and not A.char.dungeon)
 local co=coroutine.create(function()
-    return A.Planner.Build(s,A.Data,{minutes=60,mode="fast",dungeons=true,role="DAMAGER"})
+    return A.Planner.Build(s,A.Data,{minutes=60,gearPreference="xp",dungeons=true,role="DAMAGER"})
 end)
 local batchPlan
 repeat

@@ -17,7 +17,6 @@
 | runSeconds、xp | 完整副本内耗时参考及本轮基础经验；runSeconds 已含内部导航与任务执行，xp 排除单独记账的任务交付经验 |
 | questXP | 任务 ID → 经验；只在 actions 中安排交付、且本轮有望获得时计入，按 ID 去重 |
 | completionQuests | 可确认本轮完整执行的任务列表；全部实际完成且至少一项在本轮新完成时，允许记录副本比例样本 |
-| failureProbability、recoverySeconds | 有来源的失败恢复估计 |
 | rewardSources、version | 装备来源和内容版本；版本变化重建导航进度 |
 
 每个行动须指定 stage、kind、node。任务行动使用 questId；objective 使用 objectiveIndex；kind 支持 accept、objective、turnin、move。before 与 after 的任务行动按等耗时规则仅比较移动，不要求执行 seconds；service 保留实际服务 seconds，inside 行动耗时包含在 runSeconds 中。
@@ -74,7 +73,7 @@ Travel.Routes 保留最快路线及有利于后续使用炉石的备选；Travel
 
 状态采集使用普通任务上限 GetMaxNumQuestsCanAccept、实际任务数、各包家族／空格、逐格堆叠、任务物品标记和装备最低耐久。itemMetadata 从客户端及有来源的 items.stackSize／family 补充层读取。物品资料未就绪时等待异步加载。通用空格与专用包分别处理，已存在堆叠可继续填充，符合物品家族的专用包优先使用。
 
-动作新增字段：requiredItems 为本步携带下限，items 为可使用物品需求，consumeItems 为明确消耗，gainItems 为明确获得，均以物品 ID → 正整数数量记录。minFreeSlots 为所需通用空格，reserveSlots 为未逐项建模掉落占用的通用空间。minDurability 为最低耐久比例；durabilityLoss 为有来源的预计比例消耗。副本准备默认使用 20% 的内部耐久阈值，可指定 minDurability。预测只修改副本快照，实际任务／物品继续读客户端。
+动作字段：requiredItems 为本步携带下限，items 为可使用物品需求，consumeItems 为明确消耗，gainItems 为明确获得，均以物品 ID → 正整数数量记录。minFreeSlots 为所需通用空格，minDurability 为最低耐久比例。副本准备默认使用 20% 的内部耐久阈值，可指定 minDurability。物品和容量按已知动作顺序核对，维修按实际耐久安排。
 
 部分消耗不能确认客户端会先清哪一堆，因此只在该物品全量清空时预记释放空格；真实背包更新后按实际空格重算。已带库存和任务日志容量沿当前动作顺序传递；满日志时优先让可完成的已有任务释放槽位。共享目标若有独立物品／容量效果则保留独立动作，避免丢失或重复记账。
 
@@ -91,7 +90,7 @@ services[id] 使用 title、node、source、verified，并可限定 faction（Al
 
 service 动作须提供 serviceGoal，可用 items（携带量）、absentItems（所列物品清空）、capacityItems（可容纳后续获得物品）、freeSlots（通用空格）、durability（耐久比例）组合。到达服务点不代表服务完成，导航与恢复样本均等待实际状态达标。界面列出所需物品与缺少数量，不读取或判断商店库存。
 
-副本 items／requiredItems 和 consumeItems 在入口前检查及补齐，lootSlots 预留未逐项列出的掉落空间，durabilityLoss 为整轮明确模型。inside 动作的物品／日志效果仍逐项预测，其基准时间包含在 runSeconds；自动增加的服务绕路和交互额外计价。preQuests 在准备行程完成之后、进入之前检查，副本内未来交付不能提前解除进入条件。
+副本 items／requiredItems 和 consumeItems 在入口前检查及补齐。inside 动作的明确物品／日志效果按顺序核对，其基准时间包含在 runSeconds；自动增加的服务绕路和交互另计时间。preQuests 在准备行程完成之后、进入之前检查，副本内未来交付不能提前解除进入条件。
 
 服务与容量逻辑已回放；真实服务点、补给消耗、训练与旅店的完整自动安排及客户端操作仍需后续内容和实测补齐。
 
