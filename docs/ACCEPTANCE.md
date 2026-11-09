@@ -6,8 +6,8 @@
 
 - A 连续任务流程和 B 冻结清单的适用功能已完成开发及必要本地检查，详见 [RESTEDXP_PARITY.md](RESTEDXP_PARITY.md)。
 - C 已接通动态副本任务组的准备、进入、目标、交付、本内收尾和恢复野外任务；整次活动计时连接实际任务组。相关回归见 `dist/dungeon-activity-regression.log`。
-- 1—60 共用接续、职业独有分支与副本清单的开发复核已完成，结论见下表。已有 [起始及等级接入证据](LEVEL_ENTRY_REPLAY.md)、[角色组合清单](PLAYABLE_COVERAGE.md)、[副本清单](DUNGEON_COVERAGE.md)；接下来固定提交构建并检查统一验收包。连续全程经验和实际覆盖在最终游戏内验收记录。
-- 安装、升级、回退说明见 [README](../README.md)。Actions 已具备留空标签生成验收 Artifact 的入口，尚未生成本批最终验收包。已安装记录仍为 `0.1.129-dev`；旧 `cd9cbfa` 候选包不含当前改动。
+- 1—60 共用接续、职业独有分支与副本清单的开发复核已完成，结论见下表。已有 [起始及等级接入证据](LEVEL_ENTRY_REPLAY.md)、[角色组合清单](PLAYABLE_COVERAGE.md)、[副本清单](DUNGEON_COVERAGE.md)；统一包已完成构建和文件检查。连续全程经验和实际覆盖在最终游戏内验收记录。
+- 安装、升级、回退说明见 [README](../README.md)。本次统一验收使用下方 `9db2225` Artifact；其版本号沿用 `0.1.129-dev`，须用提交号区分旧已安装版本和公开旧包。旧 `cd9cbfa` 候选包不含当前改动。
 - 装备扩展按用户要求暂缓。覆盖和实机验收标记保持未通过。
 
 ## C 覆盖复核结论
@@ -52,9 +52,21 @@
 
 截至本次复核，已发现的开发断点均已修复并完成对应本地检查。冻结现有范围进入固定包检查；全程实际经验、未观察任务和原生交互结果仍属于完整交付的最终验收，未标为已通过。
 
-## 固定包准备
+## 固定包结果
 
-C 开发完成后，使用 GitHub Actions 的 Release 工作流对最终提交生成 Artifact，保存 `BUILD.txt` 和 `SHA256SUMS`。构建执行 Lua 语法、现有回归和数据校验；解压后核对 TOC 加载文件、绑定、来源许可及包内校验清单。安装只在统一验收阶段进行，原插件和账号／角色存档先备份。
+2026-11-10 使用 GitHub Actions 的 Release 工作流生成统一验收包，未创建新标签或公开Release。
+
+| 项目 | 结果 |
+| --- | --- |
+| 固定提交 | `9db22255ea20e78e116f58daf9a6f720ef70190d` |
+| 构建 | [42677532062](https://github.com/haphap/AiLeveling/actions/runs/42677532062)，成功；Lua语法、现有回归和开发数据结构检查通过 |
+| 下载 | [统一验收Artifact](https://github.com/haphap/AiLeveling/actions/runs/42677532062/artifacts/13700957953)，包含安装ZIP、BUILD.txt和SHA256SUMS |
+| 安装ZIP | `AiLeveling-0.1.129-dev.zip`，634331字节 |
+| 安装ZIP SHA256 | `2c88e9659c871f3392eff46b7a72c06769e46518b60ddf5e0d27775f03db838a` |
+| 下载后检查 | 外层与安装ZIP校验通过；75项包内文件与固定提交逐一相同；TOC加载文件、8项快捷键、来源许可及包内清单完整 |
+| 本地副本 | `dist/review-9db2225/`，检查记录`verification.json`；构建结果`dist/review-build-results.log` |
+
+本次只在工作区检查包，尚未安装到游戏或修改实际存档。统一验收安装时先备份原插件和账号／角色存档，沿README执行升级。此后文档结果记录不改变包内容，不重复构建相同运行代码。
 
 ## 一次贯通的验收流程
 
