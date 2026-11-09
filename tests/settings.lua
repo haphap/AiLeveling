@@ -277,6 +277,24 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     event("CONFIRM_BINDER",true,"新旅店");eq(confirmed,0);assert(B.jobs["service:bind"])
     B.refreshAt=nil;update();eq(confirmed,1);eq(cleared,1);eq(B.jobs["service:bind"],nil)
     update();eq(confirmed,1);assert(B.char.serviceStop)
+    B.char.serviceStop=nil;event("GOSSIP_CLOSED");calls={}
+    B.action={kind="objective",questId=1,objectiveIndex=1,position=point}
+    B.state.quests[1]={objectives={{finished=false}}}
+    B.plan={revision=B.state.revision,taskChoices={}}
+    C_GossipInfo.GetAvailableQuests=function() return {} end
+    local options={{icon=132053,status=0,gossipOptionID=51,orderIndex=1,name="说下去。"}}
+    C_GossipInfo.GetOptions=function() return options end
+    dialog();dialog();eq(#calls,1);eq(calls[1],"service:51")
+    options={{icon=132053,status=0,gossipOptionID=52,orderIndex=1,name="我准备好了。"}}
+    dialog();eq(calls[2],"service:52")
+    options={{icon=132053,status=0,gossipOptionID=53,name="左边"},{icon=132053,status=0,gossipOptionID=54,name="右边"}}
+    dialog();eq(#calls,2) -- Player chooses the branch; subsequent single pages can continue.
+    options={{icon=132053,status=0,gossipOptionID=55,orderIndex=1,name="继续。"}}
+    npcGuid="Creature-0-1-2-3-8-0000";dialog();eq(#calls,2)
+    npcGuid="Creature-0-1-2-3-9-0000";dialog();eq(calls[3],"service:55")
+    eq(B.state.quests[1].objectives[1].finished,false)
+    B.state.quests[1].objectives[1].finished=true
+    options[1].gossipOptionID=56;dialog();eq(#calls,3)
     B.finish()
 end)
 test("窗口锁定阻止拖动且主详情分别保存位置并恢复",function()

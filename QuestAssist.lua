@@ -155,6 +155,35 @@ function Q.DialogChoice(id,kind)
     end
 end
 
+function Q:TaskGossipOption()
+    if not A.Services.CanAutomate("autoGossip") or not C_GossipInfo.GetOptions then return end
+    local action=A.Navigation:Current()
+    if not action or action.kind~="objective" or A.plan and A.plan.revision and A.plan.revision~=A.state.revision then return end
+    local quest=A.state.quests[action.questId]
+    local objective=quest and action.objectiveIndex and (quest.objectives or {})[action.objectiveIndex]
+    if not quest or quest.ready or objective and objective.finished then return end
+    local guid=UnitGUID("npc")
+    if not readable(guid) then return end
+    local npc=A.Merchant.NpcId(guid)
+    local point=action.position
+    local target=action.npcId or point and point.entityKind=="npc" and point.entityId or action.targetKind=="npc" and action.targetId
+    if not npc or npc~=target then return end
+    local options=C_GossipInfo.GetOptions()
+    -- A branch is a player choice; only continue a single ordinary conversation option.
+    if #options~=1 then return end
+    local option=options[1]
+    if not readable(option.icon) or option.icon~=132053 or not readable(option.status) or
+        option.status~=Enum.GossipOptionStatus.Available then return end
+    local method,value
+    if readable(option.gossipOptionID) and type(option.gossipOptionID)=="number" then
+        method,value="SelectOption",option.gossipOptionID
+    elseif readable(option.orderIndex) and type(option.orderIndex)=="number" then
+        method,value="SelectOptionByIndex",option.orderIndex
+    else return end
+    if not readable(option.name) then return end
+    return {key=table.concat({"task",guid,action.questId,method,value,option.name},":"),select=C_GossipInfo[method],value=value}
+end
+
 -- Only act on a dialog the player opened; the client events still acknowledge progress.
 function Q:DialogEvent(event)
     if event=="QUEST_FINISHED" or event=="GOSSIP_CLOSED" or event=="PLAYER_ENTERING_WORLD" then self.dialogDone=nil;self.dialogPending=nil;return end
@@ -213,7 +242,7 @@ function Q:DialogEvent(event)
                 end
             end
         end
-        local option=A.Services and A.Services.GossipOption and A.Services:GossipOption()
+        local option=A.Services and A.Services.GossipOption and (A.Services:GossipOption() or self:TaskGossipOption())
         if option then once(option.key,option.select,option.value) end
         return
     end
