@@ -134,9 +134,9 @@ A.DungeonCatalog={version="1.60.1",build="70862",entries={
         Alliance={[96393]="inside",[96394]="inside",[96403]="inside"},
         Horde={[96393]="inside",[96394]="inside",[96403]="inside"},
     }},
-    ["reference:3109"]={id="reference:3109",reference=true,instanceId=3109,title="密斯特曼托庄园",areas={17191},entrances={},quests={
-        Alliance={},
-        Horde={},
+    ["reference:3109"]={id="reference:3109",reference=true,instanceId=3109,title="密斯特曼托庄园",areas={17191},entrances={},entryArea=10,entryHint="前往暮色森林东北部的密斯特曼托庄园，进入后继续任务。",quests={
+        Alliance={[98]="category"},
+        Horde={[98]="category"},
     }},
     ["reference:2970"]={id="reference:2970",reference=true,instanceId=2970,title="沉没之城",areas={16550},entrances={},entryArea=33,entryHint="前往荆棘谷格罗姆高营地以西的海域，从水下洞口进入沉没之城。",quests={
         Alliance={[95775]="category",[95776]="category",[95787]="category",[95789]="category",[95791]="category",[96774]="category",[97130]="category"},

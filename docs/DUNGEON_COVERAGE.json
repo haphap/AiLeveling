@@ -3467,12 +3467,33 @@
       "clientMaxPlayers": 0,
       "providerName": null,
       "entrances": [],
-      "categoryQuestIds": [],
-      "possiblePrerequisiteIds": [],
+      "categoryQuestIds": [
+        98
+      ],
+      "possiblePrerequisiteIds": [
+        66,
+        67,
+        68,
+        69,
+        70,
+        72,
+        74,
+        75,
+        78,
+        79,
+        80,
+        97
+      ],
       "missingPrerequisiteIds": [],
-      "questLevelValues": [],
+      "questLevelValues": [
+        35
+      ],
       "clientVerified": false,
-      "itineraryReady": false
+      "itineraryReady": false,
+      "entryArea": 10,
+      "entryHint": "前往暮色森林东北部的密斯特曼托庄园，进入后继续任务。",
+      "observationSource": "https://ahledger.com/wow-forever/dungeons/3109-manor-mistmantle",
+      "questSource": "https://ahledger.com/items/3629-mistmantle-family-ring"
     },
     {
       "mapId": 3217,

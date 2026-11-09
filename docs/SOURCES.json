@@ -909,6 +909,14 @@
       "areaSource": "https://www.wowhead.com/forever/zone=16667/the-shapers-terrace",
       "audit": "docs/TASK_XP_AUDIT.json",
       "clientVerified": false
+    },
+    {
+      "id": "Forever-manor-native-observations",
+      "checked": "2026-11-10",
+      "url": "https://ahledger.com/wow-forever/dungeons/3109-manor-mistmantle",
+      "questItemSource": "https://ahledger.com/items/3629-mistmantle-family-ring",
+      "scope": "Original addon observations locate Manor Mistmantle 3109 in Duskwood and item 3629 drops from Stalvan Mistmantle inside. QuestieDB links item 3629 to quest 98 and retains its prerequisites/recipient. Regional entrance only; no guessed door coordinates or replacement of provider objective spawns. No source code or assets copied.",
+      "clientVerified": false
     }
   ]
 }

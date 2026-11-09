@@ -93,6 +93,9 @@ def build():
         region_ids = aliases.get(area, {area}) if area else set()
         represented.update(region_ids)
         quests = set().union(*(by_zone[a] for a in region_ids)) if region_ids else set()
+        # Observed quest-item source; this association does not replace provider/native objective positions.
+        if mid == 3109:
+            quests.add(98)
         closure, pending = set(quests), list(quests)
         while pending:
             for parent in parents[pending.pop()]:
@@ -108,6 +111,10 @@ def build():
                'missingPrerequisiteIds':sorted(closure-all_ids),
                'questLevelValues':sorted(set().union(*(levels[q] for q in quests))) if quests else [],
                'clientVerified':False,'itineraryReady':False}
+        if mid == 3109:
+            row.update(entryArea=10, entryHint='前往暮色森林东北部的密斯特曼托庄园，进入后继续任务。',
+                       observationSource='https://ahledger.com/wow-forever/dungeons/3109-manor-mistmantle',
+                       questSource='https://ahledger.com/items/3629-mistmantle-family-ring')
         rows.append(row)
     assert len(rows) == 73 and len({r['mapId'] for r in rows}) == len(rows)
     unresolved = [{'areaId':int(area),'name':d['name'],'reason':'not-linked-to-readable-client-map'}
@@ -182,7 +189,8 @@ def markdown(report):
         lines.append(f'- [{row["name"]}]({row["identitySource"]})：实例 {row["mapId"]}，原生首领 {len(row["encounterIds"])} 项，关联任务 {len(row["categoryQuestIds"])} 项。')
     lines += ['', '补充目录的入口使用官方所在地区中心及入口方向说明；已确认本内目标来自同构建服务器任务原文和已核对任务事实，其他分类任务保持普通关联。任务接交者仍从 QuestieDB 查询，缺少的任务以实际提供及日志接入。塑造者之台关联95928的四种水晶目标，来源见TASK_XP_AUDIT.json；其余两项已报告任务缺实际ID，尚未补入。', '']
     lines += ['', '达拉然入城准备：联盟从任务 92432（An Alarming Request）开始，部落关联 93680（Key to the City）及 544（Prison Break In）。目录接入这些准备任务，资格和进度继续由数据库及原生日志决定；资料尚未给出整条解锁链的最终完成标记。', '',
-              '以下列出全部可读的 party 类型地图。任务数按区域分类及别名关联，合并 18 个阵营／职业修正上下文；前置含备选分支，实际执行继续检查资格。', '',
+              '密斯特曼托庄园3109的入口使用暮色森林区域中心与东北部方向说明。[实际插件观察](https://ahledger.com/wow-forever/dungeons/3109-manor-mistmantle)记录庄园内掉落[密斯特曼托家族戒指3629](https://ahledger.com/items/3629-mistmantle-family-ring)，QuestieDB将其关联任务98。目录保留该任务及原有前置，目标位置继续优先用原生航点；观察记录不用于覆盖数据库中的野外位置。', '',
+              '以下列出全部可读的 party 类型地图。任务数按区域分类、别名及已观察任务物品关联，合并 18 个阵营／职业修正上下文；前置含备选分支，实际执行继续检查资格。', '',
              '| 实例 ID | 名称 | 区域 ID | 入口记录 | 分类关联任务 | 前置候选 |',
              '| ---: | --- | ---: | ---: | ---: | ---: |']
     for row in report['maps']:
