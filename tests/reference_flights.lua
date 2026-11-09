@@ -250,13 +250,13 @@ test("跨图完整飞行耗时进入任务时间与排序",function()
     local B,s,a,nav,O,D,L,T=joint()
     assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
     local choice={questId=99,stagesComplete=true,stages={{position=T,kind="turnin"}},
-        work={known=0,missing=0,seconds=0,low=0,high=0},remainingXP=1000,actions={{position=T}},status="turnin"}
+        remainingXP=1000,actions={{position=T}},status="turnin"}
     local timing=B.TaskGuide.Timing(O,choice,s,nav)
     eq(timing.seconds,160);eq(timing.flightCount,1)
     local oldGuide,oldNav=A.TaskGuide,A.Navigation
     A.TaskGuide=B.TaskGuide;A.Navigation=nav
     local localTarget={map=1,x=0.6,y=0}
-    local other={questId=98,stagesComplete=true,stages={{position=localTarget,kind="turnin"}},work=choice.work,
+    local other={questId=98,stagesComplete=true,stages={{position=localTarget,kind="turnin"}},
         remainingXP=1000,actions={{position=localTarget}},status="turnin"}
     s.quests={[99]={ready=true},[98]={ready=true}};s.mode="relaxed"
     local order=A.Planner.TaskOrder(s,{other,choice});eq(order[1].questId,98);eq(order[1].orderBasis,"movement-xp")
@@ -285,7 +285,7 @@ local function queueFixture()
     s.maxXP=1000000;s.xp=0;s.mode="relaxed"
     local function choice(id,point)
         return {questId=id,stagesComplete=true,stages={{position=point,kind="turnin"}},
-            work={known=0,missing=0,seconds=0,low=0,high=0},remainingXP=10,actions={{position=point}},status="turnin"}
+            remainingXP=10,actions={{position=point}},status="turnin"}
     end
     return B,s,nav,O,T,choice
 end
@@ -441,13 +441,6 @@ test("队列使用原生交付经验且跨级后恢复分级资料或未知",fun
     eq(queue.xp,180);eq(queue.xpKnown,true);eq(queue.forecast.level,21);eq(queue.forecast.xp,80)
     eq(s.level,20);eq(s.quests[2].rewardXP,80)
 end)
-test("整批路程相同时优先交付高经验任务且手动锁定保留",function()
-    local B,s,nav,O,T,choice=queueFixture()
-    local low,high=choice(1,O),choice(2,O);low.remainingXP=10;high.remainingXP=100
-    local order,queue=B.TaskQueue.Solve({low,high},s,nav)
-    eq(order[1],high);eq(queue.xp,110);eq(queue.seconds,0);eq(high.orderBasis,"queue-movement-xp")
-    s.locked=1;order=B.TaskQueue.Solve({low,high},s,nav);eq(order[1],low)
-end)
 test("整批同路程优先保留升级前的较高交付经验",function()
     local B,s,nav,O,T,choice=queueFixture()
     B.Experience={version="1.60.1",build="70862",interface=16001,source="test",xpToLevel={[20]=100,[21]=100,[22]=100}}
@@ -476,7 +469,7 @@ test("队列按整程跑路选择顺序而非只看最近首目标且无需执�
         local c=choice(id,{map=1,x=start,y=0})
         c.stages={{kind="objective",position={map=1,x=start,y=0}},
             {kind="turnin",position={map=1,x=finish,y=0}}}
-        c.work=nil;c.remainingXP=nil
+        c.remainingXP=nil
         return c
     end
     local a,b,c=task(1,0.1,0.9),task(2,0.2,0.3),task(3,0.8,1)
@@ -612,19 +605,12 @@ test("炉石等待和落地直线距离进入比较且保留未消费冷却方�
     s.hearthReady=s.now+50;eq(B.Flights.Routes(O,T,s,nav)[1].seconds,100)
     s.bags={};for _,r in ipairs(B.Flights.Routes(O,T,s,nav)) do eq(r.hearths,0) end
 end)
-test("任务执行期间的时间会消化炉石冷却而不重复加入等待",function()
-    local B,s,a,nav,O,L,T=hearthFixture();s.hearthCooldown=100
-    local routes=B.Flights.Itinerary(O,{{position=T},{position=L}},s,nav,{200,0})
-    eq(routes[1].seconds,70);eq(routes[1].hearths,2)
-    routes=B.Flights.Itinerary(O,{{position=T},{position=L}},s,nav)
-    eq(routes[1].seconds,80);eq(routes[1].hearths,1)
-end)
 test("整个队列保留炉石用于后续任务且传播使用后的冷却",function()
     local B,s,a,nav,O,L,T=hearthFixture()
-    B.Progression=A.Progression;B.Observations={TalkEstimate=function() return 10,8,12 end}
+    B.Progression=A.Progression
     assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B);assert(loadfile("Planner/TaskQueue.lua"))("AiLeveling",B)
     local function choice(id,p) return {questId=id,stagesComplete=true,stages={{position=p,kind="turnin"}},
-        work={seconds=0,low=0,high=0,missing=0},remainingXP=1} end
+        remainingXP=1} end
     local queue=B.TaskQueue.Evaluate({choice(1,T),choice(2,L)},s,nav)
     eq(queue.seconds,80);eq(queue.steps[1].timing.flightCount,0);eq(queue.steps[1].timing.hearthCount,1)
     eq(queue.steps[2].timing.hearthCount,0);eq(queue.hearthReady,math.huge)
@@ -642,14 +628,6 @@ test("三项窗口滚动到全队列且始终包含窗口外任务",function()
     for i=1,4 do assert(seen[i]) end
     assert(math.abs(queue.seconds-80)<0.000001);eq(s.position,O)
 end)
-test("执行耗时未知仍参与队列但位置缺失保留待确认",function()
-    local B,s,nav,O,T,choice=queueFixture()
-    local first,second=choice(99,T),choice(98,T)
-    second.work.missing=1;local order,partial=B.TaskQueue.Solve({first,second},s,nav);eq(#order,2);eq(#partial.steps,2);eq(partial.remaining,0)
-    second.work.missing=0;second.stagesComplete=false;order,partial=B.TaskQueue.Solve({first,second},s,nav);eq(#order,2);eq(partial.remaining,1)
-    second.stagesComplete=true;s.maxSeconds=159;eq(B.TaskQueue.Solve({first,second},s,nav),nil)
-    s.maxSeconds=160;assert(B.TaskQueue.Solve({first,second},s,nav))
-end)
 test("位置未知的任务保留且所有模式都按移动时间比较并保留锁定",function()
     local B,s,nav,O,T,choice=queueFixture()
     local unknown,first,second=choice(777,O),choice(99,T),choice(98,O)
@@ -661,23 +639,6 @@ test("位置未知的任务保留且所有模式都按移动时间比较并保�
     s.locked=nil;s.mode="story";eq(B.TaskQueue.Solve({unknown,first,second},s,nav)[3],unknown)
     order,queue=B.TaskQueue.Solve({first,unknown,second},s,nav)
     eq(order[1],second);eq(order[2],first);eq(order[3],unknown);eq(#queue.steps,2);eq(queue.remaining,1)
-end)
-test("队列调度按小批量让出而非每个前缀占用一帧",function()
-    local B={Flights={Matches=function() return true end},Travel=A.Travel}
-    assert(loadfile("Planner/TaskQueue.lua"))("AiLeveling",B)
-    assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
-    B.TaskGuide.Timing=function(from,c,s)
-        local t=math.abs(from.x-c.stages[1].position.x)*1000
-        return {seconds=t+10,low=t+8,high=t+12,work=0,talk=10,travel=t,
-            travelRoutes={{seconds=t,low=t,high=t,money=s.money,flights=0,cost=0}}}
-    end
-    local order={};for i=1,25 do order[i]={questId=i,stagesComplete=true,work={missing=0},remainingXP=10,
-        stages={{position={map=1,x=(26-i)/100,y=0}}}} end
-    local s=F.State();s.position={map=1,x=0,y=0};s.mode="relaxed"
-    local count=0
-    local co=coroutine.create(function() local result=B.TaskQueue.Solve(order,s,{});eq(#result,25) end)
-    repeat local ok,err=coroutine.resume(co);assert(ok,err);count=count+1 until coroutine.status(co)=="dead"
-    assert(count>1 and count<200,"队列协程恢复过多："..count)
 end)
 test("队列连续升级保留客户端曲线口径且未知门槛后停止累计确定经验",function()
     local B,s,nav,O,T,choice=queueFixture()

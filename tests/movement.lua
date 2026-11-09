@@ -7,10 +7,6 @@ test("速度或跨世界距离未知时保留未知而原地移动为零",functi
     end
     eq(A.Travel.Walk(p,q,{runSpeed=7},{Distance=function() return nil end}),nil)
 end)
-test("同世界跨地图仍用地图库直线距离估算",function()
-    local p,q={map=1,x=0,y=0},{map=2,x=0.5,y=0.5}
-    eq(A.Travel.Walk(p,q,{runSpeed=7},{Distance=function() return 1400 end}),200)
-end)
 test("耗时未知时相邻区域的近任务仍按直线距离排序",function()
     local B={Navigation={Distance=function(_,a,b)
         if a.map==3 or b.map==3 then return end

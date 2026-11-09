@@ -73,7 +73,7 @@ end
 
 function Q.DialogChoice(id,kind)
     local state,plan=A.state,A.plan
-    if not state or not plan or state.locked and state.locked~=id then return end
+    if not state or not plan or plan.revision and plan.revision~=state.revision or state.locked and state.locked~=id then return end
     local active=(state.quests or {})[id]
     if kind=="accept" and active or kind=="turnin" and not (active and active.ready) then return end
     for _,choice in ipairs(plan.taskChoices or {}) do
@@ -91,13 +91,34 @@ end
 
 -- Only act on a dialog the player opened; the client events still acknowledge progress.
 function Q:DialogEvent(event)
-    if event=="QUEST_FINISHED" or event=="GOSSIP_CLOSED" or event=="PLAYER_ENTERING_WORLD" then self.dialogDone=nil;return end
+    if event=="QUEST_FINISHED" or event=="GOSSIP_CLOSED" or event=="PLAYER_ENTERING_WORLD" then self.dialogDone=nil;self.dialogPending=nil;return end
     if event~="GOSSIP_SHOW" and event~="QUEST_DETAIL" and event~="QUEST_PROGRESS" and event~="QUEST_COMPLETE" then return end
+    self.dialogPending=nil
     if not A.ready or not A.settings or not A.char or A.char.paused or
         InCombatLockdown and InCombatLockdown() or IsShiftKeyDown and IsShiftKeyDown() or
         A.Navigation and A.Navigation.manual then return end
     local function valid(id)
         return (not canaccessvalue or canaccessvalue(id)) and type(id)=="number" and id>0 and id<2147483648 and id%1==0
+    end
+    if A.refreshAt or A.jobs and A.jobs.plan then
+        local guid=UnitGUID and UnitGUID("npc")
+        local id=event~="GOSSIP_SHOW" and GetQuestID and GetQuestID()
+        if canaccessvalue and not canaccessvalue(guid) or event~="GOSSIP_SHOW" and not valid(id) then return end
+        local pending={}
+        self.dialogPending=pending
+        A:Queue("quest:dialog",function()
+            -- This event can update NPC offers and the plan before selecting a quest or service.
+            while self.dialogPending==pending and (A.refreshAt or A.jobs.plan) do coroutine.yield() end
+            if self.dialogPending~=pending then return end
+            local current=UnitGUID and UnitGUID("npc")
+            if canaccessvalue and not canaccessvalue(current) or current~=guid then return end
+            if event~="GOSSIP_SHOW" then
+                local quest=GetQuestID and GetQuestID()
+                if not valid(quest) or quest~=id then return end
+            end
+            self:DialogEvent(event)
+        end)
+        return
     end
     local function once(key,fn,...)
         if not fn then return end

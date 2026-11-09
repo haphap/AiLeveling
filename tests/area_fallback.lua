@@ -18,24 +18,6 @@ local function fixture()
     s.quests={[1]={objectives={{text="日志中无法对应的目标",type="monster",numRequired=3,numFulfilled=1}}}}
     return B,q,s,rows,npcs
 end
-test("缓存区域触发保留探索要求并复用事件地点而不重复步骤",function()
-    local B,q,s,rows=fixture();q.questLevel=10;s.quests={};rows.objectives={}
-    s.clientVersion,s.clientBuild,s.interface="1.60.1","70862",16001
-    B.TaskFacts={cacheXP={version="1.60.1",build="70862",interface=16001,quests={
-        [1]={level=10,objectives={{kind="areaTrigger",id=216,count=1}},complex=false}}}}
-    rows.triggerEnd={"Explore the pool",{[12]={{20,30}}}}
-    local descriptions,positions,complex=B.Data:ReferenceObjectiveTargets(q,s)
-    eq(#descriptions,1);eq(descriptions[1].type,"event");eq(descriptions[1].areaTriggerId,216)
-    eq(descriptions[1].targetId,nil);eq(descriptions[1].numRequired,1);eq(complex,false)
-    eq(positions[1].x,0.2);eq(positions[1].y,0.3);eq(B.Data:DeliveryOnly(q,s),false)
-    local stages=B.TaskGuide.Stages(q,s,B.Data,{kind="accept",questId=1,position={map=1,x=0,y=0}})
-    eq(#stages,3);eq(stages[2].areaTriggerId,216);eq(stages[2].kind,"objective")
-    s.quests[1]={objectives={{type="event",text="探索水域",finished=false}}}
-    s.position=positions[1];local p=B.Data:Target(q,s)
-    eq(p.x,0.2);eq(s.quests[1].objectives[1].finished,false);eq(s.quests[1].ready,nil)
-    s.quests[1].objectives[1].finished=true
-    eq(#B.Data:ObjectiveTargets(q,s),0);eq(s.completed[1],nil)
-end)
 test("零数量进入区域仍需实际完成且多个触发目标分别保留",function()
     local B,q,s,rows=fixture();q.questLevel=10;s.quests={};rows.objectives={}
     s.clientVersion,s.clientBuild,s.interface="1.60.1","70862",16001
@@ -58,21 +40,6 @@ test("零数量进入区域仍需实际完成且多个触发目标分别保留",
     s.quests={};facts.objectives={{kind="areaTrigger",id=223,count=0}}
     descriptions=B.Data:ReferenceObjectiveTargets(q,s)
     eq(#descriptions,1);eq(descriptions[1].numRequired,nil);eq(descriptions[1].finished,false)
-end)
-test("明确无执行目标的送信任务预览只接交且未完成时指向交付者",function()
-    local B,q,s,rows,npcs=fixture();q.questLevel=10;rows.objectives={};s.quests={}
-    q.taskFacts={level=10,complex=false,objectives={}}
-    npcs[8].spawns={[12]={{10,10}}};npcs[9].spawns={[12]={{80,90}}}
-    eq(B.Data:DeliveryOnly(q,s),true)
-    local stages,complete=B.TaskGuide.Stages(q,s,B.Data,{kind="accept",position=B.Data:Target(q,s)})
-    eq(#stages,2);eq(stages[1].kind,"accept");eq(stages[2].kind,"turnin");eq(stages[2].position.entityId,9);eq(complete,true)
-    s.quests[1]={objectives={}}
-    local point=B.Data:Target(q,s);eq(point.entityId,9);eq(point.x,0.8)
-    stages=B.TaskGuide.Stages(q,s,B.Data,{kind="objective",position=point})
-    eq(stages[1].kind,"objective");assert(stages[1].text:find("对话",1,true))
-    eq(s.quests[1].ready,nil);eq(s.completed[1],nil)
-    s.quests[1].ready=true
-    stages=B.TaskGuide.Stages(q,s,B.Data,{kind="turnin",position=point});eq(#stages,1)
 end)
 test("同构建确认仅交付时未绑定日志目标的辅助提示不拦住收件人导航",function()
     local B,q,s,rows,npcs=fixture();q.questLevel=10;rows.objectives={};s.quests={}

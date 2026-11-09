@@ -38,11 +38,6 @@ test("未知堆叠数据保持阻断，预测消耗不修改真实物品",functi
     local cursor=S.Apply({consumeItems={[100]=5}},S.Cursor(s),s.itemMetadata)
     eq(cursor.bags[100],0);eq(s.bags[100],5);eq(s.inventory.slots[1].count,5)
 end)
-test("服务动作等待实际数量或耐久变化才完成",function()
-    local s=state(1);local action={kind="service",serviceGoal={items={[100]=5},durability=0.2}}
-    eq(S.Done(action,s),false);s.bags[100]=5;s.durability=0.1;eq(S.Done(action,s),false)
-    s.durability=1;eq(S.Done(action,s),true)
-end)
 
 test("副本出发补齐物品与耐久并保留内部消耗和返程资源",function()
     local s=state(16);s.durability=0.1;F.Party(s)

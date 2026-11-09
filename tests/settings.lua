@@ -175,7 +175,14 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     local pending={questId=3,status="objective",actions={{kind="objective"}},stages={{kind="turnin",position=point}}}
     B.plan={taskChoices={ready,pending,accept}}
     B.state.quests[1].ready=true;B.state.quests[3]={objectives={}}
-    local function event(name) B.frame.scripts.OnEvent(nil,name) end
+    local function event(name,defer)
+        B.frame.scripts.OnEvent(nil,name)
+        if not defer then
+            B.refreshAt=nil
+            local job=B.jobs["quest:dialog"];B.jobs["quest:dialog"]=nil
+            if job then assert(coroutine.resume(job)) end
+        end
+    end
     event("GOSSIP_SHOW");eq(calls[1],"select:2")
     event("QUEST_DETAIL");event("QUEST_DETAIL");eq(#calls,2);eq(calls[2],"accept:2")
     eq(B.state.quests[2],nil);eq(B.state.completed[2],nil)
@@ -204,16 +211,13 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     B.state.position={map=1,x=0.5,y=0.5}
     B.Navigation.Near=function(_,a,b) return a.map==b.map and math.abs(a.x-b.x)<0.01 end
     B.char.serviceStop={kind="train",npcId=9,title="训练师",position=B.state.position}
-    UnitGUID=function() return "Creature-0-1-2-3-9-0000" end
+    local npcGuid="Creature-0-1-2-3-9-0000"
+    UnitGUID=function() return npcGuid end
     Enum={GossipOptionStatus={Available=0}}
     C_GossipInfo.GetOptions=function() menus=menus+1;return {{icon=132058,status=0,gossipOptionID=44,orderIndex=2}} end
     C_GossipInfo.SelectOption=function(value) calls[#calls+1]="service:"..value end
     assert(loadfile("Services.lua"))("AiLeveling",B)
-    local function dialog()
-        event("GOSSIP_SHOW");B.refreshAt=nil
-        local job=B.jobs["service:gossip"];B.jobs["service:gossip"]=nil
-        if job then assert(coroutine.resume(job)) end
-    end
+    local function dialog() event("GOSSIP_SHOW") end
     dialog();eq(menus,0);eq(#calls,0) -- Manual turn-in takes priority over service automation.
     C_GossipInfo.GetActiveQuests=function() return {} end
     B.settings.autoAccept=false;dialog();eq(menus,0);eq(#calls,0)
@@ -221,6 +225,22 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     dialog();dialog();eq(#calls,1);eq(calls[1],"service:44")
     event("GOSSIP_CLOSED");dialog();eq(#calls,2)
     shift=true;dialog();eq(#calls,2);shift=false
+    B.char.serviceStop=nil;calls={};id=2;B.settings.autoAccept=true
+    event("QUEST_FINISHED");accept.requireCheck=true
+    B.refreshAt=1;event("QUEST_DETAIL",true)
+    local job=assert(B.jobs["quest:dialog"]);assert(coroutine.resume(job));eq(coroutine.status(job),"suspended");eq(#calls,0)
+    B.refreshAt=nil;B.jobs.plan={};assert(coroutine.resume(job));eq(coroutine.status(job),"suspended")
+    accept.requireCheck=false;B.jobs.plan=nil;assert(coroutine.resume(job));B.jobs["quest:dialog"]=nil;eq(calls[1],"accept:2")
+    event("QUEST_FINISHED");B.refreshAt=1;event("QUEST_DETAIL",true);job=B.jobs["quest:dialog"]
+    event("QUEST_FINISHED",true);B.refreshAt=nil;assert(coroutine.resume(job));B.jobs["quest:dialog"]=nil;eq(#calls,1)
+    B.refreshAt=1;event("QUEST_DETAIL",true);job=B.jobs["quest:dialog"];id=99;B.refreshAt=nil
+    assert(coroutine.resume(job));B.jobs["quest:dialog"]=nil;eq(#calls,1);id=2
+    B.refreshAt=1;event("QUEST_DETAIL",true);job=B.jobs["quest:dialog"];B.refreshAt=nil;npcGuid="Creature-0-1-2-3-8-0000"
+    assert(coroutine.resume(job));B.jobs["quest:dialog"]=nil;eq(#calls,1);npcGuid="Creature-0-1-2-3-9-0000"
+    B.refreshAt=1;event("QUEST_DETAIL",true);job=B.jobs["quest:dialog"];B.refreshAt=nil;shift=true
+    assert(coroutine.resume(job));B.jobs["quest:dialog"]=nil;eq(#calls,1);shift=false
+    B.plan.revision=B.state.revision-1;event("QUEST_DETAIL");eq(#calls,1)
+    B.plan.revision=B.state.revision;event("QUEST_DETAIL");eq(calls[2],"accept:2")
     B.finish()
 end)
 test("字号与密度改变普通卡片并保留完整滚动说明",function()

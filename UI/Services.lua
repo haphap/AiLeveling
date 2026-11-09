@@ -38,7 +38,6 @@ function U:Lines()
     if automatic then lines[#lines+1]="当前建议："..automatic.title.." · 设置炉石" end
     local plan=A.plan
     if plan and plan.revision==s.revision and not A.refreshAt and not (A.jobs and A.jobs.plan) and plan.serviceDeferred then lines[#lines+1]=plan.serviceDeferred end
-    if A.char.serviceStop and A.char.serviceStop.afterTask then lines[#lines+1]="完成「"..A.char.serviceStop.afterTask.title.."」后前往。" end
     if self.message or A.Services.message then lines[#lines+1]=self.message or A.Services.message end
     if self.blocked then lines[#lines+1]=self.blocked end
     if not row then
@@ -55,12 +54,6 @@ function U:Lines()
         lines[#lines+1]="有 "..row.bindingHub.deliveryCount.." 个已接任务完成后可在附近交付。"
         if row.bindingHub.acceptCount>0 then lines[#lines+1]="附近还有 "..row.bindingHub.acceptCount.." 个可接任务。" end
         lines[#lines+1]="经过这里时再设置炉石。"
-    end
-    if row.unlockSaving then
-        if row.unlockSaving>1 then
-            lines[#lines+1]=row.unlockAfterTask and ("可先完成「"..row.unlockAfterTask.title.."」，再来开通飞行点，方便后续任务。") or
-                "可考虑先开通此飞行点，方便后续任务。"
-        else lines[#lines+1]="当前任务行程无需专程绕路开通此点。" end
     end
     if row.offer then
         local offer=row.offer

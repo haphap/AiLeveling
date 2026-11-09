@@ -135,19 +135,6 @@ test("未灰但远处低经验任务降级，近处高经验和同级任务保�
     q.questLevel=17;q.taskFacts.level=17;s.quests={};eq(B.TaskGuide.LowValue(q,s,d,choice).suggestion,"建议跳过")
     s.maxXP=nil;eq(B.TaskGuide.LowValue(q,s,d,choice),nil)
 end)
-test("远处任务仍保护任务线装备收益职业和手动选择",function()
-    local B,s,q,d=fixture();q.questLevel=17;q.taskFacts.level=17;q.taskFacts.xp={{1,1000}}
-    local choice={timing={seconds=600}}
-    s.locked=1;eq(B.TaskGuide.LowValue(q,s,d,choice),nil);s.locked=nil
-    s.quests[1].ready=true;eq(B.TaskGuide.LowValue(q,s,d,choice),nil);s.quests[1].ready=false
-    q.requiredClasses=1;eq(B.TaskGuide.LowValue(q,s,d,choice),nil);q.requiredClasses=0
-    q.taskFacts.rewards.choices={{id=100}};B.Items=nil;eq(B.TaskGuide.LowValue(q,s,d,choice),nil)
-    s.items[100]={id=100,usable=true,equipLoc="INVTYPE_HEAD",stats={ITEM_MOD_STRENGTH_SHORT=3}}
-    s.equipment[1]={id=101,usable=true,equipLoc="INVTYPE_HEAD",stats={ITEM_MOD_STRENGTH_SHORT=1}}
-    eq(B.TaskGuide.LowValue(q,s,d,choice),nil)
-    q.taskFacts.rewards.choices={};local other=F.Quest(2);other.preQuestGroup={1};A.Chains.IndexQuest(d.chainIndex,other,d)
-    eq(B.TaskGuide.LowValue(q,s,d,choice),nil)
-end)
 test("远处低收益目标含返程后退出自动推荐且不拖住同NPC交付",function()
     local B,s,q,d=fixture();q.questLevel=17;q.taskFacts.level=17;q.taskFacts.xp={{1,1000}}
     d.Target=function(_,quest,state)

@@ -73,7 +73,6 @@ function S.ValidStop(stop)
     return type(stop)=="table" and ((stop.kind=="train" or stop.kind=="bind") and number(stop.npcId,1,2147483647) or
         stop.kind=="unlockFlight" and number(stop.taxiId,1,2147483647)) and
         type(stop.title)=="string" and #stop.title>0 and #stop.title<=512 and position(stop.position) and
-        (stop.afterTask==nil or stop.kind=="unlockFlight" and taskStep(stop.afterTask) and number(stop.afterTask.turnIns,0,2147483647)) and
         (stop.learnKey==nil or stop.kind=="train" and type(stop.learnKey)=="string" and #stop.learnKey<=1024 and stop.learnKey:match("^[^\031]+")~=nil) and
         (stop.learnSpellId==nil or stop.kind=="train" and stop.learnKey~=nil and number(stop.learnSpellId,1,2147483647))
 end
@@ -181,14 +180,6 @@ function S:Event(event,...)
         local guid=text(UnitGUID and UnitGUID("npc"))
         local enabled=S.CanAutomate("autoTrain") or S.CanAutomate("autoBind") or S.CanAutomate("autoTaxi")
         self.gossip=enabled and guid and {guid=guid} or nil
-        local seen=self.gossip
-        if seen and A.QuestAssist and A.QuestAssist.DialogEvent then
-            A:Queue("service:gossip",function()
-                -- Observed quest offers can change the plan during this same event.
-                while self.gossip==seen and (A.refreshAt or A.jobs.plan) do coroutine.yield() end
-                if self.gossip==seen and text(UnitGUID and UnitGUID("npc"))==seen.guid then A.QuestAssist:DialogEvent("GOSSIP_SHOW") end
-            end)
-        end
     elseif event=="TOOLTIP_DATA_UPDATE" and self.trainerOpen and S.CanAutomate("autoTrain") then
         local stop=A.char.serviceStop
         if stop and stop.kind=="train" and stop.learnKey and self.trainingAttempt~=stop then A:RequestRefresh() end
@@ -279,12 +270,6 @@ function S:Snapshot(state)
     if stop then
         state.serviceStop={kind=stop.kind,npcId=stop.npcId,taxiId=stop.taxiId,title=stop.title,position=copy(stop.position),learnKey=stop.learnKey,learnSpellId=stop.learnSpellId}
         key[#key+1]=table.concat({stop.kind,stop.npcId or stop.taxiId,stop.position.map,stop.position.x,stop.position.y,stop.learnKey or "",stop.learnSpellId or ""},":")
-        if stop.afterTask then
-            local step=stop.afterTask
-            state.serviceStop.afterTask={kind=step.kind,questId=step.questId,objectiveIndex=step.objectiveIndex,title=step.title,
-                turnedIn=((A.char.turnIns or {})[step.questId] or 0)>step.turnIns}
-            key[#key+1]=table.concat({step.kind,step.questId,step.objectiveIndex or 0,tostring(state.serviceStop.afterTask.turnedIn)},":")
-        end
     else state.serviceStop=nil end
     return table.concat(key,"|")
 end
@@ -431,42 +416,6 @@ function S.CurrentAutomatic()
     end
 end
 
-function S.PlanFlightUnlocks(plan,state)
-    if state.serviceStop or not A.Flights or not A.Flights.Matches(state) then return end
-    local stages=taskStages(plan,state);if not stages then return end
-    local rows=A.Flights.UnlockCandidates(state,S.ServiceMaps(plan,state),A.Navigation)
-    if #rows==0 then return end
-    local baseline=A.Flights.Itinerary(state.position,stages,state,A.Navigation)
-    if not baseline then return end
-    local result={}
-    for _,row in ipairs(rows) do
-        local preview=A.Flights.PreviewUnlock(state,row,A.Navigation)
-        if preview then
-            local best,afterStage
-            for insertion=0,#stages-1 do
-                if insertion==0 or taskStep(stages[insertion]) then
-                    local before,after={},{}
-                    for index,stage in ipairs(stages) do
-                        local list=index<=insertion and before or after;list[#list+1]=stage
-                    end
-                    before[#before+1]=row
-                    for _,path in ipairs(A.Flights.Itinerary(state.position,before,state,A.Navigation) or {}) do
-                        preview.now=(state.now or 0)+path.seconds;preview.hearthReady=path.hearthReady
-                        preview.maxSeconds=state.maxSeconds and math.max(0,state.maxSeconds-path.seconds)
-                        local routes=A.Flights.Itinerary(row.position,after,preview,A.Navigation)
-                        local seconds=routes and path.seconds+routes[1].seconds
-                        if seconds and (not best or seconds<best-0.001) then best,afterStage=seconds,insertion end
-                    end
-                end
-                local thread,main=coroutine.running();if thread and not main then coroutine.yield() end
-            end
-            if best then result[row.taxiId]={saving=baseline[1].seconds-best,afterStage=afterStage,
-                afterTask=afterStage>0 and stages[afterStage] or nil,resumeTitle=stages[afterStage+1].title} end
-        end
-    end
-    return result
-end
-
 function S:Choices(kind)
     local state=A.state
     local current=A.plan and A.plan.revision==state.revision and not A.refreshAt and not (A.jobs and A.jobs.plan) and A.plan
@@ -491,13 +440,11 @@ function S:Choices(kind)
         row.distance=A.Navigation:Distance(state.position,row.position)
         row.journeyDistance,row.resumeTitle=nil,nil
         local binding=bindings and bindings[S.BindingKey(row)]
-        local unlock=kind=="unlockFlight" and current and current.flightUnlockChoices and current.flightUnlockChoices[row.taxiId]
-        row.unlockSaving=unlock and unlock.saving or nil;row.unlockAfterTask=unlock and unlock.afterTask or nil
         row.bindingHub=binding
         if resume then
             local onward=A.Navigation:Distance(row.position,resume.position)
             row.journeyDistance=row.distance and onward and row.distance+onward
-            row.resumeTitle=unlock and unlock.resumeTitle or row.journeyDistance and resume.title
+            row.resumeTitle=row.journeyDistance and resume.title
         end
     end
     table.sort(rows,function(a,b)
@@ -507,8 +454,6 @@ function S:Choices(kind)
             if betterHub(a.bindingHub,b.bindingHub) then return true end
             if betterHub(b.bindingHub,a.bindingHub) then return false end
         end
-        local as,bs=a.unlockSaving or 0,b.unlockSaving or 0
-        if (as>1 or bs>1) and as~=bs then return as>bs end
         if resume and a.journeyDistance~=b.journeyDistance then
             return (a.journeyDistance or math.huge)<(b.journeyDistance or math.huge)
         end
@@ -548,11 +493,6 @@ function S:Pick(row,revision)
             if spell and spellKnown(spell)==false then A.char.serviceStop.learnSpellId=spell end
         end
     end
-    local step=row.unlockSaving and row.unlockSaving>1 and row.unlockAfterTask
-    if step then
-        A.char.serviceStop.afterTask={kind=step.kind,questId=step.questId,objectiveIndex=step.objectiveIndex,title=step.title,
-            turnIns=((A.char.turnIns or {})[step.questId] or 0)}
-    end
     self.binding,self.message=nil,nil
     A.char.paused=false;A.Navigation.manual=nil
     A.Observations:Reset();A.State:Refresh(true)
@@ -571,17 +511,6 @@ function S.Build(state,plan,automatic)
     if plan then plan.serviceDeferred=nil end
     if stop.kind=="unlockFlight" and (not A.Flights or not A.Flights.Matches(state) or not A.FlightData.nodes[stop.taxiId]) then
         return {fallback={kind="selectionBlocked",title="飞行点资料与当前客户端不匹配",text="可取消此服务安排，继续原任务。"}}
-    end
-    if stop.afterTask then
-        local step=stop.afterTask
-        local active=(state.quests or {})[step.questId]
-        local objective=active and (active.objectives or {})[step.objectiveIndex]
-        local done=step.turnedIn or step.kind=="objective" and active and
-            (active.ready or objective and objective.finished)
-        if not done then
-            if plan then plan.serviceDeferred="等待「"..step.title.."」" end
-            return
-        end
     end
     local instruction=stop.kind=="bind" and "与旅店老板交谈，设置炉石。" or
         stop.kind=="unlockFlight" and "与飞行管理员交谈，开通此飞行点。" or

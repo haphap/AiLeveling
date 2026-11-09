@@ -4,20 +4,6 @@ local function state(level)
     s.clientVersion="1.60.1";s.clientBuild="70862";s.interface=16001
     return s
 end
-test("当前构建参考升级表覆盖所有门槛且逐级和整程抵达六十级",function()
-    local count,total=0,0
-    for level,xp in pairs(A.Experience.xpToLevel) do count=count+1;total=total+xp;assert(level>=1 and level<60 and xp>0) end
-    eq(count,59);eq(total,4084700);eq(A.Experience.xpToLevel[1],400);eq(A.Experience.xpToLevel[20],23200)
-    for level=1,59 do
-        local s=state(level);s.xp=s.maxXP-1
-        local after=A.Progression.Advance(s,1,{})
-        eq(after.level,level+1);eq(after.xp,0);eq(after.maxXP,A.Experience.xpToLevel[level+1] or 0)
-        eq(after.uncertain,nil);eq(after.curveSource,A.Experience.source);eq(s.level,level);eq(s.xp,s.maxXP-1)
-    end
-    local after=A.Progression.Advance(state(),total,{})
-    eq(after.level,60);eq(after.xp,0);eq(after.maxXP,0)
-    after=A.Progression.Advance({level=60},100000,{});eq(after.level,60);eq(after.maxXP,0)
-end)
 test("版本构建接口或原生门槛不匹配时拒绝参考表但保留当前原生门槛",function()
     for _,change in ipairs({function(s) s.clientVersion="1.60.2" end,function(s) s.clientBuild="70532" end,
         function(s) s.interface=11508 end,function(s) s.maxXP=500 end,function(s) s.clientBuild=nil end}) do

@@ -104,34 +104,6 @@ function F.UnlockCandidates(state,maps,navigation)
     return rows
 end
 
--- Counterfactual only: never install this state or its routes as an executable plan.
-function F.PreviewUnlock(state,row,navigation)
-    if not F.Matches(state) or (state.unlocked or {})["taxi:"..row.taxiId]~=false or
-        not unlockNode(A.FlightData.nodes[row.taxiId],state) then return end
-    local preview={};for key,value in pairs(state) do preview[key]=value end
-    for _,field in ipairs({"unlocked","taxiAvailability","taxiDepartures","taxiLandings","taxiHops"}) do
-        preview[field]={};for key,value in pairs(state[field] or {}) do preview[field][key]=value end
-    end
-    preview.unlocked["taxi:"..row.taxiId]=true
-    local count=0
-    for _,path in pairs(A.FlightData.paths or {}) do
-        local from,to=path[1],path[2]
-        local source,dest=A.FlightData.nodes[from],A.FlightData.nodes[to]
-        if (from==row.taxiId or to==row.taxiId) and unlockNode(source,state) and unlockNode(dest,state) and
-            source.instance==dest.instance and preview.unlocked["taxi:"..from]==true and preview.unlocked["taxi:"..to]==true then
-            local key=from..":"..to
-            local a=from==row.taxiId and row.position or preview.taxiDepartures[from] or referenceLanding(source,row.position,row.position,navigation.hbd)
-            local b=to==row.taxiId and row.position or referenceLanding(dest,row.position,row.position,navigation.hbd)
-            if a and b and F.Seconds(from,to,state,key) then
-                preview.taxiAvailability[key]=true
-                preview.taxiDepartures[from]=a;preview.taxiLandings[key]=b;preview.taxiHops[key]=key
-                count=count+1
-            end
-        end
-    end
-    if count>0 then return preview end
-end
-
 -- Compare available flights with straight-line walking.
 function F.Routes(origin,target,state,navigation)
     if not origin or not target or not navigation or not A.Travel or
@@ -238,18 +210,17 @@ function F.Routes(origin,target,state,navigation)
     return #results>0 and results or nil
 end
 
-function F.Itinerary(origin,stages,state,navigation,delays)
+function F.Itinerary(origin,stages,state,navigation)
     local paths={{position=origin,seconds=0,low=0,high=0,legs={},flights=0,
         hearthReady=state.hearthReady,hearths=0}}
-    local elapsed=0
     for index,stage in ipairs(stages) do
         if not stage.position then return end
         local nextPaths={}
         for _,path in ipairs(paths) do
             local context={};for key,value in pairs(state) do context[key]=value end
-            context.now=(state.now or 0)+path.seconds+elapsed
+            context.now=(state.now or 0)+path.seconds
             context.hearthReady=path.hearthReady
-            context.maxSeconds=state.maxSeconds and math.max(0,state.maxSeconds-path.seconds-elapsed)
+            context.maxSeconds=state.maxSeconds and math.max(0,state.maxSeconds-path.seconds)
             for _,route in ipairs(F.Routes(path.position,stage.position,context,navigation) or {}) do
                 local legs={};for _,leg in ipairs(path.legs) do legs[#legs+1]=leg end
                 for _,leg in ipairs(route.legs) do legs[#legs+1]=leg end
@@ -261,8 +232,7 @@ function F.Itinerary(origin,stages,state,navigation,delays)
                 nextPaths[#nextPaths].hearths=path.hearths+route.hearths
             end
         end
-        elapsed=elapsed+(delays and delays[index] or 0)
-        paths=A.Travel.Prune(nextPaths,(state.now or 0)+elapsed)
+        paths=A.Travel.Prune(nextPaths,state.now)
         if #paths==0 then return end
         checkpoint(index)
     end

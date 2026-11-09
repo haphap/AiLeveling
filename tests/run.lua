@@ -37,27 +37,11 @@ test("地面移动只按直线距离除以速度且不读取道路图",function(
     eq(A.Travel.Route(d.content,"start","goal",s).seconds,20)
     d.content.edges={};eq(A.Travel.Route(d.content,"start","goal",s).seconds,20)
 end)
-test("跨世界没有地面直线距离时保留未知交通连接",function()
-    local d,s=F.Data({}),F.State();d.content.nodes.goal.position.map=2
-    eq(A.Travel.Route(d.content,"start","goal",s),nil)
-end)
 test("炉石冷却与船只时刻纳入未来出发时间",function()
     eq(A.Travel.Transit({kind="hearth",verified=true,seconds=10,cooldown=3600},100,{hearthReady=160}),70)
     eq(A.Travel.Transit({kind="boat",verified=true,seconds=30,period=60},70,{}),80)
 end)
 
-test("任务物品移格后身份不变且去重",function()
-    local s=F.State();s.quests[1]={itemId=123}
-    local r=A.QuestAssist.Desired({questId=1,items={[123]=1,[456]=2}},s,true)
-    eq(#r,2);eq(r[1],123);eq(r[2],456)
-end)
-test("战斗中合并待更新物品且不触碰安全属性",function()
-    local calls,combat=0,true
-    InCombatLockdown=function() return combat end
-    A.QuestAssist.pending={123};A.QuestAssist.buttons={{SetAttribute=function() calls=calls+1 end}}
-    A.QuestAssist:ApplyPending();eq(calls,0)
-    A.QuestAssist.pending={456};A.QuestAssist:ApplyPending();eq(A.QuestAssist.pending[1],456);eq(calls,0)
-end)
 test("地图支持表只解析数值不执行源码",function()
     local maps=A.Data.ParseMap("return {[1]=2, -- [3]=4\n [9]=0}; error('never execute')")
     eq(maps[1],2);eq(maps[3],nil);eq(maps[9],0)

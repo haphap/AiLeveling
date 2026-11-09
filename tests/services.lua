@@ -54,13 +54,12 @@ test("原生服务窗口与菜单匹配实际NPC、可用选项和当前安排",
         {icon=132058,name="服务",overrideIconID=132060,status=0,gossipOptionID=42,orderIndex=9}}
     local byID,byIndex=function() end,function() end
     C_GossipInfo={GetOptions=function() return options end,SelectOption=byID,SelectOptionByIndex=byIndex}
-    local dialogs=0;B.QuestAssist={DialogEvent=function(_,event) eq(event,"GOSSIP_SHOW");dialogs=dialogs+1 end}
     S:Event("GOSSIP_SHOW");local selected=S:GossipOption();eq(selected.value,42);eq(selected.select,byID)
     local row=options[2];row.status=1;eq(S:GossipOption(),nil);row.status=0
     options[3]={icon=132058,status=0,gossipOptionID=43,orderIndex=10};eq(S:GossipOption(),nil);options[3]=nil
     row.gossipOptionID=nil;row.orderIndex=0;selected=S:GossipOption();eq(selected.value,0);eq(selected.select,byIndex)
     row.orderIndex=nil;eq(S:GossipOption(),nil);row.orderIndex=9;row.gossipOptionID=42
-    e.npc=79;eq(S:GossipOption(),nil);B.jobs["service:gossip"]();eq(dialogs,0);e.npc=78
+    e.npc=79;eq(S:GossipOption(),nil);e.npc=78
     e.shift=true;S:Event("GOSSIP_SHOW");e.shift=false;eq(S:GossipOption(),nil);S:Event("GOSSIP_SHOW")
     for _,mode in ipairs({"shift","combat","paused","manual","disabled","far","flying"}) do
         if mode=="shift" then e.shift=true elseif mode=="combat" then e.combat=true
@@ -72,11 +71,7 @@ test("原生服务窗口与菜单匹配实际NPC、可用选项和当前安排",
         B.settings.autoTrain=true;B.state.position={map=1,x=0.5,y=0.5}
     end
     B.refreshAt=1;S:Event("GOSSIP_SHOW");eq(S:GossipOption(),nil)
-    local job=coroutine.create(B.jobs["service:gossip"]);assert(coroutine.resume(job));eq(coroutine.status(job),"suspended")
-    B.refreshAt=nil;B.jobs.plan={};assert(coroutine.resume(job));eq(coroutine.status(job),"suspended")
-    B.jobs.plan=nil;assert(coroutine.resume(job));eq(coroutine.status(job),"dead");eq(dialogs,1)
-    B.refreshAt=1;S:Event("GOSSIP_SHOW");job=coroutine.create(B.jobs["service:gossip"])
-    assert(coroutine.resume(job));S:Event("GOSSIP_CLOSED");assert(coroutine.resume(job));eq(dialogs,1);B.refreshAt=nil
+    S:Event("GOSSIP_CLOSED");eq(S:GossipOption(),nil);B.refreshAt=nil
     B.plan={revision=B.state.revision,automaticService={kind="bind",npcId=78,title="旅店",position=B.state.position}}
     B.char.serviceStop=nil;row.icon=132052;S:Event("GOSSIP_SHOW");eq(S:GossipOption().value,42)
     local secret={};row.icon=secret;canaccessvalue=function(v) return v~=secret end;eq(S:GossipOption(),nil)
@@ -518,69 +513,32 @@ local function unlockFixture()
     stages[2].position.x=1
     return B,s,p,function() C_Map=oldMap;finish() end
 end
-test("开飞行点比较完整后续行程并优先做沿途目标且预览不改原生交通",function()
+test("手选未发现飞行点使用实际交通，到达后等待原生开通再恢复任务",function()
     local B,s,p,finish=unlockFixture();local S=B.Services
-    p.flightUnlockChoices=S.PlanFlightUnlocks(p,s)
-    local choice=p.flightUnlockChoices[1];assert(math.abs(choice.saving-697)<0.001);eq(choice.afterStage,1)
-    eq(choice.afterTask,p.fallback);eq(s.unlocked["taxi:1"],false);eq(next(s.taxiAvailability),nil)
-    local rows=S:Choices("unlockFlight");eq(#rows,1);eq(rows[1].taxiId,1);eq(rows[1].unlockSaving,choice.saving)
+    local rows=S:Choices("unlockFlight");eq(#rows,1);eq(rows[1].taxiId,1)
     B.UI={};assert(loadfile("UI/Services.lua"))("AiLeveling",B)
     B.UI.Services.kind="unlockFlight";B.UI.Services.preview=rows[1]
-    local lines=table.concat(B.UI.Services:Lines(),"\n");assert(lines:find("先完成「沿途目标」",1,true));assert(not lines:find("697",1,true))
-    assert(S:Pick(rows[1],s.revision));assert(S.ValidStop(B.char.serviceStop));eq(s.serviceStop.afterTask.objectiveIndex,1)
-    eq(S.Build(s,p),nil);assert(p.serviceDeferred)
-    s.quests[42]={objectives={{finished=true}}}
+    local lines=table.concat(B.UI.Services:Lines(),"\n");assert(lines:find("与飞行管理员交谈",1,true))
+    assert(S:Pick(rows[1],s.revision));assert(S.ValidStop(B.char.serviceStop))
     local stop=S.Build(s,p);eq(stop.fallback.taxiId,1);eq(stop.referenceJourney.flights,0)
+    eq(s.unlocked["taxi:1"],false);eq(next(s.taxiAvailability),nil)
+    B.char.serviceStop.taxiId=0;eq(S.ValidStop(B.char.serviceStop),false);B.char.serviceStop.taxiId=1
+    s.clientBuild="1";eq(S.Build(s,p).fallback.kind,"selectionBlocked");s.clientBuild="70862"
     s.position={map=1,x=0.2,y=0};S:Snapshot(s);assert(s.serviceStop)
     s.unlocked["taxi:2"]=true;S:Snapshot(s);assert(s.serviceStop)
     s.unlocked["taxi:1"]=true;S:Snapshot(s);eq(s.serviceStop,nil);eq(B.char.serviceStop,nil);eq(B.char.locked,42)
     finish()
 end)
-test("开点预览保留炉石与绕路约束并要求航线耗时",function()
-    local B,s,p,finish=unlockFixture();local S=B.Services
-    B.FlightData.durations.Alliance={};eq(next(S.PlanFlightUnlocks(p,s)),nil)
-    B.FlightData.durations.Alliance["1:2"]=100
-    s.bags={[6948]=1};s.hearthPoint={map=1,x=1,y=0};s.hearthBindingKey="near";s.hearthCooldown=3600;s.hearthReady=0
-    assert(S.PlanFlightUnlocks(p,s)[1].saving<=0);eq(s.hearthReady,0);eq(s.hearthPoint.x,1)
-    s.hearthReady=3600;assert(S.PlanFlightUnlocks(p,s)[1].saving>0)
-    s.bags={};B.FlightData.nodes[1].world[2]=0.95;p.taskOrder[1].stages[2].position.x=0.4
-    assert(S.PlanFlightUnlocks(p,s)[1].saving<0)
-    finish()
-end)
-test("开点候选拒绝未知解锁敌方条件节点旧构建与不完整任务",function()
+test("开点候选限当前构建原生明确未发现的友方室外飞行点",function()
     local B,s,p,finish=unlockFixture();local S=B.Services;local node=B.FlightData.nodes[1]
     s.unlocked["taxi:1"]=nil;eq(#S:Choices("unlockFlight"),0)
     s.unlocked["taxi:1"]=false;node.factionMask=2;eq(#S:Choices("unlockFlight"),0)
     node.factionMask=1;node.condition=8;eq(#S:Choices("unlockFlight"),0)
     node.condition=0;node.visibility=8;eq(#S:Choices("unlockFlight"),0);node.visibility=0
-    s.clientBuild="1";eq(S.PlanFlightUnlocks(p,s),nil);eq(#S:Choices("unlockFlight"),0);s.clientBuild="70862"
-    p.taskOrder[1].lowValue={};eq(S.PlanFlightUnlocks(p,s),nil);p.taskOrder[1].lowValue=nil
-    p.taskOrder[1].stagesComplete=false;eq(S.PlanFlightUnlocks(p,s),nil);p.taskOrder[1].stagesComplete=true
-    p.taskQueue={remaining=1,steps={}};eq(S.PlanFlightUnlocks(p,s),nil);p.taskQueue=nil
-    s.inInstance=true;eq(S.PlanFlightUnlocks(p,s),nil);eq(#S:Choices("unlockFlight"),0)
-    s.inInstance=false;B.refreshAt=1;p.flightUnlockChoices={[1]={saving=999}}
-    eq(S:Choices("unlockFlight")[1].unlockSaving,nil)
-    finish()
-end)
-test("开点只预览有向直连不会臆造反向航线或解锁其他点",function()
-    local B,s,p,finish=unlockFixture();local rows=B.Services:Choices("unlockFlight")
-    local preview=B.Flights.PreviewUnlock(s,rows[1],B.Navigation)
-    eq(preview.taxiAvailability["1:2"],true);eq(preview.taxiAvailability["2:1"],nil)
-    eq(preview.taxiHops["1:2"],"1:2")
-    B.FlightData.nodes[2].condition=1;eq(B.Flights.PreviewUnlock(s,rows[1],B.Navigation),nil)
-    B.FlightData.nodes[2].condition=0;s.unlocked["taxi:2"]=false;eq(B.Flights.PreviewUnlock(s,rows[1],B.Navigation),nil)
-    s.unlocked["taxi:2"]=true;assert(B.Services:Pick(rows[1],s.revision))
-    B.char.serviceStop.taxiId=0;eq(B.Services.ValidStop(B.char.serviceStop),false);B.char.serviceStop.taxiId=1
-    s.clientBuild="1";eq(B.Services.Build(s).fallback.kind,"selectionBlocked")
-    B.Services:Cancel();eq(s.serviceStop,nil)
-    finish()
-end)
-test("开点比较跨帧执行且原任务顺序不变",function()
-    local B,s,p,finish=unlockFixture();local result
-    local co=coroutine.create(function() result=B.Services.PlanFlightUnlocks(p,s) end)
-    local frames=0
-    while coroutine.status(co)~="dead" do frames=frames+1;local ok,err=coroutine.resume(co);assert(ok,err);assert(frames<1000) end
-    assert(frames>1);assert(result[1].saving>0);eq(p.taskOrder[1].stages[1].kind,"objective");eq(p.taskOrder[1].stages[2].kind,"turnin")
+    s.clientBuild="1";eq(#S:Choices("unlockFlight"),0);s.clientBuild="70862"
+    s.inInstance=true;eq(#S:Choices("unlockFlight"),0);s.inInstance=false
+    local rows=S:Choices("unlockFlight");eq(#rows,1)
+    s.unlocked["taxi:1"]=true;eq(S:CanPick(rows[1],s.revision),false)
     finish()
 end)
 test("原生明确未发现的飞行点进入状态指纹，未知标记不推定未开通",function()

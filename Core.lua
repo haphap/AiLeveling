@@ -80,7 +80,7 @@ function A:NormalizeCharacter(char)
         (type(binding.node)~="string" and type(binding.node)~="number")) then char.hearthBinding=nil end
     if char.itinerary then char.itinerary=nil;char.locked=nil end
     if char.taskBatch and (not self.Dungeon.ValidTaskBatch or not self.Dungeon.ValidTaskBatch(char.taskBatch)) then char.taskBatch=nil end
-    if type(char.serviceStop)=="table" and char.serviceStop.kind=="bind" then char.serviceStop.afterTask=nil end
+    if type(char.serviceStop)=="table" then char.serviceStop.afterTask=nil end
     if char.serviceStop and (not self.Services or not self.Services.ValidStop(char.serviceStop)) then char.serviceStop=nil end
     if type(char.declinedBinding)~="string" or #char.declinedBinding>4096 then char.declinedBinding=nil end
     if char.locked~=nil and (type(char.locked)~="number" or char.locked<=0 or char.locked>=math.huge or char.locked%1~=0) then char.locked=nil end

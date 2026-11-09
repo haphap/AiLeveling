@@ -124,8 +124,11 @@ test("NPC 实际接取列表避开不可接任务并保留其他发布者与已�
     npc=12;UnitGUID=function() return "Creature-0-1-2-3-"..npc.."-00000001" end
     B.State:QuestOffersEvent("QUEST_DETAIL");s.questOffers=B.State.questOffers
     eq(table.concat(d:Candidates(s),","),"1")
-    eq(d:Target(q,s).entityId,12);eq(plan(s,d).fallback.questId,1)
+    q.taskFacts={hidden=true}
+    eq(d:Target(q,s).entityId,12)
+    local offered=plan(s,d);eq(offered.taskChoices[1].requireCheck,false);eq(offered.fallback.questId,1)
     B.State:QuestOffersEvent("PLAYER_LEVEL_UP");s.questOffers=B.State.questOffers
+    s.locked=1;eq(plan(s,d).taskChoices[1].requireCheck,true);s.locked=nil
     s.quests[1]={objectives={}};q.zoneOrSort=0
     assert(d:Target(q,s).approximate);eq(plan(s,d).fallback.kind,"objective")
     s.quests[1].ready=true;eq(plan(s,d).fallback.kind,"turnin");eq(s.completed[1],nil)

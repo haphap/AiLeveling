@@ -68,7 +68,8 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         if q.taskFacts then
             choice.rewards,choice.groupReference=q.taskFacts.rewards,q.taskFacts.group
             if not active then
-                choice.requireCheck=q.taskFacts.hidden
+                local offers=position and position.entityKind=="npc" and state.questOffers and state.questOffers[position.entityId]
+                choice.requireCheck=q.taskFacts.hidden and not (offers and offers[id])
                 if choice.requireCheck then
                     choice.stagesComplete=false
                     action.text="向任务发布者查看此任务。"
@@ -401,7 +402,6 @@ function P.Build(state, data, options)
     end
     if A.Dungeon.TaskBatchWaitPlan then A.Dungeon.TaskBatchWaitPlan(result,state,data,options) end
     if A.Services then result.bindingChoices=A.Services.PlanBindings(result,state,data) end
-    if A.Services then result.flightUnlockChoices=A.Services.PlanFlightUnlocks(result,state) end
     if A.Services then result.automaticService=A.Services.AutomaticBinding(result,state) end
     if (state.serviceStop or result.automaticService) and A.Services and not result.sessionActive and not result.maintenance then
         local stop=A.Services.Build(state,result,result.automaticService)
