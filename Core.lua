@@ -6,7 +6,7 @@ A.defaults = { mode = "relaxed", minutes = 60, dungeons = true, role = "DAMAGER"
     scale = 1, alpha = 0.94, arrow = true, pins = true, items = true, highlight = true, worldHighlight = true,
     combatFold = true, learn = true, waitMinutes = 10, damageStyle = "auto",
     fontScale=1,density="normal",lockWindow=false,routes=true,minimapPins=true,
-    distanceUnits="yards",transportHints=true,quantity=true,missingChecks=true,rewardAdvice=true,sound=false,gearPreference="nearby",autoAccept=true,autoTurnIn=true,targets=true,levelingStats=true }
+    distanceUnits="yards",transportHints=true,quantity=true,missingChecks=true,rewardAdvice=true,sound=false,gearPreference="nearby",autoAccept=true,autoTurnIn=true,autoTaxi=true,targets=true,levelingStats=true }
 A.jobs, A.dirty, A.requestedItems = {}, false, {}
 
 function A:NormalizeSettings(settings)
@@ -296,7 +296,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
         for _, name in ipairs({"SKILL_LINES_CHANGED", "UPDATE_FACTION", "SPELLS_CHANGED"}) do
             frame:RegisterEvent(name)
         end
-        for _,name in ipairs({"TAXIMAP_OPENED","TAXI_NODE_STATUS_CHANGED","HEARTHSTONE_BOUND","UPDATE_INSTANCE_INFO","CHAT_MSG_SYSTEM","UI_ERROR_MESSAGE","UI_INFO_MESSAGE"}) do frame:RegisterEvent(name) end
+        for _,name in ipairs({"TAXIMAP_OPENED","TAXIMAP_CLOSED","TAXI_NODE_STATUS_CHANGED","HEARTHSTONE_BOUND","UPDATE_INSTANCE_INFO","CHAT_MSG_SYSTEM","UI_ERROR_MESSAGE","UI_INFO_MESSAGE"}) do frame:RegisterEvent(name) end
         for _,name in ipairs({"TRAINER_SHOW","TRAINER_UPDATE","TRAINER_CLOSED","TRAINER_DESCRIPTION_UPDATE","TRAINER_SERVICE_INFO_NAME_UPDATE","CONFIRM_BINDER"}) do frame:RegisterEvent(name) end
         for _,name in ipairs({"ENCOUNTER_START","ENCOUNTER_END"}) do frame:RegisterEvent(name) end
         for _,name in ipairs({"UNIT_SPELLCAST_START","UNIT_SPELLCAST_SUCCEEDED","UNIT_SPELLCAST_FAILED","UNIT_SPELLCAST_FAILED_QUIET","UNIT_SPELLCAST_INTERRUPTED"}) do frame:RegisterEvent(name) end
@@ -342,6 +342,8 @@ frame:SetScript("OnEvent", function(_, event, ...)
         A:RequestRefresh()
     elseif event=="TAXIMAP_OPENED" then
         A.Transport:CaptureTaxi();A:RequestRefresh()
+    elseif event=="TAXIMAP_CLOSED" then
+        A.Transport.taxiSelected=nil
     elseif event=="HEARTHSTONE_BOUND" then
         A.State:Position();A.Transport:Bound();A:RequestRefresh()
     elseif event == "BAG_OPEN" or event == "BAG_CLOSED" then

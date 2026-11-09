@@ -1076,3 +1076,9 @@ TaskGuide.Stages现在将本轮已取得的未接目标描述、位置与区域�
 原生日志的未完成event目标没有结构身份、现有坐标或触发点时，按文字中唯一出现的发布／交付NPC名称定位；复用该NPC坐标与区域兜底，保留原目标文字。名称多义、原生已有目标ID时保留原处理。此关联只用于位置，不补目标ID、数量、经验或完成记录。
 
 扩展两个现有事件／缺图回归，先复现未定位失败；修复后仍537场景。两阵营实库、49个TOC及checker语法、开发内容检查通过，日志dist/named-event-{regression,alliance,horde,content}.log。真实98405的数据库文字与[原始任务页](https://www.wowhead.com/forever/quest=98405/the-great-cat-spirit)均指向巨豹之灵；checker用该文字构造离线event日志，验证规划到NPC11957、到达保持未完成、原生可交后交付。实际客户端日志形态与未接结构要求仍待覆盖，未因此重跑或改写连续诊断。下一步服务交互、全程接续与其他适用功能，完整目标继续；未发布安装，装备暂缓。
+
+## 2026-11-09 打开飞行地图后乘坐计划航线（未发布）
+
+新增默认开启的“自动乘坐计划航线”，在任务辅助设置中可关闭，按住Shift临时手动。仅在玩家打开飞行地图时，用原生当前起点与当前计划下一段飞行的起终点ID匹配可达节点，按原生slotIndex调用TakeTaxiNode。前方还有任务、手动航点、暂停、战斗、已在飞行或不匹配时保留手动；同窗口只尝试一次，关闭／进入世界后复位。调用不改变导航步骤或飞行状态，起降仍由原生状态处理；忽略费用。
+
+接口依据为固定构建的[TaxiFrame.xml](https://raw.githubusercontent.com/Gethe/wow-ui-source/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_UIPanels_Game/Shared/TaxiFrame.xml)与已有TaxiMapDocumentation；来源及SHA256记入SOURCES。独立实现，未复制RestedXP代码。扩展既有原生交通／交互回归，先复现未乘坐，再验证ID与slot匹配、移动后飞行、未完成任务阻断、不可达／切层排除、关闭复位、开关与手动覆盖；仍537场景。默认控件与设置持久化检查通过，49个TOC语法及开发内容检查通过。日志dist/automatic-taxi-{before,final-regression,final-content}.log。客户端调用和起降联动待实机；RX06其他服务交互、全程及其余交付条件继续，未发布安装，装备暂缓。

@@ -393,6 +393,14 @@
       ],
       "scope": "Secure macrotext hardware-click action, raidtarget set-unmarked action, public UnitXP/UnitXPMax/UnitLevel/UnitIsAFK and player XP events. No native code copied. Activity time uses session clock, excludes offline/pause/AFK; client event order and protected actions await live verification.",
       "clientVerified": false
+    },
+    {
+      "name": "Forever native taxi selection",
+      "build": "1.60.1.70862",
+      "url": "https://raw.githubusercontent.com/Gethe/wow-ui-source/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_UIPanels_Game/Shared/TaxiFrame.xml",
+      "sha256": "00b73465921b66c20d724e45cbcea19df88633fdcbb1d22253e71d2dbcf8a761",
+      "scope": "TakeTaxiNode(slotIndex) on the native taxi button; current-master node IDs, reachability and slot mapping come from C_TaxiMap.GetAllTaxiNodes. No fees checked or progress inferred from the call.",
+      "clientVerified": false
     }
   ],
   "native_symbol_checks": {

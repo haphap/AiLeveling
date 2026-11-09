@@ -197,6 +197,7 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     eq(B.state.completed[1],nil);eq(B.char.turnIns[1],nil)
     event("QUEST_FINISHED");count=0;event("QUEST_COMPLETE");eq(calls[6],"reward:0")
     event("GOSSIP_CLOSED");B.settings.autoTurnIn=false;event("QUEST_COMPLETE");eq(#calls,6)
+    B.Transport.taxiSelected=true;event("TAXIMAP_CLOSED");eq(B.Transport.taxiSelected,nil)
     B.finish()
 end)
 test("字号与密度改变普通卡片并保留完整滚动说明",function()
