@@ -6,7 +6,7 @@ A.defaults = { minutes = 60, dungeons = true, role = "DAMAGER",
     scale = 1, alpha = 0.94, arrow = true, pins = true, items = true, highlight = true, worldHighlight = true, scanRares = true,
     combatFold = true, learn = true, waitMinutes = 10, damageStyle = "auto",
     fontScale=1,density="normal",lockWindow=false,routes=true,minimapPins=true,waypointUI=true,maxSoulShards=100,
-    partySync=true,autoShareQuests=false,partyAnnouncements=false,
+    partySync=true,autoShareQuests=false,partyAnnouncements=false,dangerMap=true,emergency=true,
     distanceUnits="yards",transportHints=true,quantity=true,missingChecks=true,rewardAdvice=true,sound=false,gearPreference="nearby",autoAccept=true,autoTurnIn=true,autoTaxi=true,autoTrain=true,autoBind=true,autoSellJunk=false,targets=true,levelingStats=true }
 A.jobs, A.dirty, A.requestedItems = {}, false, {}
 
@@ -499,6 +499,7 @@ frame:SetScript("OnUpdate", function(_, elapsed)
         A.Navigation:Update()
         if A.Party then A.Party:Update() end
         if A.Routes then A.Routes:Update() end
+        if A.Dangers then A.Dangers:Update() end
         if A.dirty then A.UI:Render(); A.dirty = false end
     end
 end)

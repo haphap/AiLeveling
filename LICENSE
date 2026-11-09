@@ -19,3 +19,10 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+Third-party data notice
+
+Data/Dangers.lua is adapted from RestedXP/RXPGuides, copyright its contributors,
+and is separately licensed under CC BY-NC-SA 4.0. The MIT license above does not
+apply to that dataset. Attribution, source and changes are recorded in
+docs/DANGER_DATA_AUDIT.json; the complete license is docs/LICENSE.RestedXP.txt.

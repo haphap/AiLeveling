@@ -5,7 +5,8 @@ local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","
     "PlaySound","SOUNDKIT","NUM_CONTAINER_FRAMES","ContainerFrameCombinedBags","AiLeveling",
     "debugprofilestop","C_PlayerInteractionManager","UnitClassification","UnitName","UnitCanAttack","UnitIsDeadOrGhost","UnitOnTaxi","C_NamePlate","UIErrorsFrame","issecretvalue","canaccessvalue","Enum",
     "IsInGroup","IsInRaid","UnitIsGroupLeader","UnitIsConnected","FollowUnit",
-    "GetQuestLink","ChatFrameUtil","IsModifiedClick","QuestMapFrame_OpenToQuestDetails","GetRealmName"}
+    "GetQuestLink","ChatFrameUtil","IsModifiedClick","QuestMapFrame_OpenToQuestDetails","GetRealmName",
+    "WorldMapFrame","UnitHealth","UnitHealthMax","GetMirrorTimerInfo","GetMirrorTimerProgress","FlashClientIcon","GetActionInfo","ActionButton1"}
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
     for _,key in ipairs({"SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag",
@@ -567,6 +568,46 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     eq(B.action,actionBefore)
     eq(B.state.quests[1].ready,nil);eq(next(B.state.completed),nil)
     B.finish()
+end)
+test("危险地图与急救提示随等级和实际生命呼吸变化，保留原生按钮",function()
+    local B=setup();local Q=B.QuestAssist
+    assert(loadfile("Data/Dangers.lua"))("AiLeveling",B)
+    assert(loadfile("Dangers.lua"))("AiLeveling",B)
+    local D=B.Dangers
+    local canvas=widget();canvas:SetSize(800,500)
+    WorldMapFrame=widget();WorldMapFrame.GetMapID=function() return 1429 end;WorldMapFrame.GetCanvas=function() return canvas end
+    local marked=0
+    B.Navigation.hbdPins={AddWorldMapIconMap=function(_,owner,pin,map,x,y)
+        eq(owner,D);eq(map,1429);assert(x>=0 and x<=1 and y>=0 and y<=1);pin:Show();marked=marked+1
+    end,RemoveAllWorldMapIcons=function(_,owner) eq(owner,D) end}
+    B.state.faction,B.state.level="Alliance",7
+    D:UpdateMap();assert(marked>0 and #D.segments>0);assert(D.overlay.shown)
+    local route=B.action
+    B.state.level=60;D:UpdateMap();eq(#D.segments,0)
+    B.settings.dangerMap=false;D:UpdateMap();eq(D.overlay.shown,false);eq(D.mapKey,nil);eq(B.action,route)
+    local health,breath,rate=10,nil,-1
+    local secret={}
+    UnitHealth=function() return health end;UnitHealthMax=function() return 100 end
+    UnitIsDeadOrGhost=function() return false end
+    GetMirrorTimerInfo=function(i) if i==1 and breath then return "BREATH",breath,100,rate,false end;return "UNKNOWN" end
+    GetMirrorTimerProgress=function() return breath end
+    FlashClientIcon=function() end
+    issecretvalue=function(value) return value==secret end
+    canaccessvalue=function(value) return value~=secret end
+    ActionButton1=widget();ActionButton1.GetPagedID=function() return 1 end
+    GetActionInfo=function(slot) eq(slot,1);return "spell",633 end
+    local bagButton=widget()
+    C_Container.GetContainerItemID=function() return 118 end
+    Q.EachBagButton=function(_,callback) callback(bagButton,0,1) end
+    B.combat(true);D:Emergency()
+    eq(D.warning.text.value,"生命危急");eq(D.glows[ActionButton1].shown,true);eq(D.glows[bagButton].shown,true)
+    eq(ActionButton1.attributeWrites,0);eq(bagButton.attributeWrites,0)
+    health=100;D:Emergency();eq(D.warning.shown,false);eq(D.glows[ActionButton1].shown,false)
+    health=secret;D:Emergency();eq(D.warning.shown,false)
+    breath=10;D:Emergency();eq(D.warning.text.value,"呼吸将尽 · 尽快上浮")
+    rate=1;D:Emergency();eq(D.warning.shown,false)
+    health=10;B.settings.emergency=false;D:Emergency();eq(D.warning.shown,false);eq(D.glows[bagButton].shown,false)
+    B.combat(false);B.finish()
 end)
 test("练级统计按原生经验跨级结算，暂停AFK离线不计时并保留等级历史",function()
     local B=setup();local T=B.LevelingTracker

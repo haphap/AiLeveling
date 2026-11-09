@@ -21,6 +21,7 @@ Instances.lua
 LevelingTracker.lua
 Party.lua
 Data/Content.lua
+Data/Dangers.lua
 Data/TaskFacts.lua
 Data/ItemLimits.lua
 Data/Experience.lua
@@ -52,6 +53,7 @@ Routes.lua
 QuestAssist.lua
 WorldInteract.lua
 RareScanner.lua
+Dangers.lua
 UI/Main.lua
 UI/Tracker.lua
 UI/Plan.lua

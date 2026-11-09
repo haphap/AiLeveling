@@ -1,0 +1,116 @@
+{
+  "source": "https://github.com/RestedXP/RXPGuides/tree/d583b89e455d73be6b93970579f074ecf6bb6326/DB/forever",
+  "license": "CC BY-NC-SA 4.0",
+  "licenseFile": "docs/LICENSE.RestedXP.txt",
+  "changes": "Convert fixed map locations/patrols and emergency item/spell IDs to plain data; preserve faction, level and notes.",
+  "sourceSha256": {
+    "dangerousMobs.lua": "783de951105616ef5224199d8fa5e6f957c46d708f238bf6176c3a55b70a65ca",
+    "db.lua": "16efb559a503dc66a6d5cbdc1dbee36a76786b257713289001b350e56630200e"
+  },
+  "counts": {
+    "Alliance": {
+      "records": 263,
+      "pins": 820,
+      "patrols": 82
+    },
+    "Horde": {
+      "records": 276,
+      "pins": 796,
+      "patrols": 82
+    }
+  },
+  "excludedZones": [
+    {
+      "faction": "Alliance",
+      "zone": "Blade's Edge Mountains",
+      "reason": "Not in the fixed Forever map table",
+      "records": 14
+    },
+    {
+      "faction": "Alliance",
+      "zone": "Hellfire Peninsula",
+      "reason": "Not in the fixed Forever map table",
+      "records": 8
+    },
+    {
+      "faction": "Alliance",
+      "zone": "Nagrand",
+      "reason": "Not in the fixed Forever map table",
+      "records": 15
+    },
+    {
+      "faction": "Alliance",
+      "zone": "Netherstorm",
+      "reason": "Not in the fixed Forever map table",
+      "records": 14
+    },
+    {
+      "faction": "Alliance",
+      "zone": "Shadowmoon Valley",
+      "reason": "Not in the fixed Forever map table",
+      "records": 21
+    },
+    {
+      "faction": "Alliance",
+      "zone": "Terokkar Forest",
+      "reason": "Not in the fixed Forever map table",
+      "records": 7
+    },
+    {
+      "faction": "Alliance",
+      "zone": "Zangarmarsh",
+      "reason": "Not in the fixed Forever map table",
+      "records": 4
+    },
+    {
+      "faction": "Horde",
+      "zone": "Blade's Edge Mountains",
+      "reason": "Not in the fixed Forever map table",
+      "records": 14
+    },
+    {
+      "faction": "Horde",
+      "zone": "Hellfire Peninsula",
+      "reason": "Not in the fixed Forever map table",
+      "records": 8
+    },
+    {
+      "faction": "Horde",
+      "zone": "Nagrand",
+      "reason": "Not in the fixed Forever map table",
+      "records": 15
+    },
+    {
+      "faction": "Horde",
+      "zone": "Netherstorm",
+      "reason": "Not in the fixed Forever map table",
+      "records": 14
+    },
+    {
+      "faction": "Horde",
+      "zone": "Shadowmoon Valley",
+      "reason": "Not in the fixed Forever map table",
+      "records": 21
+    },
+    {
+      "faction": "Horde",
+      "zone": "Terokkar Forest",
+      "reason": "Not in the fixed Forever map table",
+      "records": 7
+    },
+    {
+      "faction": "Horde",
+      "zone": "The Barrens (Stagnant Oasis)",
+      "reason": "Not in the fixed Forever map table",
+      "records": 8
+    },
+    {
+      "faction": "Horde",
+      "zone": "Zangarmarsh",
+      "reason": "Not in the fixed Forever map table",
+      "records": 4
+    }
+  ],
+  "emergencyItems": 139,
+  "emergencySpells": 193
+}

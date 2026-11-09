@@ -86,7 +86,17 @@ function D:BuildServices()
     self.servicesByMap,self.serviceCount={},0
     self.amenitiesByMap,self.amenityCount={},0
     local npc,flags=self.db.Npc,self.db.Enum.npcFlags
+    self.dangerNames={}
+    for _,faction in ipairs({"Alliance","Horde"}) do
+        for _,rows in pairs(A.DangerData and A.DangerData[faction] or {}) do
+            for _,row in ipairs(rows) do self.dangerNames[row.name]=false end
+        end
+    end
     for index,id in ipairs(npc.GetAllIds()) do
+        if npc.GetRaw then
+            local name=npc.GetRaw(id,"name")
+            if self.dangerNames[name]~=nil then self.dangerNames[name]=npc.Get(id,"name") end
+        end
         local value=npc.Get(id,"npcFlags")
         local service=flag(value,flags.VENDOR) or flag(value,flags.REPAIR)
         local amenity=flag(value,flags.TRAINER) or flag(value,flags.INNKEEPER)

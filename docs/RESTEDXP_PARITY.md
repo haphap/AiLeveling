@@ -10,7 +10,7 @@ A 完成连续任务流程及其必要交互的开发；当前进入 B 补齐其
 
 - [RestedXP Guide 官方介绍](https://www.curseforge.com/wow/addons/restedxp-guide)：路线、自动接交、目标宏、箭头、界面、练级计时及自定义指南。
 - [RestedXP Waypoints](https://www.curseforge.com/wow/addons/restedxp-waypoints)：RXP／Waypoint UI 同步、动作图标、动态更新及手动航点恢复。
-- [官方公开仓库](https://github.com/RestedXP/RXPGuides/tree/d583b89e455d73be6b93970579f074ecf6bb6326)：固定提交 `d583b89e455d73be6b93970579f074ecf6bb6326`，SettingsPanel.lua SHA256 `f6a35a1c3fb9eefd4aabd757dc331d6a03191b18d2371bc9839021f242e7037a`。设置标签用于盘点行为，独立实现；未导入其程序、素材或指南内容。
+- [官方公开仓库](https://github.com/RestedXP/RXPGuides/tree/d583b89e455d73be6b93970579f074ecf6bb6326)：固定提交 `d583b89e455d73be6b93970579f074ecf6bb6326`，SettingsPanel.lua SHA256 `f6a35a1c3fb9eefd4aabd757dc331d6a03191b18d2371bc9839021f242e7037a`。设置标签用于盘点行为，独立实现运行时；危险位置与急救参考表按原许可单独收录，见 `DANGER_DATA_AUDIT.json`，未导入指南内容。
 - 扫描功能依据：[Targeting.lua](https://github.com/RestedXP/RXPGuides/blob/d583b89e455d73be6b93970579f074ecf6bb6326/Targeting.lua) 的稀有目标列表、姓名板／目标／鼠标指向检测及发现提醒；SettingsPanel.lua 包含 `scanForRares`、`notifyOnRares` 和危险怪追踪选项。其旧式主动扫描另有客户端开关，Forever 使用可读取的原生单位事件实现。
 - 背包功能依据：[InventoryManager.lua](https://github.com/RestedXP/RXPGuides/blob/d583b89e455d73be6b93970579f074ecf6bb6326/InventoryManager.lua) 的商店出售、垃圾标记、最低价值物品丢弃与灵魂碎片数量设置；独立接入现有 Merchant 和原生背包接口，未复制其背包框架。
 - 原生接口依据：固定 Forever UI 的 GossipInfoDocumentation.lua、GossipFrameShared.lua 和 QuestFrame.lua。任务接交需由实际客户端事件确认。
@@ -36,7 +36,7 @@ A 完成连续任务流程及其必要交互的开发；当前进入 B 补齐其
 | RX13 | 天赋预览、计划与切换 | 未实现；按固定源码和 Forever 接口完成整组功能 | B |
 | RX14 | 练级计时、分段、历史、比较与报告 | 开发已补齐：活动时间、经验／小时、交付／死亡、等级分段与报告；按角色身份保存账号历史，比较相同完整等级的分段与合计耗时，部分记录不参与比较。沿用现有统计流程验证 | B |
 | RX15 | 队伍设置、步骤／进度分享、任务共享、版本与通知 | 开发已补齐：小队内当前任务／目标进度／可交付状态与版本显示；原生手动共享、可选接取后共享，以及可选升级／完成／飞行通知。离队清除队友状态；组队到任务完成的本地流程检查通过 | B |
-| RX16 | 稀有／危险怪、地图追踪、危险提示与紧急操作 | 稀有单位发现、去重提醒、选中和声音已有；地图追踪、危险怪及其余列明操作尚缺，核对适用接口后整组实现 | B |
+| RX16 | 稀有／危险怪、地图追踪、危险提示与紧急操作 | 开发已补齐：已有稀有发现／选中／声音；固定 Forever 危险位置与巡逻在地图显示并按阵营、等级筛选，低血量高亮原生动作条及背包急救项，呼吸将尽提醒上浮，恢复／关闭撤下提示。沿用原生操作，本地地图与战斗提示流程通过 | B |
 | RX17 | 宝藏／商人物品发现、专业与内容阶段 | 适用边界已确认：专业技能与等级已进入原生任务资格；上游专业菜单只筛选手写指南步骤，随指南功能排除。内容阶段仅 CLASSIC；宝藏追踪在 Interface <20000 隐藏；商人宝藏在当前 zhCN 环境退出。既有任务所需购买与服务提示保留，不添加库存／费用逻辑 | B |
 | RX18 | 硬核、自给自足、多开等适用模式 | 适用性已确认：上游硬核仅 CLASSIC、多开仅 RETAIL，FOREVER 均隐藏；自给自足用于跳过交易／拍卖行步骤，当前自动行程原本不安排这些操作。无需另建模式或评分 | B |
 | RX19 | 配置档、默认配置、兼容、刷新、任务历史与诊断 | 开发已补齐：旧设置迁移、配置复制／切换／删除、新角色默认、当前配置恢复，以及原生已完成任务刷新与查看；角色进度保持。复用已有设置／诊断，本地操作流程通过，兼容实机结果归 C | B／C |

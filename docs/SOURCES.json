@@ -868,6 +868,17 @@
       "generator": "tools/build_dungeon_catalog.py",
       "verification": "tools/check_dungeon_rewards.lua",
       "clientVerified": false
+    },
+    {
+      "name": "RestedXP Forever danger and emergency data",
+      "version": "d583b89e455d73be6b93970579f074ecf6bb6326",
+      "url": "https://github.com/RestedXP/RXPGuides/tree/d583b89e455d73be6b93970579f074ecf6bb6326/DB/forever",
+      "license": "CC BY-NC-SA 4.0; RestedXP contributors",
+      "license_file": "LICENSE.RestedXP.txt",
+      "audit": "docs/DANGER_DATA_AUDIT.json",
+      "scope": "Dangerous mob locations/patrols, faction/level filtering and emergency item/spell identities; converted to plain data. Outland zones ignored by the fixed Forever map table remain excluded. Runtime implementation is independent.",
+      "data_adapted": true,
+      "client_verified": false
     }
   ]
 }

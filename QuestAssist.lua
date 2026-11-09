@@ -573,11 +573,15 @@ function Q:Highlight()
             self.highlights[#self.highlights+1]=button.AiLevelingHighlight
         end
     end
+    self:EachBagButton(highlightButton)
+end
+
+function Q:EachBagButton(callback)
     local function highlightBag(frame)
         if not frame or not frame:IsShown() or not frame.EnumerateValidItems then return end
         for _, button in frame:EnumerateValidItems() do
             local bag, slot = button:GetBagID(), button:GetID()
-            highlightButton(button,bag,slot)
+            callback(button,bag,slot)
         end
     end
     highlightBag(ContainerFrameCombinedBags)
@@ -587,7 +591,7 @@ function Q:Highlight()
     local frame=DaylightUIBag
     if frame and frame.kind=="bag" and frame.set and type(frame.set.Slots)=="function" and
         not (frame.IsForbidden and frame:IsForbidden()) then
-        if self.daylightFrame~=frame and frame.HookScript and hooksecurefunc then
+        if self.daylightFrame~=frame and frame.HookScript and hooksecurefunc and not InCombatLockdown() then
             local refresh=function() self:ScheduleHighlight() end
             frame:HookScript("OnShow",refresh);frame:HookScript("OnHide",refresh)
             if type(frame.set.Sync)=="function" then hooksecurefunc(frame.set,"Sync",refresh) end
@@ -596,7 +600,7 @@ function Q:Highlight()
         if frame:IsShown() then
             for _,entry in ipairs(frame.set.Slots()) do
                 local button=entry.button
-                if button and button.GetID then highlightButton(button,entry.bag,button:GetID()) end
+                if button and button.GetID then callback(button,entry.bag,button:GetID()) end
             end
         end
     end
