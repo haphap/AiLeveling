@@ -212,7 +212,7 @@ end
 function UI.ActionText(action,settings)
     local point=action.position
     if action.kind=="objective" and point and point.sourceKind=="vendor" then
-        return "向"..(point.entityName or "商人").."购买"..(point.targetName or "任务物品").."；到店确认库存和价格。"
+        return "向"..(point.entityName or "商人").."购买"..(point.targetName or "任务物品").."。"
     end
     if action.kind=="transit" then
         if settings.transportHints==false then return "前往下一交通目的地" end

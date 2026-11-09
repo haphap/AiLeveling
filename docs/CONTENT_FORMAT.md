@@ -88,15 +88,15 @@ services[id] 使用 title、node、source、verified，并可限定 faction（Al
 | vendorSeconds | 玩家整理／出售物品的耗时参考 |
 | repair={seconds} | 维修耗时 |
 | purchaseSeconds | 购买交互耗时参考 |
-| stock[id]={unlimited} | 是否有稳定足量供应；库存未知时先查看商店 |
+| stock[id]={} | 该服务点出售的物品目录；不记录库存或售价 |
 
 服务点须具有来源、位置及条件证据，到店路程计入完整行程。仅把客户端确认无任务标记、未锁定、具有售价且没有当前及候选任务关联的灰色物品纳入出售预测。玩家实际决定整理／出售／购买／维修，插件不调用自动交易接口。整理仅用于腾出背包空间，任务物品始终保留。
 
-service 动作须提供 serviceGoal，可用 items（携带量）、absentItems（所列物品清空）、capacityItems（可容纳后续获得物品）、freeSlots（通用空格）、durability（耐久比例）组合。到达服务点不代表服务完成，导航与恢复样本均等待实际状态达标。界面列出物品、数量与库存；库存未知的到店步骤不预记后续任务经验。
+service 动作须提供 serviceGoal，可用 items（携带量）、absentItems（所列物品清空）、capacityItems（可容纳后续获得物品）、freeSlots（通用空格）、durability（耐久比例）组合。到达服务点不代表服务完成，导航与恢复样本均等待实际状态达标。界面列出所需物品与缺少数量，不读取或判断商店库存。
 
 副本 items／requiredItems 和 consumeItems 在入口前检查及补齐，lootSlots 预留未逐项列出的掉落空间，durabilityLoss 为整轮明确模型。inside 动作的物品／日志效果仍逐项预测，其基准时间包含在 runSeconds；自动增加的服务绕路和交互额外计价。preQuests 在准备行程完成之后、进入之前检查，副本内未来交付不能提前解除进入条件。
 
-服务与容量逻辑已回放；真实服务点／物价／库存、补给消耗、训练与旅店的完整自动安排及客户端操作仍需后续内容和实测补齐。
+服务与容量逻辑已回放；真实服务点、补给消耗、训练与旅店的完整自动安排及客户端操作仍需后续内容和实测补齐。
 
 ## 飞行执行与耗时校准（0.1.7-dev）
 

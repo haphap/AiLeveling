@@ -7,7 +7,7 @@ local function state(free)
 end
 local function services(quests)
     local d=F.Data(quests);d.content.sources={fixture={}}
-    d.content.services={smith={verified=true,source="fixture",title="夹具服务点",node="near",repair={seconds=10},purchaseSeconds=8,stock={[100]={unlimited=true}},vendorSeconds=6}}
+    d.content.services={smith={verified=true,source="fixture",title="夹具服务点",node="near",repair={seconds=10},purchaseSeconds=8,stock={[100]={}},vendorSeconds=6}}
     return d
 end
 test("日志满时先交付再接新任务且已接任务不额外占槽",function()
@@ -45,11 +45,11 @@ test("低耐久插入有来源维修并传播耐久与耗时",function()
     for _,a in ipairs(r.actions) do if a.kind=="service" then found=true;eq(a.serviceKind,"repair");eq(a.serviceGoal.durability,0.2) end end
     eq(found,true)
 end)
-test("补给只购买有来源的足量库存并在使用后扣除",function()
+test("任务物品按出售来源安排并在实际使用后扣除",function()
     local s,q=state(16),F.Quest(1);q.actions[2].requiredItems={[100]=5};q.actions[2].consumeItems={[100]=5}
     local d=services({[1]=q});local r=A.Planner.Evaluate(q,s,d,{minutes=60},"start")
     eq(r.seconds,48);eq(r.resources.supplies.bags[100],0)
-    d.content.services.smith.stock[100].unlimited=false
+    d.content.services.smith.stock[100]=nil
     local candidate,reason=A.Planner.Evaluate(q,s,d,{minutes=60},"start");eq(candidate,nil);assert(reason:find("必需物品"))
 end)
 test("买补给前空间不足先整理且不出售受保护物品",function()
@@ -118,12 +118,6 @@ test("服务资源格式拒绝负数物品与空完成条件",function()
     eq(S.ValidService(point,d.content),true);point.purchaseSeconds=-1;eq(S.ValidService(point,d.content),false)
 end)
 
-test("库存未确认时导航到店核对而不计后续奖励",function()
-    local s,q=state(16),F.Quest(1);q.actions[2].requiredItems={[100]=5}
-    local d=services({[1]=q});d.content.services.smith.stock[100].unlimited=false
-    local p=plan(s,d);eq(p.best.kind,"service");eq(p.best.xp,0)
-    local action=p.best.actions[#p.best.actions];eq(action.serviceKind,"supply");eq(action.serviceGoal.items[100],5)
-end)
 test("服务导航不会以到达供应商代替实际购买完成",function()
     local oldTime,oldFacing=GetTime,GetPlayerFacing
     GetTime=function() return 100 end;GetPlayerFacing=function() return 0 end

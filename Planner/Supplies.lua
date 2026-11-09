@@ -199,7 +199,7 @@ local function recover(issue,cursor,state,content,protected)
                 local gains,targets={},{}
                 for item,count in pairs(issue.missing) do
                     local stock=service.stock[item]
-                    if stock and stock.unlimited then
+                    if stock then
                         gains[item],targets[item]=count,(cursor.bags[item] or 0)+count
                     end
                 end
@@ -410,7 +410,7 @@ function S.Fallback(state,data,blocked)
     end
     if not need then return end
     local text=need=="supply" and "购买所需补给" or need=="repair" and "维修装备" or "背包已满，整理背包或出售物品"
-    local current=A.Merchant and A.Merchant.CurrentService(state,need,missing)
+    local current=A.Merchant and A.Merchant.CurrentService(state,need,missing,data)
     if current then return current,text end
     local best
     for _,id in ipairs(ids(data.content.services)) do
@@ -511,9 +511,9 @@ function S.ValidService(point,content)
         if point[field]~=nil and not (number(point[field],0,math.huge) and point[field]>0) then return false,"服务耗时无效" end
     end
     if point.stock then
-        if type(point.stock)~="table" or not point.purchaseSeconds then return false,"补给耗时或库存无效" end
+        if type(point.stock)~="table" or not point.purchaseSeconds then return false,"补给耗时或出售物品无效" end
         for id,stock in pairs(point.stock) do
-            if not number(id,1,math.huge,true) or type(stock)~="table" or type(stock.unlimited)~="boolean" then return false,"库存条目无效" end
+            if not number(id,1,math.huge,true) or type(stock)~="table" then return false,"出售物品条目无效" end
         end
     end
     if not point.repair and not point.vendorSeconds and not (point.stock and next(point.stock)) then return false,"服务能力缺失" end

@@ -313,7 +313,7 @@ test("购买型任务使用友好商人坐标并保留物品身份和参考阶�
     eq(s.quests[1].ready,nil);eq(s.completed[1],nil)
     B.UI={};assert(loadfile("UI/Main.lua"))("AiLeveling",B)
     local text=B.UI.ActionText({kind="objective",position=p},{})
-    assert(text:find("向发布者购买饲料",1,true));assert(text:find("库存和价格",1,true))
+    assert(text:find("向发布者购买饲料",1,true));assert(not text:find("库存",1,true))
     eq(B.UI.ActionText({kind="turnin",position=p},{}),"交付任务")
     s.quests={};local descriptions,positions=d:ReferenceObjectiveTargets(q,s)
     eq(positions[1].entityId,8);eq(descriptions[1].targetId,100)

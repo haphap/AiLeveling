@@ -5,9 +5,6 @@ local M=A.Merchant
 local function accessible(value)
     return not canaccessvalue or canaccessvalue(value)
 end
-local function number(value,minimum)
-    return accessible(value) and type(value)=="number" and value>=minimum and value<math.huge and value%1==0
-end
 function M.NpcId(guid)
     if not accessible(guid) or type(guid)~="string" then return end
     local kind,id=guid:match("^([^-]+)%-[^-]+%-[^-]+%-[^-]+%-[^-]+%-(%d+)%-")
@@ -25,78 +22,23 @@ function M:Snapshot(state)
     local id=UnitGUID and M.NpcId(UnitGUID("npc"))
     if not id then return "merchant:identity-pending" end
     local name=UnitName and UnitName("npc")
-    local shop={npcId=id,name=accessible(name) and type(name)=="string" and name or nil,items={},pending=false}
+    local shop={npcId=id,name=accessible(name) and type(name)=="string" and name or nil}
     state.merchant=shop
     if CanMerchantRepair then
         local value=CanMerchantRepair()
         if accessible(value) and type(value)=="boolean" then shop.canRepair=value end
     end
-    local key={"merchant",id,tostring(shop.canRepair)}
-    if not GetMerchantNumItems or not GetMerchantItemLink or not C_MerchantFrame or not C_MerchantFrame.GetItemInfo then
-        shop.pending=true;return table.concat(key,":")..":api-pending"
-    end
-    local count=GetMerchantNumItems()
-    if not number(count,0) then shop.pending=true;return table.concat(key,":")..":list-pending" end
-    for index=1,count do
-        local info=C_MerchantFrame.GetItemInfo(index)
-        local link=GetMerchantItemLink(index)
-        local item=accessible(link) and type(link)=="string" and tonumber(link:match("item:(%d+)"))
-        if info and item then
-            local offer={index=index,name=accessible(info.name) and type(info.name)=="string" and info.name or nil,
-                pack=number(info.stackCount,1) and info.stackCount or nil,
-                available=number(info.numAvailable,-1) and info.numAvailable or nil}
-            shop.items[item]=shop.items[item] or {};table.insert(shop.items[item],offer)
-            key[#key+1]=table.concat({item,index,tostring(offer.pack),tostring(offer.available)},",")
-        elseif not info or (not info.currencyID and not info.spellID) then shop.pending=true end
-    end
-    key[#key+1]=tostring(shop.pending)
-    return table.concat(key,":")
+    return table.concat({"merchant",id,tostring(shop.canRepair)},":")
 end
 
-function M.Offer(shop,id,needed)
-    local best
-    for _,offer in ipairs(shop.items[id] or {}) do
-        local row={name=offer.name,index=offer.index,needed=needed,pack=offer.pack,available=offer.available}
-        if offer.pack then row.quantity=math.ceil(needed/offer.pack)*offer.pack end
-        row.stock=offer.available and (offer.available==-1 or row.quantity and offer.available>=row.quantity) or false
-        row.ready=row.quantity~=nil and row.stock
-        row.reason=(not row.quantity or offer.available==nil) and "商品资料待加载" or (not row.stock and "库存不足") or nil
-        if not best or row.ready and not best.ready then best=row end
-    end
-    return best
-end
-
-function M.ServiceState(action,state)
-    local shop=state.merchant
-    if not shop or action.kind~="service" or shop.npcId~=action.npcId then return end
-    local result={items={},ready=true}
-    if action.serviceKind=="repair" then
-        result.ready=shop.canRepair==true
-        if shop.canRepair==false then result.issue="当前商店不提供维修"
-        elseif shop.canRepair==nil then result.issue="维修服务待加载" end
-    elseif action.serviceKind=="supply" then
-        local ids={};for id in pairs(action.serviceGoal.items or {}) do ids[#ids+1]=id end;table.sort(ids)
-        for _,id in ipairs(ids) do
-            local needed=math.max(0,action.serviceGoal.items[id]-(state.bags[id] or 0))
-            if needed>0 then
-                local row=M.Offer(shop,id,needed) or {reason=shop.pending and "商品资料待加载" or "调整商店筛选以查看所需商品"}
-                row.id=id;result.items[#result.items+1]=row
-                if not row.ready then result.ready=false end
-            end
-        end
-    end
-    return result
-end
-
-function M.CurrentService(state,kind,missing)
+function M.CurrentService(state,kind,missing,data)
     local shop=state.merchant
     if not shop or not state.position or state.dead or state.inInstance then return end
     local targets={}
     if kind=="repair" and shop.canRepair~=true then return end
     if kind=="supply" then
-        for id,count in pairs(missing or {}) do
-            local offer=M.Offer(shop,id,count)
-            if offer and offer.stock then targets[id]=(state.bags[id] or 0)+count end
+        for _,point in ipairs(data and data.ServicePoints and data:ServicePoints(state,"supply",missing) or {}) do
+            if point.npcId==shop.npcId then targets=point.targets or {};break end
         end
         if not next(targets) then return end
     end
@@ -110,17 +52,14 @@ function M.CurrentService(state,kind,missing)
 end
 
 function M.Lines(action,state)
-    local service=M.ServiceState(action,state)
-    if not service then return {} end
     local lines={}
-    if service.issue then lines[#lines+1]=service.issue end
-    if action.serviceKind=="supply" then
-        for _,row in ipairs(service.items) do
-            local name=row.name or (state.itemMetadata and state.itemMetadata[row.id] and state.itemMetadata[row.id].name) or ("物品 #"..row.id)
-            local value=row.quantity and ("购买 "..row.quantity.." 件（每份 "..row.pack.." 件）") or ""
-            if row.available~=nil then value=value..(row.available==-1 and " · 库存不限" or (" · 库存 "..row.available)) end
-            if row.reason then value=value.." · "..row.reason end
-            lines[#lines+1]=name.."："..value
+    if action.kind~="service" or action.serviceKind~="supply" then return lines end
+    local ids={};for id in pairs(action.serviceGoal.items or {}) do ids[#ids+1]=id end;table.sort(ids)
+    for _,id in ipairs(ids) do
+        local needed=math.max(0,action.serviceGoal.items[id]-(state.bags[id] or 0))
+        if needed>0 then
+            local item=state.itemMetadata and state.itemMetadata[id]
+            lines[#lines+1]=(item and item.name or ("物品 #"..id)).."：还需购买 "..needed.." 件"
         end
     end
     return lines
