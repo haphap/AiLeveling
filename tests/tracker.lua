@@ -149,6 +149,10 @@ test("暂停飞行手动导航保持真实当前类型且不自动跳过任务",
     B.char.paused=true;B.UI:RenderTracker();eq(T.step.value,"已暂停");eq(B.UI.title.value,"当前任务");eq(#T.model.rows,2)
     B.char.paused=false;B.action={kind="flight",title="正在飞行"};B.UI:RenderTracker();eq(T.step.value,"飞行中")
     B.Navigation.manual={};B.action={kind="manual",title="手动目的地"};B.UI:RenderTracker();assert(T.queueLabel.value:find("任务列表",1,true))
+    eq(T.skip.text.value,"返回任务")
+    local cleared=0;B.Navigation.ClearManual=function(self) self.manual=nil;cleared=cleared+1 end
+    B.char.locked=1;T.skip.scripts.OnClick()
+    eq(cleared,1);eq(B.Navigation.manual,nil);eq(B.char.locked,1);eq(B.state.quests[1].objectives[1].numFulfilled,3)
     B.finish()
 end)
 test("施法事件只为相关炉石状态请求刷新而不响应其他单位法术",function()

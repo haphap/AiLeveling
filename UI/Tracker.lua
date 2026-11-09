@@ -292,7 +292,8 @@ function UI:CreateTracker()
         {"锁定",function() local action=A.Navigation:Current();local ok,why=A.Selection:LockQuest(action and action.questId);if not ok then A:Message(why) end end},
         {"暂缓",function()
             local action=A.Navigation:Current()
-            if action and action.kind=="service" and action.serviceKind=="repair" then A.Supplies:IgnoreRepair()
+            if action and action.kind=="manual" then A.Navigation:ClearManual()
+            elseif action and action.kind=="service" and action.serviceKind=="repair" then A.Supplies:IgnoreRepair()
             elseif action and action.questId then A.Selection:Skip(action.questId) end
         end},
         {"详情",function() self:ToggleDetails() end},
@@ -360,7 +361,8 @@ function UI:RenderTracker()
     local serviceLabel=action and action.kind=="service" and ({train="训练",bind="设置炉石",repair="维修"})[action.serviceKind]
     T.step:SetText(A.char.paused and "已暂停" or serviceLabel or (verbs[model.kind] or "当前步骤"))
     T.pause.text:SetText(A.char.paused and "继续" or "暂停")
-    T.skip.text:SetText(action and action.kind=="service" and action.serviceKind=="repair" and "忽略维修" or "暂缓")
+    T.skip.text:SetText(action and action.kind=="manual" and "返回任务"
+        or action and action.kind=="service" and action.serviceKind=="repair" and "忽略维修" or "暂缓")
     self.title:SetText(model.title)
     local lines={model.deliverySummary or model.instruction}
     if model.deliverySummary and action and action.kind~="turnin" then lines[#lines+1]=model.instruction end

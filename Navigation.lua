@@ -70,6 +70,15 @@ function N:Advance()
     A.dirty = true
 end
 
+function N:ClearManual()
+    if not self.manual then return end
+    self.manual = nil
+    self:RefreshPins()
+    A.QuestAssist:Update()
+    A:Replan()
+    A.dirty = true
+end
+
 function N:Current()
     local flight=A.Transport and A.Transport:FlightGate()
     if flight then return flight end
@@ -250,6 +259,10 @@ function N:Update()
     local target = N.Target(action)
     if not target then A.UI:SetNavigation(nil);return end
     local distance = self:Distance(pos, target)
+    if action.kind=="manual" and not A.state.dead and pos.map==target.map and distance and distance<=(action.arrival or 12) then
+        self:ClearManual()
+        return
+    end
     -- Floor changes need a map match as well as geometric proximity.
     if (action.kind == "move" or action.kind=="approach" or action.kind == "dungeonEnd") and pos.map == target.map and distance and distance <= (action.arrival or 12) then
         self:Advance()

@@ -189,6 +189,16 @@ test("飞行保留手动目的地且不混入步行校准",function()
     B.Navigation.manual=position(0.7)
     start(B);eq(B.Navigation:Current().kind,"flight")
     finish(B);eq(B.Navigation:Current().kind,"manual");eq(B.Navigation.manual.x,0.7);eq(next(B.char.samples),nil)
+    local index,replans=B.Navigation.index,B.replans
+    B.char.locked=42;B.state.quests[42]={ready=false};B.char.skipped={[43]=true}
+    B.state.position=position(0.7,2);B.Navigation:Update();assert(B.Navigation.manual)
+    B.state.position=position(0.7);B.char.paused=true;B.Navigation:Update();assert(B.Navigation.manual)
+    B.char.paused=false;B.state.dead=true;B.Navigation:Update();assert(B.Navigation.manual)
+    B.state.dead=false;B.Navigation:Update()
+    eq(B.Navigation.manual,nil);eq(B.Navigation.index,index);eq(B.replans,replans+1)
+    eq(B.char.locked,42);eq(B.char.skipped[43],true);eq(B.state.quests[42].ready,false);eq(B.state.completed[42],nil)
+    B.Navigation.manual=position(0.2);B.char.paused=true;B.Navigation:ClearManual();B.Navigation:ClearManual()
+    eq(B.Navigation.manual,nil);eq(B.char.paused,true);eq(B.replans,replans+2);eq(B.Navigation.index,index)
 end)
 test("空中规划门控并丢弃起飞前尚未发布的计算",function()
     local B=fixture();local queued,called
