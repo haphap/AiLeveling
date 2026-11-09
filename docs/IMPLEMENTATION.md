@@ -1062,3 +1062,11 @@ TaskGuide.Stages现在将本轮已取得的未接目标描述、位置与区域�
 真实 QuestieDB 的1464“火焰灵契”有前置1525、限带道具6636×1；补齐离线角色的实际前置后，持有／消耗、手选和原生可交状态均通过。扩展既有持有上限回归，先复现自动反复补领及排序失效，再修复；单元场景仍537。两阵营实库联跑、49个TOC Lua及checker语法、开发内容检查通过。日志：dist/owned-restock-final-regression.log、owned-restock-final-alliance.log、owned-restock-final-horde.log、owned-restock-final-content.log。
 
 连续诊断不发放奖励物品或更新增益，尚不能据其重复停点判断所有重复任务的实际收益。本轮未重跑全角色诊断；99143数量、1507／98405事件、全程及实机验收继续。源码不升版、不发布安装，装备暂缓。
+
+## 2026-11-09 动态等级任务与破铜烂铁接续（未发布）
+
+实际1507“噬魂者”的Questie等级为-1；原索引将它归入0级，角色升高后候选遗漏，固定等级匹配也挡住了已有交谈要求。现保留-1索引并加入各等级候选，继续按实际资格筛选；当前构建的缓存用于结构目标，固定等级经验仍按原规则匹配。参考[Questie对-1动态等级的处理](https://raw.githubusercontent.com/Questie/Questie/master/Database/QuestieDB.lua)。实际1507在20／30／59级能规划到卡祖尔5909，19级资格不通过；已接任务仍等待原生完成状态，不以到达判完成。
+
+依据[Forever任务原始页](https://www.wowhead.com/forever/quest=99143/bottles-and-baubles)及固定Questie接口，补99143“破铜烂铁”的286209×6；等级7、sourceItemId=0匹配，经验仍未知。复用既有导入器与批量数量检查，原生数量优先。现有索引、缓存隔离与经验场景扩展，先复现候选遗漏再修复，无新增单元场景。537回归、两阵营实库、49个TOC及checker语法、生成一致性、开发内容检查通过；日志dist/scaling-objectives-{regression,alliance,horde,content}.log。
+
+人类战士离线连续诊断从6级38交付推进至41交付、10240已知交付XP，99143为第39次交付，下一停16重复任务；3项未知XP未累计。兽人术士从20级207交付停1507推进至221交付、186865已知交付XP，1507及后续任务链完成至1513“誓缚”，下一停889重复任务；7项未知XP未累计。两条记录独立，未重跑56组合报告；日志dist/scaling-objectives-continuous-human.log、scaling-objectives-continuous-orc.log。诊断仅模拟任务事件与已知交付XP，奖励／增益及实机仍待覆盖。下一步98405交谈事件等实际缺口，完整目标继续；未发布安装，装备暂缓。

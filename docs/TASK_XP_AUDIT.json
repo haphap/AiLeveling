@@ -188,6 +188,21 @@
       "url": "https://www.wowhead.com/forever/mx/quest=91741/libro-mordisqueado",
       "checked": "2026-11-09",
       "captureBuild": null
+    },
+    {
+      "id": 99143,
+      "level": 7,
+      "sourceItemId": 0,
+      "objectives": [
+        {
+          "kind": "item",
+          "id": 286209,
+          "count": 6
+        }
+      ],
+      "url": "https://www.wowhead.com/forever/quest=99143/bottles-and-baubles",
+      "checked": "2026-11-09",
+      "captureBuild": null
     }
   ],
   "observationChecks": [

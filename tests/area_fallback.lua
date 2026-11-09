@@ -103,6 +103,10 @@ test("同构建确认仅交付时未绑定日志目标的辅助提示不拦住�
     rows.extraObjectives[1][4]=nil;eq(B.Data:DeliveryOnly(q,s),false)
     rows.extraObjectives[1][4]=0
     facts.complex=true;eq(B.Data:DeliveryOnly(q,s),false);facts.complex=false
+    q.questLevel=-1;s.level=30;eq(B.Data:DeliveryOnly(q,s),true)
+    stages,complete=B.TaskGuide.Stages(q,s,B.Data,{kind="accept",position=B.Data:Target(q,s)})
+    eq(complete,true);eq(#stages,2);eq(stages[2].position.entityId,9)
+    eq(s.quests[1],nil);eq(s.completed[1],nil)
     s.clientBuild="other";eq(B.Data:DeliveryOnly(q,s),false)
 end)
 test("事件物品付款与未知资料不被归为仅交付任务",function()
@@ -209,6 +213,8 @@ test("缓存目标按构建与任务等级隔离且不覆盖Questie修正",funct
         local old=s[key];s[key]=value;eq(next(B.Data:ObjectiveEntries(q,s)),nil);s[key]=old
     end
     q.questLevel=11;eq(next(B.Data:ObjectiveEntries(q,s)),nil);q.questLevel=10
+    q.questLevel=-1;s.level=30;eq(B.Data:ObjectiveEntries(q,s)[3][1].count,2)
+    s.clientBuild="other";eq(next(B.Data:ObjectiveEntries(q,s)),nil);s.clientBuild="70862"
     rows.objectives={{{6}}};eq(B.Data:ObjectiveEntries(q,s),rows.objectives)
 end)
 test("缓存未支持要求保留复杂标记且不按单目标猜测身份",function()

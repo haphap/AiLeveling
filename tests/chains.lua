@@ -122,7 +122,8 @@ test("暂缓整链后未验证目标定位也不重新推荐该任务",function(
     eq(result.best,nil);eq(result.fallback,nil);eq(B.state.completed[1],nil)
 end)
 test("自有新增任务进入等级资格和关系索引且不改上游 ID 表",function()
-    local B={Content={quests={[2]={title="自有任务",questLevel=21,requiredSkill={123,5},preQuestGroup={1}}}}}
+    local B={Content={quests={[2]={title="自有任务",questLevel=21,requiredSkill={123,5},preQuestGroup={1}},
+        [3]={title="随等级任务",questLevel=-1,requiredLevel=20}}}}
     assert(loadfile("Planner/Chains.lua"))("AiLeveling",B)
     assert(loadfile("Data/Questie.lua"))("AiLeveling",B)
     local ids={1};local source={name="上游任务",questLevel=20,requiredLevel=1}
@@ -135,10 +136,11 @@ test("自有新增任务进入等级资格和关系索引且不改上游 ID 表"
             if id~=1 then return end
             local values={};for i,key in ipairs(fields) do values[i]=source[key] end;return values
         end}}
-    assert(B.Data:Connect(db));eq(#ids,1);eq(#B.Data.ids,2)
+    assert(B.Data:Connect(db));eq(#ids,1);eq(#B.Data.ids,3)
     local co=coroutine.create(function() B.Data:BuildIndex() end)
     repeat local ok,why=coroutine.resume(co);assert(ok,why) until coroutine.status(co)=="dead"
-    eq(B.Data.count,2);eq(B.Data.byLevel[21][1],2);eq(B.Data.requirements.skills[123],true)
+    eq(B.Data.count,3);eq(B.Data.byLevel[21][1],2);eq(B.Data.requirements.skills[123],true)
+    local candidates=B.Data:Candidates({level=30,quests={}});eq(#candidates,1);eq(candidates[1],3)
     eq(B.Data.requirements.reputations[72],true)
     assert(edge(B.Data.chainIndex,1,2,"all"));eq(B.Data:GetQuest(2).title,"自有任务")
     source.name="另一个角色上下文";assert(B.Data:Connect(db));eq(B.Data:GetQuest(1).title,"另一个角色上下文")

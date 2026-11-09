@@ -250,7 +250,7 @@ do
 end
 
 do
-    local ids=faction=="Alliance" and {91733,490} or {97225,79093,97583}
+    local ids=faction=="Alliance" and {91733,490,99143} or {97225,79093,97583}
     local inventory=dofile(root.."/tools/continuous_inventory.lua")
     for _,id in ipairs(ids) do
         local q=assert(A.Data:GetQuest(id))
@@ -291,13 +291,24 @@ do
     end
 end
 
-do
-    local id,recipient=faction=="Horde" and 97246 or 99047,faction=="Horde" and 3368 or 6094
+for _,row in ipairs(faction=="Horde" and {{97246,3368},{1507,5909}} or {{99047,6094}}) do
+    local id,recipient=row[1],row[2]
     local q=assert(A.Data:GetQuest(id))
     local context=dofile(root.."/tests/fixtures.lua").State()
     context.faction,context.classMask,context.raceMask=faction,s.classMask,s.raceMask
     context.clientVersion,context.clientBuild,context.interface="1.60.1","70862",16001
     context.position=s.position
+    if q.questLevel==-1 then
+        context.class,context.classMask="WARLOCK",db.Enum.classKeys.WARLOCK
+        for _,level in ipairs({20,30,59}) do
+            context.level=level
+            assert(A.Eligibility.Check(q,context,A.Data))
+            local included=false
+            for _,candidate in ipairs(A.Data:Candidates(context)) do if candidate==q.id then included=true end end
+            assert(included and A.Data:DeliveryOnly(q,context) and not A.TaskGuide.XP(q,level,context))
+        end
+        context.level=19;assert(not A.Eligibility.Check(q,context,A.Data));context.level=20
+    end
     assert(A.Data:DeliveryOnly(q,context) and not A.TaskGuide.XP(q,context.level,context))
     local stages,complete=A.TaskGuide.Stages(q,context,A.Data,
         {kind="accept",questId=q.id,title=q.title,position=assert(A.Data:Target(q,context))})

@@ -105,6 +105,7 @@ test("服务器缓存经验按构建与任务等级启用且原生奖励优先",
     q.taskFacts=nil;eq(B.TaskGuide.XP(q,11,s),nil)
     s.clientBuild="70862";eq(B.TaskGuide.XP(q,11,s),1500)
     eq(B.TaskGuide.XP(q,60,s),nil)
+    q.questLevel=-1;eq(B.TaskGuide.XP(q,20,s),nil)
 end)
 test("实际新增任务缓存经验补缺且不冒充完整奖励或任务资格",function()
     local B,s=fixture();assert(loadfile("Data/TaskFacts.lua"))("AiLeveling",B)

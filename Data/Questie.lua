@@ -52,7 +52,7 @@ function D:BuildIndex()
     local chainIndex=A.Chains.NewIndex()
     for i, id in ipairs(self.ids) do
         local q=self:GetQuest(id)
-        local level = math.max(0, q and q.questLevel or 0)
+        local level = q and q.questLevel==-1 and -1 or math.max(0, q and q.questLevel or 0)
         level = math.floor(level)
         self.byLevel[level] = self.byLevel[level] or {}
         table.insert(self.byLevel[level], id)
@@ -204,6 +204,7 @@ function D:Candidates(snapshot)
     local ids, seen = {}, {}
     local function add(id) if not seen[id] then ids[#ids + 1], seen[id] = id, true end end
     for id in pairs(snapshot.quests) do add(id) end
+    for _,id in ipairs(self.byLevel[-1] or {}) do add(id) end
     for level = math.max(0, snapshot.level - 8), snapshot.level + 2 do
         for _, id in ipairs(self.byLevel[level] or {}) do add(id) end
     end
@@ -362,7 +363,9 @@ function D:CacheQuest(q,state)
     if not cache or (state.clientVersion or A.clientVersion)~=cache.version or
         tostring(state.clientBuild or A.build)~=cache.build or (state.interface or A.interface)~=cache.interface then return end
     local facts=cache.quests[q.id]
-    if facts and facts.level==q.questLevel and (not facts.sourceItemId or facts.sourceItemId==q.sourceItemId) then return facts end
+    -- Scaling quests retain their objective requirements; their XP still needs a matching level in TaskGuide.XP.
+    if facts and (facts.level==q.questLevel or q.questLevel==-1) and
+        (not facts.sourceItemId or facts.sourceItemId==q.sourceItemId) then return facts end
 end
 
 function D:DeliveryOnly(q,state)
@@ -377,7 +380,7 @@ function D:DeliveryOnly(q,state)
         if not cache or extra[4]~=0 then return false end
     end
     local facts=cache or q.taskFacts
-    return facts~=nil and facts.level==q.questLevel and facts.complex==false and
+    return facts~=nil and (facts.level==q.questLevel or q.questLevel==-1 and cache~=nil) and facts.complex==false and
         facts.objectives~=nil and #facts.objectives==0 and self:Recipient(q)~=nil
 end
 

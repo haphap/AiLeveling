@@ -106,6 +106,9 @@ def load():
         {'id': 91741, 'level': 2, 'sourceItemId': 247857,
          'objectives': [{'kind': 'item', 'id': 247857, 'count': 1}],
          'url': 'https://www.wowhead.com/forever/mx/quest=91741/libro-mordisqueado'},
+        {'id': 99143, 'level': 7, 'sourceItemId': 0,
+         'objectives': [{'kind': 'item', 'id': 286209, 'count': 6}],
+         'url': 'https://www.wowhead.com/forever/quest=99143/bottles-and-baubles'},
     ]
     for fact in supplements:
         fact.update(checked='2026-11-09', captureBuild=None)
