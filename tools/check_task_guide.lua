@@ -192,3 +192,28 @@ do
     print(string.format("%s full candidate pool: %d choices, next #%d %s",faction,#full.taskChoices,full.fallback.questId,full.fallback.kind))
     A.Navigation.Distance=distance
 end
+
+do
+    local q=A.Data:GetQuest(60860)
+    assert(q.questLevel==0 and q.requiredLevel==0)
+    local context=dofile(root.."/tests/fixtures.lua").State()
+    context.faction,context.classMask,context.raceMask=faction,s.classMask,s.raceMask
+    context.completionKnown=true
+    for _,npc in ipairs(q.startedBy[1]) do
+        local side=db.Npc.Get(npc,"friendlyToFaction")
+        if side=="AH" or side==(faction=="Alliance" and "A" or "H") then
+            context.position=A.Data:EntityPoints(db.Npc,npc)[1]
+            if context.position then break end
+        end
+    end
+    assert(context.position and not A.Data:Target(q,context))
+    context.locked=q.id;local manual=assert(A.Data:Target(q,context));context.locked=nil
+    context.questOffers={[manual.entityId]={[q.id]=true}}
+    local offered=run(function() return A.Planner.TaskChoices(context,A.Data,{q.id},true,options) end)
+    assert(#offered==1 and offered[1].actions[1].position.entityId==manual.entityId)
+    context.questOffers={[manual.entityId]={}}
+    assert(#run(function() return A.Planner.TaskChoices(context,A.Data,{q.id},true,options) end)==0)
+    context.quests[q.id]={ready=true,objectives={}}
+    assert(A.Data:Target(q,context) and not context.completed[q.id])
+    print(faction..": real #60860 enters automatic choices only when offered; manual target and native ready delivery remain available")
+end

@@ -1004,3 +1004,11 @@ TaskGuide.Stages现在将本轮已取得的未接目标描述、位置与区域�
 固定QuestieDB1.0.12＋固定构建区域尺寸、同样离线角色状态的两阵营联跑通过。联盟完整池10项、仍建议33接取，CPU22.7→16.0ms，最长一次恢复17.1→1.3ms，恢复次数77→119；部落完整池8项、仍建议790接取，CPU3.1ms、77恢复、最长0.8ms。7＋33和788＋790的整批路程与经验数值完全相同。上述是这组数据的离线测量，客户端实际帧耗时、更多区域和全程性能仍待验收。最终日志dist/location-batch-alliance.log、location-batch-horde.log、location-batch-regression.log、location-batch-content.log；定位日志dist/profile-alliance-methods.log。
 
 本轮为实质progress。完整双阵营1—60、实际内容缺口与其他适用辅助功能继续，R01—R13／W01—W10目标active。下一轮优先推进自动任务／区域接续中的实际内容与执行缺口，不重复本轮性能检查。指南导入已删除，装备暂缓；不发布、安装，不改游戏、依赖或实际SavedVariables，客户端仍129。
+
+## 2026-11-09 零等级任务按实际 NPC 提供接入（未发布）
+
+连续诊断在60860“你的奖励到了！”停住：固定QuestieDB记录的任务等级／需求等级均为0，目标与经验模型为空，多个旅店老板发布；公共Contract没有它的事件开放条件。本轮没有猜写任务事实，改为这类未接零等级任务只从NPC实际提供列表加入自动行程，且导航到实际提供它的NPC。已接、可交、显式手选与准备保留，缺坐标继续用区域中心。无先行闲聊列表的直接QUEST_DETAIL窗口也记录实际提供机会。
+
+扩展现有NPC提供列表回归和既有两阵营真实API检查，无新增测试场景。537回归、49个TOC Lua语法、修改工具语法、开发内容检查通过；真实60860验证未提供时不抢占、提供后进入、手选和原生完成交付可用。日志dist/zero-level-offer-final-regression.log、zero-level-offer-final-content.log、zero-level-offer-final-alliance.log、zero-level-offer-final-horde.log。最终检查进程已全部结束。
+
+同一牛头人德鲁伊从1级开始的当前连续诊断，由3级／10次交付／2645已知交付XP推进到7级／29次交付／12350已知交付XP，下一停点99101缺结构目标（dist/continuous-zero-level-offer-final-tauren-druid.log）。这是离线连续决策诊断，尚非1—60全程或客户端验收。下一步继续实际内容／任务区域接续缺口；完整交付目标active。未恢复指南导入或装备，不升版、发布、安装，不操作游戏、依赖或实际SavedVariables。

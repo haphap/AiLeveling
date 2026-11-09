@@ -32,10 +32,10 @@ function State:QuestOffersEvent(event)
             offers[quest.questID]=true
         end
     else
-        -- A direct offer can reopen a quest omitted by the earlier gossip list.
+        -- A direct quest window is also an offer when the NPC skipped gossip.
         local id=GetQuestID and GetQuestID()
-        if not valid(id) or not previous or previous[id] then return end
-        for quest in pairs(previous) do offers[quest]=true end
+        if not valid(id) or previous and previous[id] then return end
+        for quest in pairs(previous or {}) do offers[quest]=true end
         offers[id]=true
     end
     local same=previous~=nil

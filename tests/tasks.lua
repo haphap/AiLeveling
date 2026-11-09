@@ -119,6 +119,17 @@ test("NPC 实际接取列表避开不可接任务并保留其他发布者与已�
     eq(d:Target(q,s).entityId,11);eq(next(s.questOffers),nil)
     npc=nil;UnitGUID=function() return "Player-1-123" end
     B.State:QuestOffersEvent("GOSSIP_SHOW");eq(next(B.State.questOffers),nil)
+    q.questLevel=0;sources={{11,12}}
+    eq(d:Target(q,s),nil);eq(#plan(s,d).taskChoices,0)
+    sources={};eq(d:Target(q,s),nil);sources={{11,12}}
+    s.locked=1;eq(plan(s,d).fallback.questId,1);s.locked=nil
+    npc=12;UnitGUID=function() return "Creature-0-1-2-3-"..npc.."-00000001" end
+    B.State:QuestOffersEvent("QUEST_DETAIL");s.questOffers=B.State.questOffers
+    eq(d:Target(q,s).entityId,12);eq(plan(s,d).fallback.questId,1)
+    B.State:QuestOffersEvent("PLAYER_LEVEL_UP");s.questOffers=B.State.questOffers
+    s.quests[1]={objectives={}};q.zoneOrSort=0
+    assert(d:Target(q,s).approximate);eq(plan(s,d).fallback.kind,"objective")
+    s.quests[1].ready=true;eq(plan(s,d).fallback.kind,"turnin");eq(s.completed[1],nil)
     C_Map,C_QuestLog,C_GossipInfo,UnitGUID,GetQuestID,canaccessvalue=oldMap,oldLog,oldGossip,oldGuid,oldQuest,oldAccess
 end)
 test("接交点目标分布与物品来源按跨区域直线距离选择",function()

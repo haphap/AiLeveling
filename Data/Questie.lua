@@ -268,7 +268,7 @@ end
 function D:QuestAreaTarget(q,state)
     local point=self:AreaTarget(q)
     if point or type(q.zoneOrSort)=="number" and q.zoneOrSort>0 then return point end
-    local giver=self:Target(q,{quests={},completed={},position=state.position,faction=state.faction})
+    local giver=self:Target(q,{quests={},completed={},position=state.position,faction=state.faction,locked=q.id})
     if giver then
         return {map=giver.map,x=0.5,y=0.5,sourceAreaId=giver.sourceAreaId,label="区域参考点",approximate=true}
     end
@@ -295,12 +295,15 @@ function D:Target(q, state)
     end
     local sources = self.db.Quest.Get(q.id, group) or {}
     local best, bestDistance, sourceCount, unavailable = nil, nil, 0, 0
+    -- Zero-level records join automatic leveling when an NPC actually offers them.
+    local offeredOnly=not active and q.questLevel==0 and state.locked~=q.id and
+        not state.preparingQuest and not state.itinerary and not state.taskBatch
     for kind = 1, 2 do
         local entity = kind == 1 and self.db.Npc or self.db.Object
         for _, id in ipairs(sources[kind] or {}) do
             sourceCount=sourceCount+1
             local offers=not active and kind==1 and state.questOffers and state.questOffers[id]
-            if offers and not offers[q.id] then
+            if offers and not offers[q.id] or offeredOnly and not (offers and offers[q.id]) then
                 unavailable=unavailable+1
             else
                 for _, point in ipairs(self:EntityPoints(entity, id, true)) do
@@ -321,7 +324,7 @@ function D:Target(q, state)
         end
     end
     if best then return best end
-    if sourceCount>0 and unavailable==sourceCount then return end
+    if (sourceCount>0 or offeredOnly) and unavailable==sourceCount then return end
     if self:UnmappedTargetArea(q,state) then return end
     local point=status=="ready" and self:QuestAreaTarget(q,state) or self:AreaTarget(q)
     -- A known sole recipient remains the same recipient even when its placement is missing.
