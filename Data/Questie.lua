@@ -507,6 +507,22 @@ function D:ObservedObjectiveTarget(q,state,identity,objective)
     if best then return {map=best.map,x=best.x,y=best.y,approximate=true,sourceKind="observation",label="任务目标附近"} end
 end
 
+-- Native event text can locate a related NPC without inventing a completion objective.
+function D:EventNPC(q,objective)
+    if objective.type~="event" or objective.finished or objective.targetId or type(objective.text)~="string" then return end
+    local found
+    for _,field in ipairs({"finishedBy","startedBy"}) do
+        for _,id in ipairs((self.db.Quest.Get(q.id,field) or {})[1] or {}) do
+            local name=self.db.Npc.Get(id,"name")
+            if type(name)=="string" and name~="" and objective.text:find(name,1,true) then
+                if found and found~=id then return end
+                found=id
+            end
+        end
+    end
+    return found
+end
+
 function D:ObjectiveTargets(q,state)
     local active=state.quests[q.id]
     if not active then return {} end
@@ -533,9 +549,9 @@ function D:ObjectiveTargets(q,state)
                 point.entityKind,point.entityId=kind,id
                 point.targetKind,point.targetId=identity.kind,identity.id
                 point.sourceKind=sourceKind
-                if sourceKind=="vendor" then
+                if sourceKind=="vendor" or sourceKind=="event" then
                     point.entityName=entity.Get(id,"name")
-                    point.targetName=self.db.Item.Get(identity.id,"name")
+                    if sourceKind=="vendor" then point.targetName=self.db.Item.Get(identity.id,"name") end
                 end
             end
             checkpoint()
@@ -587,6 +603,10 @@ function D:ObjectiveTargets(q,state)
                 end
             end
         end
+    end
+    for index,o in ipairs(active.objectives or {}) do
+        local id=not chosen[index] and not identities[index] and self:EventNPC(q,o)
+        if id then consider(self.db.Npc,id,"任务事件地点",index,"npc",{},"event") end
     end
     local result={}
     for index,o in ipairs(active.objectives or {}) do
@@ -661,9 +681,11 @@ function D:UnmappedTargetArea(q,state,objectiveIndex)
     local extras,counts=self:ObjectiveExtras(q,state)
     for index,o in ipairs(active.objectives or {}) do
         local entry=identities[index]
-        if (not objectiveIndex or index==objectiveIndex) and not o.finished and (entry or counts[index]==1) then
+        local eventNpc=not entry and self:EventNPC(q,o)
+        if (not objectiveIndex or index==objectiveIndex) and not o.finished and (entry or counts[index]==1 or eventNpc) then
             local lists={}
-            if entry and (entry.kind=="npc" or entry.kind=="object") then add(lists,entry.kind=="npc" and self.db.Npc or self.db.Object,entry.id)
+            if eventNpc then add(lists,self.db.Npc,eventNpc)
+            elseif entry and (entry.kind=="npc" or entry.kind=="object") then add(lists,entry.kind=="npc" and self.db.Npc or self.db.Object,entry.id)
             elseif entry and entry.kind=="killcredit" then for _,id in ipairs(entry.npcIds or {}) do add(lists,self.db.Npc,id) end
             elseif entry and entry.kind=="item" then
                 for _,source in ipairs({{self.db.Npc,"npcDrops"},{self.db.Object,"objectDrops"}}) do

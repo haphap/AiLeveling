@@ -1070,3 +1070,9 @@ TaskGuide.Stages现在将本轮已取得的未接目标描述、位置与区域�
 依据[Forever任务原始页](https://www.wowhead.com/forever/quest=99143/bottles-and-baubles)及固定Questie接口，补99143“破铜烂铁”的286209×6；等级7、sourceItemId=0匹配，经验仍未知。复用既有导入器与批量数量检查，原生数量优先。现有索引、缓存隔离与经验场景扩展，先复现候选遗漏再修复，无新增单元场景。537回归、两阵营实库、49个TOC及checker语法、生成一致性、开发内容检查通过；日志dist/scaling-objectives-{regression,alliance,horde,content}.log。
 
 人类战士离线连续诊断从6级38交付推进至41交付、10240已知交付XP，99143为第39次交付，下一停16重复任务；3项未知XP未累计。兽人术士从20级207交付停1507推进至221交付、186865已知交付XP，1507及后续任务链完成至1513“誓缚”，下一停889重复任务；7项未知XP未累计。两条记录独立，未重跑56组合报告；日志dist/scaling-objectives-continuous-human.log、scaling-objectives-continuous-orc.log。诊断仅模拟任务事件与已知交付XP，奖励／增益及实机仍待覆盖。下一步98405交谈事件等实际缺口，完整目标继续；未发布安装，装备暂缓。
+
+## 2026-11-09 已接事件按关联NPC名称定位（未发布）
+
+原生日志的未完成event目标没有结构身份、现有坐标或触发点时，按文字中唯一出现的发布／交付NPC名称定位；复用该NPC坐标与区域兜底，保留原目标文字。名称多义、原生已有目标ID时保留原处理。此关联只用于位置，不补目标ID、数量、经验或完成记录。
+
+扩展两个现有事件／缺图回归，先复现未定位失败；修复后仍537场景。两阵营实库、49个TOC及checker语法、开发内容检查通过，日志dist/named-event-{regression,alliance,horde,content}.log。真实98405的数据库文字与[原始任务页](https://www.wowhead.com/forever/quest=98405/the-great-cat-spirit)均指向巨豹之灵；checker用该文字构造离线event日志，验证规划到NPC11957、到达保持未完成、原生可交后交付。实际客户端日志形态与未接结构要求仍待覆盖，未因此重跑或改写连续诊断。下一步服务交互、全程接续与其他适用功能，完整目标继续；未发布安装，装备暂缓。

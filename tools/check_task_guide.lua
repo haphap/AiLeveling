@@ -319,6 +319,27 @@ for _,row in ipairs(faction=="Horde" and {{97246,3368},{1507,5909}} or {{99047,6
     print(faction..": real #"..id.." continues to the recipient for conversation and waits for native completion")
 end
 if faction=="Horde" then
+    local q=assert(A.Data:GetQuest(98405))
+    local context=dofile(root.."/tests/fixtures.lua").State()
+    context.faction,context.class,context.classMask,context.raceMask="Horde","DRUID",db.Enum.classKeys.DRUID,db.Enum.raceMaskById[6]
+    context.clientVersion,context.clientBuild,context.interface="1.60.1","70862",16001
+    context.level=20;context.position=A.Data:EntityPoints(db.Npc,11802)[1]
+    local text=assert((db.Quest.Get(q.id,"objectivesText") or {})[1])
+    context.quests[q.id]={objectives={{type="event",text=text,finished=false}}}
+    local choices=run(function() return A.Planner.TaskChoices(context,A.Data,{q.id},true,options) end)
+    local action=assert(choices[1]).actions[1]
+    assert(action.kind=="objective" and action.position.entityId==11957 and action.position.entityKind=="npc")
+    assert(choices[1].stages[1].text==text and action.position.entityName==db.Npc.Get(11957,"name"))
+    context.position=action.position
+    assert(A.Data:Target(q,context).entityId==11957 and not context.quests[q.id].ready and not context.completed[q.id])
+    context.quests[q.id].objectives[1].finished=true
+    assert(#A.Data:ObjectiveTargets(q,context)==0 and not context.completed[q.id])
+    context.quests[q.id].ready=true
+    choices=run(function() return A.Planner.TaskChoices(context,A.Data,{q.id},true,options) end)
+    assert(choices[1].actions[1].kind=="turnin" and choices[1].actions[1].position.entityId==11957)
+    print("Horde: real #98405 event text locates Great Cat Spirit #11957; arrival leaves it unfinished; native completion enables turn-in")
+end
+if faction=="Horde" then
     local q=assert(A.Data:GetQuest(1464))
     local context=dofile(root.."/tests/fixtures.lua").State()
     context.faction,context.class,context.classMask,context.raceMask="Horde","SHAMAN",db.Enum.classKeys.SHAMAN,db.Enum.raceMaskById[6]

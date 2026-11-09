@@ -351,6 +351,15 @@ test("独立事件地点进入已接和未接规划且保留原生完成事实",
     stages,complete=B.TaskGuide.Stages(q,s,d,{kind="objective",position=p});eq(complete,true)
     C_QuestLog.GetNextWaypoint=function() return 1,0.1,0.2 end
     eq(d:Target(q,s).label,"客户端任务目标")
+    C_QuestLog.GetNextWaypoint=nil;rows.triggerEnd=nil
+    s.quests[1].objectives={{type="event",text="聆听交付者的教诲",finished=false}}
+    p=d:Target(q,s);eq(p.entityId,9);eq(p.entityName,"交付者");eq(p.x,0.25);eq(p.targetId,nil)
+    s.position=p;p=d:Target(q,s);eq(p.objectiveIndex,1);eq(s.quests[1].ready,nil);eq(s.completed[1],nil)
+    rows.triggerEnd={"Event",{[12]={{42,88}}}};eq(d:Target(q,s).sourceKind,"trigger");rows.triggerEnd=nil
+    s.quests[1].objectives[1].text="交付者与发布者";eq(d:Target(q,s).entityId,nil)
+    s.quests[1].objectives[1].text="聆听交付者";s.quests[1].objectives[1].targetId=6
+    eq(d:Target(q,s).entityId,nil);s.quests[1].objectives[1].targetId=nil
+    s.quests[1].objectives[1].finished=true;eq(#d:ObjectiveTargets(q,s),0)
 end)
 test("事件与怪物混合目标保持独立且不猜测多个事件的对应",function()
     local B,q,s,rows,npcs=fixture();local d=B.Data
@@ -566,7 +575,7 @@ test("施法前置顺序修正保留原目标索引且同名匹配不猜测",fun
     eq(d:ObjectiveIdentities(q,s)[1].id,101)
 end)
 test("缺UI地图的事件保留实际区域并排除已完成和多事件歧义",function()
-    local B,q,s,rows=fixture();local d=B.Data;q.zoneOrSort=99;rows.objectives={}
+    local B,q,s,rows,npcs=fixture();local d=B.Data;q.zoneOrSort=99;rows.objectives={}
     rows.triggerEnd={"event",{[99]={{-1,-1}}}};s.quests[1].objectives={{text="事件",type="event"}}
     eq(d:Target(q,s),nil);local area,index=d:UnmappedTargetArea(q,s);eq(area,99);eq(index,1)
     s.quests[1].objectives[1].type=nil;eq(d:UnmappedTargetArea(q,s),99)
@@ -577,6 +586,9 @@ test("缺UI地图的事件保留实际区域并排除已完成和多事件歧义
     rows.triggerEnd[2][98]={{20,30}};eq(d:UnmappedTargetArea(q,s),nil)
     rows.triggerEnd[2]={[99]={{-1,-1,1},{101,1}}};eq(d:UnmappedTargetArea(q,s),nil)
     rows.triggerEnd[2]={[12]={{20,30}}};eq(d:UnmappedTargetArea(q,s),nil)
+    rows.triggerEnd=nil;npcs[9].spawns={[98]={{-1,-1}}}
+    s.quests[1].objectives={{type="event",text="聆听交付者"}}
+    eq(d:Target(q,s),nil);area,index=d:UnmappedTargetArea(q,s);eq(area,98);eq(index,1)
 end)
 test("缺地图的接交和实体目标按实际来源区域解析且不猜任务分类",function()
     local B,q,s,rows,npcs=fixture();local d=B.Data;q.zoneOrSort=99
