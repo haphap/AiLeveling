@@ -6,7 +6,7 @@ A.defaults = { minutes = 60, dungeons = true, role = "DAMAGER",
     scale = 1, alpha = 0.94, arrow = true, pins = true, items = true, highlight = true, worldHighlight = true, scanRares = true,
     combatFold = true, learn = true, waitMinutes = 10, damageStyle = "auto",
     fontScale=1,density="normal",lockWindow=false,routes=true,minimapPins=true,
-    distanceUnits="yards",transportHints=true,quantity=true,missingChecks=true,rewardAdvice=true,sound=false,gearPreference="nearby",autoAccept=true,autoTurnIn=true,autoTaxi=true,autoTrain=true,autoBind=true,targets=true,levelingStats=true }
+    distanceUnits="yards",transportHints=true,quantity=true,missingChecks=true,rewardAdvice=true,sound=false,gearPreference="nearby",autoAccept=true,autoTurnIn=true,autoTaxi=true,autoTrain=true,autoBind=true,autoSellJunk=false,targets=true,levelingStats=true }
 A.jobs, A.dirty, A.requestedItems = {}, false, {}
 
 function A:NormalizeSettings(settings)
@@ -384,6 +384,7 @@ frame:SetScript("OnUpdate", function(_, elapsed)
     if A.refreshAt and GetTime() >= A.refreshAt then
         A.refreshAt = nil
         A.State:Refresh()
+        if A.Merchant then A.Merchant:SellJunk() end
     end
     local start = debugprofilestop()
     -- One resume per job per frame; jobs yield after small batches.

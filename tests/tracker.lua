@@ -201,6 +201,10 @@ test("商店事件触发刷新且维修卡片可以忽略",function()
     B.action={kind="objective",questId=1,title="当前任务"};B.UI:RenderTracker();eq(T.skip.text.value,"暂缓")
     local event=B.frame.scripts.OnEvent
     event(nil,"MERCHANT_SHOW");eq(B.Merchant.open,true);assert(B.refreshAt)
+    local saleRefresh
+    B.Merchant.SellJunk=function() saleRefresh=B.refreshes end
+    B.time(11);B.frame.scripts.OnUpdate(nil,0)
+    eq(saleRefresh,B.refreshes);assert(saleRefresh>0)
     event(nil,"MERCHANT_CLOSED");eq(B.Merchant.open,false)
     B.Merchant:Snapshot(B.state);B.UI:RenderTracker();assert(not B.UI.body.value:find("123 铜",1,true))
     B.finish()

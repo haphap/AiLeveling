@@ -1,6 +1,6 @@
 return function(test,eq,F,A,plan)
 local names={"UnitGUID","UnitName","CanMerchantRepair","GetMerchantNumItems","GetMerchantItemLink","C_MerchantFrame","canaccessvalue",
-    "BuyMerchantItem","RepairAllItems","UseContainerItem","SetMerchantFilter"}
+    "BuyMerchantItem","RepairAllItems","UseContainerItem","SetMerchantFilter","C_Container","MerchantFrame","IsShiftKeyDown","InCombatLockdown"}
 local function setup()
     local saved={};for _,name in ipairs(names) do saved[name]=_G[name] end
     local B={};for k,v in pairs(A) do B[k]=v end
@@ -56,7 +56,40 @@ test("当前商店进入必要服务规划且仅实际恢复资源后返回保�
     s.durability=1;result=plan(s,d,{minutes=60,dungeons=false},B)
     eq(result.maintenance,nil);eq(result.fallback.questId,42)
     s.freeSlots=0;service=B.Supplies.Fallback(s,d,{});eq(service.actions[1].serviceKind,"vendor")
-    eq(B.Supplies.Done(service.actions[1],s),false);s.freeSlots=1;eq(B.Supplies.Done(service.actions[1],s),true)
+    eq(B.Supplies.Done(service.actions[1],s),false)
+    local slots,calls={},{}
+    s.bagEntries={}
+    for slot=1,11 do
+        slots[slot]={itemID=100+slot,stackCount=1,quality=0,isLocked=false,hasNoValue=false}
+        s.bagEntries[slot]={bag=0,slot=slot,id=100+slot,count=1}
+    end
+    slots[2].quality=1;slots[6].isLocked=true;slots[8].hasNoValue=true;slots[9].itemID=999
+    slots[10].quality=nil;slots[11].hasLoot=true;s.bagEntries[12]={bag=-2,slot=1,id=112,count=1}
+    C_Container={GetContainerItemInfo=function(bag,slot) eq(bag,0);return slots[slot] end,
+        GetContainerItemQuestInfo=function(_,slot) return {isQuestItem=slot==3,isActive=false} end,
+        UseContainerItem=function(bag,slot) eq(bag,0);calls[#calls+1]=slot end}
+    MerchantFrame={selectedTab=1,IsShown=function() return true end}
+    local shift,combat=false,false
+    IsShiftKeyDown=function() return shift end;InCombatLockdown=function() return combat end
+    d.db={Item={Get=function(id,key)
+        if key=="startQuest" and id==105 then return 77 end
+        if key=="relatedQuests" and id==104 then return {42} end
+    end}}
+    d.GetQuest=function(_,id) return id==42 and {id=42,sourceItemId=107} end
+    B.state,B.Data,B.char,B.settings=s,d,{}, {autoSellJunk=false}
+    local function open() M:Event("MERCHANT_CLOSED");M:Event("MERCHANT_SHOW");M:Snapshot(s) end
+    open();M:SellJunk();eq(#calls,0)
+    B.settings.autoSellJunk=true;shift=true;open();M:SellJunk();shift=false;M:SellJunk();eq(#calls,0)
+    B.char.paused=true;open();M:SellJunk();eq(#calls,0);B.char.paused=false
+    combat=true;open();M:SellJunk();eq(#calls,0);combat=false
+    open();M:SellJunk();eq(#calls,1);eq(calls[1],1);eq(s.freeSlots,0)
+    M:Event("MERCHANT_SHOW");M:SellJunk();eq(#calls,1)
+    slots[6].isLocked=false;M:SellJunk();eq(#calls,2);eq(calls[2],6)
+    slots[10].quality=0;M:SellJunk();eq(#calls,3);eq(calls[3],10)
+    M:Event("MERCHANT_CLOSED");M:SellJunk();eq(#calls,3)
+    C_Container.UseContainerItem=function(_,slot) calls[#calls+1]=slot;M:Event("MERCHANT_CLOSED") end
+    open();M:SellJunk();eq(#calls,4);eq(calls[4],1)
+    s.freeSlots=1;eq(B.Supplies.Done(service.actions[1],s),true)
     s.dead=true;eq(M.CurrentService(s,"repair"),nil);s.dead=false;s.inInstance=true;eq(M.CurrentService(s,"vendor"),nil)
     finish()
 end)

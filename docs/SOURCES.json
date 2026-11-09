@@ -136,7 +136,8 @@
         "readme.md": "89df8c0757ff49fa9c4ae390a02194a3020a37987488dd1bc8fbb697901c7bd4",
         "Help.lua": "2659f8872461df65d9fd067a01ee8560bbaa4eb42a81556ec1ae0581b921a6ef",
         "Targeting.lua": "296e7f56da9d3ac6c7757d1f84e91ee2d6bc235d6c2b0ddbd3035dfcd5cfb645",
-        "functions.lua": "55534ba82c283cea5f2d2383ac703a955ec1e6c403c9c913dc5b731a771ff476"
+        "functions.lua": "55534ba82c283cea5f2d2383ac703a955ec1e6c403c9c913dc5b731a771ff476",
+        "InventoryManager.lua": "2cf17e0e1f1da3ed1031849bb10d839baa3a103529ced198484e0f47b01037ba"
       },
       "scope": "Feature inventory only. Independent automation based on native quest and gossip API; no program, guide, art or configuration copied into the addon. Complete parity remains unverified.",
       "audit": "docs/RESTEDXP_PARITY.md"
@@ -283,7 +284,7 @@
       "name": "Forever carried-container API reference",
       "url": "https://github.com/Gethe/wow-ui-source/tree/forever",
       "retrieved": "2026-11-08",
-      "purpose": "Carried bag range, keyring capability and size; independent implementation only.",
+      "purpose": "Carried bag range and keyring capability; slot identity, quality, locks, no-value/loot flags, ItemQuestInfo and UseContainerItem for opt-in gray-item sales during an actual open merchant interaction. Independent implementation only.",
       "files": [
         {
           "url": "https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/ContainerFrame.lua",
