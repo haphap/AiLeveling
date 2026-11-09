@@ -1,5 +1,6 @@
 return function(test,eq,F,A)
-local globals={"UnitOnTaxi","GetTime","GetPlayerFacing","UnitIsDeadOrGhost","UnitIsAFK","IsPlayerMoving","UnitAffectingCombat","CreateFrame","SlashCmdList","debugprofilestop","C_SpellBook"}
+local globals={"UnitOnTaxi","GetTime","GetPlayerFacing","UnitIsDeadOrGhost","UnitIsAFK","IsPlayerMoving","UnitAffectingCombat","CreateFrame","SlashCmdList","debugprofilestop","C_SpellBook",
+    "TakeTaxiNode","hooksecurefunc","C_TaxiMap","GetTaxiMapID"}
 local saved={}
 for _,key in ipairs(globals) do saved[key]=_G[key] end
 local now,flying=0,false
@@ -64,6 +65,7 @@ test("飞行前导航出发点且飞越终点不算落地",function()
     B.Navigation:RefreshPins();eq(pinX,0)
     B.jobs.plan=coroutine.create(function() error("空中不应继续规划") end)
     start(B);eq(B.jobs.plan,nil);eq(B.Navigation:Current().kind,"flight")
+    assert(B.Navigation:Current().text:find("已飞行 0:00",1,true))
     eq(pinX,nil)
     step(B,2,true,position(1,1,"b"));eq(B.Navigation.index,1);eq(B.replans,0);eq(B.distance,nil)
     eq(#A.QuestAssist.Desired(B.Navigation:Current(),B.state,true,{Get=function() error("飞行门控不应查询任务物品") end}),0)
@@ -74,6 +76,36 @@ test("确认落地只结算对应航线且按真实状态刷新",function()
     local sample=B.char.samples["flight:v1:f"]
     eq(sample.n,1);eq(sample.mean,1);eq(sample.unit,"ratio");eq(B.char.samples.move,nil)
     B.Transport:Update();eq(B.refreshes,1);eq(sample.n,1)
+    local hooks,selected=0,nil
+    hooksecurefunc=function(name,callback) eq(name,"TakeTaxiNode");hooks=hooks+1;selected=callback end
+    TakeTaxiNode=function(slot) selected(slot) end
+    GetTaxiMapID=function() return 1 end
+    C_TaxiMap={GetAllTaxiNodes=function() return {{nodeID=1,state=0,slotIndex=1},
+        {nodeID=2,state=1,slotIndex=2,name="乙地"},{nodeID=3,state=1,slotIndex=3,name="丙地"}} end}
+    local function native()
+        local C=fixture();local s=C.state
+        s.clientVersion,s.clientBuild,s.interface,s.faction="1.60.1","70862",16001,"Alliance"
+        C.FlightData={version="timer",clientVersion="1.60.1",build="70862",interface=16001,durations={Alliance={["1:2"]=10,["1:3"]=20}}}
+        assert(loadfile("Planner/Flights.lua"))("AiLeveling",C)
+        local action=C.plan.best.actions[1];action.fromTaxi,action.toTaxi,action.travelSeconds=1,2,30
+        C.Transport:CaptureTaxi();C.Transport:CaptureTaxi()
+        return C
+    end
+    B=native();eq(hooks,1);TakeTaxiNode(2);TakeTaxiNode(99);eq(B.Transport.taxiRequest,nil)
+    TakeTaxiNode(2);eq(B.Transport.flight,nil)
+    start(B);local gate=B.Navigation:Current();assert(gate.title:find("乙地",1,true))
+    assert(gate.text:find("预计剩余 0:10",1,true));eq(B.Navigation.index,1)
+    B.dirty=false;step(B,2,true,position(0.5));eq(B.dirty,true)
+    assert(B.Navigation:Current().text:find("预计剩余 0:09",1,true))
+    B.dirty=false;step(B,2.2,true,position(0.5));eq(B.dirty,false)
+    for t=3,11 do step(B,t,true,position(1)) end
+    assert(not B.Navigation:Current().text:find("预计剩余",1,true));eq(B.Navigation.index,1)
+    step(B,12,false,position(1,1,"b"));eq(B.Transport:FlightGate(),nil);eq(B.Navigation.index,2)
+    B=native();TakeTaxiNode(3);start(B);eq(B.Transport.flight.action,nil)
+    gate=B.Navigation:Current();assert(gate.title:find("丙地",1,true));assert(gate.text:find("预计剩余 0:20",1,true))
+    step(B,2,false,position(0.8));eq(B.Navigation.index,1);eq(B.refreshes,1);eq(next(B.char.samples),nil)
+    B=native();B.Transport.wasFlying,B.Transport.lastFlightTick=nil,nil
+    start(B);gate=B.Navigation:Current();assert(not gate.text:find("已飞行",1,true));assert(not gate.text:find("预计剩余",1,true))
 end)
 test("无参考航线也仅在有效完整起降后记录独立绝对耗时",function()
     local B=fixture();local action=B.plan.best.actions[1]
@@ -166,7 +198,9 @@ test("落地无坐标时等待定位且等待时间不算飞行耗时",function(
     local B=fixture();start(B)
     for t=2,10 do step(B,t,true,position(0.5)) end
     step(B,11,false,nil);eq(B.refreshes,0);eq(B.Navigation:Current().kind,"flight")
+    local ended=B.Navigation:Current().text;assert(ended:find("飞行用时 0:10",1,true))
     for t=12,20 do step(B,t,false,nil) end
+    eq(B.Navigation:Current().text,ended)
     step(B,21,false,position(1,1,"b"));eq(B.refreshes,1);eq(B.char.samples["flight:v1:f"].mean,1)
 end)
 test("飞行暂停关闭学习重载和帧中断排除耗时样本",function()
@@ -188,6 +222,7 @@ test("飞行保留手动目的地且不混入步行校准",function()
     local B=fixture({{kind="move",position=position(1),referenceSeconds=10}})
     B.Navigation.manual=position(0.7)
     start(B);eq(B.Navigation:Current().kind,"flight")
+    assert(B.Navigation:Current().text:find("手动导航",1,true))
     finish(B);eq(B.Navigation:Current().kind,"manual");eq(B.Navigation.manual.x,0.7);eq(next(B.char.samples),nil)
     local index,replans=B.Navigation.index,B.replans
     B.char.locked=42;B.state.quests[42]={ready=false};B.char.skipped={[43]=true}

@@ -412,7 +412,7 @@
       "build": "1.60.1.70862",
       "url": "https://raw.githubusercontent.com/Gethe/wow-ui-source/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_UIPanels_Game/Shared/TaxiFrame.xml",
       "sha256": "00b73465921b66c20d724e45cbcea19df88633fdcbb1d22253e71d2dbcf8a761",
-      "scope": "TakeTaxiNode(slotIndex) on the native taxi button; current-master node IDs, reachability and slot mapping come from C_TaxiMap.GetAllTaxiNodes. No fees checked or progress inferred from the call.",
+      "scope": "TakeTaxiNode(slotIndex) on the native taxi button; current-master node IDs, reachability and slot mapping come from C_TaxiMap.GetAllTaxiNodes. No fees checked or progress inferred from the call. A single secure post-hook observes native TakeTaxiNode slot requests from the current reachable-node snapshot. A recent ground-to-UnitOnTaxi transition starts display timing; the selected native node names and existing Flights.Seconds provide destination and pure airborne ETA, excluding boarding. Different selections are detached from the old planned flight. Reloads without an observed start show only flight state. Countdown never advances navigation; native landing and position still acknowledge arrival. Hook order, native selection and timer display await live verification.",
       "clientVerified": false
     },
     {

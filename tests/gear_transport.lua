@@ -76,6 +76,7 @@ test("交通发现过滤阵营与未知节点并忽略费用",function()
     B.ready=true;B.settings={autoTaxi=true};B.Navigation.index=1
     B.Navigation.actions={{kind="move"},{kind="transit",mode="flight",fromTaxi=1,toTaxi=5}}
     B.Transport:CaptureTaxi();eq(calls,1);eq(B.Navigation.index,1);eq(B.Transport.flight,nil)
+    eq(B.Transport.taxiRequest.to,5)
     B.Transport:CaptureTaxi();eq(calls,1);B.Transport.taxiSelected=nil
     for _,flag in ipairs({"paused","manual","disabled","shift","combat","flying"}) do
         B.char.paused=flag=="paused";B.Navigation.manual=flag=="manual";B.settings.autoTaxi=flag~="disabled"
@@ -90,8 +91,10 @@ test("交通发现过滤阵营与未知节点并忽略费用",function()
         C_TaxiMap.GetAllTaxiNodes=function() return {{nodeID=1,state=0,slotIndex=1},node} end
         B.Transport:CaptureTaxi();eq(calls,1)
     end
+    C_TaxiMap.GetAllTaxiNodes=function() return {} end
+    B.Transport:CaptureTaxi();eq(B.Transport.taxiRequest,nil)
     C_TaxiMap.GetAllTaxiNodes=function() return {{nodeID=1,state=0,slotIndex=1},{nodeID=5,state=1,slotIndex=2}} end
-    B.Transport:CaptureTaxi();eq(calls,2);B.Transport:World();eq(B.Transport.taxiSelected,nil)
+    B.Transport:CaptureTaxi();eq(calls,2);B.Transport:World();eq(B.Transport.taxiSelected,nil);eq(B.Transport.taxiRequest,nil)
     B.ready,B.settings,B.Navigation.actions,B.Navigation.index=nil,nil,nil,nil
 end)
 test("飞行点已发现仍须尊重当前起点不可达",function()

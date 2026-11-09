@@ -2,6 +2,11 @@ local _, A = ...
 A.Transport = {known={},availability={},hops={},departures={},landings={},landingOrder={},dirty=true}
 local T = A.Transport
 
+local function clockText(seconds)
+    seconds=math.max(0,math.floor(seconds))
+    return string.format("%d:%02d",math.floor(seconds/60),seconds%60)
+end
+
 function T:IsFlying()
     if UnitOnTaxi then return UnitOnTaxi("player") == true end
 end
@@ -12,9 +17,18 @@ end
 
 function T:FlightGate()
     if not self:InFlight() then return end
-    local action = self.flight and self.flight.action
-    return {kind="flight",title=self:IsFlying() and (action and ("飞行中 · "..action.title) or "飞行中") or "正在确认落地点",
-        text="飞行期间暂停地面导航与任务物品提示；落地后按实际位置继续规划。"}
+    local flight,flying,now=self.flight,self:IsFlying(),GetTime()
+    local message=A.char.paused and "任务安排已暂停。" or A.Navigation and A.Navigation.manual and "落地后继续手动导航。" or
+        (flying and "落地后继续任务。" or "正在接续任务。")
+    if flight and flight.observedStart and now>=flight.started then
+        local elapsed=(flight.ended or now)-flight.started
+        local timer=(flying and "已飞行 " or "飞行用时 ")..clockText(elapsed)
+        if flying and flight.duration and elapsed<flight.duration then
+            timer=timer.." · 预计剩余 "..clockText(math.ceil(flight.duration-elapsed))
+        end
+        message=timer.."\n"..message
+    end
+    return {kind="flight",title=flying and (flight and flight.name and ("飞行中 · "..flight.name) or "飞行中") or "已落地",text=message}
 end
 
 function T:InvalidateSample()
@@ -26,6 +40,7 @@ function T:World()
     self.groundPosition,self.lastFlightTick=nil,nil
     self.taxiOrigin,self.taxiExpiry=nil,nil
     self.taxiSelected=nil
+    self.taxiChoices,self.taxiRequest=nil,nil
 end
 
 function T:RefreshKnown(map,faction)
@@ -86,8 +101,22 @@ function T:SelectTaxi(nodes,from)
         if node.nodeID==action.toTaxi and node.state==1 and not node.isMapLayerTransition and
             type(node.slotIndex)=="number" and node.slotIndex>0 and node.slotIndex%1==0 then
             self.taxiSelected=true
-            return pcall(TakeTaxiNode,node.slotIndex)
+            self:RecordTaxi(node.slotIndex)
+            local ok,result=pcall(TakeTaxiNode,node.slotIndex)
+            if not ok then self.taxiRequest=nil end
+            return ok,result
         end
+    end
+end
+
+function T:RecordTaxi(slot)
+    local choices=self.taxiChoices
+    if self.flight or not choices or canaccessvalue and not canaccessvalue(slot) or type(slot)~="number" then return end
+    self.taxiRequest=nil
+    local node=choices.slots[slot]
+    local now=GetTime()
+    if node and now>=choices.at and now-choices.at<=120 then
+        self.taxiRequest={from=choices.from,to=node.id,name=node.name,at=now}
     end
 end
 
@@ -95,8 +124,9 @@ function T:CaptureTaxi()
     self:SyncFlightSpeed(A.state)
     self.dirty=true
     self.taxiOrigin,self.taxiExpiry=nil,nil
+    self.taxiChoices=nil
     local map=GetTaxiMapID and GetTaxiMapID()
-    if not map or map<=0 or not C_TaxiMap or not C_TaxiMap.GetAllTaxiNodes then return end
+    if not map or map<=0 or not C_TaxiMap or not C_TaxiMap.GetAllTaxiNodes then self.taxiRequest=nil;return end
     local nodes=C_TaxiMap.GetAllTaxiNodes(map) or {}
     local from,slots=nil,{}
     for _,node in ipairs(nodes) do
@@ -107,6 +137,16 @@ function T:CaptureTaxi()
         end
     end
     if from then
+        self.taxiChoices={from=from,at=GetTime(),slots={}}
+        if self.taxiRequest and self.taxiRequest.from~=from then self.taxiRequest=nil end
+        for _,node in ipairs(nodes) do
+            if node.state==1 and not node.isMapLayerTransition and type(node.slotIndex)=="number" and node.slotIndex>0 and node.slotIndex%1==0 then
+                self.taxiChoices.slots[node.slotIndex]={id=node.nodeID,name=type(node.name)=="string" and node.name or nil}
+            end
+        end
+        if not self.taxiHooked and hooksecurefunc and type(TakeTaxiNode)=="function" then
+            hooksecurefunc("TakeTaxiNode",function(slot) self:RecordTaxi(slot) end);self.taxiHooked=true
+        end
         local snapshot={}
         if A.State and A.State.Position then A.State:Position(snapshot) end
         if snapshot.position then
@@ -128,6 +168,7 @@ function T:CaptureTaxi()
             end
         end
         self:SelectTaxi(nodes,from)
+    else self.taxiRequest=nil
     end
 end
 
@@ -235,13 +276,22 @@ function T:Update()
     if self.readyAt and GetTime()>=self.readyAt then self.readyAt=nil;A:RequestRefresh() end
     local flying,now=self:IsFlying(),GetTime()
     if flying==nil then return end
+    if self.taxiRequest and (now<self.taxiRequest.at or now-self.taxiRequest.at>3) then self.taxiRequest=nil end
     if flying and self.wasFlying~=true then
+        local observed=self.wasFlying==false and self.lastFlightTick and now>=self.lastFlightTick and now-self.lastFlightTick<=2
+        local request=observed and self.taxiRequest or nil
         local action
-        if self.wasFlying==false and self.lastFlightTick and now-self.lastFlightTick<=2 and
-            not A.char.paused and not A.Navigation.manual then
+        if observed and not A.char.paused and not A.Navigation.manual then
             action=A.Navigation:BeginFlight(self.groundPosition)
+            if action and request and (action.fromTaxi~=request.from or action.toTaxi~=request.to) then action=nil end
         end
-        self.flight={action=action,started=now,valid=action~=nil}
+        self.flight={action=action,started=now,valid=action~=nil,observedStart=observed,name=request and request.name,displaySecond=0}
+        if request and A.Flights then
+            local context={};for key,value in pairs(A.state) do context[key]=value end
+            context.taxiSpeed,context.samples=self.taxiSpeed,A.char.samples
+            self.flight.duration=A.Flights.Seconds(request.from,request.to,context,self.hops[request.from..":"..request.to])
+        end
+        self.taxiRequest,self.taxiChoices=nil,nil
         if action then
             self.flight.timeSampleKey=action.timeSampleKey
             if action.referenceFlight and A.Flights and action.fromTaxi and action.toTaxi then
@@ -259,6 +309,9 @@ function T:Update()
     end
     local flight=self.flight
     if flight then
+        if flying and flight.observedStart and now>=flight.started and flight.displaySecond~=math.floor(now-flight.started) then
+            flight.displaySecond=math.floor(now-flight.started);A.dirty=true
+        end
         if not self.lastFlightTick or now-self.lastFlightTick>2 or now<self.lastFlightTick or
             not A.settings.learn or A.char.paused or A.Navigation.manual or
             (UnitIsDeadOrGhost and UnitIsDeadOrGhost("player")) then flight.valid=false end

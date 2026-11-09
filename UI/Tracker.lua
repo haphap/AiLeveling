@@ -269,6 +269,7 @@ function UI.TrackerModel(state,plan,action,paused)
         if byQuest[row.questId] then emit(byQuest[row.questId]) else grouped[#grouped+1]=row end
     end
     model.rows=grouped
+    if model.kind=="flight" or model.kind=="hearthCast" then model.hint=nil end
     local deliveries,summary=deliveryAdvice(state,plan,action,choices,byQuest)
     model.deliverySummary=summary
     for _,row in ipairs(model.rows) do row.delivery=deliveries[row.questId] end
