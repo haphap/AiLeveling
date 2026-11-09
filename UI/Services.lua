@@ -36,6 +36,8 @@ function U:Lines()
     if A.char.serviceStop then lines[#lines+1]="已安排："..A.char.serviceStop.title.." · "..labels[A.char.serviceStop.kind] end
     local automatic=A.Services.CurrentAutomatic()
     if automatic then lines[#lines+1]="当前建议："..automatic.title.." · 设置炉石" end
+    local plan=A.plan
+    if plan and plan.revision==s.revision and not A.refreshAt and not (A.jobs and A.jobs.plan) and plan.serviceDeferred then lines[#lines+1]=plan.serviceDeferred end
     if A.char.serviceStop and A.char.serviceStop.afterTask then lines[#lines+1]="完成「"..A.char.serviceStop.afterTask.title.."」后前往。" end
     if self.message or A.Services.message then lines[#lines+1]=self.message or A.Services.message end
     if self.blocked then lines[#lines+1]=self.blocked end

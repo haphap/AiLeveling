@@ -349,6 +349,46 @@ test("手选服务保留后续任务金币而不采用到店最快的付费飞�
     s.money=35;result=S.Build(s,p);eq(result.referenceJourney.firstRoute.flights,1);eq(result.referenceJourney.money,0)
     finish()
 end)
+test("训练访问顺路安排在任务之后，完成后恢复服务且具体技能仍先学",function()
+    local B,s,p,finish=fundedServiceFixture();local S=B.Services
+    s.transportKnown=false;s.position={map=1,x=0,y=0};s.serviceStop.position={map=1,x=0.9,y=0}
+    local stages=p.taskOrder[1].stages
+    stages[1].position={map=1,x=0.2,y=0};stages[2].position={map=1,x=0.8,y=0}
+    local stop=s.serviceStop
+    eq(S.Build(s,p),nil);assert(p.serviceDeferred and p.serviceDeferred:find("训练师",1,true))
+    eq(s.serviceStop,stop);eq(s.completed[42],nil);eq(s.money,20)
+    s.quests={}
+    local choice=p.taskOrder[1]
+    p.taskQueue={remaining=0,steps={{choice=choice,stage=stages[1]},{choice=choice,stage=stages[2]}}}
+    local result=S.Build(s,p);eq(result.fallback.serviceKind,"train");eq(p.serviceDeferred,nil)
+    p.taskOrder={};p.taskQueue=nil
+    result=S.Build(s,p);eq(result.fallback.serviceKind,"train");eq(s.serviceStop,stop)
+    s.quests[42]={};p.taskOrder={{questId=42,stages=stages,stagesComplete=true}}
+    s.serviceStop.learnKey="指定技能"
+    result=S.Build(s,p);eq(result.fallback.serviceKind,"train")
+    s.serviceStop.learnKey=nil;s.position={map=1,x=0.9,y=0}
+    result=S.Build(s,p);eq(result.fallback.serviceKind,"train")
+    s.position={map=1,x=0,y=0};p.taskOrder[1].stagesComplete=false
+    result=S.Build(s,p);eq(result.fallback.serviceKind,"train")
+    for _,file in ipairs({"Planner/TaskGuide.lua","Planner/TaskQueue.lua"}) do assert(loadfile(file))("AiLeveling",B) end
+    local q=F.Quest(42);q.verified=false
+    local data=F.Data({[42]=q})
+    data.Target=function(_,_,state) return {map=1,x=state.quests[42].ready and 0.8 or 0.2,y=0,objectiveIndex=1} end
+    data.ObjectiveTargets=function() return {{map=1,x=0.2,y=0,objectiveIndex=1}} end
+    s.quests[42]={title="顺路任务",objectives={{text="目标",numRequired=1,numFulfilled=0}}}
+    result=plan(s,data,{minutes=60,dungeons=false},B)
+    eq(result.serviceStop,nil);eq(result.fallback.kind,"objective");assert(result.serviceDeferred)
+    B.UI={};assert(loadfile("UI/Main.lua"))("AiLeveling",B);assert(loadfile("UI/Tracker.lua"))("AiLeveling",B)
+    eq(B.UI.TrackerModel(s,result,result.fallback,false).hint,result.serviceDeferred)
+    assert(loadfile("UI/Services.lua"))("AiLeveling",B)
+    B.plan=result;B.UI.Services.preview=nil;B.UI.Services.kind="train"
+    assert(table.concat(B.UI.Services:Lines(),"\n"):find(result.serviceDeferred,1,true))
+    s.quests[42].ready=true
+    result=plan(s,data,{minutes=60,dungeons=false},B);eq(result.fallback.kind,"turnin");assert(result.serviceDeferred)
+    s.quests[42]=nil;s.completed[42]=true
+    result=plan(s,data,{minutes=60,dungeons=false},B);eq(result.fallback.serviceKind,"train");eq(result.serviceDeferred,nil)
+    finish()
+end)
 test("服务整程计入当前所选训练报价且不沿用关闭窗口后的报价",function()
     local B,s,p,finish=fundedServiceFixture();local S=B.Services
     s.money=40;s.serviceStop.position={map=1,x=0,y=0};s.serviceStop.learnKey="训练"

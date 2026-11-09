@@ -454,6 +454,7 @@ end
 function S.Build(state,plan,automatic)
     local stop=state.serviceStop or automatic
     if not stop then return end
+    if plan then plan.serviceDeferred=nil end
     if stop.kind=="unlockFlight" and (not A.Flights or not A.Flights.Matches(state) or not A.FlightData.nodes[stop.taxiId]) then
         return {fallback={kind="selectionBlocked",title="飞行点资料与当前客户端不匹配",text="可取消此服务安排，继续原任务。"}}
     end
@@ -497,6 +498,30 @@ function S.Build(state,plan,automatic)
     end
     local routes=A.Flights and A.Flights.Itinerary(state.position,route,state,A.Navigation)
     local journey=routes and routes[1]
+    local trainLater=stages and stop.kind=="train" and not stop.learnKey and not A.Navigation:Near(state.position,stop.position,25)
+    if trainLater then
+        for _,stage in ipairs(stages) do
+            if not state.quests[stage.questId] then trainLater=false;break end
+        end
+    end
+    if trainLater then
+        local best,after=journey and journey.seconds or math.huge,nil
+        for insertion=1,#stages do
+            if taskStep(stages[insertion]) then
+                local sequence={}
+                for i=1,insertion do sequence[#sequence+1]=stages[i] end
+                sequence[#sequence+1]=route[1]
+                for i=insertion+1,#stages do sequence[#sequence+1]=stages[i] end
+                local paths=A.Flights.Itinerary(state.position,sequence,state,A.Navigation)
+                if paths and paths[1].seconds<best-1 then best,after=paths[1].seconds,stages[insertion] end
+            end
+            local thread,main=coroutine.running();if thread and not main then coroutine.yield() end
+        end
+        if after then
+            plan.serviceDeferred=(after.kind=="turnin" and "先交付「" or "先完成「")..after.title.."」，再前往"..stop.title.."训练"
+            return
+        end
+    end
     if journey then return {fallback=action,travelActions=A.Flights.Actions(journey.firstRoute,action,A.Navigation),referenceJourney=journey} end
     if stages then
         return {fallback={kind="selectionBlocked",title="服务后的任务行程暂不可衔接",
