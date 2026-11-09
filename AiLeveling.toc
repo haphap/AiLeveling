@@ -46,6 +46,7 @@ Planner/Dungeon.lua
 Planner/DungeonTasks.lua
 Planner/Planner.lua
 Planner/Selection.lua
+Guides.lua
 Navigation.lua
 Routes.lua
 QuestAssist.lua
@@ -58,3 +59,4 @@ UI/Chains.lua
 UI/Dungeon.lua
 UI/Gear.lua
 UI/Settings.lua
+UI/Guides.lua

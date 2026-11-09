@@ -137,7 +137,8 @@ function UI.TrackerModel(state,plan,action,paused)
         local have=(state.bags or {})[action.targetId] or 0
         model.objectives[#model.objectives+1]={text="这批任务所需物品",done=false,have=have,need=have+action.itemGain}
     end
-    if plan.preparingQuest then model.hint="先完成「"..plan.preparingQuest.title.."」的前置准备"
+    if plan.guideDeferred then model.hint=plan.guideDeferred
+    elseif plan.preparingQuest then model.hint="先完成「"..plan.preparingQuest.title.."」的前置准备"
     elseif action and action.referenceFlight then model.hint="从当前飞行点前往任务区域，落地后继续目标指引"
     elseif action and action.sharedObjectives and #action.sharedObjectives>1 then
         model.hint="此目标可同时推进 "..#action.sharedObjectives.." 个任务"
@@ -241,6 +242,10 @@ function UI.TrackerModel(state,plan,action,paused)
         elseif not A.indexReady then model.title="正在整理任务";model.instruction="任务数据加载后显示当前步骤。"
         else model.title="选择下一项任务";model.instruction="点击下方任务开始，或打开详情查看行程。" end
     end
+    if plan.guideActive and state.guide then
+        model.hint=state.guide.name and string.format("%s · 步骤 %d/%d",state.guide.name,math.min(state.guide.step,state.guide.total),state.guide.total) or "所选指南"
+        model.deliverySummary=nil
+    end
     if paused then model.instruction="引导已暂停，点击继续恢复。";model.hint=nil;model.deliverySummary=nil end
     if A.error then model.title="需要处理";model.instruction=A.error;model.hint=nil;model.deliverySummary=nil end
     return model
@@ -292,6 +297,7 @@ function UI:CreateTracker()
         {"暂缓",function()
             local action=A.Navigation:Current()
             if action and action.kind=="service" and action.serviceKind=="repair" then A.Supplies:IgnoreRepair()
+            elseif A.plan and A.plan.guideActive and A.Guides then A.Guides:Skip()
             elseif action and action.questId then A.Selection:Skip(action.questId) end
         end},
         {"详情",function() self:ToggleDetails() end},

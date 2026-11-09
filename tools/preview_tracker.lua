@@ -52,12 +52,12 @@ local function widget(kind,parent)
     function w:SetStartPoint(point,relative,x,y) self.start={point=point,relative=relative,x=x,y=y} end
     function w:SetEndPoint(point,relative,x,y) self.finish={point=point,relative=relative,x=x,y=y} end
     for _,name in ipairs({"SetJustifyV","SetBackdrop","SetShadowColor","SetShadowOffset","SetMovable","EnableMouse","RegisterForDrag","SetMaxLines",
-        "RegisterForClicks","SetAttribute","SetScale","SetTexture","SetDesaturated","SetCooldown","Clear"}) do w[name]=function() end end
+        "RegisterForClicks","SetAttribute","SetScale","SetTexture","SetDesaturated","SetCooldown","Clear","SetFontObject","SetMultiLine","SetAutoFocus","SetMaxLetters","SetFocus","HighlightText","SetFrameStrata","SetAlpha"}) do w[name]=function() end end
     return w
 end
 local dungeonPreview=arg[1]=="dungeon"
-local canvasWidth=dungeonPreview and 700 or 560
-local canvasHeight=dungeonPreview and 760 or 1100
+local canvasWidth=(dungeonPreview or arg[1]=="guides") and 700 or 560
+local canvasHeight=(dungeonPreview or arg[1]=="guides") and 760 or 1100
 UIParent=widget("Root");UIParent:SetSize(canvasWidth,canvasHeight)
 CreateFrame=function(kind,_,parent) return widget(kind,parent) end
 STANDARD_TEXT_FONT="preview"
@@ -92,7 +92,15 @@ A.plan.taskChoices[#A.plan.taskChoices+1]={lowValue={suggestion="建议跳过"},
 A.plan.taskQueue={stagePlan=true}
 assert(loadfile("UI/Main.lua"))("AiLeveling",A)
 assert(loadfile("UI/Tracker.lua"))("AiLeveling",A)
-if dungeonPreview then
+if arg[1]=="guides" then
+    A.settings.scale,A.settings.alpha=1,1
+    A.state.guide={name="艾尔文森林任务",step=3,total=12}
+    assert(loadfile("Guides.lua"))("AiLeveling",A)
+    assert(loadfile("UI/Guides.lua"))("AiLeveling",A)
+    A.Guides:Import("#name 艾尔文森林任务\n#group 自定义指南\nstep\n.accept 7\nstep\n.complete 7,1\nstep\n.turnin 7")
+    A.UI.Guides:Open()
+    A.UI.Guides.editor:SetText(A.settings.guides[A.UI.Guides.key].source)
+elseif dungeonPreview then
     A.ready=true;A.Content={dungeons={}}
     if arg[2]=="entry-blocked" then A.state.instanceEntryError="客户端提示近期进入实例次数过多，待限制解除后重新检查" end
     A.state.clientVersion,A.state.clientBuild,A.state.faction="1.60.1","70862","Alliance"

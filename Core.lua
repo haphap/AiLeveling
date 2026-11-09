@@ -26,7 +26,7 @@ function A:NormalizeSettings(settings)
         if choices[key] and not choices[key][value] then invalid=true end
         if invalid then settings[key]=default end
     end
-    for _,key in ipairs({"position","detailPosition","navigationPosition"}) do
+    for _,key in ipairs({"position","detailPosition","navigationPosition","guidePosition"}) do
     local p=settings[key]
     if p then
         local points={TOPLEFT=true,TOP=true,TOPRIGHT=true,LEFT=true,CENTER=true,RIGHT=true,BOTTOMLEFT=true,BOTTOM=true,BOTTOMRIGHT=true}
@@ -114,6 +114,7 @@ function A:Replan()
     for key,value in pairs(self.settings or {}) do options[key]=value end
     self:Queue("plan", function()
         local result = self.Planner.Build(snapshot, self.Data, options)
+        if self.Guides then self.Guides.Apply(result,snapshot,self.Data) end
         if self.Transport and self.Transport:InFlight() then return end
         if self.state.revision ~= revision then return end
         if snapshot.position and self.state.position and snapshot.position.node ~= self.state.position.node then
@@ -148,8 +149,10 @@ function A:SetOption(key, value)
 end
 
 function A:RestoreSettings()
+    local guides,guideSerial=self.settings.guides,self.settings.guideSerial
     for key in pairs(self.settings) do self.settings[key]=nil end
     for key,value in pairs(self.defaults) do self.settings[key]=value end
+    self.settings.guides,self.settings.guideSerial=guides,guideSerial
     self.UI.frame:ClearAllPoints()
     self.UI.frame:SetPoint("RIGHT",UIParent,"RIGHT",-60,100)
     if self.UI.details then self.UI.details:ClearAllPoints();self.UI.details:SetPoint("CENTER") end
@@ -216,6 +219,7 @@ function A:Initialize()
     self.settings, self.char = AiLevelingDB, AiLevelingCharDB
     self:NormalizeSettings(self.settings)
     self:NormalizeCharacter(self.char)
+    if self.Guides then self.Guides:Normalize() end
     self.state = { revision = 0, completed = {}, quests = {} }
     self.UI:Create()
     self.QuestAssist:Create()
@@ -420,6 +424,7 @@ SlashCmdList.AILEVELING = function(command)
     if A.startupError then A.UI:ShowStartupError(A.startupError);return end
     if not A.UI.frame then return end
     if command == "status" then A.UI:ShowText(A:Diagnostics())
+    elseif command=="guides" and A.UI.Guides then A.UI.Guides:Open()
     elseif command=="stats" and A.LevelingTracker then A.UI:ShowText(A.LevelingTracker:Report())
     elseif command == "pause" then A:TogglePause()
     elseif command == "resume" then

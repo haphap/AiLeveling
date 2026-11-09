@@ -74,10 +74,14 @@ end
 function Q.DialogChoice(id,kind)
     local state,plan=A.state,A.plan
     if not state or not plan or state.locked and state.locked~=id then return end
+    if plan.guideActive then
+        local action=A.Navigation and A.Navigation:Current()
+        if not action or action.questId~=id or action.kind~=kind then return end
+    end
     local active=(state.quests or {})[id]
     if kind=="accept" and active or kind=="turnin" and not (active and active.ready) then return end
     for _,choice in ipairs(plan.taskChoices or {}) do
-        if choice.questId==id and not choice.lowValue and not choice.requireCheck and not choice.entryBlocked then
+        if choice.questId==id and (not choice.lowValue or plan.guideActive) and not choice.requireCheck and not choice.entryBlocked then
             if kind=="accept" then return not choice.acceptBlocked and choice.status=="accept" or nil end
             if A.TaskGuide and not state.locked then
                 local _,groups=A.TaskGuide.DeliveryGroups(plan.taskChoices,state,plan.taskOrder)
