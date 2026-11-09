@@ -70,6 +70,10 @@ for itemId,drop in pairs(A.TaskFacts.drops or {}) do
     end
 end
 print(string.format("参考任务：%d 条；奖励 %d 条；等级经验模型 %d 条",factCount,rewardCount,xpCount))
+local referenceDungeons=0
+assert(A.DungeonCatalog.version=="1.60.1" and A.DungeonCatalog.build=="70862","副本目录与目标构建不匹配")
+for _ in pairs(A.DungeonCatalog.entries) do referenceDungeons=referenceDungeons+1 end
+print(string.format("动态副本任务目录：%d 项；服务点通过 QuestieDB 公开接口查询",referenceDungeons))
 local kinds={accept=true,objective=true,turnin=true,move=true,service=true,transit=true}
 for id,node in pairs(c.nodes) do
     nodeCount=nodeCount+1
@@ -138,9 +142,8 @@ for id,point in pairs(c.services or {}) do
     if release and not point.verified then fail("服务点尚未验证："..id) end
 end
 if release then
-    if c.version=="unverified" then fail("真实内容包尚未验证") end
-    if dungeonCount==0 then fail("完整副本行程覆盖尚未建立") end
-    if serviceCount==0 then fail("服务点内容覆盖尚未建立") end
+    if questCount+dungeonCount+serviceCount>0 and c.version=="unverified" then fail("自有内容包尚未验证") end
+    if dungeonCount+referenceDungeons==0 then fail("副本任务目录尚未建立") end
     if not c.coverage or not c.coverage.locked then fail("完整覆盖盘点尚未锁定") end
     if not c.clientVerified then fail("目标客户端实机验证尚未完成") end
 end

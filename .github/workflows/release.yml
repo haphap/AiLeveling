@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing version tag to build and publish
-        required: true
+        description: Existing tag to publish; leave blank for a review artifact
+        required: false
         type: string
 
 permissions:
@@ -22,11 +22,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
-      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
           persist-credentials: false
       - name: Check version and build
         run: |
@@ -38,15 +38,31 @@ jobs:
           version = next(line.split(': ', 1)[1].strip() for line in
                          Path('AiLeveling.toc').read_text().splitlines() if line.startswith('## Version: '))
           assert re.fullmatch(r'\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?', version), 'Invalid version'
-          assert os.environ['RELEASE_TAG'] == 'v' + version, 'Tag must match AiLeveling.toc version'
-          subprocess.run(['python3', 'tools/build.py'] + ([] if '-' in version else ['--release']), check=True)
+          tag = os.environ['RELEASE_TAG']
+          if tag:
+              assert tag == 'v' + version, 'Tag must match AiLeveling.toc version'
+          subprocess.run(['python3', 'tools/build.py'] + (['--release'] if tag and '-' not in version else []), check=True)
           with open(os.environ['GITHUB_ENV'], 'a') as stream:
               stream.write('VERSION=' + version + '\n')
           PY
       - name: Generate checksum
         working-directory: dist
-        run: sha256sum "AiLeveling-${VERSION}.zip" > SHA256SUMS
+        run: |
+          sha256sum "AiLeveling-${VERSION}.zip" > SHA256SUMS
+          printf 'Commit: %s\nVersion: %s\n' "$(git rev-parse HEAD)" "$VERSION" > BUILD.txt
+      - name: Upload review artifact
+        if: env.RELEASE_TAG == ''
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: AiLeveling-review-${{ github.sha }}
+          path: |
+            dist/AiLeveling-*.zip
+            dist/SHA256SUMS
+            dist/BUILD.txt
+          if-no-files-found: error
+          retention-days: 30
       - name: Publish release
+        if: env.RELEASE_TAG != ''
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}

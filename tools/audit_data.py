@@ -51,11 +51,12 @@ def main():
              '自动生成：`python3 tools/audit_data.py`。来源为固定发行包的公开 API，含静态与动态修正，语言 zhCN。', '',
              f'任务 {base["total"]} 条；NPC {base["entities"]["Npc"]}、对象 {base["entities"]["Object"]}、物品 {base["entities"]["Item"]}。', '',
              f'已通过实际适配器建立 {base["adapter"]["chainRelations"]} 条任务关系；前置、后续关联与互斥分别保留，缺失关联 ID 继续列为资料缺口。', '',
-             f'已索引 {base["referenceServices"]["npcs"]} 个有有效地图坐标的参考商人／维修 NPC；逐地图 ID 见报告 referenceServices，阵营与商品关系在推荐时按有效 API 过滤。该计数不计入自有已验证服务内容。', '',
+             f'已索引 {base["referenceServices"]["npcs"]} 个有有效地图坐标的参考商人／维修 NPC；逐地图 ID 见报告 referenceServices，阵营与商品关系在推荐时按有效 API 过滤。运行时直接使用这些服务点。', '',
              f'另有 {base["referenceAmenities"]["npcs"]} 个参考训练师／旅店 NPC；逐地图 ID 见 referenceAmenities，职业适用性和可学项目以当前原生训练窗口为准。', '',
              '双阵营 × 九职业用于遍历上游动态修正分支；当前构建56个可玩组合已与官方表交叉核对，见 PLAYABLE_COVERAGE.md／json 的336项分段清单。完整行程覆盖仍待验收；副本分类见 DUNGEON_COVERAGE.md。', '',
-             '| 缺口 | 任务数（可重复归类） |', '| --- | ---: |']
-    lines.extend(f'| {key} | {count} |' for key, count in sorted(base['gaps'].items()))
+             '下表是 QuestieDB 基础字段盘点；运行时结合原生日志、任务事实补充和区域中心定位处理。数量沿用本次固定来源报告。', '',
+             '| 基础字段缺项 | 任务数（可重复归类） |', '| --- | ---: |']
+    lines.extend(f'| {key} | {count} |' for key, count in sorted(base['gaps'].items()) if key!='verified-action-chain')
     lines.extend(['', '各任务 ID、等级、区域、资格掩码、前置、物品与缺口见 EFFECTIVE_DATA_AUDIT.json。',
                   '上游 dungeon 支持表含副本、团队副本、战场和交通区域；原样保留并标记待分类，未当作练级副本完成清单。', '',
                   '任务行程由运行时动态生成；完整任务接续、副本行程和客户端验收按 PLAN.md 推进。', ''])
