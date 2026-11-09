@@ -49,7 +49,7 @@ function G.XP(q,level,state)
 end
 
 -- Keep item requirements even when the native log says this quest alone is ready.
-function G.ItemRequirements(q,state,data)
+function G.ItemRequirements(q,state,data,reference)
     local active=(state.quests or {})[q.id]
     local descriptions,positions,identities,areas,complex
     if active then
@@ -71,6 +71,8 @@ function G.ItemRequirements(q,state,data)
                 areas[index]=data:UnmappedTargetArea(q,context,index)
             end
         end
+    elseif reference then
+        descriptions,positions,areas=reference.descriptions,reference.positions,reference.areas
     elseif data.ReferenceObjectiveTargets then
         descriptions,positions,complex,areas=data:ReferenceObjectiveTargets(q,state)
     end
@@ -100,7 +102,7 @@ function G.Stages(q,state,data,first)
     local active=state.quests[q.id]
     local deliveryOnly=data.DeliveryOnly and data:DeliveryOnly(q,state)
     local area=data.QuestAreaTarget and data:QuestAreaTarget(q,state) or data.AreaTarget and data:AreaTarget(q)
-    local stages,complete={},true
+    local stages,complete,reference={},true,nil
     local function add(kind,position,text,index,expected,areaId)
         if not position and not areaId then position=area end
         local stage={kind=kind,questId=q.id,title=q.title,position=position,text=text,
@@ -110,7 +112,7 @@ function G.Stages(q,state,data,first)
         return stage
     end
     local function reward(stage)
-        stage.itemRequirements=G.ItemRequirements(q,state,data)
+        stage.itemRequirements=G.ItemRequirements(q,state,data,reference)
         if data.Recipient then stage.recipient=data:Recipient(q,stage.position) end
         return stage
     end
@@ -147,6 +149,7 @@ function G.Stages(q,state,data,first)
         for index,o in ipairs(active.objectives or {}) do if index~=currentIndex then objective(index,o) end end
     elseif data.ReferenceObjectiveTargets then
         local descriptions,positions,complex,areas=data:ReferenceObjectiveTargets(q,state)
+        reference={descriptions=descriptions,positions=positions,areas=areas}
         described=#descriptions>0
         for index,o in ipairs(descriptions) do
             if not o.finished and not o.providedOnAccept then

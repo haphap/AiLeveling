@@ -41,10 +41,12 @@ test("完整任务步骤保留实际剩余目标与交付且不预测完成事�
 end)
 test("未接任务预览接取目标交付且未来目标不伪装原生日志索引",function()
     local B,s,data,q=fixture();s.quests={}
+    local reference,calls=data.ReferenceObjectiveTargets,0
+    data.ReferenceObjectiveTargets=function(...) calls=calls+1;return reference(...) end
     local stages,complete=B.TaskGuide.Stages(q,s,data,{kind="accept",position={map=1,x=1}})
     eq(#stages,3);eq(stages[1].kind,"accept");eq(stages[2].need,10)
     eq(stages[2].objectiveIndex,nil);eq(stages[2].expected,true);eq(stages[3].position.x,90)
-    eq(complete,true);eq(s.quests[1],nil)
+    eq(complete,true);eq(s.quests[1],nil);eq(calls,1)
 end)
 test("缺失目标位置保留未知但事件标记不阻断已知位置的移动规划",function()
     local B,s,data,q=fixture();s.quests={}

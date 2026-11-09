@@ -130,12 +130,14 @@ test("接交点目标分布与物品来源按跨区域直线距离选择",functi
     end}}
     assert(loadfile("Data/Questie.lua"))("AiLeveling",B)
     B.Data.maps={[10]=1,[20]=2,[30]=3}
+    local drops={11}
     local entity={Get=function(id,key)
         if key=="name" then return id==11 and "狼" or "野猪" end
+        if id>=100 then return {[10]={{id==499 and 0.5 or 50,50}}} end
         return id==11 and {[10]={{80,50}},[20]={{10,50}},[30]={{1,50}}} or {[10]={{50,50}}}
     end}
     B.Data.db={Npc=entity,Object=entity,Item={Get=function(id,key)
-        if key=="name" then return "狼皮" elseif key=="npcDrops" then return {11} end
+        if key=="name" then return "狼皮" elseif key=="npcDrops" then return drops end
     end},Quest={Get=function(id,key)
         if key=="objectives" then return {{{11},{12}},{},{{21}}} end
         return {{11}}
@@ -149,6 +151,15 @@ test("接交点目标分布与物品来源按跨区域直线距离选择",functi
     eq(B.Data:ObjectiveTarget({id=1},s).map,2)
     local _,reference=B.Data:ReferenceObjectiveTargets({id=1},{position=s.position,quests={}})
     eq(reference[1].map,2);eq(reference[3].map,2)
+    drops={};for id=100,499 do drops[#drops+1]=id end
+    local co=coroutine.create(function() return B.Data:ObjectiveTargets({id=1},s) end)
+    local resumes,result=0
+    repeat
+        local ok,value=coroutine.resume(co);assert(ok,value);resumes=resumes+1;result=value
+    until coroutine.status(co)=="dead"
+    assert(resumes>1);eq(result[3].entityId,499);eq(result[3].x,0.005)
+    eq(B.Data:ObjectiveTargets({id=1},s)[3].entityId,499)
+    eq(s.quests[1].ready,nil);eq(s.completed[1],nil)
     C_Map,C_QuestLog=previousMap,previousLog
 end)
 test("任务总览同时列出全部日志进度交付与暂缓并解释当前建议",function()

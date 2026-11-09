@@ -506,6 +506,12 @@ function D:ObjectiveTargets(q,state)
     if not active then return {} end
     local identities=self:ObjectiveIdentities(q,state)
     local chosen,distances={},{}
+    local thread,main=coroutine.running()
+    local work=0
+    local function checkpoint()
+        work=work+1
+        if work==100 and thread and not main then work=0;coroutine.yield() end
+    end
     local function consider(entity,id,label,index,kind,identity,sourceKind,points)
         for _,point in ipairs(points or self:EntityPoints(entity,id,true)) do
             local best,bestDistance=chosen[index],distances[index]
@@ -526,7 +532,9 @@ function D:ObjectiveTargets(q,state)
                     point.targetName=self.db.Item.Get(identity.id,"name")
                 end
             end
+            checkpoint()
         end
+        checkpoint()
     end
     for index,entry in pairs(identities) do
         if entry.kind=="killcredit" then
