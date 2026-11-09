@@ -85,7 +85,6 @@ test("已完成锁定职业法术和装备目标不建议放弃",function()
     local B,s,q,d=fixture()
     s.quests[1].ready=true;eq(B.TaskGuide.LowValue(q,s,d),nil);s.quests[1].ready=false
     s.locked=1;eq(B.TaskGuide.LowValue(q,s,d),nil);s.locked=nil
-    s.itinerary={};eq(B.TaskGuide.LowValue(q,s,d),nil);s.itinerary=nil
     q.requiredClasses=1;eq(B.TaskGuide.LowValue(q,s,d),nil);q.requiredClasses=0
     q.taskFacts.rewards.spell=10;eq(B.TaskGuide.LowValue(q,s,d),nil);q.taskFacts.rewards.spell=nil
     d.content.gearSources={target={questId=1}};s.gearTarget="target";eq(B.TaskGuide.LowValue(q,s,d),nil)

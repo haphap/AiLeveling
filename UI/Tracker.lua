@@ -368,7 +368,6 @@ function UI:RenderTracker()
     if model.metrics then lines[#lines+1]="|cffffd474"..model.metrics.."|r" end
     if model.hint and not A.char.paused and not (model.deliverySummary and model.includesCurrent) then lines[#lines+1]="|cffc7d6e3"..model.hint.."|r" end
     if plan.selectionBlocked then lines[#lines+1]=plan.selectionBlocked end
-    if plan.lockedBlocked and not plan.unverified then lines[#lines+1]=plan.lockedBlocked end
     if plan.gearTargetBlocked then lines[#lines+1]=plan.gearTargetBlocked end
     if plan.supplyIssue then lines[#lines+1]=plan.supplyIssue end
     if action and action.kind=="service" then

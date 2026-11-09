@@ -95,19 +95,6 @@ for id,q in pairs(c.quests) do
         if not positive(item) or type(rule)~="table" or not types[rule.kind] then fail("物品用途规则无效："..id)
         elseif rule.count and (not positive(rule.count) or rule.count%1~=0) then fail("物品需求数量无效："..id) end
     end
-    if q.verified then
-        if not c.sources[q.source] then fail("已验证任务缺少来源："..id) end
-        if not q.actions or #q.actions==0 or q.actions[#q.actions].kind~="turnin" then fail("任务行动链缺少交付："..id) end
-        if q.xp==nil then fail("任务经验模型缺失："..id) end
-        for _,a in ipairs(q.actions or {}) do
-            if not kinds[a.kind] then fail("未知行动类型："..id) end
-            local valid,why=A.Supplies.ValidAction(a)
-            if not valid then fail("任务资源模型无效："..id.."，"..why) end
-            if a.node and not c.nodes[a.node] then fail("任务目的地缺失："..id) end
-            if a.shareKey and (a.kind~="objective" or (a.shareType~="kill" and a.shareType~="collect") or
-                not positive(a.targetId)) then fail("共享目标模型无效："..id) end
-        end
-    elseif release then fail("未验证任务："..id) end
 end
 for id,item in pairs(c.items or {}) do
     if item.verified and not c.sources[item.source] then fail("装备记录缺少来源："..id) end
@@ -159,7 +146,7 @@ for id,point in pairs(c.services or {}) do
 end
 if release then
     if c.version=="unverified" then fail("真实内容包尚未验证") end
-    if questCount==0 or dungeonCount==0 then fail("任务／副本内容覆盖尚未建立") end
+    if dungeonCount==0 then fail("完整副本行程覆盖尚未建立") end
     if serviceCount==0 then fail("服务点内容覆盖尚未建立") end
     if not c.coverage or not c.coverage.locked then fail("完整覆盖盘点尚未锁定") end
     if not c.clientVerified then fail("目标客户端实机验证尚未完成") end

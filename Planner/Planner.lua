@@ -8,220 +8,6 @@ local function copy(map)
     return result
 end
 
-local function contains(candidate, id)
-    if candidate.questId == id then return true end
-    for _, questId in ipairs(candidate.questIds or {}) do if questId == id then return true end end
-    for _,action in ipairs(candidate.actions or {}) do if action.questId==id then return true end end
-    return false
-end
-
-function P.MergeObjectives(actions,state)
-    local result,groups={},{}
-    for _,action in ipairs(actions) do
-        local active=state.quests[action.questId]
-        local key=action.kind=="objective" and action.shareKey and
-            not next(action.items or {}) and not next(action.requiredItems or {}) and not next(action.gainItems or {}) and
-            not next(action.consumeItems or {}) and not action.reserveSlots and not action.minFreeSlots and not action.durabilityLoss and
-            (action.shareType=="kill" or action.shareType=="collect") and action.targetId and
-            table.concat({action.shareKey,action.shareType,action.targetId,action.node or ""},"|")
-        local shared=key and groups[key]
-        if shared and (shared.clientItem~=(active and active.itemId)) then shared=nil;key=nil end
-        if shared then
-            if shared.minDurability or action.minDurability then shared.minDurability=math.max(shared.minDurability or 0,action.minDurability or 0) end
-            shared.sharedObjectives[#shared.sharedObjectives+1]={questId=action.questId,objectiveIndex=action.objectiveIndex or 1}
-        else
-            if key then
-                action.sharedObjectives={{questId=action.questId,objectiveIndex=action.objectiveIndex or 1}}
-                action.clientItem=active and active.itemId
-                groups[key]=action
-            end
-            result[#result+1]=action
-        end
-    end
-    return result
-end
-
-function P.Actions(q, state)
-    local active, result = state.quests[q.id], {}
-    for _, action in ipairs(q.actions or {}) do
-        local done = action.kind == "accept" and active ~= nil
-        if action.kind=="service" and A.Supplies then done=A.Supplies.Done(action,state) end
-        if action.kind == "objective" and active then
-            local o = active.objectives[action.objectiveIndex or 1]
-            done = active.ready or (o and o.finished)
-        end
-        if not done then
-            local item = copy(action)
-            item.questId, item.title = q.id, action.title or q.title
-            result[#result + 1] = item
-        end
-    end
-    return result
-end
-
-function P.EvaluateMany(quests, state, data, options, from)
-    if #quests==0 then return nil,"候选任务为空" end
-    local raw, rewards, priority, ids, titles = {}, 0, 0, {}, {}
-    local questById={}
-    local phases = {accept=1, objective=2, turnin=3}
-    for _, q in ipairs(quests) do
-        local eligible, reason = A.Eligibility.Check(q, state, data)
-        if not eligible then return nil, reason end
-        if not q.verified or not q.actions then return nil, "此任务暂不可规划" end
-        if options.mode == "relaxed" and q.requiresGroup and state.groupSize < q.requiresGroup then
-            return nil, "轻松模式下队伍条件不足"
-        end
-        if q.xp==nil then return nil,"任务经验模型缺失" end
-        questById[q.id]=q
-        ids[#ids + 1], titles[#titles + 1] = q.id, q.title
-        if options.mode == "story" and q.story then priority = 1 end
-        local actions = P.Actions(q, state)
-        if #actions == 0 or actions[#actions].kind ~= "turnin" then return nil, "行动链未包含交付" end
-        local previousPhase = 0
-        for _, action in ipairs(actions) do
-            if #quests > 1 then
-                local phase = phases[action.kind]
-                if not phase or phase < previousPhase then return nil, "复杂任务保留独立行动顺序" end
-                previousPhase = phase
-            end
-            if action.shareKey and (action.kind~="objective" or
-                (action.shareType~="kill" and action.shareType~="collect") or
-                type(action.targetId)~="number" or action.targetId<=0 or action.targetId>=math.huge or action.targetId~=action.targetId) then
-                return nil,"共享目标身份无效"
-            end
-            if phases[action.kind] then
-                action.seconds=0
-                action.referenceSeconds,action.sampleKind=nil,nil
-            end
-            if action.kind=="objective" then
-                action.minDurability=action.minDurability or q.minDurability or (q.combat and 0.2 or nil)
-            end
-            if A.Supplies then
-                local valid,why=A.Supplies.ValidAction(action)
-                if not valid then return nil,why end
-            end
-            if action.seconds == nil then return nil, "行动耗时尚未建立" end
-            raw[#raw + 1] = action
-        end
-    end
-    if #quests > 1 then
-        table.sort(raw, function(a,b)
-            if phases[a.kind] ~= phases[b.kind] then return phases[a.kind] < phases[b.kind] end
-            if a.node ~= b.node then return tostring(a.node) < tostring(b.node) end
-            return a.questId < b.questId
-        end)
-        raw=P.MergeObjectives(raw,state)
-    end
-    local context=copy(state)
-    for _,action in ipairs(raw) do
-        action.position=action.position or (action.node and data.content.nodes[action.node].position)
-        if action.kind=="turnin" then
-            local q=questById[action.questId]
-            if type(q.xp)=="table" and context.xpUncertain then return nil,"交付经验预测暂不可用" end
-            local xp=type(q.xp)=="table" and q.xp[context.level] or q.xp
-            if type(xp)~="number" or xp<0 or xp>=math.huge or xp~=xp then return nil,"当前等级经验未知" end
-            rewards=rewards+xp
-            action.unlockAfter="quest:"..action.questId
-            local forecast=A.Progression.Advance(context,xp,data.content)
-            context.level,context.xp,context.maxXP,context.xpUncertain=forecast.level,forecast.xp,forecast.maxXP,forecast.uncertain
-            context.xpCurveSource=forecast.curveSource
-            action.levelAfter=forecast.level
-        end
-    end
-    local travelState=copy(state)
-    travelState.maxSeconds=options.minutes*60
-    local paths,reason
-    if A.Supplies then paths,reason=A.Supplies.Itinerary(data.content,from,raw,travelState)
-    else paths,reason=A.Travel.Itinerary(data.content,from,raw,travelState) end
-    if not paths then return nil,reason end
-    local variants={}
-    for _,path in ipairs(paths) do
-        local seconds=path.seconds
-        path.resources.now=(state.now or 0)+seconds
-        local candidate={id=#ids==1 and ids[1] or ("cluster:"..table.concat(ids,":")),
-            title=table.concat(titles,"＋"),questId=ids[1],questIds=ids,
-            seconds=seconds,xp=rewards,rate=rewards/math.max(1,seconds),
-            actions=path.actions,lastNode=path.lastNode,kind=#ids==1 and "quest" or "cluster",
-            priority=priority,resources=path.resources,sequence=table.concat(ids,":"),
-            forecast={level=context.level,xp=context.xp,maxXP=context.maxXP,uncertain=context.xpUncertain,curveSource=context.xpCurveSource}}
-        candidate.routeKey=P.RouteKey(candidate)
-        variants[#variants+1]=candidate
-    end
-    return variants[1],nil,variants
-end
-
-function P.RouteKey(candidate)
-    local keys={}
-    for _,action in ipairs(candidate.actions or {}) do
-        keys[#keys+1]=table.concat({action.kind or "",action.questId or "",action.node or "",action.transitId or "",action.serviceId or ""},":")
-    end
-    return table.concat(keys,"|")
-end
-
--- Beam width counts task sequences; each selected sequence retains its resource alternatives.
-function P.Select(candidates,limit)
-    local result,groups,keys,count={},{},{},0
-    for _,candidate in ipairs(candidates) do
-        local group=candidate.sequence or tostring(candidate.id)
-        if not groups[group] and count<limit then groups[group]=true;count=count+1 end
-        local key=candidate.routeKey or group
-        if groups[group] and not keys[key] then result[#result+1]=candidate;keys[key]=true end
-    end
-    return result,count,groups
-end
-
-function P.Evaluate(q, state, data, options, from)
-    if not q then return nil,"任务资料缺失" end
-    return P.EvaluateMany({q}, state, data, options, from)
-end
-
-function P.Project(state,path)
-    local virtual=copy(state)
-    virtual.completed,virtual.quests=copy(state.completed),copy(state.quests)
-    for _,action in ipairs(path.actions) do
-        if action.kind=="turnin" then virtual.completed[action.questId],virtual.quests[action.questId]=true,nil end
-    end
-    if path.resources then
-        virtual.now,virtual.hearthReady=path.resources.now,path.resources.hearthReady
-        virtual.unlocked=path.resources.unlocked or virtual.unlocked
-        if A.Supplies and path.resources.supplies then A.Supplies.Project(virtual,path.resources.supplies) end
-    end
-    if path.forecast then
-        virtual.level,virtual.xp,virtual.maxXP=path.forecast.level,path.forecast.xp,path.forecast.maxXP
-        virtual.xpUncertain=path.forecast.uncertain
-    end
-    return virtual
-end
-
-function P.Join(path,nextPart)
-    local joined=copy(path)
-    joined.actions,joined.questIds={},{}
-    for _,part in ipairs({path,nextPart}) do
-        for _,action in ipairs(part.actions) do joined.actions[#joined.actions+1]=action end
-        for _,id in ipairs(part.questIds or {part.questId}) do joined.questIds[#joined.questIds+1]=id end
-    end
-    joined.title=path.title.." → "..nextPart.title
-    joined.seconds,joined.xp=path.seconds+nextPart.seconds,path.xp+nextPart.xp
-    joined.rate,joined.lastNode=joined.xp/math.max(1,joined.seconds),nextPart.lastNode
-    joined.priority=math.max(path.priority or 0,nextPart.priority or 0)
-    joined.sequence=path.sequence..">"..nextPart.sequence
-    joined.resources,joined.forecast=nextPart.resources,nextPart.forecast
-    joined.routeKey=P.RouteKey(joined)
-    return joined
-end
-
-local function clusterKey(q, state)
-    local target, count = nil, 0
-    for _, a in ipairs(P.Actions(q, state)) do
-        if a.kind == "objective" then
-            count = count + 1
-            if not a.node or (target and target ~= a.node) then return nil end
-            target = a.node
-        end
-    end
-    if count == 1 then return target end
-end
-
 local function rank(a, b)
     if (a.priority or 0) ~= (b.priority or 0) then return (a.priority or 0) > (b.priority or 0) end
     if a.rate ~= b.rate then return a.rate > b.rate end
@@ -446,7 +232,7 @@ function P.Build(state, data, options)
     end
     if gearSource and gearSource.reference and gearSource.kind=="quest" then state=copy(state);state.locked=gearSource.questId end
     local preparation,preparationReason
-    if state.locked and not state.itinerary and (not state.dungeon or state.dungeon.phase=="complete") and A.Chains and A.Chains.Preparation then
+    if state.locked and (not state.dungeon or state.dungeon.phase=="complete") and A.Chains and A.Chains.Preparation then
         local root=data:GetQuest(state.locked)
         if root then
             local allowed,reason=A.Eligibility.Check(root,state,data)
@@ -466,8 +252,8 @@ function P.Build(state, data, options)
     end
     local batchChoices,batch
     if state.taskBatch and A.Dungeon.TaskBatchChoices then batchChoices,batch=A.Dungeon.TaskBatchChoices(state,data) end
-    local ids, candidates, blocked = batch and {} or data:Candidates(state), {}, {}
-    -- Include prerequisite closures before the bounded search, including low-reward setup quests.
+    local ids=batch and {} or data:Candidates(state)
+    -- Include eligible prerequisites outside the current level index.
     local seen = {}
     local function prerequisites(id, depth)
         if seen[id] or depth > 32 then return end
@@ -488,101 +274,15 @@ function P.Build(state, data, options)
     ids = {}
     for id in pairs(seen) do ids[#ids + 1] = id end
     table.sort(ids)
-    local from = state.position and (state.position.node or state.position)
-    local clusters = {}
-    for i, id in ipairs(ids) do
-        local q = data:GetQuest(id)
-        local candidate, reason, variants = P.Evaluate(q, state, data, options, from)
-        if candidate then
-            for _,variant in ipairs(variants) do candidates[#candidates+1]=variant end
-            local key = not q.repeatable and clusterKey(q, state)
-            if key then
-                clusters[key] = clusters[key] or {}
-                clusters[key][#clusters[key] + 1] = q
-            end
-        else blocked[id] = reason end
-        if i % 10 == 0 then coroutine.yield() end
+    local alternatives={}
+    for _,dungeon in pairs(not batch and data.content.dungeons or {}) do
+        local candidate=A.Dungeon.Evaluate(dungeon,state,options,data)
+        if candidate then alternatives[#alternatives+1]=candidate end
     end
-    for _, quests in pairs(clusters) do
-        -- Small bundles keep the search responsive while retaining shared travel savings.
-        for i = 1, #quests - 1 do
-            local bundle = {quests[i]}
-            for j = i + 1, math.min(#quests, i + 2) do
-                bundle[#bundle + 1] = quests[j]
-                local candidate,_,variants = P.EvaluateMany(bundle, state, data, options, from)
-                if candidate then for _,variant in ipairs(variants) do candidates[#candidates+1]=variant end end
-            end
-        end
-    end
-    table.sort(candidates, rank)
-    local alternatives,groupCount,groups=P.Select(candidates,8)
-    for _,candidate in ipairs(candidates) do
-        local q=data:GetQuest(candidate.id)
-        local group=candidate.sequence
-        if q and q.setup and (groups[group] or groupCount<12) then
-            if not groups[group] then groups[group]=true;groupCount=groupCount+1 end
-            local found=false
-            for _,existing in ipairs(alternatives) do if existing.routeKey==candidate.routeKey then found=true;break end end
-            if not found then alternatives[#alternatives+1]=candidate end
-        end
-    end
-    local beam = {}
-    for _, c in ipairs(alternatives) do beam[#beam + 1] = c end
-    for depth = 2, 3 do
-        local expanded = {}
-        for _, path in ipairs(beam) do
-            if not path.forecast or (not path.forecast.uncertain and path.forecast.level<60) then
-            local virtual = P.Project(state,path)
-            local remaining = copy(options)
-            remaining.minutes = options.minutes - path.seconds / 60
-            for i, id in ipairs(ids) do
-                local q = data:GetQuest(id)
-                local nextPart,_,variants = P.Evaluate(q, virtual, data, remaining, path.lastNode)
-                if nextPart and not q.repeatable then
-                    for _,nextPart in ipairs(variants) do
-                    expanded[#expanded + 1] = P.Join(path,nextPart)
-                    end
-                end
-                if i % 10 == 0 then coroutine.yield() end
-            end
-            end
-        end
-        table.sort(expanded, rank)
-        beam=P.Select(expanded,8)
-        for _,candidate in ipairs(beam) do alternatives[#alternatives+1]=candidate end
-    end
-    for _, dungeon in pairs(not batch and data.content.dungeons or {}) do
-        local candidate = A.Dungeon.Evaluate(dungeon, state, options, data)
-        if candidate then alternatives[#alternatives + 1] = candidate end
-    end
-    if state.gearTarget then
-        local source=(data.content.gearSources or {})[state.gearTarget]
-        if source and source.kind=="quest" then
-            for _,candidate in ipairs(candidates) do
-                if contains(candidate,source.questId) then
-                    local found=false
-                    for _,existing in ipairs(alternatives) do if existing==candidate then found=true;break end end
-                    if not found then alternatives[#alternatives+1]=candidate end
-                end
-            end
-        end
-    end
-    local selected,selectionReason
-    if state.itinerary and A.Selection then
-        selected,selectionReason=A.Selection.Evaluate(state.itinerary,state,data,options)
-        for index,candidate in ipairs(selected or {}) do
-            local found=false
-            for _,existing in ipairs(alternatives) do
-                if existing.routeKey==candidate.routeKey then selected[index]=existing;found=true;break end
-            end
-            if not found then alternatives[#alternatives+1]=candidate end
-        end
-    end
-    table.sort(alternatives, rank)
+    table.sort(alternatives,rank)
     A.Gear.Benefits(alternatives,state,data.content)
-    local best = alternatives[1]
-    local result = { revision = state.revision, best = best, alternatives = alternatives, blocked = blocked,preparingQuest=preparation,
-        origin=state.position and {map=state.position.map,node=state.position.node} }
+    local result={revision=state.revision,best=alternatives[1],alternatives=alternatives,preparingQuest=preparation,
+        origin=state.position and {map=state.position.map,node=state.position.node}}
     result.taskChoices=batchChoices or P.TaskChoices(state,data,ids,nil,options)
     local preferred=not batch and A.Gear.PreferTask and A.Gear.PreferTask(result.taskChoices,state,options)
     if preferred then
@@ -590,34 +290,14 @@ function P.Build(state, data, options)
         table.insert(result.taskChoices,1,preferred);result.preferenceApplied=true
     end
     result.taskBatch=batch
-    if state.locked and not state.itinerary then
-        for _, c in ipairs(alternatives) do if contains(c, state.locked) then result.best = c; break end end
-        if not result.best or not contains(result.best, state.locked) then
-            for _, c in ipairs(candidates) do if contains(c, state.locked) then result.best = c; break end end
-        end
-        if not result.best or not contains(result.best, state.locked) then
-            result.best=nil
-            result.lockedBlocked = blocked[state.locked] or "锁定任务暂无完整行程估计"
-        end
-    end
+    if state.locked then result.best=nil end
     if result.best and result.best.requiresAcceptance then
-        result.suggestedDungeon = result.best
-        result.best = nil
-        for _, c in ipairs(alternatives) do if c.kind ~= "dungeon" then result.best = c; break end end
+        result.suggestedDungeon=result.best;result.best=nil
     end
-    if not state.locked and not state.itinerary then
+    if not state.locked then
         local previous=result.best
         result.best,result.gearTargetBlocked=A.Gear.Prefer(alternatives,result.best,state,options)
         result.preferenceApplied=result.preferenceApplied or state.gearTarget~=nil or previous~=result.best
-    end
-    if state.itinerary then
-        result.selectionActive,result.selectionBlocked=true,selectionReason
-        result.best=selected and selected[1] or nil
-        if selected then
-            for _,candidate in ipairs(selected) do
-                if candidate.routeKey==state.itinerary.preferredKey then result.best=candidate;break end
-            end
-        end
     end
     if state.dungeon and state.dungeon.phase~="complete" then
         local d = data.content.dungeons[state.dungeon.id]
@@ -625,14 +305,6 @@ function P.Build(state, data, options)
         if actions then
             result.best = {id="accepted:"..d.id..":"..state.dungeon.round,title=d.title,
                 kind="dungeon",dungeonId=d.id,actions=actions,seconds=0,xp=0,rate=0}
-            if state.dungeon.phase=="preparing" and actions[1] and actions[1].kind=="dungeonWait" then
-                local wait = math.max(0,(options.waitMinutes and options.waitMinutes*60 or d.waitSeconds or 0)-(state.dungeon.waited or 0))
-                wait=math.min(wait,math.max(0,state.dungeon.budget-state.dungeon.elapsed))
-                local evaluation=A.Dungeon.Evaluate(d,state,options,data)
-                local activity=evaluation and evaluation.waitActivity
-                if activity and activity.seconds>wait then activity=nil end
-                if activity then result.best=activity; result.waitingDungeon=d.id end
-            end
             result.sessionActive = true
         else
             result.fallback = {title="副本资料暂不可用",kind="dungeonBlocked",text="保留已选行程，可结束行程后恢复练级"}
@@ -645,7 +317,7 @@ function P.Build(state, data, options)
     end
     if not result.sessionActive and A.Supplies and (not result.best or state.serviceStop and
         (state.freeSlots==0 or state.durability and state.durability<0.2)) then
-        local maintenance,why=A.Supplies.Fallback(state,data,blocked)
+        local maintenance,why=A.Supplies.Fallback(state,data)
         result.supplyIssue=not maintenance and why or nil
         if maintenance then
             result.maintenance=true
@@ -655,15 +327,11 @@ function P.Build(state, data, options)
             else result.best=maintenance end
         end
     end
-    if not result.best and not result.sessionActive and not result.maintenance and not result.serviceStop and result.selectionActive then
-        result.fallback={kind="selectionBlocked",title="所选行程暂不可执行",
-            text=(result.selectionBlocked or "等待可用任务与位置").."；可在行程页恢复自动选择。"}
-    end
     if result.maintenance then
         local choices=batch and A.Dungeon.TaskBatchStage(result.taskChoices,state,data) or result.taskChoices
         result.taskOrder,result.taskQueue=P.TaskOrder(state,choices,data)
     end
-    if not result.best and not result.sessionActive and not result.maintenance and not result.serviceStop and not result.selectionActive and not result.gearPlan then
+    if not result.best and not result.sessionActive and not result.maintenance and not result.serviceStop and not result.gearPlan then
         -- Reference quests use straight-line travel estimates.
         result.unverified = true
         local choices=batch and A.Dungeon.TaskBatchStage(result.taskChoices,state,data) or result.taskChoices
@@ -745,20 +413,4 @@ function P.Build(state, data, options)
         end
     end
     return result
-end
-
-function P.Choose(old, new, locked)
-    if locked or new.sessionActive or new.preferenceApplied or new.maintenance or new.selectionActive or new.serviceStop or new.taskBatch then return new end
-    -- Both plans must have been recomputed against the same current state.
-    -- Always choose from candidates evaluated against the current state.
-    if not old or not old.best then return new end
-    local oldCandidate
-    for _,c in ipairs(new.alternatives) do
-        if (old.best.routeKey and c.routeKey==old.best.routeKey) or (not old.best.routeKey and c.id==old.best.id) then oldCandidate=c;break end
-    end
-    if oldCandidate and new.best and ((locked and contains(oldCandidate, locked)) or
-        ((oldCandidate.priority or 0) >= (new.best.priority or 0) and oldCandidate.rate >= new.best.rate * 0.9)) then
-        new.best = oldCandidate
-    end
-    return new
 end

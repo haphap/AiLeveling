@@ -162,28 +162,6 @@ function D.Preparation(d)
         minFreeSlots=d.minFreeSlots,minDurability=d.minDurability or 0.2}
 end
 
-function D.WaitActivities(d,state,options,data,wait)
-    local activities={}
-    for _,action in ipairs(d.actions or {}) do
-        if action.stage=="before" and action.kind~="move" and not questDone(action,state) then return activities end
-    end
-    if A.Supplies and not A.Supplies.Apply(D.Preparation(d),A.Supplies.Cursor(state),state.itemMetadata or {}) then return activities end
-    for _,id in ipairs(d.interruptibleQuestIds or {}) do
-        local q=data:GetQuest(id)
-        if q and q.interruptible then
-            local candidate,_,variants=A.Planner.Evaluate(q,state,data,
-                {minutes=math.min(options.minutes,wait/60),mode=options.mode},state.position and (state.position.node or state.position))
-            if candidate then for _,variant in ipairs(variants) do activities[#activities+1]=variant end end
-        end
-    end
-    table.sort(activities,function(a,b) if a.rate~=b.rate then return a.rate>b.rate end return tostring(a.id)<tostring(b.id) end)
-    return activities
-end
-
-function D.WaitActivity(d,state,options,data,wait)
-    return D.WaitActivities(d,state,options,data,wait)[1]
-end
-
 function D.GroupStatus(d,state)
     local size,needed=state.groupSize or 1,d.groupSize or 5
     local g=state.group
@@ -232,127 +210,103 @@ function D.Evaluate(d,state,options,data)
         wait=state.dungeon.phase=="preparing" and math.max(0,wait-(state.dungeon.waited or 0)) or 0
     end
     local run=A.State.Estimate(d.runSeconds,state.samples and state.samples["dungeon:"..d.id])
-    local choices={false}
-    if data and wait>0 and not options.ignoreWaitActivities then
-        for _,activity in ipairs(D.WaitActivities(d,state,options,data,wait)) do choices[#choices+1]=activity end
-    end
-    local function evaluate(activity)
-        local travel=d.travelSeconds
-        local resources,previewActions,plannedTurnins=nil,nil,{}
-        if data then
-            local context,forecast=copy(state),copy(state)
-            forecast.completed,forecast.quests=copy(state.completed),copy(state.quests)
-            context.now=(state.now or 0)+(activity and wait or 0)
-            local from=state.position and (state.position.node or state.position)
-            if activity then
-                from=activity.lastNode
-                context.hearthReady,context.unlocked=activity.resources.hearthReady,activity.resources.unlocked
-                for _,action in ipairs(activity.actions) do
-                    if action.kind=="turnin" then forecast.completed[action.questId],forecast.quests[action.questId]=true,nil end
-                end
-                if activity.forecast then forecast.level=activity.forecast.level end
-                if A.Supplies and activity.resources.supplies then A.Supplies.Project(context,activity.resources.supplies) end
+    local travel=d.travelSeconds
+    local resources,previewActions,plannedTurnins=nil,nil,{}
+    if data then
+        local context,forecast=copy(state),copy(state)
+        forecast.completed,forecast.quests=copy(state.completed),copy(state.quests)
+        context.now=state.now or 0
+        local from=state.position and (state.position.node or state.position)
+        context.quests,context.completed=forecast.quests,forecast.completed
+        local eligibility=copy(forecast)
+        eligibility.completed,eligibility.quests=copy(forecast.completed),copy(forecast.quests)
+        local entryChecked=false
+        local function entryAllowed()
+            entryChecked=true
+            for _,id in ipairs(d.preQuests or {}) do
+                if not eligibility.completed[id] then return false,"进入前尚需交付前置 #"..id end
             end
-            context.quests,context.completed=forecast.quests,forecast.completed
-            local eligibility=copy(forecast)
-            eligibility.completed,eligibility.quests=copy(forecast.completed),copy(forecast.quests)
-            local entryChecked=false
-            local function entryAllowed()
-                entryChecked=true
-                for _,id in ipairs(d.preQuests or {}) do
-                    if not eligibility.completed[id] then return false,"进入前尚需交付前置 #"..id end
-                end
-                return true
-            end
-            for _,action in ipairs(d.actions) do
-                if action.stage~="before" and not entryChecked then
-                    local ok,why=entryAllowed()
-                    if not ok then return nil,why end
-                end
-                if action.questId then
-                    local q=data:GetQuest(action.questId)
-                    if not q then return nil,"副本关联任务资料缺失 #"..action.questId end
-                    if not eligibility.completed[q.id] or eligibility.quests[q.id] then
-                        if action.kind=="accept" then
-                            local ok,why=A.Eligibility.Check(q,eligibility,data)
-                            if not ok then return nil,why end
-                            eligibility.quests[q.id]=eligibility.quests[q.id] or {objectives={}}
-                        elseif not eligibility.quests[q.id] then
-                            if action.stage~="after" or action.kind~="turnin" then return nil,"副本任务尚未接取 #"..q.id end
-                        elseif action.kind=="turnin" then
-                            plannedTurnins[q.id]=true
-                            eligibility.completed[q.id],eligibility.quests[q.id]=true,nil
-                        end
-                    end
-                end
-            end
-            if not entryChecked then
+            return true
+        end
+        for _,action in ipairs(d.actions) do
+            if action.stage~="before" and not entryChecked then
                 local ok,why=entryAllowed()
                 if not ok then return nil,why end
             end
-            local itinerary={}
-            local ongoing=state.dungeon and state.dungeon.id==d.id and not state.dungeon.settled and state.dungeon
-            local function stage(name)
-                for index,action in ipairs(d.actions) do
-                    if action.stage==name and not (ongoing and ongoing.done[index]) and not questDone(action,forecast) and
-                        (name~="after" or action.kind~="turnin" or plannedTurnins[action.questId]) then
-                        local step=copy(action)
-                        if step.kind~="service" then step.seconds=0 end
-                        local q=step.questId and data:GetQuest(step.questId)
-                        step.dungeonId,step.dungeonStep=d.id,index
-                        step.title=step.title or (q and q.title) or d.title
-                        if step.kind=="turnin" then step.unlockAfter="quest:"..step.questId end
-                        itinerary[#itinerary+1]=step
+            if action.questId then
+                local q=data:GetQuest(action.questId)
+                if not q then return nil,"副本关联任务资料缺失 #"..action.questId end
+                if not eligibility.completed[q.id] or eligibility.quests[q.id] then
+                    if action.kind=="accept" then
+                        local ok,why=A.Eligibility.Check(q,eligibility,data)
+                        if not ok then return nil,why end
+                        eligibility.quests[q.id]=eligibility.quests[q.id] or {objectives={}}
+                    elseif not eligibility.quests[q.id] then
+                        if action.stage~="after" or action.kind~="turnin" then return nil,"副本任务尚未接取 #"..q.id end
+                    elseif action.kind=="turnin" then
+                        plannedTurnins[q.id]=true
+                        eligibility.completed[q.id],eligibility.quests[q.id]=true,nil
                     end
                 end
             end
-            stage("before")
-            itinerary[#itinerary+1]=D.Preparation(d)
-            if not activity then itinerary[#itinerary+1]={kind="dungeonWaitEstimate",seconds=wait,stage="wait"} end
-            itinerary[#itinerary+1]={kind="dungeonEnter",node=d.entryNode,seconds=0,stage="entry",dungeonId=d.id,title=d.title,
-                text="前往入口，进入副本"}
-            for _,action in ipairs(d.actions) do
-                if action.stage=="inside" and not questDone(action,forecast) then
-                    local effect=copy(action)
-                    effect.node,effect.arriveNode,effect.seconds=nil,action.node,0
-                    if effect.kind=="turnin" then effect.unlockAfter="quest:"..effect.questId end
-                    itinerary[#itinerary+1]=effect
+        end
+        if not entryChecked then
+            local ok,why=entryAllowed()
+            if not ok then return nil,why end
+        end
+        local itinerary={}
+        local ongoing=state.dungeon and state.dungeon.id==d.id and not state.dungeon.settled and state.dungeon
+        local function stage(name)
+            for index,action in ipairs(d.actions) do
+                if action.stage==name and not (ongoing and ongoing.done[index]) and not questDone(action,forecast) and
+                    (name~="after" or action.kind~="turnin" or plannedTurnins[action.questId]) then
+                    local step=copy(action)
+                    if step.kind~="service" then step.seconds=0 end
+                    local q=step.questId and data:GetQuest(step.questId)
+                    step.dungeonId,step.dungeonStep=d.id,index
+                    step.title=step.title or (q and q.title) or d.title
+                    if step.kind=="turnin" then step.unlockAfter="quest:"..step.questId end
+                    itinerary[#itinerary+1]=step
                 end
             end
-            itinerary[#itinerary+1]={kind="dungeonRun",seconds=run,arriveNode=d.exitNode,consumeItems=d.consumeItems,
-                reserveSlots=d.lootSlots,durabilityLoss=d.durabilityLoss}
-            stage("after")
-            itinerary[#itinerary+1]={kind="move",node=d.returnNode,seconds=0}
-            context.maxSeconds=options.minutes*60-(activity and wait or 0)-(d.failureProbability or 0)*(d.recoverySeconds or 0)
-            local paths,reason
-            if A.Supplies then paths,reason=A.Supplies.Itinerary(data.content,from,itinerary,context)
-            else paths,reason=A.Travel.Itinerary(data.content,from,itinerary,context) end
-            if not paths then return nil,reason end
-            travel,resources,previewActions=paths[1].seconds-run-(activity and 0 or wait),paths[1].resources,paths[1].actions
         end
-        if not travel then return nil,"往返路线待补齐" end
-        local nearby=activity and activity.seconds or (not data and d.interruptibleSeconds or 0)
-        local seconds=travel+run+math.max(wait,nearby)+(d.failureProbability or 0)*(d.recoverySeconds or 0)
-        if seconds>options.minutes*60 then return nil,"超出本次游戏时间" end
-        if resources then resources.now=(state.now or 0)+seconds end
-        local xp=d.xp+(activity and activity.xp or (not data and d.interruptibleXP or 0))
-        local turnins={}
-        for _,action in ipairs(d.actions or {}) do if action.kind=="turnin" then turnins[action.questId]=true end end
-        for _,action in ipairs(activity and activity.actions or {}) do if action.kind=="turnin" then turnins[action.questId]=nil end end
-        for id,reward in pairs(d.questXP or {}) do
-            if turnins[id] and (not data or plannedTurnins[id]) and (state.quests[id] or not state.completed[id]) then xp=xp+reward end
+        stage("before")
+        itinerary[#itinerary+1]=D.Preparation(d)
+        itinerary[#itinerary+1]={kind="dungeonWaitEstimate",seconds=wait,stage="wait"}
+        itinerary[#itinerary+1]={kind="dungeonEnter",node=d.entryNode,seconds=0,stage="entry",dungeonId=d.id,title=d.title,
+            text="前往入口，进入副本"}
+        for _,action in ipairs(d.actions) do
+            if action.stage=="inside" and not questDone(action,forecast) then
+                local effect=copy(action)
+                effect.node,effect.arriveNode,effect.seconds=nil,action.node,0
+                if effect.kind=="turnin" then effect.unlockAfter="quest:"..effect.questId end
+                itinerary[#itinerary+1]=effect
+            end
         end
-        return {id="dungeon:"..d.id,dungeonId=d.id,title=d.title,seconds=seconds,xp=xp,rate=xp/math.max(1,seconds),
-            actions=d.actions,rewardSources=d.rewardSources,kind="dungeon",requiresAcceptance=true,
-            waitActivity=activity or nil,waitSeconds=wait,resources=resources,previewActions=previewActions}
+        itinerary[#itinerary+1]={kind="dungeonRun",seconds=run,arriveNode=d.exitNode,consumeItems=d.consumeItems,
+            reserveSlots=d.lootSlots,durabilityLoss=d.durabilityLoss}
+        stage("after")
+        itinerary[#itinerary+1]={kind="move",node=d.returnNode,seconds=0}
+        context.maxSeconds=options.minutes*60-(d.failureProbability or 0)*(d.recoverySeconds or 0)
+        local paths,reason
+        if A.Supplies then paths,reason=A.Supplies.Itinerary(data.content,from,itinerary,context)
+        else paths,reason=A.Travel.Itinerary(data.content,from,itinerary,context) end
+        if not paths then return nil,reason end
+        travel,resources,previewActions=paths[1].seconds-run-wait,paths[1].resources,paths[1].actions
     end
-    local best,reason
-    for _,activity in ipairs(choices) do
-        local candidate,why=evaluate(activity)
-        if candidate and (not best or candidate.rate>best.rate or (candidate.rate==best.rate and candidate.seconds<best.seconds)) then best=candidate end
-        reason=why or reason
+    if not travel then return nil,"往返路线待补齐" end
+    local seconds=travel+run+wait+(d.failureProbability or 0)*(d.recoverySeconds or 0)
+    if seconds>options.minutes*60 then return nil,"超出本次游戏时间" end
+    if resources then resources.now=(state.now or 0)+seconds end
+    local xp=d.xp
+    local turnins={}
+    for _,action in ipairs(d.actions or {}) do if action.kind=="turnin" then turnins[action.questId]=true end end
+    for id,reward in pairs(d.questXP or {}) do
+        if turnins[id] and (not data or plannedTurnins[id]) and (state.quests[id] or not state.completed[id]) then xp=xp+reward end
     end
-    return best,reason
+    return {id="dungeon:"..d.id,dungeonId=d.id,title=d.title,seconds=seconds,xp=xp,rate=xp/math.max(1,seconds),
+        actions=d.actions,rewardSources=d.rewardSources,kind="dungeon",requiresAcceptance=true,
+        waitSeconds=wait,resources=resources,previewActions=previewActions}
 end
 
 function D.Transition(session,event)
@@ -408,7 +362,6 @@ function D.ActivePlan(d,state,data)
         end
         local options=copy(A.settings)
         options.minutes=math.max(0,session.budget-session.elapsed)/60
-        options.ignoreWaitActivities=true
         local evaluation,why=D.Evaluate(d,state,options,data)
         if not evaluation then return {gate("dungeonBlocked",why)} end
         for _,action in ipairs(evaluation.previewActions or {}) do

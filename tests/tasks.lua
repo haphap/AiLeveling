@@ -24,17 +24,15 @@ test("日志任务含无坐标和数据库未收录任务且交付优先",functi
     local p=plan(s,d);eq(#p.taskChoices,2);eq(p.taskChoices[1].questId,99)
     eq(p.fallback.kind,"turnin");eq(p.taskChoices[2].questId,7)
 end)
-test("锁定无完整道路的任务不会被其他完整方案替换",function()
-    local s,d,q=fixture();q[2]=F.Quest(2);s.position.node="start";s.locked=1
+test("手动锁定的任务不会被其他任务替换",function()
+    local s,d,q=fixture();s.position.node="start";s.locked=1
     local p=plan(s,d);eq(p.best,nil);eq(p.fallback.questId,1);eq(p.taskChoices[1].questId,1)
     s.skipped[1]=true;p=plan(s,d);eq(p.fallback.kind,"selectionBlocked");assert(p.fallback.text:find("已暂缓",1,true))
 end)
-test("任务入口遵守历史加载与整程阻断",function()
+test("任务历史未就绪时保留已接任务",function()
     local s,d=fixture();s.completionKnown=false
     eq(#plan(s,d).taskChoices,0)
     s.quests[1]={objectives={}};eq(#plan(s,d).taskChoices,1)
-    s.completionKnown=true;s.itinerary={sequence="1>2"}
-    local p=plan(s,d);eq(p.fallback.kind,"selectionBlocked");eq(p.unverified,nil)
 end)
 test("任务入口只接受当前对象并经原有锁定入口保存和实际交付解除",function()
     local s,d=fixture()

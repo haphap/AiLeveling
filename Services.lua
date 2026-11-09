@@ -408,7 +408,7 @@ function S.PlanBindings(plan,state,data)
 end
 
 function S.AutomaticBinding(plan,state)
-    if state.locked or state.itinerary or state.gearTarget or state.taskBatch or state.serviceStop or state.dead or state.onTaxi or state.inInstance or
+    if state.locked or state.gearTarget or state.taskBatch or state.serviceStop or state.dead or state.onTaxi or state.inInstance or
         plan.best or plan.sessionActive or plan.maintenance or not state.bindingTaskKey or state.bindingTaskKey=="" or
         state.declinedBinding==state.bindingTaskKey or (state.bags or {})[6948]==nil or state.bags[6948]<=0 then return end
     local current=S.TaskDestination(plan)

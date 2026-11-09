@@ -39,17 +39,6 @@ test("预测跨多个等级按每一级门槛扣除且精确边界与未知状�
     s=state(59);after=A.Progression.Advance(s,s.maxXP+10000,{})
     eq(after.level,60);eq(after.xp,0)
 end)
-test("真实参考曲线贯通交付升级资格与后续经验计算且不改实际任务事实",function()
-    local s=state();s.xp=399
-    local q1,q2=F.Quest(1),F.Quest(2)
-    q1.xp=1;q2.xp={[1]=1,[2]=1000};q2.requiredLevel=2;q2.preQuestGroup={1}
-    local result=plan(s,F.Data({[1]=q1,[2]=q2}))
-    eq(result.best.xp,1001);eq(result.best.forecast.level,3);eq(result.best.forecast.xp,100)
-    eq(result.best.forecast.curveSource,A.Experience.source)
-    eq(s.level,1);eq(s.xp,399);eq(next(s.completed),nil);eq(next(s.quests),nil)
-    s.clientBuild="other";result=plan(s,F.Data({[1]=q1,[2]=q2}))
-    eq(result.best.xp,1001);eq(result.best.forecast.level,2);eq(result.best.forecast.maxXP,nil);eq(result.best.forecast.uncertain,true)
-end)
 test("任务预览保留交付等级预测与原生状态且隐藏内部来源说明",function()
     local B={};for k,v in pairs(A) do B[k]=v end
     assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B);assert(loadfile("Planner/Planner.lua"))("AiLeveling",B)

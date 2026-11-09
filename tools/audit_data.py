@@ -58,7 +58,7 @@ def main():
     lines.extend(f'| {key} | {count} |' for key, count in sorted(base['gaps'].items()))
     lines.extend(['', '各任务 ID、等级、区域、资格掩码、前置、物品与缺口见 EFFECTIVE_DATA_AUDIT.json。',
                   '上游 dungeon 支持表含副本、团队副本、战场和交通区域；原样保留并标记待分类，未当作练级副本完成清单。', '',
-                  '自有已验证行动链和副本均为 0；完整行程可执行性仍阻断完整首版发布。道路资料已退出验收。', ''])
+                  '任务行程由运行时动态生成；完整任务接续、副本行程和客户端验收按 PLAN.md 推进。', ''])
     (ROOT / 'docs/DATA_COVERAGE.md').write_text('\n'.join(lines))
     print(f'{len(results)} correction personas; {base["total"]} effective quests -> {output}')
 

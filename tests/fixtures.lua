@@ -18,20 +18,12 @@ function F.Party(s)
     s.group={raid=false,online=5,offline=0,connectionUnknown=0,tank=1,healer=1,damage=3,unknown=0}
 end
 function F.Quest(id)
-    return {id = id, title = "测试任务 " .. id, verified = true, requiredLevel = 1,
+    return {id = id, title = "测试任务 " .. id, requiredLevel = 1,
         requiredSpell = 0, requiredSpecialization = 0, requiredRaces = 0, requiredClasses = 0,
-        xp = 1000, seconds = 100, actions = {
-            {kind="accept",node="start",seconds=5},
-            {kind="objective",node="goal",objectiveIndex=1},
-            {kind="turnin",node="start",seconds=5},
-        }}
+    }
 end
 function F.Data(quests)
-    return {content={nodes={start=F.Node(0),near=F.Node(0.1),goal=F.Node(0.2)},edges={
-        start={{to="near",seconds=10,verified=true},{to="goal",seconds=90,verified=true}},
-        near={{to="goal",seconds=10,verified=true}},
-        goal={{to="start",seconds=20,verified=true}},
-    },dungeons={}},
+    return {content={nodes={start=F.Node(0),near=F.Node(0.1),goal=F.Node(0.2)},edges={},dungeons={}},
     GetQuest=function(_,id) return quests[id] end,
     Candidates=function() local ids={} for id in pairs(quests) do ids[#ids+1]=id end table.sort(ids) return ids end,
     Target=function() return nil end}

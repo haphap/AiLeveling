@@ -6,7 +6,7 @@ local names={"UnitGUID","UnitName","GetTime","GetBindLocation","C_Trainer","Enum
 local function setup()
     local saved={};for _,name in ipairs(names) do saved[name]=_G[name] end
     local B={};for k,v in pairs(A) do B[k]=v end
-    B.char={locked=42,itinerary={quests={42}},samples={}};B.state=F.State();B.state.position={map=1,x=0.5,y=0.5};B.state.money=20
+    B.char={locked=42,samples={}};B.state=F.State();B.state.position={map=1,x=0.5,y=0.5};B.state.money=20
     B.ready=true;B.indexReady=true;B.jobs={};B.TaskGuide=nil
     B.settings={autoTrain=false,autoBind=false}
     B.Queue=function(_,key,callback) B.jobs[key]=callback end
@@ -179,7 +179,7 @@ test("所选技能确实学会后即使训练列表隐藏或关闭也恢复原�
     B.Services:Event("TRAINER_CLOSED");B.Services:Snapshot(B.state);eq(B.char.serviceStop,stop)
     known=true;B.Services:Snapshot(B.state);eq(B.char.serviceStop,stop)
     inBook=true;B.Services:Snapshot(B.state);eq(B.char.serviceStop,nil);eq(B.state.serviceStop,nil)
-    eq(B.char.locked,42);assert(B.char.itinerary)
+    eq(B.char.locked,42)
     e.rows={{name="训练项目",status="available",sub="等级 1",cost=10}}
     stop=chooseTraining(B);eq(stop.learnSpellId,nil)
     B.Services:Snapshot(B.state);eq(B.char.serviceStop,stop)
@@ -194,13 +194,13 @@ test("所选技能确实学会后即使训练列表隐藏或关闭也恢复原�
     finish()
 end)
 test("训练完成只认同NPC同项目已学会且筛选消失和同名歧义保持安排",function()
-    local B,e,finish=setup();local stop=chooseTraining(B);eq(B.char.locked,42);assert(B.char.itinerary)
+    local B,e,finish=setup();local stop=chooseTraining(B);eq(B.char.locked,42)
     e.rows={};B.Services:Snapshot(B.state);eq(B.char.serviceStop,stop)
     e.rows={{name="训练项目",status="used",sub="等级 1",cost=0}};e.npc=79;B.Services:Snapshot(B.state);eq(B.char.serviceStop,stop)
     e.npc=78;e.rows[2]={name="训练项目",status="available",sub="等级 1",cost=30}
     B.Services:Snapshot(B.state);eq(B.char.serviceStop,stop)
     local rows=B.Services:Choices("learn");eq(B.Services:CanPick(rows[2],B.state.revision),false)
-    e.rows[2]=nil;B.Services:Snapshot(B.state);eq(B.char.serviceStop,nil);eq(B.char.locked,42);assert(B.char.itinerary)
+    e.rows[2]=nil;B.Services:Snapshot(B.state);eq(B.char.serviceStop,nil);eq(B.char.locked,42)
     finish()
 end)
 test("服务选择拒绝过期对象飞行死亡副本和不可学项目且持久意图独立复制",function()
@@ -338,7 +338,7 @@ local function bindingFixture()
 end
 local function automaticFixture()
     local B,s,_,inns,finish,e=bindingFixture()
-    B.char.locked=nil;B.char.itinerary=nil;s.position.x=0.79
+    B.char.locked=nil;s.position.x=0.79
     for _,file in ipairs({"Planner/TaskGuide.lua","Planner/TaskQueue.lua"}) do assert(loadfile(file))("AiLeveling",B) end
     local q={id=42,title="原任务",questLevel=20}
     local d=F.Data({[42]=q})
@@ -391,7 +391,7 @@ test("炉石只在交接据点附近建议绑定并保护当前任务和维护",
     s.hearthPoint=nil;assert(S.AutomaticBinding(p,s))
     s.bags={};eq(S.AutomaticBinding(p,s),nil);s.bags={[6948]=1}
     p.fallback=p.taskOrder[1].stages[2];eq(S.AutomaticBinding(p,s),nil);p.fallback=p.taskOrder[1].stages[1]
-    for _,field in ipairs({"locked","itinerary","gearTarget","taskBatch","serviceStop","dead","onTaxi","inInstance"}) do
+    for _,field in ipairs({"locked","gearTarget","taskBatch","serviceStop","dead","onTaxi","inInstance"}) do
         s[field]=true;eq(S.AutomaticBinding(p,s),nil);s[field]=nil
     end
     for _,field in ipairs({"best","sessionActive","maintenance"}) do

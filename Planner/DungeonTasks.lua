@@ -157,7 +157,7 @@ function D.TaskApproach(action,state,data)
 end
 
 function D.TaskEntryIssue(choice,state,data,options)
-    if state.locked~=choice.questId and not state.preparingQuest and not state.itinerary and not state.taskBatch then
+    if state.locked~=choice.questId and not state.preparingQuest and not state.taskBatch then
         for _,stage in ipairs(choice.stages or choice.actions) do
             local pvp=D.TaskPvP(stage.position,state,data,stage.areaId)
             if pvp and not (state.inInstance and state.instanceId==pvp.instanceId) then
@@ -170,7 +170,7 @@ function D.TaskEntryIssue(choice,state,data,options)
         if approach.kind=="dungeonBlocked" then return approach.text end
     end
     if not options or options.dungeons~=false or state.locked==choice.questId or state.preparingQuest or
-        state.taskBatch or state.itinerary or choice.currentInstance then return end
+        state.taskBatch or choice.currentInstance then return end
     -- Check the remaining journey, so an outdoor giver cannot bypass the preference.
     for _,stage in ipairs(choice.stages or choice.actions) do
         local instance=D.TaskInstance(stage.position,state,data,stage.areaId)
@@ -302,7 +302,7 @@ function D:TaskBatchSnapshot(state)
     state.taskBatch=nil
     local batch=A.char.taskBatch
     if not batch then return "" end
-    if not D.ValidTaskBatch(batch) or A.char.locked or A.char.itinerary or
+    if not D.ValidTaskBatch(batch) or A.char.locked or
         A.char.dungeon and A.char.dungeon.phase~="complete" then A.char.taskBatch=nil;return "" end
     local ids,baselines={},{}
     for id,n in pairs(batch.baselines) do

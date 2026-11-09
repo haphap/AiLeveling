@@ -120,7 +120,6 @@ function Audit.Build(data, details)
         local xp = data.xp[id]
         if not xp or xp[2] == nil then gap(row, "xp-reference") end
         local authored = data.content.quests[id]
-        if not authored or not authored.verified or not authored.actions then gap(row, "verified-action-chain") end
         if (row.sourceItemId or 0) > 0 and not (authored and authored.itemRules) then gap(row, "item-use-rule") end
         local dungeon = dungeonByArea[row.zone]
         if dungeon then
@@ -130,7 +129,7 @@ function Audit.Build(data, details)
         if details then report.quests[tostring(id)] = row end
         yieldBatch(i)
     end
-    for _, q in pairs(data.content.quests) do if q.verified and q.actions then report.authored.quests = report.authored.quests + 1 end end
+    for _ in pairs(data.content.quests) do report.authored.quests = report.authored.quests + 1 end
     for _ in pairs(data.content.nodes) do report.authored.nodes = report.authored.nodes + 1 end
     for _, d in pairs(data.content.dungeons) do if d.verified then report.authored.dungeons = report.authored.dungeons + 1 end end
     return report
@@ -142,10 +141,10 @@ function Audit.Text(report)
         ["objective-item-source"]="目标物品来源缺失", ["special-objective-rule"]="特殊目标规则待补",
         ["objective-or-delivery-rule"]="目标或送信规则待补", ["missing-prerequisite"]="前置任务 ID 缺失",
         ["signed-alternative-prerequisite"]="特殊备选前置待核对", ["xp-reference"]="经验参考缺失",
-        ["verified-action-chain"]="已验证行动链待补", ["item-use-rule"]="道具使用条件待补" }
+        ["item-use-rule"]="道具使用条件待补" }
     local lines = {"QuestieDB 有效数据盘点（含上游修正）", "任务总数：" .. report.total,
         "实体 NPC／对象／物品：" .. report.entities.Npc .. "／" .. report.entities.Object .. "／" .. report.entities.Item,
-        "已验证行动链／道路节点／副本：" .. report.authored.quests .. "／" .. report.authored.nodes .. "／" .. report.authored.dungeons,
+        "任务补充／目的地／副本：" .. report.authored.quests .. "／" .. report.authored.nodes .. "／" .. report.authored.dungeons,
         "存在字段缺口的任务数（同一任务可有多项）："}
     local keys = {}
     for key in pairs(report.gaps) do keys[#keys + 1] = key end

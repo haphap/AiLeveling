@@ -45,31 +45,7 @@ test("炉石冷却与船只时刻纳入未来出发时间",function()
     eq(A.Travel.Transit({kind="hearth",verified=true,seconds=10,cooldown=3600},100,{hearthReady=160}),70)
     eq(A.Travel.Transit({kind="boat",verified=true,seconds=30,period=60},70,{}),80)
 end)
-test("路线须含往返与交付才记奖励",function()
-    local q,s=F.Quest(1),F.State();local d=F.Data({[1]=q})
-    local r=A.Planner.Evaluate(q,s,d,{minutes=60},"start")
-    eq(r.seconds,40);eq(r.xp,1000)
-    q.actions[3]=nil
-    eq(A.Planner.Evaluate(q,s,d,{minutes=60},"start"),nil)
-end)
-test("已完成目标只规划交付余程",function()
-    local q,s=F.Quest(1),F.State();local d=F.Data({[1]=q})
-    s.quests[1]={ready=true,objectives={}};s.position.node="goal"
-    local r=A.Planner.Evaluate(q,s,d,{minutes=60},"goal")
-    eq(r.seconds,20);eq(r.actions[#r.actions].kind,"turnin")
-end)
-test("短程搜索保留高价值后续的必要前置",function()
-    local s,q1,q2,q3=F.State(),F.Quest(1),F.Quest(2),F.Quest(3)
-    q1.xp=1;q1.setup=true;q2.preQuestGroup={1};q2.xp=20000;q3.xp=1000
-    local p=plan(s,F.Data({[1]=q1,[2]=q2,[3]=q3}))
-    eq(p.best.questId,1);assert(p.best.xp>=20001)
-end)
-test("副本等待与可中断任务的重叠时间只计一次",function()
-    local d={id=1,title="测试副本",verified=true,minLevel=10,maxLevel=30,
-        travelSeconds=100,runSeconds=600,waitSeconds=300,interruptibleSeconds=200,xp=1000}
-    local c=A.Dungeon.Evaluate(d,F.State(),{dungeons=true,minutes=60,role="DAMAGER"})
-    eq(c.seconds,1000)
-end)
+
 test("任务物品移格后身份不变且去重",function()
     local s=F.State();s.quests[1]={itemId=123}
     local r=A.QuestAssist.Desired({questId=1,items={[123]=1,[456]=2}},s,true)
@@ -194,14 +170,6 @@ test("任务完成历史未就绪时不放行新前置",function()
     eq(A.State.Status(s,1),"unknown");eq(A.Eligibility.Check(q,s),false)
     s.quests[1]={};eq(A.Eligibility.Check(q,s),true)
 end)
-test("同路任务簇合并接取与交付移动且逐任务保留收益",function()
-    local s,q1,q2=F.State(),F.Quest(1),F.Quest(2)
-    local data=F.Data({[1]=q1,[2]=q2})
-    local r=A.Planner.EvaluateMany({q1,q2},s,data,{minutes=60},"start")
-    eq(r.kind,"cluster");eq(r.seconds,40);eq(r.xp,2000)
-    eq(r.actions[1].kind,"accept");eq(r.actions[2].kind,"accept")
-    local p=plan(s,data);eq(p.best.kind,"cluster");eq(p.best.xp,2000)
-end)
 test("交通连续衔接只比较耗时并保留炉石冷却",function()
     local content={nodes={a=F.Node(0,1),b=F.Node(0,2),c=F.Node(0,3),d=F.Node(0,4)},edges={},transit={
         ship={from="a",to="b",kind="boat",seconds=20,verified=true},
@@ -240,7 +208,7 @@ test("恢复采样仅在确认后结算且排除挂机与中断",function()
     o:Finish(true);eq(A.char.samples.recovery.n,1)
 end)
 test("有效审计将空接取集合记为缺口并保留任务 ID",function()
-    local q=F.Quest(1);q.startedBy={};q.finishedBy={};q.actions=nil;q.preQuestGroup={-2}
+    local q=F.Quest(1);q.startedBy={};q.finishedBy={};q.preQuestGroup={-2}
     local none={GetAllIds=function() return {} end,Exists=function() return false end}
     local db={contractVersion=4,Npc=none,Object=none,Item=none,
         Quest={GetAllIds=function() return {1} end,Exists=function(id) return id==1 end,
@@ -248,6 +216,7 @@ test("有效审计将空接取集合记为缺口并保留任务 ID",function()
     local report=A.Audit.Build({db=db,ids={1},maps={},xp={},content={quests={},nodes={},dungeons={}}},true)
     eq(report.total,1);eq(report.gaps["starter-location"],1)
     eq(report.gaps["missing-prerequisite"],1);eq(report.signedPrerequisiteEntries,1)
+    eq(report.gaps["verified-action-chain"],nil)
     eq(report.gaps["signed-prerequisite-rule"],nil);eq(report.quests["1"].id,1)
 end)
 test("导航重接沿途节点且隐藏标记仍推进到达",function()

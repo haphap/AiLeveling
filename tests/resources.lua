@@ -23,16 +23,6 @@ test("交通只保留最快方案并消除无收益循环",function()
     s.maxSeconds=10;eq(#A.Travel.Routes(c,"start","goal",s),1)
     eq(s.money,40)
 end)
-test("直线往返更快时保留炉石而不受旧单向道路限制",function()
-    local c={nodes={a=F.Node(0),b=F.Node(0.2),c=F.Node(0.21)},edges={a={{to="b",seconds=20,verified=true}},b={{to="c",seconds=1,verified=true}}},transit={
-        h={to="b",kind="hearth",seconds=1,cooldown=3600,verified=true}}}
-    local s,q1,q2=F.State(),F.Quest(1),F.Quest(2);s.position.node="a";s.now=100;s.hearthReady=100
-    q1.setup=true;q1.xp=1;q1.actions={{kind="turnin",node="b",seconds=1}}
-    q2.preQuestGroup={1};q2.xp=20000;q2.actions={{kind="objective",node="c",seconds=1},{kind="turnin",node="b",seconds=1}}
-    local p=plan(s,data({[1]=q1,[2]=q2},c),{minutes=1,mode="fast",dungeons=false})
-    eq(p.best.xp,20001);assert(math.abs(p.best.seconds-3)<0.000001);eq(p.best.resources.hearthReady,3701)
-    eq(s.hearthReady,100)
-end)
 test("已消耗等队时间从后续副本比较中扣除",function()
     local c,s=graph(),F.State();s.money=80;s.now=100
     local B,d=dungeon(c,s);d.waitSeconds=300

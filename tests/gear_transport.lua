@@ -82,53 +82,12 @@ test("装备偏好不改变经验率且副本仍须明确接受",function()
     eq(G.Prefer({base,gear},base,{}, {mode="relaxed"}),gear);eq(gear.rate,96)
     gear.rate=94;eq(G.Prefer({base,gear},base,{}, {mode="relaxed"}),base)
     gear.requiresAcceptance=true;eq(G.Prefer({gear},base,{gearTarget="wanted"},{mode="fast"}),base)
-    local new={best=gear,alternatives={base,gear},preferenceApplied=true}
-    eq(A.Planner.Choose({best=base},new).best,gear)
 end)
 test("装备目标在获得额外实物后清除",function()
     local B={Content={gearSources={wanted={itemId=7}}},char={gearTarget="wanted",gearBaseline=1}}
     assert(loadfile("Planner/Gear.lua"))("AiLeveling",B)
     local s=F.State();s.equipment[11]=item(7,"INVTYPE_FINGER",1);B.Gear:SyncTarget(s);eq(s.gearTarget,"wanted")
     s.bags[7]=1;B.Gear:SyncTarget(s);eq(B.char.gearTarget,nil);eq(s.gearAcquired,7)
-end)
-test("共享目标无需耗时和数量模型且保留两个交付",function()
-    local s,q1,q2=F.State(),F.Quest(1),F.Quest(2)
-    for _,q in ipairs({q1,q2}) do
-        local a=q.actions[2];a.shareKey="wolves";a.shareType="kill";a.targetId=99;a.workUnits=nil;a.secondsPerUnit=nil
-    end
-    s.quests[1]={objectives={{numFulfilled=6}}};s.quests[2]={objectives={{numFulfilled=2}}}
-    local r=A.Planner.EvaluateMany({q1,q2},s,F.Data({[1]=q1,[2]=q2}),{minutes=60},"start")
-    eq(r.seconds,40);eq(r.xp,2000)
-    local shared;for _,a in ipairs(r.actions) do if a.sharedObjectives then shared=a end end
-    eq(#shared.sharedObjectives,2);eq(shared.seconds,0)
-    q2.actions[2].targetId=100
-    r=A.Planner.EvaluateMany({q1,q2},s,F.Data({[1]=q1,[2]=q2}),{minutes=60},"start");eq(r.seconds,40)
-    q2.actions[2].targetId=-1;eq(A.Planner.EvaluateMany({q1,q2},s,F.Data({}),{minutes=60},"start"),nil)
-end)
-test("交付经验按交付时预测等级计算且升级解锁后续",function()
-    local s,q1,q2=F.State(),F.Quest(1),F.Quest(2)
-    s.xp=90;s.maxXP=100;q1.xp=10;q2.xp={[20]=1,[21]=20000};q2.requiredLevel=21;q2.preQuestGroup={1}
-    local data=F.Data({[1]=q1,[2]=q2});data.content.progression={verified=true,xpToLevel={[21]=30000}}
-    local p=plan(s,data);eq(p.best.xp,20010);eq(p.best.forecast.level,21);eq(s.level,20);eq(s.xp,90)
-    q2.requiredLevel=1;q2.preQuestGroup=nil
-    local r=A.Planner.EvaluateMany({q1,q2},s,data,{minutes=60},"start");eq(r.xp,20010)
-end)
-test("未知后续经验曲线停止展开且等级上限为六十",function()
-    local s,q1,q2=F.State(),F.Quest(1),F.Quest(2)
-    s.xp=90;s.maxXP=100;q1.xp=20;q2.preQuestGroup={1};q2.xp=20000
-    local r=plan(s,F.Data({[1]=q1,[2]=q2}));eq(r.best.xp,20);eq(r.best.forecast.uncertain,true)
-    s.level=59;s.xp=90;local x=A.Progression.Advance(s,100000,{});eq(x.level,60);eq(x.xp,0)
-    q1.preQuestGroup={999};eq(plan(F.State(),F.Data({[1]=q1})).best,nil)
-end)
-test("手选装备来源超出经验率候选上限仍保留且任务锁定优先",function()
-    local s,quests=F.State(),{}
-    for id=1,12 do quests[id]=F.Quest(id) end
-    quests[12].xp=1;s.gearTarget="wanted";s.items={[7]=item(7,"INVTYPE_HEAD",10)}
-    local d=F.Data(quests);d.content.gearSources={wanted={kind="quest",questId=12,itemId=7,verified=true}}
-    local p=plan(s,d);assert(p.best.gearSources.wanted);eq(p.preferenceApplied,true)
-    s.locked=1;p=plan(s,d);local found=false
-    for _,a in ipairs(p.best.actions) do if a.questId==1 then found=true end end
-    eq(found,true)
 end)
 -- Native API mocks are scoped to the final scenarios and restored afterwards.
 local saved={};local globals={"C_Map","C_TaxiMap","C_Container","GetBindLocation","GetTaxiMapID","TaxiNodeCost","GetTime","C_Item","C_PlayerInfo","CanDualWield",

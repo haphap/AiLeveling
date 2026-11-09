@@ -286,12 +286,6 @@ function S.Compile(actions,state,content)
     end
     return paths
 end
-function S.Project(state,cursor)
-    state.bags,state.inventory,state.durability=cursor.bags,cursor.inventory,cursor.durability
-    state.questCount,state.questLimit=cursor.questCount,cursor.questLimit
-    state.freeSlots=general(cursor.inventory)
-end
-
 function S:Snapshot(state)
     local wanted,links={},{}
     state.itemMetadata,state.protectedItems={},{}
@@ -314,13 +308,6 @@ function S:Snapshot(state)
             if q.sourceItemId and q.sourceItemId>0 then state.protectedItems[q.sourceItemId]=true end
             for _,item in ipairs(q.requiredSourceItems or {}) do state.protectedItems[item]=true end
             for item in pairs(q.itemRules or {}) do state.protectedItems[item]=true end
-            inspect(q)
-        end
-    end
-    if A.indexReady and A.Data and A.Data.Candidates then
-        for _,id in ipairs(A.Data:Candidates(state)) do
-            local q=A.Data:GetQuest(id)
-            if q and q.verified then inspect(q) end
         end
     end
     for _,d in pairs(A.Content.dungeons or {}) do if d.verified then inspect(d) end end
@@ -388,39 +375,16 @@ function S.Itinerary(content,from,actions,state)
     return results
 end
 
-function S.Fallback(state,data,blocked)
+function S.Fallback(state,data)
     local need=not state.ignoreRepair and state.durability and state.durability<0.2 and "repair" or (state.freeSlots==0 and "vendor")
-    local missing
-    if not need then
-        for _,id in ipairs(ids(blocked)) do
-            if blocked[id]:find("缺少必需物品",1,true) then
-                local q=data:GetQuest(id)
-                local cursor=S.Cursor(state)
-                for _,action in ipairs(q and A.Planner.Actions(q,state) or {}) do
-                    local after,issue=S.Apply(action,cursor,state.itemMetadata or {})
-                    if not after then
-                        if issue.kind=="items" then missing=issue.missing;need="supply" end
-                        break
-                    end
-                    cursor=after
-                end
-                if need then break end
-            end
-        end
-    end
     if not need then return end
-    local text=need=="supply" and "购买所需补给" or need=="repair" and "维修装备" or "背包已满，整理背包或出售物品"
-    local current=A.Merchant and A.Merchant.CurrentService(state,need,missing,data)
+    local text=need=="repair" and "维修装备" or "背包已满，整理背包或出售物品"
+    local current=A.Merchant and A.Merchant.CurrentService(state,need,nil,data)
     if current then return current,text end
     local best
     for _,id in ipairs(ids(data.content.services)) do
         local point=data.content.services[id]
         local seconds=need=="repair" and point.repair and point.repair.seconds or need=="vendor" and point.vendorSeconds
-        local targets={}
-        if need=="supply" then
-            for item,count in pairs(missing) do if point.stock and point.stock[item] then targets[item]=(state.bags[item] or 0)+count end end
-            if next(targets) then seconds=point.purchaseSeconds end
-        end
         if S.Available(point,state,data.content) and seconds then
             local route=A.Travel.Route(data.content,state.position and (state.position.node or state.position),point.node,state)
             if route then
@@ -428,14 +392,14 @@ function S.Fallback(state,data,blocked)
                 for _,action in ipairs(route.actions) do actions[#actions+1]=action end
                 actions[#actions+1]={kind="service",serviceKind=need,serviceId=id,node=point.node,
                     position=data.content.nodes[point.node].position,title=point.title,text=text.."。",
-                    serviceGoal=need=="repair" and {durability=0.2} or need=="supply" and {items=targets} or {freeSlots=1},referenceSeconds=seconds,sampleKind="recovery"}
+                    serviceGoal=need=="repair" and {durability=0.2} or {freeSlots=1},referenceSeconds=seconds,sampleKind="recovery"}
                 local total=route.seconds+seconds
                 if not best or total<best.seconds then best={id="service:"..id,title=point.title,kind="service",actions=actions,seconds=total,xp=0,rate=0} end
             end
         end
     end
     if not best and data.ServicePoints and state.position and not state.dead and not state.inInstance then
-        local points=data:ServicePoints(state,need,missing)
+        local points=data:ServicePoints(state,need)
         for _,point in ipairs(points) do
             point.distance=A.Navigation and A.Navigation.Distance and A.Navigation:Distance(state.position,point.position)
         end
@@ -447,7 +411,7 @@ function S.Fallback(state,data,blocked)
         if selected then
             local action={kind="service",serviceKind=need,serviceId="npc:"..selected.npcId,npcId=selected.npcId,
                 position=selected.position,title=selected.title,text=text.."。",
-                serviceGoal=need=="repair" and {durability=0.2} or need=="supply" and {items=selected.targets} or {freeSlots=1}}
+                serviceGoal=need=="repair" and {durability=0.2} or {freeSlots=1}}
             best={id="service:npc:"..selected.npcId,title=selected.title,kind="service",reference=true,
                 actions={action}}
         end

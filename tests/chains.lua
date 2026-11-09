@@ -87,7 +87,6 @@ test("整链暂缓应用拒绝过期预览篡改范围与活动副本冲突",fun
 end)
 test("暂缓整链解除冲突行程和装备目标且不放弃原生任务",function()
     local B=fixture(linked(3));B.char.locked=3
-    B.char.itinerary={sequence="2>3",baselines={[2]=0,[3]=0}}
     B.char.gearTarget="wanted";B.char.gearBaseline=0;B.Content.gearSources={wanted={questId=3}}
     B.state.quests[3]={objectives={}}
     assert(B.Chains:Defer(B.Chains.Preview(1,B.Data,B.state)))

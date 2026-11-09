@@ -307,20 +307,6 @@ return function(test,eq,F,plan)
         eq(B.Dungeon:Control("again"),true);eq(B.char.dungeon.round,2)
         eq(B.char.dungeon.elapsed,100);eq(B.char.dungeon.budget,3600);eq(B.char.dungeon.settled,nil)
     end)
-    test("等队仅选择可中断任务并防止副本任务重复奖励与交互",function()
-        local q=F.Quest(1);q.interruptible=true
-        local B,d,s,data=context({[1]=q})
-        d.interruptibleQuestIds={1}
-        d.actions={{stage="after",kind="turnin",node="start",questId=1,seconds=5}}
-        d.questXP={[1]=1000}
-        local result=B.Dungeon.Evaluate(d,s,B.settings,data)
-        eq(result.seconds,940);eq(result.xp,2000);eq(result.waitActivity.questId,1)
-        B.Dungeon:Accept(1)
-        local p=plan(s,data,B.settings,B);eq(p.waitingDungeon,1);eq(p.best.questId,1)
-        q.interruptible=false
-        s.quests[1]={objectives={},ready=true}
-        result=B.Dungeon.Evaluate(d,s,B.settings,data);eq(result.waitActivity,nil)
-    end)
     test("副本数据更新重建道路游标且资料缺失保留明确选择",function()
         local B,d,s,data=context()
         B.Dungeon:Accept(1)

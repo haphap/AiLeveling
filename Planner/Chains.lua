@@ -147,11 +147,7 @@ function C:Defer(preview)
     for i,id in ipairs(actual.ids) do if id~=preview.ids[i] then return false,"暂缓范围已变化，请重新查看" end end
     A.char.deferredChains=A.char.deferredChains or {}
     A.char.deferredChains[preview.root]=true
-    local selected=A.char.itinerary
     local clear=A.char.locked and actual.members[A.char.locked]
-    for _,group in ipairs(selected and A.Selection.Parse(selected.sequence) or {}) do
-        for _,id in ipairs(group) do if actual.members[id] then clear=true end end
-    end
     if clear then A.Selection:Clear() end
     local source=(A.Content.gearSources or {})[A.char.gearTarget]
     if source and source.questId and actual.members[source.questId] then A.char.gearTarget,A.char.gearBaseline=nil,nil end

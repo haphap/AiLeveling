@@ -301,7 +301,7 @@ function D:Target(q, state)
     local best, bestDistance, sourceCount, unavailable = nil, nil, 0, 0
     -- Zero-level records join automatic leveling when an NPC actually offers them.
     local offeredOnly=not active and q.questLevel==0 and state.locked~=q.id and
-        not state.preparingQuest and not state.itinerary and not state.taskBatch
+        not state.preparingQuest and not state.taskBatch
     for kind = 1, 2 do
         local entity = kind == 1 and self.db.Npc or self.db.Object
         for _, id in ipairs(sources[kind] or {}) do

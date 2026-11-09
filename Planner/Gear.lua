@@ -406,7 +406,7 @@ function G.TaskBenefits(choice,q,state,data)
 end
 
 function G.PreferTask(choices,state,options)
-    if state.locked or state.gearTarget or state.itinerary or options.mode=="fast" or options.gearPreference=="xp" then return end
+    if state.locked or state.gearTarget or options.mode=="fast" or options.gearPreference=="xp" then return end
     local base,best,gain,rate
     for _,choice in ipairs(choices) do
         if not choice.lowValue and not choice.acceptBlocked and not choice.entryBlocked and not choice.requireCheck then

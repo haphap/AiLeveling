@@ -283,7 +283,7 @@ end
 
 function G.LowValue(q,state,data,choice)
     local active=state.quests[q.id]
-    if state.locked==q.id or state.itinerary or active and active.ready then return end
+    if state.locked==q.id or active and active.ready then return end
     local rewards=q.taskFacts and q.taskFacts.rewards
     if not active and q.repeatable and rewards and #(rewards.choices or {})==0 and
         data.DeliveryOnly and data:DeliveryOnly(q,state) then

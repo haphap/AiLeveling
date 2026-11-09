@@ -39,16 +39,15 @@ end)
 
 test("当前商店进入必要服务规划且仅实际恢复资源后返回保留任务",function()
     local B,s,a,e,finish=setup();local M=B.Merchant
-    local q=F.Quest(1);q.actions[2].requiredItems={[100]=7};local d=F.Data({[1]=q})
+    local d=F.Data({})
     eq(M.CurrentService(s,"supply",{[100]=6},d),nil)
     d.ServicePoints=function() return {{npcId=78,targets={[100]=7}}} end
-    local service=B.Supplies.Fallback(s,d,{[1]="缺少必需物品"});assert(service and service.reference)
+    local service=M.CurrentService(s,"supply",{[100]=6},d);assert(service and service.reference)
     local action=service.actions[1];eq(action.npcId,78);eq(action.serviceGoal.items[100],7)
     eq(service.seconds,nil);eq(B.Supplies.Done(action,s),false);eq(s.bags[100],1)
     s.itemMetadata={[100]={name="所需材料"}}
     eq(M.Lines(action,s)[1],"所需材料：还需购买 6 件")
     s.bags[100]=7;eq(B.Supplies.Done(action,s),true);eq(#M.Lines(action,s),0)
-    eq(B.Supplies.Fallback(s,d,{[1]="缺少必需物品"}),nil)
     s.durability=0.1;s.locked=42;s.quests[42]={title="保留任务",objectives={}}
     d.GetQuest=function(_,id) return id==42 and {id=42,title="保留任务"} end
     d.Target=function() return {map=1,x=0.6,y=0.5} end

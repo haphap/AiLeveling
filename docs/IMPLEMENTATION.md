@@ -1131,3 +1131,13 @@ CONFIRM_BINDER 匹配已选或当前自动安排的旅店后，通过既有队�
 既有NPC提供场景去掉固定Candidates返回值，改用真实等级索引：修复前在20级角色的0级实际任务处复现失败（dist/offered-candidates-before.log），修复后504回归通过。已有真实数据checker改由实际Candidates进入，双阵营60860接入通过，完整checker均exit0（dist/offered-candidates-alliance.log、dist/offered-candidates-horde.log）；相关Lua语法和diff检查通过。未增加独立场景／框架、未改任务资料、未重跑56角色连续诊断。早先的重复889／98405诊断停止包含模拟器能力限制，未据此恢复Buff或猜填任务事件。
 
 完整R01—R13／W01—W10及RX03全程、RX06任务专用闲聊等其余适用功能与实机仍待完成，goal active。未升版发布安装，客户端仍129。
+
+## 2026-11-09 删除旧静态任务规划与配套测试
+
+任务统一走 QuestieDB／TaskFacts → TaskChoices → TaskGuide／TaskQueue。删除依赖空 Content.quests 中 verified／actions 的旧规划、三层束搜索、任务组合字符串解析、固定顺序和交通偏好锁定，以及仅服务该分支的投影、合并、补给回退和候选切换器。数据盘点移除“每个任务必须补手写行动链”的缺口；发布检查继续要求完整覆盖锁定与客户端验收。旧 itinerary 在配置规范化时清除。
+
+删除30个旧分支场景，504降至474；运行时净删548行，测试净删288行。保留原生接取／目标／交付、真实NPC集中交付、任务链准备、单任务锁定、任务购买提示、服务完成返回、副本任务组附近等队目标、飞行与战斗保护。既有选择界面测试改用实时任务候选，不再虚构手写行动链。README、PLAN与内容格式同步当前结构。
+
+474回归、65个Lua文件语法、开发内容检查及双阵营实际QuestieDB检查通过；日志 dist/static-planner-cleanup-{regression,content,alliance,horde}.log。回归初次失败来自UI夹具未加载真实任务文本助手、缺Current方法及副本用例残留任务预览，均修正夹具；差异检查发现文件末尾多空行，已清除。未新增独立场景或框架，未重跑56角色连续诊断，未操作客户端、依赖或真实存档。
+
+本批按用户要求清理过度设计；完整R01—R13／W01—W10、全程任务接续及其余适用RestedXP功能与实机仍待完成，目标保持active。未升版、发布或安装，客户端仍0.1.129-dev。

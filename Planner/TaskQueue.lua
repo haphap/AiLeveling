@@ -352,7 +352,7 @@ end
 
 -- Add one useful pickup on the current leg, comparing its objectives and hand-in too.
 function Q.Pickup(order,choices,state,navigation,data,queue)
-    if not data or not navigation or not navigation.Distance or #order==0 or state.locked or state.itinerary or
+    if not data or not navigation or not navigation.Distance or #order==0 or state.locked or
         state.taskBatch or state.gearTarget or state.inInstance or state.dungeon and state.dungeon.phase~="complete" then return end
     local base=queue or Q.Evaluate(order,state,navigation,data)
     if not base or (base.remaining or 0)>0 then return end

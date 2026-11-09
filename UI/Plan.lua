@@ -3,7 +3,7 @@ A.UI.Plan = {}
 local UI=A.UI.Plan
 
 function UI.Key(candidate)
-    return candidate and (candidate.routeKey or (tostring(candidate.id).."|"..A.Planner.RouteKey(candidate)))
+    return candidate and tostring(candidate.id)
 end
 
 function UI.Rows(plan)
@@ -27,7 +27,7 @@ function UI:Create(parent)
     self.label:SetPoint("TOPLEFT",100,-7);self.label:SetWidth(358)
     self.next=A.UI:Button(self.frame,"下一方案",88,function() self:Move(1) end)
     self.next:SetPoint("TOPLEFT",474,0)
-    self.choose=A.UI:Button(self.frame,"执行并锁定整程",200,function()
+    self.choose=A.UI:Button(self.frame,"选择任务",200,function()
         local ok,reason
         if self.preview and self.preview.requiresAcceptance then
             ok,reason=A.Selection.CanChoose(self.preview,self.revision)
@@ -75,7 +75,7 @@ function UI:Refresh()
     local can,why=A.Selection.CanChoose(self.preview,self.revision)
     self.choose:SetEnabled(can==true)
     self.choose.text:SetText(self.preview and (self.preview.kind=="task" and (self.preview.acceptBlocked and "保留任务，空位后继续" or "导航并锁定此任务") or
-        (self.preview.requiresAcceptance and "接受副本行程")) or "执行并锁定整程")
+        (self.preview.requiresAcceptance and "接受副本行程")) or "选择任务")
     self.blocked=not can and why or nil
     local origin,pos=A.plan and A.plan.origin,A.state.position
     if origin and pos and (origin.map~=pos.map or origin.node~=pos.node) and A.ready and A.jobs and not A.jobs.plan and
@@ -125,10 +125,8 @@ function UI:Lines()
     end
     if A.char.paused then lines[#lines+1]="规划提示已暂停；执行所选行程会恢复提示。" end
     if A.Navigation.manual then lines[#lines+1]="当前导航到手动目的地；执行所选行程会解除手动导航。" end
-    if A.char.itinerary then
-        lines[#lines+1]="已锁定任务组合与顺序。"
-    elseif A.char.locked then lines[#lines+1]="当前锁定任务 #"..A.char.locked.."。" end
-    if plan.selectionBlocked then lines[#lines+1]="所选行程暂不可执行："..plan.selectionBlocked.."。可处理所需服务或恢复自动选择。" end
+    if A.char.locked then lines[#lines+1]="当前锁定任务 #"..A.char.locked.."。" end
+    if plan.selectionBlocked then lines[#lines+1]="当前目标暂不可执行："..plan.selectionBlocked end
     if A.UI.TaskLines then
         for _,line in ipairs(A.UI:TaskLines()) do lines[#lines+1]=line end
     end
@@ -136,7 +134,6 @@ function UI:Lines()
     if self.blocked and not plan.complete then lines[#lines+1]=self.blocked end
     if not candidate then
         if plan.complete then lines[#lines+1]="已达到 60 级，本次升级规划目标已完成。"
-        elseif plan.selectionActive then lines[#lines+1]="任务组合与顺序继续保留；条件满足后重新计算所选行程。"
         elseif plan.sessionActive then lines[#lines+1]=plan.fallback and plan.fallback.text or "当前副本行程等待处理，可在副本页查看。"
         else lines[#lines+1]="当前暂无推荐任务。" end
         return lines

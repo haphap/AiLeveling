@@ -78,7 +78,7 @@ function A:NormalizeCharacter(char)
     local binding=char.hearthBinding
     if binding and (type(binding)~="table" or type(binding.name)~="string" or
         (type(binding.node)~="string" and type(binding.node)~="number")) then char.hearthBinding=nil end
-    if char.itinerary and (not self.Selection or not self.Selection.Valid(char.itinerary)) then char.itinerary=nil;char.locked=nil end
+    if char.itinerary then char.itinerary=nil;char.locked=nil end
     if char.taskBatch and (not self.Dungeon.ValidTaskBatch or not self.Dungeon.ValidTaskBatch(char.taskBatch)) then char.taskBatch=nil end
     if type(char.serviceStop)=="table" and char.serviceStop.kind=="bind" then char.serviceStop.afterTask=nil end
     if char.serviceStop and (not self.Services or not self.Services.ValidStop(char.serviceStop)) then char.serviceStop=nil end
@@ -123,7 +123,7 @@ function A:Replan()
                 return
             end
         end
-        self.plan = self.Planner.Choose(self.plan, result, self.char.locked)
+        self.plan = result
         self.dirty = true
         self.Navigation:SetPlan(self.plan)
     end)
