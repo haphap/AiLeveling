@@ -36,9 +36,9 @@ test("公共交通与炉石比较并给出具体上下船指引",function()
     eq(#routes,2);eq(routes[1].hearths,1);eq(routes[2].hearths,0)
     local action={kind="objective",questId=9,title="目标",position=target}
     local actions=B.Flights.Actions(routes[2],action,B.Navigation)
-    eq(actions[1].kind,"move");eq(actions[2].mode,"boat");eq(actions[2].departure,legs[1].from)
-    assert(actions[2].text:find("出发码头",1,true));assert(actions[2].text:find("到达码头",1,true))
-    assert(not actions[2].text:find("分钟",1,true));eq(actions[#actions],action)
+    eq(actions[1].kind,"transit");eq(actions[1].mode,"boat");eq(actions[1].departure,legs[1].from)
+    assert(actions[1].text:find("出发码头",1,true));assert(actions[1].text:find("到达码头",1,true))
+    assert(not actions[1].text:find("分钟",1,true));eq(actions[#actions],action)
 end)
 test("跨大陆未接任务进入完整收益比较并保留真实接交事件",function()
     local B,s=fixture();local q=F.Quest(1);q.verified=false;q.questLevel=s.level
@@ -47,7 +47,7 @@ test("跨大陆未接任务进入完整收益比较并保留真实接交事件",
     d.ReferenceObjectiveTargets=function() return {{text="目标"}},{d:Target()},false end
     d.ObjectiveTargets=function() return {{map=2,x=0.5,y=0,objectiveIndex=1}} end
     local p=plan(s,d,nil,B);eq(p.fallback.questId,1);eq(p.fallback.kind,"accept")
-    assert(p.taskChoices[1].timing.seconds);eq(p.travelActions[2].mode,"boat")
+    assert(p.taskChoices[1].timing.seconds);eq(p.travelActions[1].mode,"boat")
     eq(s.quests[1],nil);eq(s.completed[1],nil)
     s.position=d:Target();p=plan(s,d,nil,B);eq(p.fallback.kind,"accept")
     s.quests[1]={ready=true,objectives={}};p=plan(s,d,nil,B);eq(p.fallback.kind,"turnin")
@@ -62,7 +62,7 @@ test("后续目标未定位仍安排当前跨大陆接取且不补造整程收�
     eq(p.fallback.kind,"accept");eq(p.taskChoices[1].stagesComplete,false)
     eq(p.taskChoices[1].timing.seconds,nil);eq(p.taskChoices[1].timing.travelPlan,nil)
     assert(p.referenceJourney,"current reachable leg must retain transit when later stages are unknown")
-    eq(p.travelActions[2].mode,"boat");eq(p.travelActions[#p.travelActions],p.fallback)
+    eq(p.travelActions[1].mode,"boat");eq(p.travelActions[#p.travelActions],p.fallback)
     eq(s.completed[1],nil);eq(s.quests[1],nil)
     s.position=d:Target();p=plan(s,d,nil,B);eq(p.fallback.kind,"accept");eq(s.quests[1],nil)
     s.locked=1;s.position={map=3,x=0.1,y=0};p=plan(s,d,nil,B)
@@ -86,7 +86,7 @@ test("船舶导航在码头等候跨图保持并只推进到站步骤",function(
     s.position={map=3,x=0.5,y=0};n:Update();eq(replans,0)
     n:SetPlan({fallback=goal});eq(n:Current(),transit)
     eq(s.completed[9],nil);eq(s.quests[9],nil)
-    s.position=legs[1].to;n:Update();eq(n:Current().kind,"move")
+    s.position=legs[1].to;n:Update();eq(n:Current(),goal)
     s.position=goal.position;n:Update();eq(n:Current(),goal);eq(s.completed[9],nil)
     -- A different manual selection, task status change or death must release the old journey.
     n.actions={transit,goal};n.index=1;n:SetPlan({fallback={kind="turnin",questId=9}});eq(n:Current().kind,"turnin")

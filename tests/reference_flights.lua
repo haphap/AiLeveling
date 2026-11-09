@@ -179,10 +179,10 @@ test("飞行天赋改变交通选择但不缩短地面候机或重复折扣票�
     eq(routes[1].flights,1);eq(routes[1].seconds,560);eq(routes[1].cost,110);eq(routes[1].money,890)
     eq(routes[1].legs[2].flightSeconds,500);eq(routes[1].legs[2].seconds,510)
     local actions=B.Flights.Actions(routes[1],a,nav)
-    eq(actions[2].timeSampleKey,B.Flights.TimeKey(1,2,s.faction,nil,1.2))
+    eq(actions[1].timeSampleKey,B.Flights.TimeKey(1,2,s.faction,nil,1.2))
     s.position=D;s.taxiOrigin={id=1,at=s.now,position=D}
     local guide=B.Flights.Guide(a,s,nav);eq(guide.flightSeconds,500);eq(guide.cost,110)
-    eq(guide.actions[1].timeSampleKey,actions[2].timeSampleKey)
+    eq(guide.actions[1].timeSampleKey,actions[1].timeSampleKey)
 end)
 test("训练旅店服务使用统一交通且到达不完成服务",function()
     local B,s,a,nav,O,D,L,T=joint()
@@ -190,7 +190,7 @@ test("训练旅店服务使用统一交通且到达不完成服务",function()
     assert(loadfile("Services.lua"))("AiLeveling",B)
     s.serviceStop={kind="train",npcId=78,title="训练师",position=T}
     local result=B.Services.Build(s)
-    eq(result.referenceJourney.flights,1);eq(result.travelActions[2].mode,"flight")
+    eq(result.referenceJourney.flights,1);eq(result.travelActions[1].mode,"flight")
     eq(result.travelActions[#result.travelActions],result.fallback);eq(result.fallback.npcId,78)
     eq(result.fallback.serviceKind,"train");eq(s.money,1000)
     s.taxiCosts={};result=B.Services.Build(s);eq(result.referenceJourney.flights,0)
@@ -226,7 +226,7 @@ test("原生转乘各段合计仅收一次候机与原生整趟票价",function(
     local route=B.Flights.Routes(O,T,s,nav)[1]
     eq(route.seconds,120);eq(route.cost,110);eq(route.flights,1)
     local actions=B.Flights.Actions(route,a,nav)
-    eq(actions[2].timeSampleKey,B.Flights.TimeKey(1,2,s.faction,"1:4:2",s.taxiSpeed))
+    eq(actions[1].timeSampleKey,B.Flights.TimeKey(1,2,s.faction,"1:4:2",s.taxiSpeed))
 end)
 test("远端飞行按直线接近候机飞行与落地移动比较并保留省钱方案",function()
     local B,s,a,nav,O,D,L,T=joint()
@@ -235,9 +235,9 @@ test("远端飞行按直线接近候机飞行与落地移动比较并保留省�
     eq(routes[2].seconds,600);eq(routes[2].money,1000)
     assert(routes[1].low<160 and routes[1].high>160 and routes[1].initial)
     local actions=B.Flights.Actions(routes[1],a,nav)
-    eq(actions[1].kind,"move");eq(actions[2].mode,"flight");eq(actions[#actions],a)
-    eq(actions[2].departure,D);eq(actions[2].position,L)
-    assert(actions[2].timeSampleKey:find(":Alliance:",1,true))
+    eq(actions[1].kind,"transit");eq(actions[1].mode,"flight");eq(actions[#actions],a)
+    eq(actions[1].departure,D);eq(actions[1].position,L)
+    assert(actions[1].timeSampleKey:find(":Alliance:",1,true))
 end)
 test("完整行程保留较慢省钱路径支付后续交付费用",function()
     local B,s,a,nav,O,D,L,T=joint()
@@ -251,12 +251,12 @@ test("无需先飞过航线即可按参考落地点估时且实际落地点优�
     s.taxiLandings={}
     local route=B.Flights.Routes(O,T,s,nav)[1]
     eq(route.flights,1);eq(route.seconds,160);eq(route.legs[2].to.x,0.8)
-    eq(B.Flights.Actions(route,a,nav)[2].arrival,25)
+    eq(B.Flights.Actions(route,a,nav)[1].arrival,25)
     eq(next(s.taxiLandings),nil)
     s.taxiLandings={["1:2"]={map=2,x=0.85,y=0}}
     route=B.Flights.Routes(O,T,s,nav)[1]
     assert(math.abs(route.seconds-145)<0.00001);eq(route.legs[2].to,s.taxiLandings["1:2"])
-    eq(B.Flights.Actions(route,a,nav)[2].arrival,12)
+    eq(B.Flights.Actions(route,a,nav)[1].arrival,12)
     s.taxiLandings={["1:2"]=L};edge(O,D,20,false);eq(B.Flights.Routes(O,T,s,nav)[1].flights,1)
     edge(O,D,20);s.taxiCosts={};eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
     s.taxiCosts={["1:2"]=110};s.money=109;eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
@@ -343,7 +343,7 @@ test("完整参考规划只执行选中资金方案的首段并等待实际交�
     local d=F.Data({[99]={id=99,title="交付任务"}});d.Target=function() return T end
     local result=plan(s,d)
     assert(result.referenceJourney);eq(result.referenceJourney.flights,1)
-    eq(result.travelActions[1].kind,"move");eq(result.travelActions[2].mode,"flight")
+    eq(result.travelActions[1].kind,"transit");eq(result.travelActions[1].mode,"flight")
     eq(result.travelActions[#result.travelActions].kind,"turnin");eq(s.completed[99],nil)
     local count=0;for _,action in ipairs(result.travelActions) do if action.kind=="turnin" then count=count+1 end end
     eq(count,1)

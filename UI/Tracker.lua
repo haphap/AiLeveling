@@ -16,7 +16,18 @@ function UI.TrackerModel(state,plan,action,paused)
             model.objectives[#model.objectives+1]={text=objective.text or "任务目标",done=objective.finished==true,
                 have=objective.numFulfilled,need=objective.numRequired}
         end
-        if active.ready and action.kind=="turnin" then model.instruction="目标已完成，前往交付。" end
+    end
+    local point=action and A.Navigation and A.Navigation.Target and A.Navigation.Target(action) or action and action.position
+    if point then
+        local map=C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
+        local parts={}
+        local recipient=action.kind=="turnin" and action.recipient
+        local name=point.entityName or recipient and recipient.entityName
+        if name then parts[#parts+1]=name end
+        if map and map.name then parts[#parts+1]=map.name end
+        if point.x and point.y then parts[#parts+1]=string.format("%.1f, %.1f",point.x*100,point.y*100) end
+        if point.approximate then parts[#parts+1]="区域参考点" end
+        if #parts>0 then model.destination=table.concat(parts," · ") end
     end
     if action and action.itemGain and action.itemGain>0 then
         local have=(state.bags or {})[action.targetId] or 0
@@ -27,8 +38,7 @@ function UI.TrackerModel(state,plan,action,paused)
     elseif action and action.sharedObjectives and #action.sharedObjectives>1 then
         model.hint="此目标可同时推进 "..#action.sharedObjectives.." 个任务"
     elseif plan.taskBatch then model.hint=plan.taskBatch.title.." · 任务安排剩余 "..plan.taskBatch.remaining.." 项"
-    elseif state.locked and action and state.locked==action.questId then model.hint="按你锁定的任务继续"
-    elseif plan.taskQueue and plan.taskQueue.stagePlan then model.hint="先完成附近目标，再集中交付" end
+    elseif state.locked and action and state.locked==action.questId then model.hint="按你锁定的任务继续" end
     local groups,byQuest={},{}
     local choices={}
     for _,choice in ipairs(plan.taskOrder or {}) do choices[choice.questId]=choice end
@@ -232,6 +242,7 @@ function UI:RenderTracker()
     T.pause.text:SetText(A.char.paused and "继续" or "暂停")
     self.title:SetText(model.title)
     local lines={model.instruction}
+    if model.destination then lines[#lines+1]=model.destination end
     if model.hint and not A.char.paused then lines[#lines+1]="|cff84969f"..model.hint.."|r" end
     if plan.selectionBlocked then lines[#lines+1]=plan.selectionBlocked end
     if plan.lockedBlocked and not plan.unverified then lines[#lines+1]=plan.lockedBlocked end

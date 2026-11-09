@@ -74,6 +74,15 @@ test("受持有上限限制时仍按NPC归组并提示先交付已备齐任务",
 end)
 test("步骤界面突出当前任务真实进度且后续列表去重可点击",function()
     local B=ready();local T=B.UI.tracker
+    assert(loadfile("Planner/Flights.lua"))("AiLeveling",B)
+    local action=B.action
+    action.text="消灭狗头人，3/10";action.objectiveIndex=1;action.position.entityName="狗头人营地"
+    local route={legs={{kind="walk",from=B.state.position,to=action.position,seconds=100}}}
+    local actions=B.Flights.Actions(route,action,B.Navigation)
+    eq(#actions,1);eq(actions[1],action)
+    B.action=actions[1];B.UI:RenderTracker()
+    assert(B.UI.body.value:find("消灭狗头人",1,true))
+    assert(B.UI.body.value:find("狗头人营地",1,true));assert(B.UI.body.value:find("60.0, 50.0",1,true))
     eq(B.UI.title.value,"当前任务");eq(T.objectives[1].count.value,"3/10");eq(T.objectives[1].ratio,0.3)
     eq(#T.model.rows,2);eq(T.rows[1].title.value,"后续交付");eq(T.rows[1].status.value,"可交付")
     eq(T.queuePanel.width,T.card.width)
@@ -255,8 +264,9 @@ test("交错行程按任务数汇总并显示每个目标与交付步骤",functi
     local oa={kind="objective",questId=1,text="目标甲"};local ob={kind="objective",questId=3,text="目标乙"}
     B.plan.taskQueue={stagePlan=true,taskCount=2,seconds=180,low=180,high=180,xp=200,xpKnown=true,
         steps={{choice=a,stage=oa},{choice=b,stage=ob},{choice=a,stage={kind="turnin"}},{choice=b,stage={kind="turnin"}}}}
-    a.executionAction=oa;a.executionTiming={seconds=80,low=80,high=80}
-    B.UI:RenderTracker();assert(B.UI.body.value:find("先完成附近目标，再集中交付",1,true))
+    a.executionAction=oa;a.executionTiming={seconds=80,low=80,high=80};B.action=oa
+    B.UI:RenderTracker();assert(B.UI.body.value:find("目标甲",1,true))
+    assert(not B.UI.body.value:find("先完成附近目标，再集中交付",1,true))
     assert(loadfile("UI/Plan.lua"))("AiLeveling",B);B.UI.Plan.preview=a
     local text=table.concat(B.UI.Plan:Lines(),"\n")
     assert(text:find("本次行程 · 2 项任务",1,true))

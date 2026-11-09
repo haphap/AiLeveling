@@ -280,10 +280,8 @@ end
 function F.Actions(route,action,navigation)
     local actions={}
     for _,leg in ipairs(route.legs or {}) do
-        if leg.kind=="walk" then
-            if leg.seconds>0 and not (action.kind=="dungeonEnter" and leg.to==action.position) then actions[#actions+1]={kind="move",position=leg.to,fromPosition=leg.from,
-                title="前往下一目的地",travelSeconds=leg.seconds} end
-        elseif leg.kind=="hearth" then
+        -- The task points to its goal; transit steps already point to their departure.
+        if leg.kind=="hearth" then
             actions[#actions+1]={kind="transit",mode="hearth",questId=action.questId,title="炉石返回 "..(leg.name or "绑定地点"),
                 text=(leg.wait>0 and string.format("等待炉石冷却约 %.1f 分钟后，",leg.wait/60) or "").."手动使用炉石返回实际绑定地点，落地后继续任务。",
                 position=leg.to,arrival=12,departure=leg.from,hearthBindingKey=leg.bindingKey,travelSeconds=leg.seconds,referenceHearth=true}
@@ -293,7 +291,7 @@ function F.Actions(route,action,navigation)
                 text="前往"..leg.fromName..(leg.kind=="zeppelin" and "，登上塔台" or "").."，乘坐开往"..leg.toName.."的"..vehicle.."；到站后下"..vehicle.."继续任务。",
                 departure=leg.from,departureRadius=40,position=leg.to,arrival=40,travelSeconds=leg.seconds,
                 publicTransit=true,transitKey=leg.key}
-        else
+        elseif leg.kind=="flight" then
             local node=A.FlightData.nodes[leg.toTaxi]
             local name=(A.state and A.state.taxiNames or {})[leg.toTaxi] or node.name
             actions[#actions+1]={kind="transit",mode="flight",questId=action.questId,title="飞往 "..name,
