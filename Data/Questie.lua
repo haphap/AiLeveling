@@ -207,6 +207,12 @@ function D:Candidates(snapshot)
     for _,offers in pairs(snapshot.questOffers or {}) do
         for id,available in pairs(offers) do if available then add(id) end end
     end
+    if self.db and self.db.Item then
+        for item,count in pairs(snapshot.bags or {}) do
+            local id=count>0 and self.db.Item.Get(item,"startQuest")
+            if id and id>0 then add(id) end
+        end
+    end
     for _,id in ipairs(self.byLevel[-1] or {}) do add(id) end
     for level = math.max(0, snapshot.level - 8), snapshot.level + 2 do
         for _, id in ipairs(self.byLevel[level] or {}) do add(id) end
@@ -298,6 +304,15 @@ function D:Target(q, state)
         return
     end
     local sources = self.db.Quest.Get(q.id, group) or {}
+    if not active and state.position then
+        for _,item in ipairs(sources[3] or {}) do
+            if (state.bags or {})[item] and state.bags[item]>0 then
+                local p=state.position
+                return {map=p.map,x=p.x,y=p.y,node=p.node,startItemId=item,
+                    label=self.db.Item.Get(item,"name") or ("物品 #"..item)}
+            end
+        end
+    end
     local best, bestDistance, sourceCount, unavailable = nil, nil, 0, 0
     -- Zero-level records join automatic leveling when an NPC actually offers them.
     local offeredOnly=not active and q.questLevel==0 and state.locked~=q.id and

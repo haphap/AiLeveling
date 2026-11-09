@@ -20,9 +20,11 @@ return function(test,eq,F,A,C)
         eq(#A.QuestAssist.Desired({kind="objective",questId=1},s,true,data),0)
         s.quests[1]={ready=true,itemId=500,objectives={}}
         eq(#A.QuestAssist.Desired({kind="objective",questId=1},s,true,data),0)
-        q.startedBy={[3]={900}}
+        q.startedBy={[3]={900,901}}
         local desired=A.QuestAssist.Desired({kind="accept",questId=1},s,true,data)
         eq(desired[1],900)
+        s.bags[901]=1;desired=A.QuestAssist.Desired({kind="accept",questId=1,position={startItemId=901}},s,true,data)
+        eq(#desired,1);eq(desired[1],901)
     end)
     test("同构建成功物品用途补使用按钮与目标且不猜数量或覆盖明确规则",function()
         local s,q=F.State(),F.Quest(1);q.questLevel=10;q.sourceItemId=500

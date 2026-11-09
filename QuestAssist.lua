@@ -219,7 +219,9 @@ function Q.Requirements(action,state,data)
             if not byId[quest.sourceItemId] then add(quest.sourceItemId,{kind="source"}) end
             for _,id in ipairs(quest.requiredSourceItems or {}) do if not byId[id] then add(id,{kind="key"}) end end
         elseif action.kind=="accept" then
-            for _,id in ipairs(quest.startedBy and quest.startedBy[3] or {}) do add(id,{kind="start"}) end
+            local starter=action.position and action.position.startItemId
+            if starter then add(starter,{kind="start"})
+            else for _,id in ipairs(quest.startedBy and quest.startedBy[3] or {}) do add(id,{kind="start"}) end end
         end
     end
     if active and (not action.kind or action.kind=="objective") and not active.ready then add(active.itemId,{kind="use",clientConfirmed=true}) end

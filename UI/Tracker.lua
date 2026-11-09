@@ -121,7 +121,9 @@ function UI.TrackerModel(state,plan,action,paused)
                 have=objective.numFulfilled,need=objective.numRequired}
         end
     end
-    local point=action and A.Navigation and A.Navigation.Target and A.Navigation.Target(action) or action and action.position
+    local point
+    if A.Navigation and A.Navigation.Target then point=A.Navigation.Target(action)
+    else point=action and action.position end
     if point then
         local map=C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
         local parts={}
@@ -182,7 +184,8 @@ function UI.TrackerModel(state,plan,action,paused)
             kind=q and (q.ready and "turnin" or "objective") or "accept",
             accepted=q~=nil,status=UI.QuestStatus(state,id),metrics=metrics(candidate),
             progress=q and (q.ready and "目标已完成，前往交付" or (#counts>0 and table.concat(counts," · ") or "查看任务日志中的目标")) or
-                (candidate and candidate.acceptBlocked or candidate and candidate.requireCheck and "先确认任务当前是否开放" or "先接取，再推进任务目标"),deferred=deferred,candidate=candidate}
+                (candidate and candidate.acceptBlocked or candidate and candidate.requireCheck and "先确认任务当前是否开放" or
+                    step.position and step.position.startItemId and step.text or "先接取，再推进任务目标"),deferred=deferred,candidate=candidate}
         if candidate and candidate.lowValue then
             local row=model.rows[#model.rows]
             row.progress=candidate.lowValue.suggestion.." · "..(candidate.lowValue.summary or "低经验／无装备提升／无任务线")

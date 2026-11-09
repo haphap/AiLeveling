@@ -44,6 +44,9 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         local action={kind=kind,questId=id,title=active and active.title or q.title,position=position,
             areaId=areaId,objectiveIndex=position and position.objectiveIndex or objectiveIndex,
             text=({accept="前往任务发布者，查看并接取任务。",objective="按任务日志继续完成目标。",turnin="目标已完成，前往任务交付者。"})[kind]}
+        if kind=="accept" and position and position.startItemId then
+            action.text="使用「"..position.label.."」接取任务。"
+        end
         if kind=="objective" and data.DeliveryOnly and data:DeliveryOnly(q,state) then
             action.text="前往任务交付者对话，按游戏提示完成任务。"
         end

@@ -112,6 +112,10 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     eq(T.rows[3].progress.value,"先接取，再推进任务目标")
     eq(T.model.acceptedCount,2);eq(T.model.unacceptedCount,1)
     assert(T.queueLabel.value:find("未接取 1",1,true))
+    local starter=B.plan.taskChoices[4].actions[1]
+    starter.position={map=1,x=0.5,y=0.5,startItemId=500};starter.text="使用「任务信件」接取任务。"
+    B.UI:RenderTracker();eq(T.rows[3].progress.value,starter.text)
+    local model=B.UI.TrackerModel(B.state,B.plan,starter,false);eq(model.destination,nil);eq(model.instruction,starter.text)
     B.state.quests[4]={title="真实接取的任务",objectives={{text="收集 1/5",numFulfilled=1,numRequired=5}}}
     B.UI:RenderTracker()
     eq(T.rows[3].status.value,"已接取");eq(T.rows[3].progress.value,"收集 1/5")

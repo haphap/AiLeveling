@@ -121,17 +121,19 @@ test("接交点目标分布与物品来源按跨区域直线距离选择",functi
     end}}
     assert(loadfile("Data/Questie.lua"))("AiLeveling",B)
     B.Data.maps={[10]=1,[20]=2,[30]=3}
-    local drops={11}
+    local drops,sources={11},{{11}}
     local entity={Get=function(id,key)
         if key=="name" then return id==11 and "狼" or "野猪" end
         if id>=100 then return {[10]={{id==499 and 0.5 or 50,50}}} end
         return id==11 and {[10]={{80,50}},[20]={{10,50}},[30]={{1,50}}} or {[10]={{50,50}}}
     end}
     B.Data.db={Npc=entity,Object=entity,Item={Get=function(id,key)
-        if key=="name" then return "狼皮" elseif key=="npcDrops" then return drops end
+        if key=="name" then return "狼皮" elseif key=="npcDrops" then return drops
+        elseif key=="startQuest" and id==21 then return 1 end
     end},Quest={Get=function(id,key)
         if key=="objectives" then return {{{11},{12}},{},{{21}}} end
-        return {{11}}
+        if key=="finishedBy" then return {{11}} end
+        return sources
     end}}
     local s=F.State();s.position={map=1,x=0,y=0.5}
     eq(B.Data:Target({id=1},s).map,2)
@@ -151,6 +153,13 @@ test("接交点目标分布与物品来源按跨区域直线距离选择",functi
     assert(resumes>1);eq(result[3].entityId,499);eq(result[3].x,0.005)
     eq(B.Data:ObjectiveTargets({id=1},s)[3].entityId,499)
     eq(s.quests[1].ready,nil);eq(s.completed[1],nil)
+    s.quests={};s.bags[21]=1;sources={{},{},{21}};B.Data.byLevel={}
+    eq(B.Data:Candidates(s)[1],1)
+    local starter=B.Data:Target({id=1},s)
+    eq(starter.startItemId,21);eq(starter.map,s.position.map);eq(starter.x,s.position.x)
+    eq(starter.entityId,nil);eq(s.position.startItemId,nil)
+    s.quests[1]={ready=true};eq(B.Data:Target({id=1},s).startItemId,nil)
+    s.quests={};s.bags[21]=0;eq(#B.Data:Candidates(s),0)
     C_Map,C_QuestLog=previousMap,previousLog
 end)
 test("任务总览分开已接和未接且顺序与预览使用真实日志状态",function()
