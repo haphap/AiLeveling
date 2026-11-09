@@ -6,7 +6,8 @@ local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","
     "debugprofilestop","C_PlayerInteractionManager","UnitClassification","UnitName","UnitCanAttack","UnitIsDeadOrGhost","UnitOnTaxi","C_NamePlate","UIErrorsFrame","issecretvalue","canaccessvalue","Enum",
     "IsInGroup","IsInRaid","UnitIsGroupLeader","UnitIsConnected","FollowUnit",
     "GetQuestLink","ChatFrameUtil","IsModifiedClick","QuestMapFrame_OpenToQuestDetails","GetRealmName",
-    "WorldMapFrame","UnitHealth","UnitHealthMax","GetMirrorTimerInfo","GetMirrorTimerProgress","FlashClientIcon","GetActionInfo","ActionButton1"}
+    "WorldMapFrame","UnitHealth","UnitHealthMax","GetMirrorTimerInfo","GetMirrorTimerProgress","FlashClientIcon","GetActionInfo","ActionButton1",
+    "PlayerSpellsFrame","PlayerSpellsUtil","PlayerUtil","ExportUtil","C_Traits","C_ClassTalents","C_SpecializationInfo","GetNumSpecGroups"}
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
     for _,key in ipairs({"SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag",
@@ -295,6 +296,54 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     eq(B.state.quests[1].objectives[1].finished,false)
     B.state.quests[1].objectives[1].finished=true
     options[1].gossipOptionID=56;dialog();eq(#calls,3)
+    B.finish()
+end)
+test("天赋方案保存重载后在原生树预览并按前置载入，提交仍由原生按钮确认",function()
+    local B=setup(true)
+    local frame=widget();frame.LoadSystem=widget()
+    local inspected,active,commits,resets,rollbacks=false,1,0,0,0
+    local ranks={0,0,0};local chosen=30;local mismatch=false
+    local entries={{nodeID=3,selectionEntryID=31,ranksPurchased=1},
+        {nodeID=2,selectionEntryID=20,ranksPurchased=1},{nodeID=1,selectionEntryID=10,ranksPurchased=2}}
+    UnitLevel=function() return 20 end
+    PlayerUtil={GetCurrentSpecID=function() return 1486 end}
+    ExportUtil={MakeImportDataStream=function(value) eq(value,"native-plan");return {} end}
+    frame.IsInspecting=function() return inspected end
+    frame.GetConfigID=function() return active*100 end
+    frame.GetTalentTreeID=function() return 10 end
+    frame.GetLoadoutExportString=function() return "native-plan" end
+    frame.ReadLoadoutHeader=function() return true,1,1486,{1} end
+    frame.HashEquals=function() return not mismatch end
+    frame.ReadLoadoutContent=function() return entries end
+    frame.ConvertToImportLoadoutEntryInfo=function(_,config,tree,content) eq(config,active*100);eq(tree,10);return content end
+    frame.IsCommitInProgress=function() return false end
+    frame.GetActiveTab=function() return active end
+    frame.SetTab=function(_,tab) eq(tab,active) end
+    frame.UpdateConfigButtonsState=function() end
+    PlayerSpellsFrame={TalentsFrame=frame,ClearInspectUnit=function() inspected=false end,
+        SetInspectString=function(_,value,level) eq(value,"native-plan");eq(level,20);inspected=true end,
+        IsInspecting=function() return inspected end}
+    PlayerSpellsUtil={OpenToClassTalentsTab=function() inspected=false end}
+    GetNumSpecGroups=function() return 2 end
+    C_SpecializationInfo={GetActiveSpecGroup=function() return active end,SetActiveSpecGroup=function(group) active=group end}
+    C_ClassTalents={CanEditTalents=function() return true,"" end,CommitConfig=function() commits=commits+1 end}
+    C_Traits={GetLoadoutSerializationVersion=function() return 1 end,GetTreeHash=function() return {1} end,
+        ResetTree=function() resets=resets+1;ranks={0,0,0};return true end,
+        GetNodeInfo=function(_,id) return {ranksPurchased=ranks[id],entryIDs=id==3 and {30,31} or {id*10},
+            activeEntry={entryID=id==3 and chosen or id*10},canPurchaseRank=id==1 or id==2 and ranks[1]==2 or id==3 and ranks[2]==1} end,
+        SetSelection=function(_,id,entry) eq(id,3);chosen=entry;return true end,
+        PurchaseRank=function(_,id) ranks[id]=ranks[id]+1;return true end,
+        RollbackConfig=function() rollbacks=rollbacks+1;return true end}
+    assert(loadfile("Talents.lua"))("AiLeveling",B)
+    local T=B.Talents;T:Show();assert(T.panel:IsShown())
+    eq(T:Save("练级"),true);eq(B.char.talentPlans.plans["练级"].text,"native-plan")
+    assert(loadfile("Talents.lua"))("AiLeveling",B);T=B.Talents
+    eq(T:Preview(),true);eq(inspected,true);eq(resets,0)
+    eq(T:Stage(),true);eq(inspected,false);eq(ranks[1],2);eq(ranks[2],1);eq(ranks[3],1);eq(chosen,31)
+    eq(commits,0);eq(rollbacks,0);eq(resets,1)
+    mismatch=true;eq(T:Stage(),false);eq(resets,1);mismatch=false
+    B.combat(true);eq(T:Stage(),false);eq(T:SwitchSpec(),false);eq(resets,1);B.combat(false)
+    eq(T:SwitchSpec(),true);eq(active,2);eq(B.char.talentPlans.selected,"练级")
     B.finish()
 end)
 test("窗口锁定阻止拖动且主详情分别保存位置并恢复",function()

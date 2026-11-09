@@ -54,6 +54,7 @@ QuestAssist.lua
 WorldInteract.lua
 RareScanner.lua
 Dangers.lua
+Talents.lua
 UI/Main.lua
 UI/Tracker.lua
 UI/Plan.lua

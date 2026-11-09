@@ -513,6 +513,7 @@ SlashCmdList.AILEVELING = function(command)
     elseif command=="stats" and A.LevelingTracker then A.UI:ShowText(A.LevelingTracker:Report())
     elseif command=="bags" then A.UI.Settings:ShowBags()
     elseif command=="party" then A.UI.Settings:ShowParty()
+    elseif command=="talents" then A.Talents:Show()
     elseif command == "pause" then A:TogglePause()
     elseif command == "resume" then
         A.Selection:Clear()
