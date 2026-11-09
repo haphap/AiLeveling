@@ -8,7 +8,7 @@ local A={Navigation={Distance=function(_,a,b)
     if a and b and a.map==b.map then return math.sqrt((a.x-b.x)^2+(a.y-b.y)^2)*1000 end
 end}}
 C_Map={GetMapInfo=function(id) return {mapID=id} end};C_QuestLog={}
-for _,file in ipairs({"State.lua","Hearth.lua","Data/Content.lua","Data/TaskFacts.lua","Data/Experience.lua","Data/Flights.lua","Data/Questie.lua","Planner/Eligibility.lua",
+for _,file in ipairs({"State.lua","Hearth.lua","Data/Content.lua","Data/TaskFacts.lua","Data/ItemLimits.lua","Data/Experience.lua","Data/Flights.lua","Data/Questie.lua","Planner/Eligibility.lua",
     "Planner/Chains.lua","Planner/TaskGuide.lua","Planner/TaskQueue.lua","Planner/Estimates.lua","Planner/Gear.lua","Planner/Progression.lua","Planner/Travel.lua","Planner/Flights.lua",
     "Planner/Supplies.lua","Planner/Dungeon.lua","Planner/Planner.lua"}) do
     assert(loadfile(root.."/"..file))("AiLeveling",A)
@@ -306,4 +306,30 @@ do
     local target=assert(A.Data:Target(q,context))
     assert(target.entityId==recipient and not context.quests[q.id].ready and not context.completed[q.id])
     print(faction..": real #"..id.." continues to the recipient for conversation and waits for native completion")
+end
+if faction=="Horde" then
+    local q=assert(A.Data:GetQuest(1464))
+    local context=dofile(root.."/tests/fixtures.lua").State()
+    context.faction,context.class,context.classMask,context.raceMask="Horde","SHAMAN",db.Enum.classKeys.SHAMAN,db.Enum.raceMaskById[6]
+    context.clientVersion,context.clientBuild,context.interface="1.60.1","70862",16001
+    context.level=15;context.position=A.Data:EntityPoints(db.Npc,5900)[1];context.bags[6636]=1
+    context.completed[1525]=true
+    assert(q.repeatable)
+    local eligible,reason=A.Eligibility.Check(q,context,A.Data)
+    assert(eligible,reason)
+    assert(A.Data:DeliveryOnly(q,context),"Fire Sapta must be a delivery-only restock")
+    assert(A.TaskGuide.ItemLimit(6636,context)==1 and not A.TaskGuide.XP(q,context.level,context))
+    local held=run(function() return A.Planner.TaskChoices(context,A.Data,{q.id},true,options) end)
+    assert(#held==1 and held[1].lowValue and not context.completed[q.id] and context.bags[6636]==1)
+    local full=run(function() return A.Planner.Build(context,A.Data,options) end)
+    assert(full.fallback and full.fallback.questId~=q.id)
+    context.locked=q.id
+    assert(run(function() return A.Planner.Build(context,A.Data,options) end).fallback.questId==q.id)
+    context.locked=nil;context.bags[6636]=0
+    local missing=run(function() return A.Planner.TaskChoices(context,A.Data,{q.id},true,options) end)
+    assert(#missing==1 and not missing[1].lowValue)
+    context.bags[6636]=1;context.quests[q.id]={ready=true,objectives={}}
+    local active=run(function() return A.Planner.TaskChoices(context,A.Data,{q.id},true,options) end)
+    assert(not active[1].lowValue and active[1].actions[1].kind=="turnin")
+    print("Horde: real #1464 stops automatic restocking while Fire Sapta is held; consumption restores it; manual and accepted tasks remain available")
 end

@@ -49,6 +49,21 @@ test("持有上限下缺少完整收集路线仍先交付而不等待整组",fun
     eq(B.TaskGuide.DeliveryGroups(result.taskChoices,s,result.taskOrder)[1].splitDelivery,true)
     s.locked=2;result=plan(s,d,nil,B);eq(result.fallback.kind,"turnin");eq(result.fallback.questId,2)
     eq(s.bags[18250],1);eq(s.quests[1].ready,true)
+    s.locked=nil;s.quests={};q.repeatable=true
+    q.taskFacts={level=20,complex=false,objectives={},rewards={items={{id=18250,count=1}},choices={}}}
+    d.DeliveryOnly=function() return true end
+    result=plan(s,d,nil,B);eq(result.fallback.questId,2)
+    assert(B.TaskGuide.LowValue(q,s,d));eq(s.bags[18250],1)
+    local higher=F.Quest(3);higher.verified=false;higher.questLevel=20
+    higher.taskFacts={level=20,xp={{1,10000}},objectives={}}
+    local get=d.GetQuest;d.GetQuest=function(self,id) return id==3 and higher or get(self,id) end
+    d.Candidates=function() return {1,2,3} end
+    eq(plan(s,d,nil,B).fallback.questId,3)
+    s.locked=1;eq(plan(s,d,nil,B).fallback.questId,1);s.locked=nil
+    s.quests[1]={ready=true,objectives={}};eq(B.TaskGuide.LowValue(q,s,d),nil);s.quests={}
+    s.bags[18250]=0;eq(B.TaskGuide.LowValue(q,s,d),nil);s.bags[18250]=1
+    q.taskFacts.rewards.choices={{id=18250,count=1}};eq(B.TaskGuide.LowValue(q,s,d),nil)
+    q.taskFacts.rewards.choices={};s.clientBuild="other";eq(B.TaskGuide.LowValue(q,s,d),nil)
 end)
 test("低等级低经验无装备收益无任务关联才建议放弃",function()
     local B,s,q,d=fixture()

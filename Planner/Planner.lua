@@ -307,7 +307,9 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
     end
     local unknownXP={}
     for _,choice in ipairs(choices) do
-        if choice.timing and choice.timing.seconds~=nil and choice.remainingXP==nil then unknownXP[choice.status]=true end
+        if choice.timing and choice.timing.seconds~=nil and choice.remainingXP==nil then
+            unknownXP[choice.status..(choice.lowValue and ":low" or "")]=true
+        end
     end
     table.sort(choices,function(a,b)
         if (a.questId==state.locked)~=(b.questId==state.locked) then return a.questId==state.locked end
@@ -318,8 +320,8 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         local order={turnin=1,objective=2,accept=3}
         if a.status~=b.status then return order[a.status]<order[b.status] end
         if A.TaskGuide and a.timing and b.timing and a.timing.seconds and b.timing.seconds then
-            -- Use one basis per status so unknown rewards cannot create comparison cycles.
-            if not unknownXP[a.status] then
+            -- Keep one basis per status and priority group; skipped rewards do not change the active comparison.
+            if not unknownXP[a.status..(a.lowValue and ":low" or "")] then
                 local ar=A.TaskGuide.MovementRate(a.timing.seconds,a.remainingXP)
                 local br=A.TaskGuide.MovementRate(b.timing.seconds,b.remainingXP)
                 if ar~=br then return ar>br end

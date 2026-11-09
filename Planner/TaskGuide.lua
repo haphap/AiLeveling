@@ -284,6 +284,16 @@ end
 function G.LowValue(q,state,data,choice)
     local active=state.quests[q.id]
     if state.locked==q.id or state.itinerary or active and active.ready then return end
+    local rewards=q.taskFacts and q.taskFacts.rewards
+    if not active and q.repeatable and rewards and #(rewards.choices or {})==0 and
+        data.DeliveryOnly and data:DeliveryOnly(q,state) then
+        for _,item in ipairs(rewards.items or {}) do
+            local limit=G.ItemLimit(item.id,state)
+            if limit and (item.count or 0)>0 and ((state.bags or {})[item.id] or 0)>=limit then
+                return {summary="道具已持有",reason="补领道具已在背包中，先继续其他任务。",suggestion="无需补领"}
+            end
+        end
+    end
     if not q.questLevel or q.questLevel<=0 then return end
     local gap=state.level-q.questLevel
     local xp,base=G.XP(q,state.level,state),G.XP(q,q.questLevel,state)
@@ -300,7 +310,6 @@ function G.LowValue(q,state,data,choice)
     local source=A.Gear and A.Gear.GetSource and A.Gear.GetSource(state.gearTarget,data) or
         (data.content and data.content.gearSources and data.content.gearSources[state.gearTarget])
     if source and source.questId==q.id then return end
-    local rewards=q.taskFacts and q.taskFacts.rewards
     if not rewards or (rewards.spell or 0)>0 or (rewards.spellCast or 0)>0 then return end
     for _,list in ipairs({rewards.items or {},rewards.choices or {}}) do
         for _,entry in ipairs(list) do
