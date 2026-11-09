@@ -4,6 +4,16 @@ local S=A.Services
 local function accessible(value) return not canaccessvalue or canaccessvalue(value) end
 local function text(value) return accessible(value) and type(value)=="string" and value or nil end
 local function number(value,min,max) return accessible(value) and type(value)=="number" and value>=min and value<=max and value%1==0 end
+local function spellKnown(id)
+    if C_SpellBook and C_SpellBook.IsSpellKnown then
+        local ok,known=pcall(C_SpellBook.IsSpellKnown,id)
+        if ok and accessible(known) and known==false then return false end
+        if ok and accessible(known) and known==true and C_SpellBook.IsSpellInSpellBook then
+            local listed,inBook=pcall(C_SpellBook.IsSpellInSpellBook,id,nil,false)
+            if listed and accessible(inBook) and inBook==true then return true end
+        end
+    end
+end
 local function position(p)
     return type(p)=="table" and number(p.map,1,2147483647) and type(p.x)=="number" and p.x>=0 and p.x<=1 and
         type(p.y)=="number" and p.y>=0 and p.y<=1
@@ -58,7 +68,8 @@ function S.ValidStop(stop)
         stop.kind=="unlockFlight" and number(stop.taxiId,1,2147483647)) and
         type(stop.title)=="string" and #stop.title>0 and #stop.title<=512 and position(stop.position) and
         (stop.afterTask==nil or stop.kind=="unlockFlight" and taskStep(stop.afterTask) and number(stop.afterTask.turnIns,0,2147483647)) and
-        (stop.learnKey==nil or stop.kind=="train" and type(stop.learnKey)=="string" and #stop.learnKey<=1024 and stop.learnKey:match("^[^\031]+")~=nil)
+        (stop.learnKey==nil or stop.kind=="train" and type(stop.learnKey)=="string" and #stop.learnKey<=1024 and stop.learnKey:match("^[^\031]+")~=nil) and
+        (stop.learnSpellId==nil or stop.kind=="train" and stop.learnKey~=nil and number(stop.learnSpellId,1,2147483647))
 end
 
 function S:Event(event,...)
@@ -87,6 +98,10 @@ end
 
 function S:Snapshot(state)
     state.trainer=nil
+    local selected=A.char.serviceStop
+    if selected and selected.learnSpellId and spellKnown(selected.learnSpellId)==true then
+        A.char.serviceStop=nil;self.message="所选训练已确认完成，继续原任务。"
+    end
     local key={"services"}
     local tasks={}
     for id in pairs(state.quests or {}) do tasks[#tasks+1]=id end
@@ -144,8 +159,8 @@ function S:Snapshot(state)
         A.char.serviceStop=nil;stop=nil;self.message="飞行点已开通，继续原任务。"
     end
     if stop then
-        state.serviceStop={kind=stop.kind,npcId=stop.npcId,taxiId=stop.taxiId,title=stop.title,position=copy(stop.position),learnKey=stop.learnKey}
-        key[#key+1]=table.concat({stop.kind,stop.npcId or stop.taxiId,stop.position.map,stop.position.x,stop.position.y,stop.learnKey or ""},":")
+        state.serviceStop={kind=stop.kind,npcId=stop.npcId,taxiId=stop.taxiId,title=stop.title,position=copy(stop.position),learnKey=stop.learnKey,learnSpellId=stop.learnSpellId}
+        key[#key+1]=table.concat({stop.kind,stop.npcId or stop.taxiId,stop.position.map,stop.position.x,stop.position.y,stop.learnKey or "",stop.learnSpellId or ""},":")
         if stop.afterTask then
             local step=stop.afterTask
             state.serviceStop.afterTask={kind=step.kind,questId=step.questId,objectiveIndex=step.objectiveIndex,title=step.title,
@@ -406,6 +421,19 @@ end
 function S:Pick(row,revision)
     local ok,why=self:CanPick(row,revision);if not ok then return false,why end
     A.char.serviceStop={kind=row.kind,npcId=row.npcId,taxiId=row.taxiId,title=row.title,position=copy(row.position),learnKey=row.learnKey}
+    if row.offer and self.trainerOpen and C_TooltipInfo and C_TooltipInfo.GetTrainerService and
+        Enum and Enum.TooltipDataType and Enum.TooltipDataType.Spell~=nil and GetTrainerServiceInfo and
+        UnitGUID and A.Merchant.NpcId(UnitGUID("npc"))==row.npcId then
+        local name,_,_,_,sub,category=GetTrainerServiceInfo(row.offer.index)
+        local currentKey=table.concat({text(name) or "",text(sub) or "",text(category) or ""},"\031")
+        if currentKey==row.learnKey then
+            local ok,tip=pcall(C_TooltipInfo.GetTrainerService,row.offer.index)
+            if ok and accessible(tip) and type(tip)=="table" and accessible(tip.type) and
+                tip.type==Enum.TooltipDataType.Spell and number(tip.id,1,2147483647) and spellKnown(tip.id)==false then
+                A.char.serviceStop.learnSpellId=tip.id
+            end
+        end
+    end
     local step=row.unlockSaving and row.unlockSaving>1 and row.unlockAfterTask
     if step then
         A.char.serviceStop.afterTask={kind=step.kind,questId=step.questId,objectiveIndex=step.objectiveIndex,title=step.title,
@@ -442,7 +470,7 @@ function S.Build(state,plan,automatic)
     end
     local instruction=stop.kind=="bind" and "与所选旅店老板交谈，由你确认设置炉石；收到实际绑定事件后继续原任务。" or
         stop.kind=="unlockFlight" and "与飞行管理员交谈，开通此飞行点；确认开通后继续原任务。航线和费用以飞行地图为准。" or
-        stop.learnKey and ("在原生训练窗口学习「"..stop.learnKey:match("^[^\031]+").."」；显示已学会项目后确认并继续原任务。") or
+        stop.learnKey and ("在原生训练窗口学习「"..stop.learnKey:match("^[^\031]+").."」；学会后继续原任务。") or
         "与训练师交谈，打开详情的服务页选择要学习的项目；职业与条件以训练窗口为准。"
     if automatic then instruction="建议把炉石设在这里，做完任务后回来集中交付。可在服务页取消。" end
     local trainingCost

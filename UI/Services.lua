@@ -74,7 +74,7 @@ function U:Lines()
             if s.money~=nil and s.money<offer.cost then lines[#lines+1]="自有金币还差 "..(offer.cost-s.money).." 铜" end
         else lines[#lines+1]="费用或费用类型尚未确认，请核对原生训练窗口。" end
         if offer.ambiguous then lines[#lines+1]="存在同名同级项目，暂不能可靠关联学习完成。" end
-        lines[#lines+1]="由你在原生训练窗口学习；确认所选项目已学会后恢复任务。"
+        lines[#lines+1]="由你在原生训练窗口学习；确认所选技能已进入法术书或项目显示已学会后恢复任务。"
     elseif self.kind=="unlockFlight" then lines[#lines+1]="与飞行管理员交谈开通；航线和费用到场确认，开通后继续原任务。"
     elseif self.kind=="train" then lines[#lines+1]="位置来自任务库；职业、专业和当前可学项目到场后以训练窗口为准。"
     else lines[#lines+1]="到场后由你确认设置炉石；实际绑定事件匹配此旅店后恢复任务。" end

@@ -1,7 +1,7 @@
 return function(test,eq,F,A,plan)
 local names={"UnitGUID","UnitName","GetTime","GetBindLocation","C_Trainer","Enum","GetNumTrainerServices","GetTrainerServiceInfo","GetTrainerServiceCost","canaccessvalue",
     "BuyTrainerService","SetTrainerServiceTypeFilter","ExpandTrainerSkillLine","ConfirmBinder",
-    "GetTrainerServiceSkillReq","GetTrainerServiceNumAbilityReq","GetTrainerServiceAbilityReq"}
+    "GetTrainerServiceSkillReq","GetTrainerServiceNumAbilityReq","GetTrainerServiceAbilityReq","C_TooltipInfo","C_SpellBook"}
 local function setup()
     local saved={};for _,name in ipairs(names) do saved[name]=_G[name] end
     local B={};for k,v in pairs(A) do B[k]=v end
@@ -86,6 +86,27 @@ test("已安排训练显示实际缺少条件或资金且不自动学习或误�
     e.rows[1].skillMet=true;e.rows[1].abilities[1].met=true;e.rows[1].level=10;B.state.money=40
     S:Snapshot(B.state);action=S.Build(B.state).fallback;assert(action.text:find("原生训练窗口学习",1,true))
     e.rows[1].status="used";S:Snapshot(B.state);eq(B.char.serviceStop,nil)
+    finish()
+end)
+test("所选技能确实学会后即使训练列表隐藏或关闭也恢复原任务",function()
+    local B,e,finish=setup();local known,inBook=false,false
+    Enum.TooltipDataType={Spell=1,Item=0}
+    C_TooltipInfo={GetTrainerService=function(index) return {type=1,id=100+index} end}
+    C_SpellBook={IsSpellKnown=function(id) return id==101 and known end,
+        IsSpellInSpellBook=function(id,bank,overrides) eq(overrides,false);return id==101 and inBook end}
+    local stop=chooseTraining(B);eq(stop.learnSpellId,101);assert(B.Services.ValidStop(stop))
+    e.rows={};B.Services:Snapshot(B.state);eq(B.char.serviceStop,stop)
+    B.Services:Event("TRAINER_CLOSED");B.Services:Snapshot(B.state);eq(B.char.serviceStop,stop)
+    known=true;B.Services:Snapshot(B.state);eq(B.char.serviceStop,stop)
+    inBook=true;B.Services:Snapshot(B.state);eq(B.char.serviceStop,nil);eq(B.state.serviceStop,nil)
+    eq(B.char.locked,42);assert(B.char.itinerary)
+    e.rows={{name="训练项目",status="available",sub="等级 1",cost=10}}
+    stop=chooseTraining(B);eq(stop.learnSpellId,nil)
+    B.Services:Snapshot(B.state);eq(B.char.serviceStop,stop)
+    stop.learnSpellId=0;eq(B.Services.ValidStop(stop),false)
+    stop.learnSpellId=nil;B.Services:Cancel();known=false
+    C_TooltipInfo.GetTrainerService=function() return {type=0,id=101} end
+    stop=chooseTraining(B);eq(stop.learnSpellId,nil)
     finish()
 end)
 test("训练完成只认同NPC同项目已学会且筛选消失和同名歧义保持安排",function()
