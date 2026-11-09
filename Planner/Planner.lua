@@ -305,6 +305,10 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         add(id)
         if i%(A.TaskGuide and 5 or 25)==0 then coroutine.yield() end
     end
+    local unknownXP={}
+    for _,choice in ipairs(choices) do
+        if choice.timing and choice.timing.seconds~=nil and choice.remainingXP==nil then unknownXP[choice.status]=true end
+    end
     table.sort(choices,function(a,b)
         if (a.questId==state.locked)~=(b.questId==state.locked) then return a.questId==state.locked end
         local aBlocked,bBlocked=a.acceptBlocked or a.entryBlocked,b.acceptBlocked or b.entryBlocked
@@ -314,9 +318,8 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         local order={turnin=1,objective=2,accept=3}
         if a.status~=b.status then return order[a.status]<order[b.status] end
         if A.TaskGuide and a.timing and b.timing and a.timing.seconds and b.timing.seconds then
-            -- An unknown reward must not erase the XP comparison of every other candidate.
-            if (a.remainingXP~=nil)~=(b.remainingXP~=nil) then return a.remainingXP~=nil end
-            if a.remainingXP~=nil then
+            -- Use one basis per status so unknown rewards cannot create comparison cycles.
+            if not unknownXP[a.status] then
                 local ar=A.TaskGuide.MovementRate(a.timing.seconds,a.remainingXP)
                 local br=A.TaskGuide.MovementRate(b.timing.seconds,b.remainingXP)
                 if ar~=br then return ar>br end

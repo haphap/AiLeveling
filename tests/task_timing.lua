@@ -26,6 +26,9 @@ test("缺静态经验的已接任务按原生奖励排序并生成交付预测",
     eq(choices[1].forecast.xp,s.xp+1800);eq(s.completed[2],nil)
     s.quests[2].rewardXP=nil
     choices=B.Planner.TaskChoices(s,data,{1,2});eq(choices[1].questId,1)
+    choices=B.Planner.TaskChoices(s,data,{1,2,3});eq(choices[1].questId,1)
+    s.quests[2].rewardXP=1800
+    choices=B.Planner.TaskChoices(s,data,{1,2,3});eq(choices[1].questId,2)
 end)
 
 test("移动估时不依赖执行样本掉率或任务数量且不伪报总完成时间",function()
@@ -93,7 +96,7 @@ test("未接候选同样按经验与完整移动成本比较且未知经验不�
     choices=B.Planner.TaskChoices(s,data,{1,2});eq(#choices,2);eq(choices[1].questId,1)
 end)
 
-test("未接未知经验候选不会抹掉已知收益排序且保留手动和已接任务",function()
+test("同状态含未知经验时按移动排序且保留手动和已接任务",function()
     local B,s=timingFixture();s.quests={};s.level=20
     B.Eligibility={Check=function() return true end};B.Progression={Advance=function() return {} end}
     local quests={
@@ -105,9 +108,11 @@ test("未接未知经验候选不会抹掉已知收益排序且保留手动和�
         ReferenceObjectiveTargets=function(_,q) return {{text="目标"}},{{map=1,x=q.id==3 and 0 or q.id*7}},false end}
     for _,ids in ipairs({{1,2,3,4},{4,3,2,1},{3,1,4,2}}) do
         local c=B.Planner.TaskChoices(s,data,ids)
-        eq(#c,4);eq(c[1].questId,2);eq(c[2].questId,1)
-        eq(c[3].questId,3);eq(c[4].questId,4);eq(c[3].remainingXP,nil)
+        eq(#c,4);eq(c[1].questId,3);eq(c[2].questId,1)
+        eq(c[3].questId,2);eq(c[4].questId,4);eq(c[1].remainingXP,nil)
     end
+    quests[1].taskFacts.xp={{1,0}};quests[2].taskFacts.xp={{1,0}}
+    local zero=B.Planner.TaskChoices(s,data,{1,2,3});eq(zero[1].questId,3)
     local c=B.Planner.TaskChoices(s,data,{3,4});eq(c[1].questId,3);eq(#c,2)
     s.locked=3;c=B.Planner.TaskChoices(s,data,{1,2,3});eq(c[1].questId,3)
     s.locked=nil;s.quests[3]={objectives={}}
