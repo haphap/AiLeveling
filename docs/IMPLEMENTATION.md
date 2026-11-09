@@ -1,3 +1,5 @@
+> 历史实施记录：本文保留各次实现与当时的验证事实。现行范围、批次及完成条件统一见 [PLAN.md](../PLAN.md)，当前功能差距见 [RESTEDXP_PARITY.md](RESTEDXP_PARITY.md)。下文旧“下一步”、设计和版本状态不再作为执行计划。
+
 # AiLeveling 执行记录
 
 当前发行版本以 [AiLeveling.toc](../AiLeveling.toc) 和 [GitHub Releases](https://github.com/haphap/AiLeveling/releases) 为准；本机安装记录见 INSTALLATION.json。完整第一版尚未验收，以下模块表列代码进展和剩余工作，后文按版本保留历史记录。
