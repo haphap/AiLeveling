@@ -1289,3 +1289,9 @@ Core.OnUpdate 原来仅恢复 index 和 plan，已排队的 quest:dialog 和 ser
 - 接取后原生任务日志与目标航点接管，交付由QUEST_TURNED_IN确认；修复缺DB的锁定任务交完后没有解除锁定。未观察到的未接任务继续由任务数据库决定，不猜资格、前置或收件人。
 - 原生字段依据固定[Forever GossipInfoDocumentation](https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_APIDocumentationGenerated/GossipInfoDocumentation.lua)的GossipQuestUIInfo；直接任务窗标题沿用同版本原生QuestInfo的GetTitleText。
 - 扩展已有NPC提供→接取→目标→交付流程及锁定解除检查，dist/native-offers-regression.log通过；开发结构与diff检查通过。首次检查的缺quests错误来自旧夹具覆盖GetQuest后省略真实容器，现已让该流程直接使用实际GetQuest。无新增独立场景，未打包、发布或安装。
+## 2026-11-10 塑造者之台任务关联
+
+- 固定 DungeonJournal 1.7.4 原始记录确认95928和四种水晶各1件，QuestieDB可核对四个物品身份。复用既有独立目标补充和副本目录，加入区域16667／实例3001关联；实际提供任务→已接目标→进入→本内目标→离本交付继续使用现有模块，运行逻辑未新增。
+- 只使用任务及物品ID、数量和区域关系事实，原插件代码、文案、素材、奖励未复制；来源和归档哈希见SOURCES.json。经验保持未知，另两项任务的负数占位ID未作为真实任务导入。静态未接资格与收件人资料仍缺，实际NPC提供与原生日志可接续。
+- 复用现有真实QuestieDB检查入口验证95928全过程，dist/shaper-task-flow.log通过；生成内容语义比较确认仅增加95928四物品要求，旧XP和目标全部保持，见dist/shaper-facts-diff.log。没有新增独立测试场景或重跑全角色模拟。
+- 完整首版继续收口其余覆盖条件，全部开发完成后统一验收；未打包、发布或改动已安装插件。

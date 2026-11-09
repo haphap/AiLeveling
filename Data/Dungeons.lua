@@ -154,12 +154,12 @@ A.DungeonCatalog={version="1.60.1",build="70862",entries={
         Alliance={[97173]="category"},
         Horde={[97173]="category"},
     }},
-    ["reference:3001"]={id="reference:3001",reference=true,instanceId=3001,title="塑造者之台",areas={},entrances={},entryArea=490,entryHint="前往安戈洛环形山北部山地，进入塑造者之台。",quests={
-        Alliance={},
-        Horde={},
+    ["reference:3001"]={id="reference:3001",reference=true,instanceId=3001,title="塑造者之台",areas={16667},entrances={},entryArea=490,entryHint="前往安戈洛环形山北部山地，进入塑造者之台。",quests={
+        Alliance={[95928]="category"},
+        Horde={[95928]="category"},
     }},
 }}
--- Only objectives explicitly located inside by the same-build server quest text.
+-- Only objectives explicitly located inside by server quest text or checked task facts.
 A.DungeonCatalog.objectiveAreas={
     [95775]={["item:270308"]=16550,["item:270309"]=16550,["item:270310"]=16550,["item:270311"]=16550},
     [95776]={["npc:258924"]=16550},
@@ -176,6 +176,7 @@ A.DungeonCatalog.objectiveAreas={
     [96771]={["npc:268423"]=16842},
     [96772]={["item:276890"]=16620},
     [97173]={["item:276893"]=16554},
+    [95928]={["item:271894"]=16667,["item:271898"]=16667,["item:271902"]=16667,["item:271912"]=16667},
 }
 -- Encounter identities only; optional bosses and separate wings are not completion requirements.
 A.DungeonCatalog.encounters={

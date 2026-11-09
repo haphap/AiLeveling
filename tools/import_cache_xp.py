@@ -121,13 +121,22 @@ def load():
         {'id': 99143, 'level': 7, 'sourceItemId': 0,
          'objectives': [{'kind': 'item', 'id': 286209, 'count': 6}],
          'url': 'https://www.wowhead.com/forever/quest=99143/bottles-and-baubles'},
+        {'id': 95928, 'level': 60, 'dungeonMapId': 3001, 'areaId': 16667,
+         'objectives': [{'kind': 'item', 'id': item, 'count': 1} for item in (271912, 271898, 271902, 271894)],
+         'url': 'https://www.curseforge.com/wow/addons/dungeonjournal/files/9518674',
+         'archiveSHA256': '4c24917aae32a495d0dabae551e86615635ba4a37eca934b8dd599a93439a83b',
+         'scope': 'Crystalline Elements factual quest/item IDs, quantities and dungeon association only; no source code, descriptions, assets or rewards copied.',
+         'checked': '2026-11-10'},
     ]
     for fact in supplements:
-        fact.update(checked='2026-11-09', captureBuild=None)
+        fact.setdefault('checked', '2026-11-09')
+        fact['captureBuild'] = None
         previous = curves.get(str(fact['id']))
         assert previous is None or (previous['level'] == fact['level'] and not previous['objectives'] and not previous['complex'])
         row = curves.setdefault(str(fact['id']), dict(level=fact['level']))
-        row.update(sourceItemId=fact['sourceItemId'], objectives=fact['objectives'], complex=False)
+        row.update(objectives=fact['objectives'], complex=False)
+        if 'sourceItemId' in fact:
+            row['sourceItemId'] = fact['sourceItemId']
         if 'companionReward' in fact:
             curves[str(fact['id'])]['companionReward'] = fact['companionReward']
         if 'hidden' in fact:

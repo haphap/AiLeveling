@@ -49,7 +49,7 @@ def render():
             lines.append(f'        {faction}={{{pairs}}},')
         lines.append('    }},')
     lines.append('}}')
-    lines.append('-- Only objectives explicitly located inside by the same-build server quest text.')
+    lines.append('-- Only objectives explicitly located inside by server quest text or checked task facts.')
     lines.append('A.DungeonCatalog.objectiveAreas={')
     for m in census['supplementalMaps']:
         for qid, targets in sorted(m['objectiveAreas'].items(), key=lambda row: int(row[0])):

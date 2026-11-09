@@ -38,8 +38,8 @@ ANNOUNCED = [
      'identitySource':'https://wowforevertalents.com/dungeons/blackmaw-hold/','lfgId':3268,'areaId':16554,'entryArea':16,
      'entryHint':'前往艾萨拉北部的熊怪城门，沿隧道进入黑喉要塞。','objectiveQuestIds':[97173]},
     {'name':"Shaper's Terrace",'levels':[58,60],'location':"Un'Goro Crater, northern hills",'mapId':3001,
-     'identitySource':'https://wowforevertalents.com/dungeons/the-shaper-s-terrace/','lfgId':3267,'entryArea':490,
-     'entryHint':'前往安戈洛环形山北部山地，进入塑造者之台。'},
+     'identitySource':'https://wowforevertalents.com/dungeons/the-shaper-s-terrace/','lfgId':3267,'areaId':16667,'entryArea':490,
+     'entryHint':'前往安戈洛环形山北部山地，进入塑造者之台。','objectiveQuestIds':[95928]},
 ]
 
 def digest(path):
@@ -122,6 +122,8 @@ def build():
     lfg = {int(r['ID']):r for r in csv.DictReader(io.StringIO((ROOT / '.dependencies/LFGDungeons-1.60.1.70862-zhCN.csv').read_text()))}
     encounters = list(csv.DictReader(io.StringIO((ROOT / '.dependencies/DungeonEncounter-1.60.1.70862-zhCN.csv').read_text())))
     cached = json.loads((ROOT / '.dependencies/eg-link-156f29c9/1.60.1.70862/quests.enUS.json').read_text())['quests']
+    checked_path = ROOT / 'docs/TASK_XP_AUDIT.json'
+    checked = {q['id']:q for q in json.loads(checked_path.read_text())['objectiveSupplements'] if q.get('dungeonMapId')}
     supplemental=[]
     for announced in ANNOUNCED:
         if not announced.get('identitySource'): continue
@@ -131,6 +133,12 @@ def build():
         quests=sorted(int(id) for id,q in cached.items() if area and q.get('zoneAreaId')==area)
         targets={}
         for id in announced.get('objectiveQuestIds',[]):
+            if id in checked:
+                quest=checked[id]
+                assert quest['dungeonMapId']==mid and quest['areaId']==area
+                quests.append(id)
+                targets[str(id)]={f'{o["kind"]}:{o["id"]}':area for o in quest['objectives']}
+                continue
             quest=cached[str(id)]
             assert quest['zoneAreaId']==area and id in quests
             targets[str(id)]={}
@@ -149,7 +157,8 @@ def build():
             'sources':[{'path':'.dependencies/'+n,'sha256':h} for n,h in PINS.items()] +
                        [{'path':str(source.relative_to(ROOT)),'sha256':digest(source)},
                         {'path':str(raw_map.relative_to(ROOT)),'sha256':digest(raw_map)}] +
-                       [{'path':name,'sha256':sha} for name,sha in extra_sources.items()],
+                        [{'path':name,'sha256':sha} for name,sha in extra_sources.items()] +
+                        [{'path':str(checked_path.relative_to(ROOT)),'sha256':digest(checked_path)}],
             'counts':counts,'maps':rows,'identityConflicts':conflicts,'unmatchedProviderAreas':unresolved,
             'supplementalMaps':supplemental,
             'announcedLevelingDungeons':{'source':ANNOUNCEMENT,'entries':ANNOUNCED},
@@ -170,8 +179,8 @@ def markdown(report):
         lines.append(f'| {row["name"]} | {row["levels"][0]}—{row["levels"][1]} | {row["location"]} | {row["mapId"] or "尚未关联"} |')
     lines += ['', '补充地图身份来源及目标资料：', '']
     for row in report['supplementalMaps']:
-        lines.append(f'- [{row["name"]}]({row["identitySource"]})：实例 {row["mapId"]}，原生首领 {len(row["encounterIds"])} 项，缓存关联任务 {len(row["categoryQuestIds"])} 项。')
-    lines += ['', '补充目录的入口使用官方所在地区中心及入口方向说明；已确认在本内完成的目标由同构建服务器任务原文关联，其他分类任务保持普通关联。任务接交者仍从 QuestieDB 查询，缺少的任务以实际日志接入。塑造者之台的固定任务关联尚缺。', '']
+        lines.append(f'- [{row["name"]}]({row["identitySource"]})：实例 {row["mapId"]}，原生首领 {len(row["encounterIds"])} 项，关联任务 {len(row["categoryQuestIds"])} 项。')
+    lines += ['', '补充目录的入口使用官方所在地区中心及入口方向说明；已确认本内目标来自同构建服务器任务原文和已核对任务事实，其他分类任务保持普通关联。任务接交者仍从 QuestieDB 查询，缺少的任务以实际提供及日志接入。塑造者之台关联95928的四种水晶目标，来源见TASK_XP_AUDIT.json；其余两项已报告任务缺实际ID，尚未补入。', '']
     lines += ['', '达拉然入城准备：联盟从任务 92432（An Alarming Request）开始，部落关联 93680（Key to the City）及 544（Prison Break In）。目录接入这些准备任务，资格和进度继续由数据库及原生日志决定；资料尚未给出整条解锁链的最终完成标记。', '',
               '以下列出全部可读的 party 类型地图。任务数按区域分类及别名关联，合并 18 个阵营／职业修正上下文；前置含备选分支，实际执行继续检查资格。', '',
              '| 实例 ID | 名称 | 区域 ID | 入口记录 | 分类关联任务 | 前置候选 |',

@@ -38,6 +38,10 @@
     {
       "path": ".dependencies/eg-link-156f29c9/1.60.1.70862/quests.enUS.json",
       "sha256": "0f8b890bbedc79f6c80b99511a88ff5f699048f4a34303bd6d0a0281cfde4b7a"
+    },
+    {
+      "path": "docs/TASK_XP_AUDIT.json",
+      "sha256": "e1e1e5a59c7006cc17199ef470ccdc8153cdff0d59d5a6708040d6fa1a045787"
     }
   ],
   "counts": {
@@ -4149,12 +4153,23 @@
         3597,
         3600
       ],
-      "aliases": [],
+      "aliases": [
+        16667
+      ],
       "entrances": [],
       "entryArea": 490,
       "entryHint": "前往安戈洛环形山北部山地，进入塑造者之台。",
-      "categoryQuestIds": [],
-      "objectiveAreas": {},
+      "categoryQuestIds": [
+        95928
+      ],
+      "objectiveAreas": {
+        "95928": {
+          "item:271912": 16667,
+          "item:271898": 16667,
+          "item:271902": 16667,
+          "item:271894": 16667
+        }
+      },
       "clientVerified": false,
       "itineraryReady": false
     }
@@ -4296,8 +4311,12 @@
         "mapId": 3001,
         "identitySource": "https://wowforevertalents.com/dungeons/the-shaper-s-terrace/",
         "lfgId": 3267,
+        "areaId": 16667,
         "entryArea": 490,
-        "entryHint": "前往安戈洛环形山北部山地，进入塑造者之台。"
+        "entryHint": "前往安戈洛环形山北部山地，进入塑造者之台。",
+        "objectiveQuestIds": [
+          95928
+        ]
       }
     ]
   },

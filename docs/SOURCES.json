@@ -884,7 +884,7 @@
       "id": "Forever-announced-leveling-dungeons",
       "url": "https://news.blizzard.com/en-us/article/24301455/explore-the-new-dungeons-of-world-of-warcraft-forever",
       "checked": "2026-11-10",
-      "scope": "Nine announced new five-player leveling dungeons, recommended levels and locations. Five supplemental map identities matched to native encounter rows; fixed server cache adds 23 quest associations, with 15 explicitly located inside. Shaper's Terrace has no fixed quest association in these sources. Dalaran preparation: Alliance 92432, Horde 93680 and 544. Runtime uses native progress and regional centers where precise entrances are absent.",
+      "scope": "Nine announced new five-player leveling dungeons, recommended levels and locations. Five supplemental map identities matched to native encounter rows; fixed server cache adds 23 quest associations, with 15 explicitly located inside. Separately checked task 95928 adds the Shaper's Terrace four-item association. Dalaran preparation: Alliance 92432, Horde 93680 and 544. Runtime uses native progress and regional centers where precise entrances are absent.",
       "audit": "docs/DUNGEON_COVERAGE.json",
       "clientVerified": false,
       "identitySources": [
@@ -896,6 +896,19 @@
       ],
       "questSource": "https://github.com/JIVESCORP/eg-link-output-wowf/blob/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862/quests.enUS.json",
       "questLicense": "CC BY 4.0"
+    },
+    {
+      "id": "Forever-shaper-task-95928",
+      "checked": "2026-11-10",
+      "url": "https://www.curseforge.com/wow/addons/dungeonjournal/files/9518674",
+      "author": "ExehnTV",
+      "archive": ".dependencies/ForeverDungeonJournal-1.7.4.zip",
+      "sha256": "4c24917aae32a495d0dabae551e86615635ba4a37eca934b8dd599a93439a83b",
+      "sourceLicense": "All Rights Reserved",
+      "scope": "Factual quest ID 95928, level 60, four item IDs/counts and their Shaper's Terrace association. Independent runtime; no source code, descriptions, art or reward tables copied. QuestieDB confirms item names. Negative stand-in quest IDs in the source are excluded. Eligibility and recipient continue through native offers/logs, not inferred from this record.",
+      "areaSource": "https://www.wowhead.com/forever/zone=16667/the-shapers-terrace",
+      "audit": "docs/TASK_XP_AUDIT.json",
+      "clientVerified": false
     }
   ]
 }

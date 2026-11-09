@@ -20,13 +20,13 @@
 
 补充地图身份来源及目标资料：
 
-- [沉没之城](https://wowforevertalents.com/dungeons/the-drowned-city/)：实例 2970，原生首领 6 项，缓存关联任务 7 项。
-- [克罗多克要塞](https://wowforevertalents.com/dungeons/krol-dok-stronghold/)：实例 3039，原生首领 5 项，缓存关联任务 12 项。
-- [奥卡兹监狱](https://wowforevertalents.com/dungeons/alcaz-prison/)：实例 2994，原生首领 5 项，缓存关联任务 3 项。
-- [黑喉要塞](https://wowforevertalents.com/dungeons/blackmaw-hold/)：实例 2974，原生首领 7 项，缓存关联任务 1 项。
-- [塑造者之台](https://wowforevertalents.com/dungeons/the-shaper-s-terrace/)：实例 3001，原生首领 11 项，缓存关联任务 0 项。
+- [沉没之城](https://wowforevertalents.com/dungeons/the-drowned-city/)：实例 2970，原生首领 6 项，关联任务 7 项。
+- [克罗多克要塞](https://wowforevertalents.com/dungeons/krol-dok-stronghold/)：实例 3039，原生首领 5 项，关联任务 12 项。
+- [奥卡兹监狱](https://wowforevertalents.com/dungeons/alcaz-prison/)：实例 2994，原生首领 5 项，关联任务 3 项。
+- [黑喉要塞](https://wowforevertalents.com/dungeons/blackmaw-hold/)：实例 2974，原生首领 7 项，关联任务 1 项。
+- [塑造者之台](https://wowforevertalents.com/dungeons/the-shaper-s-terrace/)：实例 3001，原生首领 11 项，关联任务 1 项。
 
-补充目录的入口使用官方所在地区中心及入口方向说明；已确认在本内完成的目标由同构建服务器任务原文关联，其他分类任务保持普通关联。任务接交者仍从 QuestieDB 查询，缺少的任务以实际日志接入。塑造者之台的固定任务关联尚缺。
+补充目录的入口使用官方所在地区中心及入口方向说明；已确认本内目标来自同构建服务器任务原文和已核对任务事实，其他分类任务保持普通关联。任务接交者仍从 QuestieDB 查询，缺少的任务以实际提供及日志接入。塑造者之台关联95928的四种水晶目标，来源见TASK_XP_AUDIT.json；其余两项已报告任务缺实际ID，尚未补入。
 
 
 达拉然入城准备：联盟从任务 92432（An Alarming Request）开始，部落关联 93680（Key to the City）及 544（Prison Break In）。目录接入这些准备任务，资格和进度继续由数据库及原生日志决定；资料尚未给出整条解锁链的最终完成标记。
