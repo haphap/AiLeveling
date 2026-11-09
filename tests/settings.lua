@@ -3,7 +3,7 @@ local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","
     "geterrorhandler","C_Item","C_PlayerInfo","C_Container","GetQuestID","GetNumQuestChoices","GetQuestItemLink","GetQuestReward",
     "AcceptQuest","CompleteQuest","GetQuestMoneyToGet","IsQuestCompletable","IsShiftKeyDown","C_GossipInfo","UnitGUID","UnitLevel","UnitXP","UnitXPMax","UnitIsAFK",
     "PlaySound","SOUNDKIT","NUM_CONTAINER_FRAMES","ContainerFrameCombinedBags","AiLeveling",
-    "UnitClassification","UnitName","UnitCanAttack","UnitIsDeadOrGhost","UnitOnTaxi","C_NamePlate","UIErrorsFrame","issecretvalue","canaccessvalue","Enum"}
+    "debugprofilestop","C_PlayerInteractionManager","UnitClassification","UnitName","UnitCanAttack","UnitIsDeadOrGhost","UnitOnTaxi","C_NamePlate","UIErrorsFrame","issecretvalue","canaccessvalue","Enum"}
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
     for _,key in ipairs({"SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag",
@@ -50,6 +50,7 @@ local function setup(fullUI)
         local w=widget();w.kind=kind;if kind=="CheckButton" then w.Text=widget() end;return w
     end
     InCombatLockdown=function() return combat end;GetTime=function() return clock end
+    debugprofilestop=function() return 0 end
     local B={}
     assert(loadfile("Core.lua"))("AiLeveling",B)
     B.settings={};for k,v in pairs(B.defaults) do B.settings[k]=v end
@@ -175,13 +176,10 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     local pending={questId=3,status="objective",actions={{kind="objective"}},stages={{kind="turnin",position=point}}}
     B.plan={taskChoices={ready,pending,accept}}
     B.state.quests[1].ready=true;B.state.quests[3]={objectives={}}
-    local function event(name,defer)
-        B.frame.scripts.OnEvent(nil,name)
-        if not defer then
-            B.refreshAt=nil
-            local job=B.jobs["quest:dialog"];B.jobs["quest:dialog"]=nil
-            if job then assert(coroutine.resume(job)) end
-        end
+    local function update() B.frame.scripts.OnUpdate(nil,0) end
+    local function event(name,defer,...)
+        B.frame.scripts.OnEvent(nil,name,...)
+        if not defer then B.refreshAt=nil;update() end
     end
     event("GOSSIP_SHOW");eq(calls[1],"select:2")
     event("QUEST_DETAIL");event("QUEST_DETAIL");eq(#calls,2);eq(calls[2],"accept:2")
@@ -227,20 +225,30 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     shift=true;dialog();eq(#calls,2);shift=false
     B.char.serviceStop=nil;calls={};id=2;B.settings.autoAccept=true
     event("QUEST_FINISHED");accept.requireCheck=true
-    B.refreshAt=1;event("QUEST_DETAIL",true)
-    local job=assert(B.jobs["quest:dialog"]);assert(coroutine.resume(job));eq(coroutine.status(job),"suspended");eq(#calls,0)
-    B.refreshAt=nil;B.jobs.plan={};assert(coroutine.resume(job));eq(coroutine.status(job),"suspended")
-    accept.requireCheck=false;B.jobs.plan=nil;assert(coroutine.resume(job));B.jobs["quest:dialog"]=nil;eq(calls[1],"accept:2")
-    event("QUEST_FINISHED");B.refreshAt=1;event("QUEST_DETAIL",true);job=B.jobs["quest:dialog"]
-    event("QUEST_FINISHED",true);B.refreshAt=nil;assert(coroutine.resume(job));B.jobs["quest:dialog"]=nil;eq(#calls,1)
-    B.refreshAt=1;event("QUEST_DETAIL",true);job=B.jobs["quest:dialog"];id=99;B.refreshAt=nil
-    assert(coroutine.resume(job));B.jobs["quest:dialog"]=nil;eq(#calls,1);id=2
-    B.refreshAt=1;event("QUEST_DETAIL",true);job=B.jobs["quest:dialog"];B.refreshAt=nil;npcGuid="Creature-0-1-2-3-8-0000"
-    assert(coroutine.resume(job));B.jobs["quest:dialog"]=nil;eq(#calls,1);npcGuid="Creature-0-1-2-3-9-0000"
-    B.refreshAt=1;event("QUEST_DETAIL",true);job=B.jobs["quest:dialog"];B.refreshAt=nil;shift=true
-    assert(coroutine.resume(job));B.jobs["quest:dialog"]=nil;eq(#calls,1);shift=false
+    B.refreshAt=20;event("QUEST_DETAIL",true);update()
+    eq(coroutine.status(assert(B.jobs["quest:dialog"])),"suspended");eq(#calls,0)
+    B.refreshAt=nil;B:Queue("plan",function() coroutine.yield();accept.requireCheck=false end)
+    update();eq(#calls,0);assert(B.jobs.plan)
+    update();eq(calls[1],"accept:2");eq(B.jobs["quest:dialog"],nil);eq(B.jobs.plan,nil)
+    event("QUEST_FINISHED");B.refreshAt=1;event("QUEST_DETAIL",true)
+    event("QUEST_FINISHED",true);B.refreshAt=nil;update();eq(B.jobs["quest:dialog"],nil);eq(#calls,1)
+    B.refreshAt=1;event("QUEST_DETAIL",true);id=99;B.refreshAt=nil
+    update();eq(#calls,1);id=2
+    B.refreshAt=1;event("QUEST_DETAIL",true);B.refreshAt=nil;npcGuid="Creature-0-1-2-3-8-0000"
+    update();eq(#calls,1);npcGuid="Creature-0-1-2-3-9-0000"
+    B.refreshAt=1;event("QUEST_DETAIL",true);B.refreshAt=nil;shift=true
+    update();eq(#calls,1);shift=false
     B.plan.revision=B.state.revision-1;event("QUEST_DETAIL");eq(#calls,1)
     B.plan.revision=B.state.revision;event("QUEST_DETAIL");eq(calls[2],"accept:2")
+    B.char.serviceStop={kind="bind",npcId=9,title="旅店",position=B.state.position}
+    Enum.PlayerInteractionType={Binder=77}
+    local confirmed,cleared=0,0
+    C_PlayerInteractionManager={IsValidNPCInteraction=function(kind) eq(kind,77);return true end,
+        ConfirmationInteraction=function(kind) eq(kind,77);confirmed=confirmed+1 end,
+        ClearInteraction=function(kind) eq(kind,77);cleared=cleared+1 end}
+    event("CONFIRM_BINDER",true,"新旅店");eq(confirmed,0);assert(B.jobs["service:bind"])
+    B.refreshAt=nil;update();eq(confirmed,1);eq(cleared,1);eq(B.jobs["service:bind"],nil)
+    update();eq(confirmed,1);assert(B.char.serviceStop)
     B.finish()
 end)
 test("字号与密度改变普通卡片并保留完整滚动说明",function()

@@ -385,7 +385,7 @@ frame:SetScript("OnUpdate", function(_, elapsed)
     end
     local start = debugprofilestop()
     -- One resume per job per frame; jobs yield after small batches.
-    for _, key in ipairs({"index", "plan"}) do
+    for _, key in ipairs({"index", "plan", "quest:dialog", "service:bind"}) do
         local job = A.jobs[key]
         if job then
             local ok, err = coroutine.resume(job)
