@@ -72,21 +72,6 @@ test("低等级低经验无装备收益无任务关联才建议放弃",function(
     s.level=15;eq(B.TaskGuide.LowValue(q,s,d),nil)
     s.level=20;q.taskFacts.xp[2][2]=400;eq(B.TaskGuide.LowValue(q,s,d),nil)
     q.taskFacts.xp=nil;eq(B.TaskGuide.LowValue(q,s,d),nil)
-    B,s,q,d=fixture();s.quests={};q.repeatable=true;s.rewardAuras={[16618]=true}
-    q.taskFacts={level=10,xp={{1,0}},rewards={spell=16618,spellCast=16618,items={},choices={}}}
-    eq(B.TaskGuide.LowValue(q,s,d).summary,"增益仍在生效")
-    s.rewardAuras={};eq(B.TaskGuide.LowValue(q,s,d),nil);s.rewardAuras[16618]=true
-    q.taskFacts.xp={{1,100}};eq(B.TaskGuide.LowValue(q,s,d),nil)
-    q.taskFacts.xp=nil;eq(B.TaskGuide.LowValue(q,s,d),nil);q.taskFacts.xp={{1,0}}
-    local rewards=q.taskFacts.rewards
-    rewards.items={{id=1,count=1}};eq(B.TaskGuide.LowValue(q,s,d),nil);rewards.items={}
-    rewards.choices={{id=1,count=1}};eq(B.TaskGuide.LowValue(q,s,d),nil);rewards.choices={}
-    rewards.spell=42;eq(B.TaskGuide.LowValue(q,s,d),nil);rewards.spell=16618
-    s.locked=1;eq(B.TaskGuide.LowValue(q,s,d),nil);s.locked=nil
-    s.quests[1]={ready=false,objectives={}};eq(B.TaskGuide.LowValue(q,s,d),nil);s.quests={}
-    q.requiredClasses=1;eq(B.TaskGuide.LowValue(q,s,d),nil);q.requiredClasses=0
-    local nextQuest=F.Quest(2);nextQuest.preQuestSingle={1};A.Chains.IndexQuest(d.chainIndex,nextQuest,d)
-    eq(B.TaskGuide.LowValue(q,s,d),nil);d.chainIndex=nil;eq(B.TaskGuide.LowValue(q,s,d),nil)
 end)
 test("低收益前置后续关联和未知关系索引均保留",function()
     local B,s,q,d=fixture()

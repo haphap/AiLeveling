@@ -48,13 +48,10 @@ end
 
 function D:BuildIndex()
     self.byLevel, self.count = {}, 0
-    self.rewardAuraSpells={}
     self.requirements = {skills = {}, reputations = {}, spells = {}, specializations = {}}
     local chainIndex=A.Chains.NewIndex()
     for i, id in ipairs(self.ids) do
         local q=self:GetQuest(id)
-        local cast=q and q.repeatable and q.taskFacts and q.taskFacts.rewards and q.taskFacts.rewards.spellCast
-        if type(cast)=="number" and cast>0 and cast<2147483648 and cast%1==0 then self.rewardAuraSpells[cast]=true end
         local level = q and q.questLevel==-1 and -1 or math.max(0, q and q.questLevel or 0)
         level = math.floor(level)
         self.byLevel[level] = self.byLevel[level] or {}

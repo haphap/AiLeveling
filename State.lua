@@ -133,24 +133,6 @@ function State.Movement(snapshot)
     snapshot.swimSpeed=usable(swim) and swim or nil
 end
 
-function State.RewardAuras(snapshot)
-    snapshot.rewardAuras={}
-    local get=C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID
-    if type(get)~="function" then return "" end
-    local function accessible(value)
-        return not (issecretvalue and issecretvalue(value)) and (not canaccessvalue or canaccessvalue(value))
-    end
-    local active={}
-    for id in pairs(A.Data and A.Data.rewardAuraSpells or {}) do
-        local ok,aura=pcall(get,id)
-        if ok and accessible(aura) and type(aura)=="table" and accessible(aura.spellId) and aura.spellId==id then
-            snapshot.rewardAuras[id]=true;active[#active+1]=id
-        end
-    end
-    table.sort(active)
-    return "reward-auras:"..table.concat(active,",")
-end
-
 function State:TurnedIn(id)
     self.confirmed = self.confirmed or {}
     if self.confirmed[id] then return end
@@ -247,7 +229,6 @@ function State:Refresh(force)
     s.dead = UnitIsDeadOrGhost and UnitIsDeadOrGhost("player") or false
     self:Qualifications(s, A.Data and A.Data.requirements)
     fingerprint[#fingerprint + 1] = qualificationKey(s)
-    fingerprint[#fingerprint+1]=State.RewardAuras(s)
     local completed = C_QuestLog.GetAllCompletedQuestIDs()
     s.completionKnown = type(completed) == "table"
     if s.completionKnown then

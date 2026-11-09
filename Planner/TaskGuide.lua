@@ -285,15 +285,6 @@ function G.LowValue(q,state,data,choice)
     local active=state.quests[q.id]
     if state.locked==q.id or state.itinerary or active and active.ready then return end
     local rewards=q.taskFacts and q.taskFacts.rewards
-    local chains=data.chainIndex
-    if not active and q.repeatable and rewards and (rewards.spellCast or 0)>0 and
-        (state.rewardAuras or {})[rewards.spellCast] and G.XP(q,state.level,state)==0 and
-        #(rewards.items or {})==0 and #(rewards.choices or {})==0 and
-        ((rewards.spell or 0)==0 or rewards.spell==rewards.spellCast) and
-        chains and chains.nodes[q.id] and #(chains.outgoing[q.id] or {})==0 and
-        not q.requiredSkill and (not q.requiredClasses or q.requiredClasses==0) and (q.requiredSpell or 0)==0 then
-        return {summary="增益仍在生效",reason="相同增益仍在生效，先继续其他任务。",suggestion="稍后再领"}
-    end
     if not active and q.repeatable and rewards and #(rewards.choices or {})==0 and
         data.DeliveryOnly and data:DeliveryOnly(q,state) then
         for _,item in ipairs(rewards.items or {}) do
