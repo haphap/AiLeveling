@@ -13,7 +13,7 @@ FONT = '/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc'
 
 
 def main():
-    mode = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] in ('dungeon', 'assist', 'guides') else 'tracker'
+    mode = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] in ('dungeon', 'assist') else 'tracker'
     blocked = mode == 'dungeon' and 'entry-blocked' in sys.argv[2:]
     journey = mode == 'dungeon' and 'journey' in sys.argv[2:]
     loot = mode == 'dungeon' and 'loot' in sys.argv[2:]

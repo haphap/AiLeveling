@@ -36,7 +36,6 @@ def main():
     entries.append(ROOT / 'docs' / 'WEAPON_SKILL_AUDIT.json')
     entries.append(ROOT / 'docs' / 'TRAINER_DATA_AUDIT.json')
     entries.append(ROOT / 'docs' / 'ESTIMATION_MODEL.md')
-    entries.append(ROOT / 'docs' / 'GUIDES.md')
     entries.append(ROOT / 'docs' / 'FLIGHT_DATA_AUDIT.json')
     entries.append(ROOT / 'docs' / 'PUBLIC_TRANSIT_AUDIT.json')
     entries.append(ROOT / 'docs' / 'PVP_MAP_AUDIT.json')

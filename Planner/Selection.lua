@@ -117,7 +117,6 @@ end
 function S:Automatic()
     if A.char.dungeon and A.char.dungeon.phase~="complete" then return false,"先在副本页结束当前行程" end
     self:Clear()
-    A.char.activeGuide=nil
     A.char.serviceStop=nil
     if A.Services then A.Services.binding=nil end
     A.char.gearTarget,A.char.gearBaseline=nil,nil

@@ -63,7 +63,6 @@ local function setup(fullUI)
     B.Dungeon={};B.Transport={InvalidateSample=function() end,InFlight=function() return false end}
     B.State={Refresh=function() B.refreshes=(B.refreshes or 0)+1;B.state.revision=B.state.revision+1 end}
     B.Gear=A.Gear;B.ready=true
-    assert(loadfile("Guides.lua"))("AiLeveling",B);B.Guides:Normalize()
     assert(loadfile("LevelingTracker.lua"))("AiLeveling",B)
     B.Selection={CanChoose=function() return false,"没有候选行程" end}
     local items={[500]={name="道具",loc="",stats=nil},[100]={name="奖励甲",loc="INVTYPE_HEAD",stats={ITEM_MOD_STRENGTH_SHORT=1}},
@@ -89,7 +88,6 @@ local function setup(fullUI)
     assert(loadfile("UI/Main.lua"))("AiLeveling",B)
     assert(loadfile("UI/Tracker.lua"))("AiLeveling",B)
     assert(loadfile("UI/Settings.lua"))("AiLeveling",B)
-    assert(loadfile("UI/Guides.lua"))("AiLeveling",B)
     local U=B.UI
     if fullUI then
         for _,name in ipairs({"Dungeon","Gear","Plan","Chains","Services"}) do
@@ -199,9 +197,6 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     eq(B.state.completed[1],nil);eq(B.char.turnIns[1],nil)
     event("QUEST_FINISHED");count=0;event("QUEST_COMPLETE");eq(calls[6],"reward:0")
     event("GOSSIP_CLOSED");B.settings.autoTurnIn=false;event("QUEST_COMPLETE");eq(#calls,6)
-    B.plan.guideActive=true;B.action={kind="accept",questId=2}
-    assert(B.QuestAssist.DialogChoice(2,"accept"));eq(B.QuestAssist.DialogChoice(1,"turnin"),nil)
-    B.action={kind="turnin",questId=1};assert(B.QuestAssist.DialogChoice(1,"turnin"))
     B.finish()
 end)
 test("字号与密度改变普通卡片并保留完整滚动说明",function()
@@ -448,17 +443,4 @@ test("练级统计按原生经验跨级结算，暂停AFK离线不计时并保�
     B.finish()
 end)
 dofile("tests/tracker.lua")(test,eq,setup)
-test("指南窗口导入选择导出及自动规划入口",function()
-    local B=setup(true);B.Selection.Clear=function() B.char.locked=nil end
-    B.UI.Guides:Open();local U=B.UI.Guides
-    U.editor:SetText("#name 窗口指南\nstep\n>> 前往下一片区域")
-    U.import.scripts.OnClick();assert(U.key);eq(#B.Guides:List(),1)
-    U.choose.scripts.OnClick();eq(B.char.activeGuide,U.key)
-    U.export.scripts.OnClick();assert(U.editor:GetText():find("窗口指南",1,true))
-    U.editor.scripts.OnTextChanged(U.editor);assert(U.editor.height>=224)
-    B:RestoreSettings();eq(#B.Guides:List(),1)
-    U.remove.scripts.OnClick();eq(#B.Guides:List(),1);U.remove.scripts.OnClick();eq(#B.Guides:List(),0)
-    B.finish()
-end)
-
 end

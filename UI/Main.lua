@@ -139,10 +139,6 @@ function UI:ApplyStyle()
         self.navFrame:SetScale(A.settings.scale);self.navFrame:SetAlpha(A.settings.alpha)
         if A.settings.lockWindow then self.navFrame:StopMovingOrSizing() end
     end
-    if self.Guides and self.Guides.frame then
-        self.Guides.frame:SetScale(A.settings.scale);self.Guides.frame:SetAlpha(A.settings.alpha)
-        if A.settings.lockWindow then self.Guides.frame:StopMovingOrSizing() end
-    end
     self:LayoutCard()
 end
 

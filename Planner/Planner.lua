@@ -744,7 +744,7 @@ function P.Build(state, data, options)
 end
 
 function P.Choose(old, new, locked)
-    if locked or new.guideActive or new.sessionActive or new.preferenceApplied or new.maintenance or new.selectionActive or new.serviceStop or new.taskBatch then return new end
+    if locked or new.sessionActive or new.preferenceApplied or new.maintenance or new.selectionActive or new.serviceStop or new.taskBatch then return new end
     -- Both plans must have been recomputed against the same current state.
     -- Always choose from candidates evaluated against the current state.
     if not old or not old.best then return new end

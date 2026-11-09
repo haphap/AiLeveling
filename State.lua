@@ -300,7 +300,6 @@ function State:Refresh(force)
         for key, value in pairs(sample) do s.samples[kind][key] = value end
         fingerprint[#fingerprint + 1] = kind .. ":" .. sample.n .. ":" .. sample.mean
     end
-    if A.Guides then fingerprint[#fingerprint+1]=A.Guides:Snapshot(s) end
     A.Dungeon:Sync(s,previous)
     fingerprint[#fingerprint+1]=A.Instances:Snapshot(s)
     if s.dungeon then
