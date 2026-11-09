@@ -217,3 +217,28 @@ do
     assert(A.Data:Target(q,context) and not context.completed[q.id])
     print(faction..": real #60860 enters automatic choices only when offered; manual target and native ready delivery remain available")
 end
+
+if faction=="Horde" then
+    local q=A.Data:GetQuest(99101)
+    local context=dofile(root.."/tests/fixtures.lua").State()
+    context.faction,context.classMask,context.raceMask=faction,s.classMask,s.raceMask
+    context.clientVersion,context.clientBuild,context.interface="1.60.1","70862",16001
+    context.position=A.Data:EntityPoints(db.Npc,3222)[1]
+    assert(q.questLevel==9 and q.sourceItemId==286104 and not A.TaskGuide.XP(q,context.level,context))
+    local descriptions,_,complex=A.Data:ReferenceObjectiveTargets(q,context)
+    assert(not complex and #descriptions==1 and descriptions[1].targetId==286104 and
+        descriptions[1].numRequired==1 and descriptions[1].providedOnAccept)
+    local first={kind="accept",questId=q.id,title=q.title,position=assert(A.Data:Target(q,context))}
+    local stages,complete=A.TaskGuide.Stages(q,context,A.Data,first)
+    assert(complete and #stages==2 and stages[2].kind=="turnin" and
+        stages[2].itemRequirements[1].need==1 and stages[2].itemRequirements[1].providedOnAccept)
+    assert(not context.quests[q.id] and not context.completed[q.id] and not context.bags[286104])
+    local saved=q.sourceItemId;q.sourceItemId=nil
+    assert(not A.Data:CacheQuest(q,context));q.sourceItemId=saved
+    local inventory=dofile(root.."/tools/continuous_inventory.lua")
+    local active=assert(inventory.Accept(q,context,A.Data))
+    assert(active.ready and context.bags[286104]==1 and not context.completed[q.id])
+    inventory.TurnIn(q.id,context)
+    assert(context.completed[q.id] and context.bags[286104]==0 and not context.quests[q.id])
+    print("Horde: real #99101 previews accept + delivery; supplied report count is one; no XP invented; simulated turn-in consumes it")
+end

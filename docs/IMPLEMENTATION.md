@@ -1012,3 +1012,11 @@ TaskGuide.Stages现在将本轮已取得的未接目标描述、位置与区域�
 扩展现有NPC提供列表回归和既有两阵营真实API检查，无新增测试场景。537回归、49个TOC Lua语法、修改工具语法、开发内容检查通过；真实60860验证未提供时不抢占、提供后进入、手选和原生完成交付可用。日志dist/zero-level-offer-final-regression.log、zero-level-offer-final-content.log、zero-level-offer-final-alliance.log、zero-level-offer-final-horde.log。最终检查进程已全部结束。
 
 同一牛头人德鲁伊从1级开始的当前连续诊断，由3级／10次交付／2645已知交付XP推进到7级／29次交付／12350已知交付XP，下一停点99101缺结构目标（dist/continuous-zero-level-offer-final-tauren-druid.log）。这是离线连续决策诊断，尚非1—60全程或客户端验收。下一步继续实际内容／任务区域接续缺口；完整交付目标active。未恢复指南导入或装备，不升版、发布、安装，不操作游戏、依赖或实际SavedVariables。
+
+## 2026-11-09 补齐送信任务99101的发放物品需求（未发布）
+
+零等级任务提供规则已提交102d6e33a8977df796213e2d536d83519c38026c并推送main。接续核对确认99101“古老的宿敌”的实际QuestieDB接口有9级、发放物品286104、交接NPC3222／2993和送信说明，但固定EG缓存没有这条记录。公开Wowhead Forever原始任务页面明确提供1份报告，物品链接ID286104与当前API一致（https://www.wowhead.com/forever/quest=99101/our-ancient-enemy）。只补这项数值需求，经现有参考目标／发放物品路径安排接取后直接交付；不加入文字脚本或任务路线。来源页未给采集构建，审计记录该缺口，运行时同时匹配固定客户端构建、任务等级和发放物品ID。页面未公开可靠XP值，此任务经验继续未知。
+
+复用原有导入器生成一条无XP的需求记录，审计增加objectiveSupplements；经验模型计数只计实际含XP的记录。现有真实API工具覆盖2阶段预览、发放1份、原生快照不变、发放物品不匹配不启用，以及诊断交付消耗。扩展既有数据回归，没有新增测试场景。537回归、49个TOC Lua语法、开发内容、生成文件一致性与diff检查通过；部落实库联跑通过。日志dist/courier-regression.log、courier-content.log、courier-generated.log、courier-horde.log。
+
+同一牛头人德鲁伊连续诊断推进到8级／49次交付／18415已知交付XP，其中3条未知XP未加入经验累计。99101作为第30次实际模拟交付通过，随后自动选取其他区域任务并进入杜隆塔尔，未据此宣称后续11级任务链已全部完成；下一停点97225物品数量缺口（dist/continuous-courier-tauren-druid.log）。没有在诊断里新增跳过任务ID或虚构奖励。下一目标回合核对97225等实际目标数量，并继续自动区域／任务链接续及其余适用功能。完整R01—R13／W01—W10目标active。未发布安装，客户端仍129；装备暂缓、指南导入不恢复，不操作游戏、依赖或实际存档。

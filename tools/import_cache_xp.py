@@ -75,6 +75,16 @@ def load():
         curves[id] = dict(level=level, xp=curve, objectives=objectives, complex=complex_objectives)
         if rewards.get('money', 0) < 0:
             curves[id]['complex'] = True
+    # A supplied courier item is absent from the pinned server cache for this quest.
+    # Match the live database's item and level; this supplies no XP or other rewards.
+    supplements = [{'id': 99101, 'level': 9, 'sourceItemId': 286104,
+                    'objectives': [{'kind': 'item', 'id': 286104, 'count': 1}],
+                    'url': 'https://www.wowhead.com/forever/quest=99101/our-ancient-enemy',
+                    'checked': '2026-11-09', 'captureBuild': None}]
+    for fact in supplements:
+        assert str(fact['id']) not in curves
+        curves[str(fact['id'])] = dict(level=fact['level'], sourceItemId=fact['sourceItemId'],
+                                      objectives=fact['objectives'], complex=False)
     located, rejected = [], []
     for id, objectives in locations['quests'].items():
         for index, observed in objectives.items():
@@ -134,7 +144,8 @@ def load():
                   commit=COMMIT, license='CC BY 4.0', attribution=cache['meta']['attribution'],
                   url=f'https://github.com/JIVESCORP/eg-link-output-wowf/tree/{COMMIT}/data/wowf/{BUILD}',
                   tierURL=f'https://wago.tools/db2/QuestXP/csv?build={BUILD}', inputs=PINS,
-                  sourceQuests=len(cache['quests']), xpRows=len(curves), excluded=excluded,
+                  sourceQuests=len(cache['quests']), xpRows=sum('xp' in q for q in curves.values()), excluded=excluded,
+                  objectiveSupplements=supplements,
                   observationChecks=matched, skippedObservations=skipped, clientVerified=False,
                   objectiveLocations=dict(quests=len({o['id'] for o in located}), objectives=len(located),
                                           points=sum(o['points'] for o in located), accepted=located, rejected=rejected,

@@ -362,7 +362,7 @@ function D:CacheQuest(q,state)
     if not cache or (state.clientVersion or A.clientVersion)~=cache.version or
         tostring(state.clientBuild or A.build)~=cache.build or (state.interface or A.interface)~=cache.interface then return end
     local facts=cache.quests[q.id]
-    if facts and facts.level==q.questLevel then return facts end
+    if facts and facts.level==q.questLevel and (not facts.sourceItemId or facts.sourceItemId==q.sourceItemId) then return facts end
 end
 
 function D:DeliveryOnly(q,state)

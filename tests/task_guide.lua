@@ -117,8 +117,14 @@ test("实际新增任务缓存经验补缺且不冒充完整奖励或任务资�
     eq(B.TaskGuide.XP({id=91733,questLevel=1},1,s),nil)
     eq(B.TaskGuide.XP({id=98248,questLevel=60},29,s),650)
     eq(B.TaskGuide.XP({id=98248,questLevel=60},60,s),nil)
+    local courier=B.TaskFacts.cacheXP.quests[99101]
+    eq(courier.level,9);eq(courier.sourceItemId,286104);eq(courier.objectives[1].count,1)
+    eq(B.TaskGuide.XP({id=99101,questLevel=9},9,s),nil)
     B.clientVersion,B.build,B.interface="1.60.1","70862",16001
     local quests,rewards,xp=B.TaskGuide.Counts();assert(quests>4245 and xp>3492);eq(rewards,4140)
+    B.TaskFacts.cacheXP.quests[99101]=nil
+    local without,_,models=B.TaskGuide.Counts();eq(without,quests-1);eq(models,xp)
+    B.TaskFacts.cacheXP.quests[99101]=courier
 end)
 test("缓存经验补齐后进入任务收益排序与低价值保护",function()
     local B={};for k,v in pairs(A) do B[k]=v end

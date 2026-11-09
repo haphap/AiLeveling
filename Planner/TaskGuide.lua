@@ -17,9 +17,9 @@ function G.Counts()
         if fact.xp then xp=xp+1 end
     end
     local cache=cacheXP()
-    for id in pairs(cache and cache.quests or {}) do
+    for id,row in pairs(cache and cache.quests or {}) do
         if not facts[id] then quests=quests+1 end
-        if not facts[id] or not facts[id].xp then xp=xp+1 end
+        if row.xp and (not facts[id] or not facts[id].xp) then xp=xp+1 end
     end
     return quests,rewards,xp
 end
