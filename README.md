@@ -2,7 +2,7 @@
 
 [下载安装包](https://github.com/haphap/AiLeveling/releases) · 当前提供开发预览版，完整首版仍在建设与验收中。
 
-Forever 练级助手，当前版本 `0.1.109-dev`。完整首版目标和验收标准见 [PLAN.md](PLAN.md)，实际进度见 [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)。
+Forever 练级助手，当前版本 `0.1.110-dev`。完整首版目标和验收标准见 [PLAN.md](PLAN.md)，实际进度见 [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)。
 
 本开发构建已接入真实任务日志、角色与装备状态、当前任务定位、独立安全物品按钮、默认背包高亮和附近场景物件高亮，并提供路线规划、任务链、装备、副本与设置界面。纯逻辑中已有资格筛选、前置闭包、直线移动估时、短程搜索、装备校准入口和副本时间线评价。
 
@@ -59,7 +59,7 @@ Forever 练级助手，当前版本 `0.1.109-dev`。完整首版目标和验收�
 
 ## 开发与验证
 
-发布使用 GitHub Actions：将 `AiLeveling.toc` 版本更新并提交后，推送对应的 `v版本号` 标签即可自动检查、打包并上传 Release。例如版本 `0.1.109-dev` 对应标签 `v0.1.109-dev`。带后缀的版本发布为预览版，正式版本通过完整发布检查后发布。Actions 的 Release 工作流也支持填写已有标签手动重跑，重新生成并替换对应附件。
+发布使用 GitHub Actions：将 `AiLeveling.toc` 版本更新并提交后，推送对应的 `v版本号` 标签即可自动检查、打包并上传 Release。例如版本 `0.1.110-dev` 对应标签 `v0.1.110-dev`。带后缀的版本发布为预览版，正式版本通过完整发布检查后发布。Actions 的 Release 工作流也支持填写已有标签手动重跑，重新生成并替换对应附件。
 
 ```sh
 python3 tools/build.py

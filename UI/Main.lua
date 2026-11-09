@@ -10,7 +10,7 @@ end
 
 function UI:RegisterFont(text,size,role)
     self.fonts[#self.fonts+1]={text=text,size=size,role=role}
-    text:SetFont(STANDARD_TEXT_FONT,size*(A.settings.fontScale or 1))
+    text:SetFont(STANDARD_TEXT_FONT,size*(A.settings.fontScale or 1),"")
 end
 
 function UI:Panel(name, parent, width, height)
@@ -128,7 +128,7 @@ function UI:ApplyStyle()
     self.details:SetScale(A.settings.scale)
     self.details:SetAlpha(A.settings.alpha)
     for _,entry in ipairs(self.fonts) do
-        entry.text:SetFont(STANDARD_TEXT_FONT,entry.size*(A.settings.fontScale or 1))
+        entry.text:SetFont(STANDARD_TEXT_FONT,entry.size*(A.settings.fontScale or 1),"")
         if entry.role=="accent" then entry.text:SetTextColor(self:Accent()) end
     end
     if self.accent then local r,g,b=self:Accent();self.accent:SetColorTexture(r,g,b,1) end

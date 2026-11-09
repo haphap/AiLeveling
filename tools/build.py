@@ -55,7 +55,9 @@ def main():
             info.compress_type = zipfile.ZIP_DEFLATED
             archive.writestr(info, data)
             manifest.append(f'{hashlib.sha256(data).hexdigest()}  {name}')
-        archive.writestr('AiLeveling/SHA256SUMS', '\n'.join(manifest) + '\n')
+        info = zipfile.ZipInfo('AiLeveling/SHA256SUMS', date_time=(2026, 11, 8, 0, 0, 0))
+        info.compress_type = zipfile.ZIP_DEFLATED
+        archive.writestr(info, '\n'.join(manifest) + '\n')
     print(f'安装开发包：{output}')
 
 if __name__ == '__main__':

@@ -16,7 +16,11 @@ local function widget()
     w.GetWidth=function(self) return self.width end;w.GetHeight=function(self) return self.height end
     w.SetText=function(self,v) self.value=v end;w.GetText=function(self) return self.value or "" end
     w.GetStringHeight=function(self) return self.measuredHeight or 30 end
-    w.SetFont=function(self,face,size) self.fontSize=size end
+    w.SetFont=function(self,face,size,flags)
+        assert(self.kind~="EditBox" or type(flags)=="string","bad argument #3 to SetFont: EditBox requires flags")
+        self.fontSize,self.fontFlags=size,flags
+        return true
+    end
     w.SetTextColor=function(self,...) self.color={...} end;w.SetColorTexture=w.SetTextColor
     w.SetBackdropColor=w.SetTextColor
     w.SetScale=function(self,v) self.scale=v end;w.SetAlpha=function(self,v) self.alpha=v end
@@ -40,7 +44,7 @@ local function setup(fullUI)
     local clock,combat=10,false
     UIParent=widget();STANDARD_TEXT_FONT="font";GameFontHighlight={};SlashCmdList={};NUM_CONTAINER_FRAMES=0;ContainerFrameCombinedBags=nil
     CreateFrame=function(kind)
-        local w=widget();if kind=="CheckButton" then w.Text=widget() end;return w
+        local w=widget();w.kind=kind;if kind=="CheckButton" then w.Text=widget() end;return w
     end
     InCombatLockdown=function() return combat end;GetTime=function() return clock end
     local B={}
