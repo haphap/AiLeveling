@@ -94,6 +94,13 @@ def load():
          'objectives': [{'kind': 'item', 'id': 278265, 'count': 1}],
          'url': 'https://www.wowhead.com/forever/quest=97583/wriggle',
          'rewardURL': 'https://www.wowhead.com/forever/item=275682/excitable-slime'},
+        {'id': 78270, 'level': 23, 'sourceItemId': 0, 'hidden': 'unconfirmed',
+         'objectives': [{'kind': 'item', 'id': 210187, 'count': 1}],
+         'url': 'https://www.wowhead.com/forever/quest=78270/goblin-lockpicks',
+         'availabilityURL': 'https://www.wowhead.com/forever/item=210187/venture-co-work-order'},
+        {'id': 95884, 'level': 23, 'sourceItemId': 0,
+         'objectives': [{'kind': 'item', 'id': 271343, 'count': 1}],
+         'url': 'https://www.wowhead.com/forever/quest=95884/the-offering-stone'},
         {'id': 490, 'level': 8, 'sourceItemId': 0,
          'objectives': [{'kind': 'item', 'id': 5220, 'count': 15}],
          'url': 'https://www.wowhead.com/forever/quest=490/bounty-gnarlpine-furbolg'},
@@ -113,11 +120,14 @@ def load():
     ]
     for fact in supplements:
         fact.update(checked='2026-11-09', captureBuild=None)
-        assert str(fact['id']) not in curves
-        curves[str(fact['id'])] = dict(level=fact['level'], sourceItemId=fact['sourceItemId'],
-                                      objectives=fact['objectives'], complex=False)
+        previous = curves.get(str(fact['id']))
+        assert previous is None or (previous['level'] == fact['level'] and not previous['objectives'] and not previous['complex'])
+        row = curves.setdefault(str(fact['id']), dict(level=fact['level']))
+        row.update(sourceItemId=fact['sourceItemId'], objectives=fact['objectives'], complex=False)
         if 'companionReward' in fact:
             curves[str(fact['id'])]['companionReward'] = fact['companionReward']
+        if 'hidden' in fact:
+            curves[str(fact['id'])]['hidden'] = fact['hidden']
     located, rejected = [], []
     for id, objectives in locations['quests'].items():
         for index, observed in objectives.items():

@@ -1221,3 +1221,14 @@ Core.OnUpdate 原来仅恢复 index 和 plan，已排队的 quest:dialog 和 ser
 既有完整规划场景修复前复现1~=2，修复后421回归通过。生成器--check、开发数据、改动语法／diff和双阵营实际QuestieDB checker均终态通过。单兽人连续诊断由8级42交付推进到21级266交付，97583只交付一次且不再重复，下一处78270缺目标支持；parse_trace核对通过。新动态行程未选择79007，不强制固定顺序，79007保留此前独立实际路线证据。日志dist/companion-repeat-{before,final-regression,horde,alliance,orc,content}.log。
 
 来源：https://www.wowhead.com/forever/quest=97583/wriggle 与 https://www.wowhead.com/forever/item=275682/excitable-slime ，核对2026-11-09。完整1—60与其余适用功能及实机继续，不将单角色诊断当完整覆盖。未操作客户端、依赖或实际存档，未升版、发布或安装，客户端仍0.1.129-dev。
+
+
+## 2026-11-09 未确认任务与供奉石数量接续（未发布）
+
+核对78270 Goblin Lockpicks的任务与物品210187页面，关联物品明确标为发现赛季遗留、Forever可获得性未确认。独立补充保存工作单×1和hidden=unconfirmed，TaskChoices复用既有参考隐藏提示及NPC实际提供判定，保留手选、已接和实际提供后自动接续；资格与XP仍由原有数据负责，未按职业目录猜改classMask。运行仅接入匹配构建缓存事实，无新设置或框架。
+
+同批补95884供奉石的便笺碎片271343×1。原服务器缓存已有190XP曲线但目标为空，生成器仅在匹配等级、原目标为空且非complex时补齐要求，原XP保留。实际API核对数量1、XP190及原生日志数量3优先；未修改任务完成事实。生成表语义变化仅78270新记录、95884目标与sourceItemId，其他事实保持原值。
+
+既有场景修复前复现1~=2，最终421回归通过；未新增独立场景。双阵营78270实际提供／手选／已接检查、95884实际数量、生成--check、开发内容、改动语法与diff均终态通过。最终单兽人21级278交付停95885 unsupported-objectives，parse_trace通过；没有自动交付78270，未把接取95884或到达当完成。日志dist/unconfirmed-quest-{before,final-regression,horde,alliance,note-scrap,final-orc,final-content}.log。
+
+来源与日期见TASK_XP_AUDIT.json：78270任务页与物品210187页，95884任务页，核对2026-11-09。完整1—60、其余适用功能和实机继续；未重跑56角色旧报告，未操作客户端、依赖或实际存档。未升版、发布或安装，客户端仍0.1.129-dev。

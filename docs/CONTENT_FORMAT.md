@@ -266,3 +266,8 @@ Core 主循环依次恢复 index、plan、quest:dialog 和 service:bind，每项
 ## 已领取的宠物重复奖励（2026-11-09）
 
 97583的独立补充记录companionReward=275682，任务与奖励页面见TASK_XP_AUDIT.json的objectiveSupplements。匹配当前构建、任务已交过且当前未接时，已确认宠物奖励、经验未知或明确为0的重复任务沿用低价值入口，自动选择其他升级任务。首次、已接、手选和明确正经验保留；XP缺项保持未知。
+
+
+## 缓存补充的可接状态与空目标补齐（2026-11-09）
+
+78270补入工作单210187×1，并由当前物品页面的未确认状态标记hidden=unconfirmed。TaskChoices沿用已有requireCheck：NPC实际提供后继续自动接续，手选与已接保留。该字段只影响自动首选，不修改职业、等级或前置资格。95884在匹配等级且原目标为空、非complex的缓存记录中补便笺碎片271343×1，保留已有XP曲线；日志数量仍优先。来源与检查日期见TASK_XP_AUDIT.json。

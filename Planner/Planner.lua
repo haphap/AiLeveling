@@ -65,11 +65,12 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
             if choice.remainingXP then choice.forecast=A.Progression.Advance(state,choice.remainingXP) end
         end
         if kind=="accept" and A.Supplies then choice.acceptBlocked=A.Supplies.AcceptIssue(state) end
-        if q.taskFacts then
-            choice.rewards,choice.groupReference=q.taskFacts.rewards,q.taskFacts.group
+        local facts=q.taskFacts or not active and data.CacheQuest and data:CacheQuest(q,state)
+        if facts then
+            choice.rewards,choice.groupReference=facts.rewards,facts.group
             if not active then
                 local offers=position and position.entityKind=="npc" and state.questOffers and state.questOffers[position.entityId]
-                choice.requireCheck=q.taskFacts.hidden and not (offers and offers[id])
+                choice.requireCheck=facts.hidden and not (offers and offers[id])
                 if choice.requireCheck then
                     choice.stagesComplete=false
                     action.text="向任务发布者查看此任务。"

@@ -129,6 +129,38 @@
       "captureBuild": null
     },
     {
+      "id": 78270,
+      "level": 23,
+      "sourceItemId": 0,
+      "hidden": "unconfirmed",
+      "objectives": [
+        {
+          "kind": "item",
+          "id": 210187,
+          "count": 1
+        }
+      ],
+      "url": "https://www.wowhead.com/forever/quest=78270/goblin-lockpicks",
+      "availabilityURL": "https://www.wowhead.com/forever/item=210187/venture-co-work-order",
+      "checked": "2026-11-09",
+      "captureBuild": null
+    },
+    {
+      "id": 95884,
+      "level": 23,
+      "sourceItemId": 0,
+      "objectives": [
+        {
+          "kind": "item",
+          "id": 271343,
+          "count": 1
+        }
+      ],
+      "url": "https://www.wowhead.com/forever/quest=95884/the-offering-stone",
+      "checked": "2026-11-09",
+      "captureBuild": null
+    },
+    {
       "id": 490,
       "level": 8,
       "sourceItemId": 0,

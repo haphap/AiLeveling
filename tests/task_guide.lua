@@ -111,5 +111,10 @@ test("节日退役参考任务不抢占自动首选但实际日志和明确锁�
     local p=plan(s,d);eq(p.fallback.questId,2)
     s.locked=1;p=plan(s,d);eq(p.fallback.questId,1)
     s.locked=nil;s.quests[1]={objectives={}};p=plan(s,d);eq(p.taskChoices[1].requireCheck,nil)
+    s.quests={};q1.taskFacts=nil
+    d.CacheQuest=function(_,q) if q.id==1 then return {hidden="unconfirmed"} end end
+    d.Target=function() return {map=1,x=1,entityKind="npc",entityId=8} end
+    p=plan(s,d);eq(p.fallback.questId,2)
+    s.questOffers={[8]={[1]=true}};p=plan(s,d);eq(p.fallback.questId,1)
 end)
 end

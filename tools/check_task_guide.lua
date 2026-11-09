@@ -423,3 +423,22 @@ if faction=="Horde" then
     context.completed={};assert(not A.TaskGuide.LowValue(pet,context,A.Data))
     print("Horde: real #97583 companion repeat yields to leveling after turn-in; XP stays unknown; first-run, active and manual remain")
 end
+
+-- Legacy entries remain browseable until the actual NPC offers them.
+do
+    local q=assert(A.Data:GetQuest(78270));local context={}
+    for key,value in pairs(s) do context[key]=value end
+    context.level,context.quests,context.completed=23,{},{}
+    context.position=assert(A.Data:Target(q,context))
+    local descriptions=A.Data:ReferenceObjectiveTargets(q,context)
+    assert(#descriptions==1 and descriptions[1].targetId==210187 and descriptions[1].numRequired==1)
+    assert(A.TaskGuide.XP(q,23,context)==nil and not A.Data:DeliveryOnly(q,context))
+    local function choice() return run(function() return A.Planner.TaskChoices(context,A.Data,{q.id},true,options) end)[1] end
+    assert(choice().requireCheck)
+    context.locked=q.id;assert(choice());context.locked=nil
+    context.questOffers={[4086]={[q.id]=true}};assert(not choice().requireCheck)
+    context.questOffers=nil;context.quests[q.id]={objectives=descriptions}
+    assert(not choice().requireCheck and not context.quests[q.id].ready and not context.completed[q.id])
+    context.quests={};context.clientBuild="other";assert(A.Data:CacheQuest(q,context)==nil)
+    print(faction..": real #78270 keeps its work-order requirement; automatic selection waits for the actual NPC offer; active and manual remain")
+end
