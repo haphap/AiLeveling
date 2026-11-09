@@ -158,7 +158,8 @@ function UI:Refresh()
         lines[#lines+1] = string.format("行程预算剩余 %.1f 分钟；再刷时重新计算收益与往返成本",math.max(0,session.budget-session.elapsed)/60)
     elseif batch and batch.id==self.selected then
         local count=0;for _ in pairs(batch.baselines) do count=count+1 end
-        lines[#lines+1]=batch.waiting and "等队期间先完成准备，再做附近任务；队伍就绪后出发。" or
+        lines[#lines+1]=batch.returning and "任务已交齐，离开副本后继续练级。" or
+            batch.waiting and "等队期间先完成准备，再做附近任务；队伍就绪后出发。" or
             "已安排 "..count.." 项任务，按当前进度接续准备、目标与交付。"
     elseif reason then lines[#lines+1]=reason
     else lines[#lines+1]="点击接受，开始副本行程。" end
@@ -195,6 +196,8 @@ function UI:Lines()
     end
     local encounter=A.Dungeon.EncounterProgress(self.entries and self.entries[self.selected],A.state)
     if encounter then lines[#lines+1]=encounter end
+    local activity=A.Dungeon:TaskActivityText(self.selected)
+    if activity then lines[#lines+1]=activity end
     local batch=A.char.taskBatch
     local current=batch and batch.id==self.selected
     local plan=current and A.plan

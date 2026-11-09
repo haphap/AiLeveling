@@ -4,6 +4,7 @@ local S=A.Selection
 
 function S:Clear()
     A.char.itinerary,A.char.locked,A.char.taskBatch=nil,nil,nil
+    if A.Dungeon then A.Dungeon.taskActivity=nil end
 end
 
 function S:Snapshot(state)
@@ -69,6 +70,7 @@ end
 
 function S:Skip(id)
     if not id then return end
+    if A.Dungeon then A.Dungeon.taskActivity=nil end
     if A.char.taskBatch then A.char.taskBatch.baselines[id]=nil else self:Clear() end
     A.char.skipped[id]=true
     local source=A.Gear and A.Gear.GetSource and A.Gear.GetSource(A.char.gearTarget) or (A.Content.gearSources or {})[A.char.gearTarget]

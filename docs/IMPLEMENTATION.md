@@ -1254,3 +1254,9 @@ Core.OnUpdate 原来仅恢复 index 和 plan，已排队的 quest:dialog 和 ser
 扩展既有区域事件与批量数量检查，未新增独立场景，仍407。区域事件修复前复现1~=3，最终407回归通过。双阵营各140事件、556缓存目标任务检查，以及79096数量／原生日志优先／收集消费通过。生成语义比较确认3381旧缓存任务所有XP及既有目标保持，仅108任务补117事件及相应complex标记；唯一新增79096记录无XP。生成--check、Lua/Python语法、开发内容及diff通过。日志dist/criteria-events-{before,final-regression,final-generated-check,final-content,semantic,final-horde,final-alliance}.log，事件／缓存目标检查见criteria-events-{horde,alliance}-{area_triggers,cache_objectives}.log。
 
 最终单兽人连续诊断22级289交付，95885和79096均已交，79096记UNKNOWN／OMITTED_XP；parse_trace核验通过，停79948 unknown-item-count。该诊断仍省略击杀探索经验和真实交互，未重跑56角色旧报告；完整1—60与其余适用功能、客户端验收继续。未操作客户端、依赖或实际SavedVariables，未升版、发布、安装，客户端仍0.1.129-dev。
+
+## 2026-11-10 副本任务行程收尾
+
+- 动态任务组在本内交齐后保留离本步骤，重载保持；实际离开后清除任务组并恢复野外规划。
+- 复用 Dungeon 更新与 State.Observe，记录从安排到交齐并离本的整次任务行程，按构建／实例／难度／根任务组汇总，详情显示历史平均。取消、跳过、暂停、AFK、死亡、解散、手动导航和重载片段不计入平均。
+- 扩展原有进本／交付与本内收件人流程，本地回归通过（dist/dungeon-activity-regression.log）；未新增独立场景，实机验收统一后置。

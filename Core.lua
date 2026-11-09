@@ -205,7 +205,7 @@ function A:SetOption(key, value)
     self.settings[key] = value
     if key=="levelingStats" and self.LevelingTracker then self.LevelingTracker:Update("option") end
     if key=="learn" then
-        self.Dungeon.runSample=nil;self.Transport:InvalidateSample()
+        self.Dungeon.runSample=nil;self.Dungeon.taskActivity=nil;self.Transport:InvalidateSample()
         if self.Hearth then self.Hearth:InvalidateSample() end
     end
     self.UI:ApplyStyle()
@@ -254,6 +254,7 @@ end
 function A:TogglePause()
     if self.LevelingTracker then self.LevelingTracker:Update("pause") end
     self.char.paused = not self.char.paused
+    if self.char.paused then self.Dungeon.taskActivity=nil end
     if self.LevelingTracker then self.LevelingTracker:Update("pause") end
     self.Transport:InvalidateSample()
     if self.Hearth then self.Hearth:InvalidateSample() end

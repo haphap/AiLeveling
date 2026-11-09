@@ -84,7 +84,7 @@ function S:Create(parent)
     check(4,"learn","记录本地耗时统计",0)
     local reset=A.UI:Button(self.groups[4],"重置本地统计",270,function()
         A.char.samples={}
-        A.Dungeon.runSample=nil;A.Transport:InvalidateSample()
+        A.Dungeon.runSample=nil;A.Dungeon.taskActivity=nil;A.Transport:InvalidateSample()
         if A.Hearth then A.Hearth:InvalidateSample() end
         if A.ready then A.State:Refresh(true) end
     end)

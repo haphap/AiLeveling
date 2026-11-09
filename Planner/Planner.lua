@@ -295,6 +295,11 @@ function P.Build(state, data, options)
         table.insert(result.taskChoices,1,preferred);result.preferenceApplied=true
     end
     result.taskBatch=batch
+    if batch and batch.returning then
+        result.unverified=true
+        result.fallback={kind="dungeonLeave",title="离开"..batch.title,text="任务已交齐，离开副本后继续练级。"}
+        return result
+    end
     if state.locked then result.best=nil end
     if result.best and result.best.requiresAcceptance then
         result.suggestedDungeon=result.best;result.best=nil

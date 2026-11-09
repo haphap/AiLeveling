@@ -518,6 +518,7 @@ function D:Arrived(action)
 end
 
 function D:Update()
+    self:UpdateTaskActivity(A.state)
     local session,now = A.char.dungeon,GetTime()
     if not session or session.phase == "complete" then self.lastTick=nil; return end
     local delta = self.lastTick and now-self.lastTick or 0

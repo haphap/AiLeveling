@@ -32,9 +32,10 @@ local function fixture()
 end
 local function run(name,fn)
     test(name,function()
-        local old=C_Map
+        local old,afk=C_Map,UnitIsAFK
         C_Map={GetMapInfo=function(id) return {name="任务区域",mapType=id==2 and 4 or 3} end}
-        fn();C_Map=old
+        UnitIsAFK=function() return false end
+        fn();C_Map=old;UnitIsAFK=afk
     end)
 end
 run("多入口副本按当前可用交通选择更快入口",function()
@@ -187,6 +188,7 @@ run("关闭副本建议先继续当前本内目标，完成后不自动转入另
 end)
 run("副本整组先接齐可行任务，完成前置后入本，整组完成再出本交付",function()
     local B,s,data,q=fixture()
+    local clock,now=GetTime,100;GetTime=function() return now end
     s.quests[4]={ready=true};B.char.locked=4
     assert(B.Dungeon:StartTaskBatch("ref"));eq(B.char.locked,nil)
     eq(B.char.taskBatch.baselines[1],0);eq(B.char.taskBatch.baselines[2],0);eq(B.char.taskBatch.baselines[5],nil)
@@ -201,6 +203,8 @@ run("副本整组先接齐可行任务，完成前置后入本，整组完成再
     s.quests[2]={objectives={{text="完成目标",numRequired=1,numFulfilled=0}}}
     p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonEnter")
     s.inInstance,s.instanceId,s.position=true,42,{map=2,x=0,y=0}
+    now=400;s.difficulty=1;B.Dungeon:Update()
+    local sampleKey=B.Dungeon.taskActivity.key
     s.quests[1].ready=true
     p=plan(s,data,B.settings,B);eq(p.fallback.kind,"objective");eq(p.fallback.questId,2)
     s.quests[2].ready=true;p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonLeave")
@@ -210,8 +214,21 @@ run("副本整组先接齐可行任务，完成前置后入本，整组完成再
     local id=p.fallback.questId;s.quests[id]=nil;s.completed[id]=true;B.char.turnIns[id]=1
     B.State:Refresh();eq(s.taskBatch.baselines[id],nil);assert(B.char.taskBatch)
     p=plan(s,data,B.settings,B);eq(p.fallback.kind,"turnin");assert(p.fallback.questId~=id)
-    id=p.fallback.questId;s.quests[id]=nil;s.completed[id]=true;B.char.turnIns[id]=1;B.State:Refresh()
+    now=1000;id=p.fallback.questId;s.quests[id]=nil;s.completed[id]=true;B.char.turnIns[id]=1;B.State:Refresh()
     eq(s.taskBatch,nil);eq(B.char.taskBatch,nil);assert(s.quests[4])
+    eq(B.char.samples[sampleKey].mean,15);eq(B.char.samples[sampleKey].unit,"minutes")
+    assert(B.Dungeon:TaskActivityText("ref"):find("已恢复自动路线",1,true))
+    B.State:Refresh();eq(B.char.samples[sampleKey].n,1)
+    -- A new trip interrupted by a pause never replaces the complete sample.
+    for id=1,2 do q[id].repeatable=true;s.quests[id]={ready=true} end
+    assert(B.Dungeon:StartTaskBatch("ref"))
+    s.inInstance=true;B.Dungeon:Update()
+    assert(B.Dungeon:TaskActivityText("ref"):find("历史平均",1,true))
+    B.char.paused=true;B.Dungeon:Update();B.char.paused=false
+    now=1300;s.inInstance=false
+    for id=1,2 do s.quests[id]=nil;B.char.turnIns[id]=2 end
+    B.State:Refresh();eq(B.char.samples[sampleKey].n,1)
+    GetTime=clock
 end)
 run("副本任务行程随前置、接取、本内完成和交付更新",function()
     local B,s,data=fixture()
@@ -285,10 +302,10 @@ run("副本内收件人缺地图仍等待整组完成并显示分组，手动交
         Npc={Get=function() return "本内收件人" end}}
     local target=data.Target
     data.Target=function(self,q,state)
-        if state.quests[q.id] and state.quests[q.id].ready then return end
+        if q.id<=2 and state.quests[q.id] and state.quests[q.id].ready then return end
         return target(self,q,state)
     end
-    data.UnmappedTargetArea=function(_,q,state) if state.quests[q.id] and state.quests[q.id].ready then return 100 end end
+    data.UnmappedTargetArea=function(_,q,state) if q.id<=2 and state.quests[q.id] and state.quests[q.id].ready then return 100 end end
     s.quests[1]={ready=true,objectives={}};s.quests[2]={objectives={{text="完成目标",numRequired=1,numFulfilled=0}}}
     s.inInstance,s.instanceId,s.position=true,42,{map=2,x=0,y=0}
     assert(B.Dungeon:StartTaskBatch("ref"))
@@ -304,6 +321,14 @@ run("副本内收件人缺地图仍等待整组完成并显示分组，手动交
     p=plan(s,data,B.settings,B);eq(p.fallback.kind,"turnin")
     model=B.UI.TrackerModel(s,p,p.fallback,false);assert(model.hint:find("整组已完成",1,true))
     eq(s.completed[1],nil);eq(s.completed[2],nil)
+    for id=1,2 do s.quests[id]=nil;s.completed[id]=true;B.char.turnIns[id]=1 end
+    B.State:Refresh();eq(s.taskBatch.returning,true);assert(B.Dungeon.ValidTaskBatch(B.char.taskBatch))
+    p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonLeave");eq(p.fallback.position,nil)
+    -- Reload preserves the exit step; leaving resumes the remaining outdoor task.
+    B.Dungeon.taskActivity=nil;B.State:Refresh();eq(s.taskBatch.returning,true)
+    s.quests[4]={ready=true};s.inInstance=false;s.position={map=1,x=0,y=0}
+    B.State:Refresh();eq(B.char.taskBatch,nil);eq(s.taskBatch,nil)
+    p=plan(s,data,B.settings,B);eq(p.fallback.questId,4);eq(p.fallback.kind,"turnin")
 end)
 run("进入受限时整组先交付可交成员，重试后恢复入口且野外前置可继续",function()
     local B,s,data=fixture();s.completed[3]=true
@@ -436,7 +461,7 @@ run("本次副本收益只统计所选根任务且远处低价值成员退出建
     B.UI.Dungeon.selected="ref";B.UI.Dungeon.tasks=B.Dungeon.Tasks(d,s,data)
     local lines=table.concat(B.UI.Dungeon:Lines(),"\n")
     assert(lines:find("交付经验：1000",1,true));assert(lines:find("1 项低收益任务",1,true))
-    assert(not lines:find("分钟",1,true));assert(not lines:find("经验/小时",1,true))
+    assert(not lines:find("经验/小时",1,true))
     B.Selection:Skip(1);p=plan(s,data,B.settings,B);eq(p.taskBatch.rewards.count,1);eq(p.taskBatch.rewards.excluded,0)
 end)
 

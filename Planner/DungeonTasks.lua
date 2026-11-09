@@ -285,7 +285,8 @@ end
 
 function D.ValidTaskBatch(batch)
     if type(batch)~="table" or (type(batch.id)~="string" and type(batch.id)~="number") or
-        type(batch.baselines)~="table" or (batch.waiting~=nil and type(batch.waiting)~="boolean") then return false end
+        type(batch.baselines)~="table" or (batch.waiting~=nil and type(batch.waiting)~="boolean") or
+        (batch.returning~=nil and type(batch.returning)~="boolean") then return false end
     if type(batch.id)=="string" and (#batch.id==0 or #batch.id>128) or
         type(batch.id)=="number" and (batch.id<=0 or batch.id>=math.huge or batch.id%1~=0) then return false end
     local count=0
@@ -295,11 +296,61 @@ function D.ValidTaskBatch(batch)
         count=count+1
         if count>512 then return false end
     end
-    return count>0
+    return count>0 or batch.returning==true
+end
+
+-- A sample covers this whole task trip, including preparation, travel and delivery.
+-- It lives only for this login; reloading must not turn a partial trip into a full sample.
+function D:UpdateTaskActivity(state)
+    local sample=self.taskActivity
+    if not sample then return end
+    if sample.batch~=A.char.taskBatch or A.settings.learn==false then self.taskActivity=nil;return end
+    local grouped=(state.groupSize or 1)>1
+    if state.dead or UnitIsAFK("player") or A.char.paused or A.Navigation.manual or
+        sample.grouped and not grouped then sample.valid=false end
+    sample.grouped=sample.grouped or grouped
+    if state.inInstance then
+        if state.instanceId~=sample.instance or sample.difficulty and sample.difficulty~=state.difficulty then
+            sample.valid=false
+        elseif not sample.difficulty then
+            sample.difficulty=state.difficulty
+            sample.key=sample.key..":"..tostring(state.difficulty)
+        end
+    end
+end
+
+function D:FinishTaskActivity()
+    local batch,sample=A.char.taskBatch,self.taskActivity
+    self.lastTaskTrip={id=batch.id}
+    if sample and sample.batch==batch and sample.valid and sample.difficulty and A.settings.learn~=false then
+        local seconds=GetTime()-sample.started
+        if seconds>0 then
+            A.char.samples=A.char.samples or {}
+            A.State.Observe(A.char.samples,sample.key,seconds/60)
+            if A.char.samples[sample.key] then A.char.samples[sample.key].unit="minutes" end
+            self.lastTaskTrip.seconds=seconds
+        end
+    end
+    self.taskActivity=nil
+end
+
+function D:TaskActivityText(id)
+    local sample=self.taskActivity
+    if sample and sample.batch==A.char.taskBatch and sample.batch.id==id then
+        local text=string.format("本次行程 %.1f 分钟",math.max(0,GetTime()-sample.started)/60)
+        local previous=sample.difficulty and (A.char.samples or {})[sample.key]
+        if previous then text=text..string.format(" · 同组历史平均 %.1f 分钟",previous.mean) end
+        return text
+    end
+    local last=self.lastTaskTrip
+    if last and last.id==id then
+        return "任务已交齐，已恢复自动路线"..(last.seconds and string.format(" · 本次 %.1f 分钟",last.seconds/60) or "")
+    end
 end
 
 function D:TaskBatchSnapshot(state)
     state.taskBatch=nil
+    self:UpdateTaskActivity(state)
     local batch=A.char.taskBatch
     if not batch then return "" end
     if not D.ValidTaskBatch(batch) or A.char.locked or
@@ -312,11 +363,14 @@ function D:TaskBatchSnapshot(state)
         if done then batch.baselines[id]=nil
         else ids[#ids+1]=id;baselines[id]=n end
     end
-    if #ids==0 then A.char.taskBatch=nil;return "" end
+    if #ids==0 then
+        if state.inInstance then batch.returning=true
+        else self:FinishTaskActivity();A.char.taskBatch=nil;return "" end
+    end
     table.sort(ids)
     if state.inInstance then batch.waiting=nil end
-    state.taskBatch={id=batch.id,baselines=baselines,waiting=batch.waiting}
-    return "dungeonTasks:"..tostring(batch.id)..":"..tostring(batch.waiting)..":"..table.concat(ids,",")
+    state.taskBatch={id=batch.id,baselines=baselines,waiting=batch.waiting,returning=batch.returning}
+    return "dungeonTasks:"..tostring(batch.id)..":"..tostring(batch.waiting)..":"..tostring(batch.returning)..":"..table.concat(ids,",")
 end
 
 function D:StartTaskBatch(id)
@@ -334,6 +388,12 @@ function D:StartTaskBatch(id)
     A.char.taskBatch={id=id,baselines=baselines}
     A.char.gearTarget,A.char.gearBaseline,A.char.serviceStop=nil,nil,nil
     A.char.paused=false;A.Navigation.manual=nil
+    self.lastTaskTrip=nil
+    if A.settings.learn~=false then
+        local ids={};for questId in pairs(baselines) do ids[#ids+1]=questId end;table.sort(ids)
+        self.taskActivity={batch=A.char.taskBatch,instance=d.instanceId,started=GetTime(),valid=not A.state.inInstance,
+            key="dungeontrip:"..tostring(A.state.clientBuild)..":"..tostring(d.instanceId)..":"..table.concat(ids,",")}
+    end
     A.State:Refresh(true)
     return true
 end
@@ -388,7 +448,8 @@ end
 function D.TaskBatchChoices(state,data)
     local batch=state.taskBatch
     local d=D.Catalog(state,data.content)[batch.id]
-    local info={id=batch.id,title=d and d.title or "所选副本",remaining=0,blocked={}}
+    local info={id=batch.id,title=d and d.title or "所选副本",remaining=0,blocked={},returning=batch.returning}
+    if batch.returning then return {},info end
     local ids,roots,seen={},{},{}
     local members={}
     local rows=d and D.Tasks(d,state,data) or {}
