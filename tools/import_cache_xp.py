@@ -3,6 +3,7 @@
 import csv
 import hashlib
 import json
+import math
 from fractions import Fraction
 from pathlib import Path
 
@@ -13,6 +14,7 @@ BASE = f'.dependencies/eg-link-{COMMIT[:8]}/{BUILD}'
 PINS = {
     f'{BASE}/quests.enUS.json': '0f8b890bbedc79f6c80b99511a88ff5f699048f4a34303bd6d0a0281cfde4b7a',
     f'{BASE}/turn_ins.json': '567debf36003b2c7010e449d3b6f40ce2d7f277e6ea179c60d909b04b2847f02',
+    f'{BASE}/objectives.json': 'c71832408f23261698a60c69f6ed69223944d85cd1d931028be36693dda557f9',
     f'.dependencies/QuestXP-{BUILD}.csv': '1513f3f2646ae0b33b79de6219614792f0dbc050bb5bd76c1c4f0fce668a86fd',
 }
 
@@ -30,7 +32,8 @@ def load():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
     cache = json.loads((ROOT / BASE / 'quests.enUS.json').read_text())
     observations = json.loads((ROOT / BASE / 'turn_ins.json').read_text())
-    for obj, dataset in [(cache, 'quests'), (observations, 'turn_ins')]:
+    locations = json.loads((ROOT / BASE / 'objectives.json').read_text())
+    for obj, dataset in [(cache, 'quests'), (observations, 'turn_ins'), (locations, 'objectives')]:
         assert obj['meta']['clientBuild'] == BUILD and obj['meta']['product'] == 'wowf'
         assert obj['meta']['schemaVersion'] == 1 and obj['meta']['dataset'] == dataset
     with (ROOT / f'.dependencies/QuestXP-{BUILD}.csv').open() as stream:
@@ -70,6 +73,30 @@ def load():
         curves[id] = dict(level=level, xp=curve, objectives=objectives, complex=complex_objectives)
         if rewards.get('money', 0) < 0:
             curves[id]['moneyCost'] = -rewards['money']
+    located, rejected = [], []
+    for id, objectives in locations['quests'].items():
+        for index, observed in objectives.items():
+            kind = {'monster': 'npc', 'object': 'object', 'item': 'item'}.get(observed.get('type'))
+            matches = [o for o in curves.get(id, {}).get('objectives', [])
+                       if kind and o['kind'] == kind and o['count'] == observed.get('required')]
+            same_shape = sum((o.get('type'), o.get('required')) ==
+                             (observed.get('type'), observed.get('required')) for o in objectives.values())
+            # Display indices can differ across sources; require a unique type/count match instead.
+            if len(matches) != 1 or same_shape != 1:
+                rejected.append(dict(id=int(id), index=int(index), reason='ambiguous_or_unmatched_requirement'))
+                continue
+            points = set()
+            if observed.get('gains', 0) > 0 and observed.get('sources', 0) > 0:
+                for p in observed.get('positions', []):
+                    map_id, x, y = p.get('uiMap'), p.get('mapX'), p.get('mapY')
+                    if type(map_id) is int and map_id > 0 and all(type(v) in (int, float) and
+                            math.isfinite(v) and 0 <= v <= 1 for v in (x, y)):
+                        points.add((map_id, x, y))
+            if not points:
+                rejected.append(dict(id=int(id), index=int(index), reason='no_valid_progress_position'))
+                continue
+            matches[0]['locations'] = [dict(map=m, x=x, y=y) for m, x, y in sorted(points)]
+            located.append(dict(id=int(id), index=int(index), kind=kind, target=matches[0]['id'], points=len(points)))
     matched, skipped = [], []
     for id, records in observations['quests'].items():
         for observed in records:
@@ -91,6 +118,9 @@ def load():
                   tierURL=f'https://wago.tools/db2/QuestXP/csv?build={BUILD}', inputs=PINS,
                   sourceQuests=len(cache['quests']), xpRows=len(curves), excluded=excluded,
                   observationChecks=matched, skippedObservations=skipped, clientVerified=False,
+                  objectiveLocations=dict(quests=len({o['id'] for o in located}), objectives=len(located),
+                                          points=sum(o['points'] for o in located), accepted=located, rejected=rejected,
+                                          scope='Character positions when counts increased; approximate fallback only, never target spawns or completion proof.'),
                   scope='Base rewards only; native current-level rewards take priority. No character XP bonuses inferred.',
                   flagReference='https://master.trinitycore.net/d8/d60/structquestobjective',
                   transformation='IDs, fixed levels, XP curves and monster/object/item/area-trigger requirements. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; negative reward money retained as a payment exclusion. No text, eligibility or item rewards copied.')

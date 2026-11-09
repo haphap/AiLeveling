@@ -213,6 +213,29 @@ test("缓存未支持要求保留复杂标记且不按单目标猜测身份",fun
     eq(next(B.Data:ObjectiveIdentities(q,s)),nil)
     local _,_,complex=B.Data:ReferenceObjectiveTargets(q,s);eq(complex,true)
 end)
+test("同构建目标进度位置补区域兜底并按身份数量匹配且不覆盖精确坐标",function()
+    local B,q,s,rows,npcs=fixture();q.questLevel=10;rows.objectives={{{6,count=3}}}
+    s.clientVersion,s.clientBuild,s.interface="1.60.1","70862",16001
+    s.quests[1].objectives[1].text="怪物甲 1/3"
+    local fact={kind="npc",id=6,count=3,locations={{map=1,x=0.2,y=0.3},{map=1,x=0.8,y=0.3},{map=99,x=0,y=0}}}
+    B.TaskFacts={cacheXP={version="1.60.1",build="70862",interface=16001,quests={
+        [1]={level=10,objectives={fact},complex=false}}}}
+    local p=B.Data:Target(q,s);eq(p.x,0.2);eq(p.approximate,true);eq(p.sourceKind,"observation");eq(p.targetId,6)
+    eq(fact.locations[1].sourceKind,nil)
+    s.position={map=1,x=0.95,y=0.3};eq(B.Data:Target(q,s).x,0.8)
+    npcs[6].spawns={[12]={{70,60}}};p=B.Data:Target(q,s);eq(p.x,0.7);eq(p.approximate,nil)
+    npcs[6].spawns={[12]={{-1,-1}}};eq(B.Data:Target(q,s).x,0.8)
+    C_QuestLog.GetNextWaypoint=function() return 1,0.9,0.4 end
+    eq(B.Data:Target(q,s).x,0.9);C_QuestLog.GetNextWaypoint=nil
+    s.clientBuild="other";eq(B.Data:Target(q,s).x,0.5);s.clientBuild="70862"
+    q.questLevel=11;eq(B.Data:Target(q,s).x,0.5);q.questLevel=10
+    s.quests[1].objectives[1].numRequired=4;eq(B.Data:Target(q,s).x,0.5)
+    s.quests[1].objectives[1].numRequired=3;fact.id=7;eq(B.Data:Target(q,s).x,0.5);fact.id=6
+    s.quests[1].objectives[1].finished=true;eq(#B.Data:ObjectiveTargets(q,s),0);eq(s.completed[1],nil)
+    s.quests={}
+    local descriptions,positions=B.Data:ReferenceObjectiveTargets(q,s)
+    eq(descriptions[1].numRequired,3);eq(positions[1].x,0.8);eq(positions[1].sourceKind,"observation")
+end)
 test("缺交付坐标或目标对应时使用任务区域中心且精确位置优先",function()
     local B,q,s,rows,npcs=fixture();local d=B.Data
     local p=d:Target(q,s);eq(p.map,1);eq(p.x,0.5);eq(p.y,0.5);eq(p.approximate,true);eq(p.objectiveIndex,1)

@@ -463,6 +463,29 @@ function D:ObjectiveExtras(q,state)
     return byIndex,counts
 end
 
+function D:ObservedObjectiveTarget(q,state,identity,objective)
+    if not identity or not objective.numRequired then return end
+    local facts=self:CacheQuest(q,state)
+    local best,bestDistance
+    for _,entry in ipairs(facts and facts.objectives or {}) do
+        if entry.kind==identity.kind and entry.id==identity.id and entry.count==objective.numRequired then
+            for _,p in ipairs(entry.locations or {}) do
+                if C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(p.map) then
+                    local distance=A.Navigation:Distance(state.position,p)
+                    local same=state.position and p.map==state.position.map
+                    local bestSame=best and state.position and best.map==state.position.map
+                    if not best or distance and (not bestDistance or distance<bestDistance) or
+                        not distance and not bestDistance and same and not bestSame then
+                        best,bestDistance=p,distance
+                    end
+                end
+            end
+        end
+    end
+    -- These are positions of players receiving progress, not exact target spawns.
+    if best then return {map=best.map,x=best.x,y=best.y,approximate=true,sourceKind="observation",label="任务目标附近"} end
+end
+
 function D:ObjectiveTargets(q,state)
     local active=state.quests[q.id]
     if not active then return {} end
@@ -541,6 +564,7 @@ function D:ObjectiveTargets(q,state)
         if not o.finished then
             local identity=identities[index]
             local point=chosen[index]
+            if not point or point.approximate then point=self:ObservedObjectiveTarget(q,state,identity,o) or point end
             local unmapped=not point and self:UnmappedTargetArea(q,state,index)
             if not point and not unmapped then point=self:QuestAreaTarget(q,state) end
             if point then

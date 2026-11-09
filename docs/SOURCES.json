@@ -691,6 +691,18 @@
       "generator": "tools/build_dungeon_catalog.py",
       "verification": "tools/check_dungeon_encounters.py",
       "clientVerified": false
+    },
+    {
+      "id": "Forever-objective-progress-1.60.1.70862",
+      "build": "1.60.1.70862",
+      "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862/objectives.json",
+      "sha256": "c71832408f23261698a60c69f6ed69223944d85cd1d931028be36693dda557f9",
+      "license": "CC BY 4.0",
+      "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+      "transformation": "Unique objective type/count match within the same quest cache; import 357 progress-receiving character positions for 82 objectives in 74 quests as approximate fallback. No displayed-index join, spawn identity, eligibility or completion inferred.",
+      "generator": "tools/import_cache_xp.py",
+      "audit": "docs/TASK_XP_AUDIT.json",
+      "clientVerified": false
     }
   ]
 }

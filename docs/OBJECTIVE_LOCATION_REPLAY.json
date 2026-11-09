@@ -1,0 +1,32 @@
+{
+  "version": "0.1.125-dev",
+  "clientVerified": false,
+  "scope": "Actual fixed QuestieDB 1.0.12 API, simulated character/map state; objective reference and active-target fallback comparison only. Not continuous 1-60 acceptance.",
+  "contexts": [
+    {
+      "faction": "Horde",
+      "class": "WARLOCK",
+      "summary": "SUMMARY\tHorde\tWARLOCK\t82\t93\t2",
+      "improvements": [
+        "improved\t98252\tA Void Path\t1\t1440\t0.3902\t0.629",
+        "improved\t768\t收集皮革\t1\t1456\t0.4697\t0.5813"
+      ]
+    },
+    {
+      "faction": "Alliance",
+      "class": "DRUID",
+      "summary": "SUMMARY\tAlliance\tDRUID\t82\t93\t2",
+      "improvements": [
+        "improved\t98252\tA Void Path\t1\t1440\t0.3902\t0.629",
+        "improved\t768\t收集皮革\t1\t1456\t0.4697\t0.5813"
+      ]
+    }
+  ],
+  "inputs": {
+    "Data/Questie.lua": "d387fb40fdc495d98dc2a933d0fd68e59910b89b3770f606597bb58926137520",
+    "Data/TaskFacts.lua": "1c8ef2c794ce9d3d116ef96e1d09bddd361ade0f9ebb67275083fa86565e5d8b",
+    "tools/import_cache_xp.py": "dc8c9160cf8820bd9388fa05a0d6d568b71b2df2af0b4c42044c142a1eaece33",
+    "tools/check_observed_objectives.lua": "fff1871ee312b75d0de2b40f8038b93f5fdb89bf4869d48bc204c3c18d7afe97"
+  },
+  "command": "lua5.1 tools/check_observed_objectives.lua ROOT QUESTIEDB_PACKAGE FACTION CLASS (cwd: QuestieDB 1.0.12 emulator checkout)"
+}

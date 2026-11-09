@@ -9,6 +9,7 @@
   "inputs": {
     ".dependencies/eg-link-156f29c9/1.60.1.70862/quests.enUS.json": "0f8b890bbedc79f6c80b99511a88ff5f699048f4a34303bd6d0a0281cfde4b7a",
     ".dependencies/eg-link-156f29c9/1.60.1.70862/turn_ins.json": "567debf36003b2c7010e449d3b6f40ce2d7f277e6ea179c60d909b04b2847f02",
+    ".dependencies/eg-link-156f29c9/1.60.1.70862/objectives.json": "c71832408f23261698a60c69f6ed69223944d85cd1d931028be36693dda557f9",
     ".dependencies/QuestXP-1.60.1.70862.csv": "1513f3f2646ae0b33b79de6219614792f0dbc050bb5bd76c1c4f0fce668a86fd"
   },
   "sourceQuests": 3392,
@@ -1402,6 +1403,885 @@
   ],
   "skippedObservations": [],
   "clientVerified": false,
+  "objectiveLocations": {
+    "quests": 74,
+    "objectives": 82,
+    "points": 357,
+    "accepted": [
+      {
+        "id": 25,
+        "index": 1,
+        "kind": "npc",
+        "target": 3917,
+        "points": 7
+      },
+      {
+        "id": 380,
+        "index": 1,
+        "kind": "npc",
+        "target": 1504,
+        "points": 5
+      },
+      {
+        "id": 380,
+        "index": 2,
+        "kind": "npc",
+        "target": 1505,
+        "points": 5
+      },
+      {
+        "id": 381,
+        "index": 1,
+        "kind": "item",
+        "target": 3266,
+        "points": 10
+      },
+      {
+        "id": 382,
+        "index": 1,
+        "kind": "item",
+        "target": 2885,
+        "points": 1
+      },
+      {
+        "id": 421,
+        "index": 1,
+        "kind": "npc",
+        "target": 1769,
+        "points": 5
+      },
+      {
+        "id": 422,
+        "index": 1,
+        "kind": "item",
+        "target": 3155,
+        "points": 1
+      },
+      {
+        "id": 423,
+        "index": 1,
+        "kind": "item",
+        "target": 3156,
+        "points": 6
+      },
+      {
+        "id": 423,
+        "index": 2,
+        "kind": "item",
+        "target": 3157,
+        "points": 3
+      },
+      {
+        "id": 425,
+        "index": 1,
+        "kind": "item",
+        "target": 3621,
+        "points": 1
+      },
+      {
+        "id": 429,
+        "index": 1,
+        "kind": "item",
+        "target": 3164,
+        "points": 3
+      },
+      {
+        "id": 437,
+        "index": 1,
+        "kind": "item",
+        "target": 3622,
+        "points": 1
+      },
+      {
+        "id": 768,
+        "index": 1,
+        "kind": "item",
+        "target": 2318,
+        "points": 1
+      },
+      {
+        "id": 791,
+        "index": 1,
+        "kind": "item",
+        "target": 4870,
+        "points": 8
+      },
+      {
+        "id": 806,
+        "index": 1,
+        "kind": "item",
+        "target": 4869,
+        "points": 1
+      },
+      {
+        "id": 816,
+        "index": 1,
+        "kind": "item",
+        "target": 4891,
+        "points": 1
+      },
+      {
+        "id": 822,
+        "index": 1,
+        "kind": "item",
+        "target": 4898,
+        "points": 5
+      },
+      {
+        "id": 825,
+        "index": 1,
+        "kind": "item",
+        "target": 4863,
+        "points": 3
+      },
+      {
+        "id": 827,
+        "index": 1,
+        "kind": "item",
+        "target": 4871,
+        "points": 10
+      },
+      {
+        "id": 834,
+        "index": 1,
+        "kind": "item",
+        "target": 4918,
+        "points": 5
+      },
+      {
+        "id": 835,
+        "index": 1,
+        "kind": "npc",
+        "target": 3117,
+        "points": 10
+      },
+      {
+        "id": 835,
+        "index": 2,
+        "kind": "npc",
+        "target": 3118,
+        "points": 8
+      },
+      {
+        "id": 843,
+        "index": 1,
+        "kind": "npc",
+        "target": 3374,
+        "points": 20
+      },
+      {
+        "id": 843,
+        "index": 2,
+        "kind": "npc",
+        "target": 3375,
+        "points": 10
+      },
+      {
+        "id": 843,
+        "index": 3,
+        "kind": "item",
+        "target": 5006,
+        "points": 2
+      },
+      {
+        "id": 844,
+        "index": 1,
+        "kind": "item",
+        "target": 5087,
+        "points": 7
+      },
+      {
+        "id": 845,
+        "index": 1,
+        "kind": "item",
+        "target": 5086,
+        "points": 4
+      },
+      {
+        "id": 848,
+        "index": 1,
+        "kind": "item",
+        "target": 5012,
+        "points": 4
+      },
+      {
+        "id": 849,
+        "index": 1,
+        "kind": "object",
+        "target": 3644,
+        "points": 1
+      },
+      {
+        "id": 850,
+        "index": 1,
+        "kind": "item",
+        "target": 5022,
+        "points": 1
+      },
+      {
+        "id": 855,
+        "index": 1,
+        "kind": "item",
+        "target": 5030,
+        "points": 9
+      },
+      {
+        "id": 857,
+        "index": 1,
+        "kind": "item",
+        "target": 5038,
+        "points": 1
+      },
+      {
+        "id": 858,
+        "index": 1,
+        "kind": "item",
+        "target": 5050,
+        "points": 1
+      },
+      {
+        "id": 862,
+        "index": 1,
+        "kind": "item",
+        "target": 5051,
+        "points": 8
+      },
+      {
+        "id": 865,
+        "index": 1,
+        "kind": "item",
+        "target": 5055,
+        "points": 3
+      },
+      {
+        "id": 866,
+        "index": 1,
+        "kind": "item",
+        "target": 5056,
+        "points": 7
+      },
+      {
+        "id": 867,
+        "index": 1,
+        "kind": "item",
+        "target": 5064,
+        "points": 8
+      },
+      {
+        "id": 868,
+        "index": 1,
+        "kind": "item",
+        "target": 5058,
+        "points": 6
+      },
+      {
+        "id": 869,
+        "index": 1,
+        "kind": "item",
+        "target": 5062,
+        "points": 12
+      },
+      {
+        "id": 871,
+        "index": 3,
+        "kind": "npc",
+        "target": 3265,
+        "points": 3
+      },
+      {
+        "id": 872,
+        "index": 3,
+        "kind": "item",
+        "target": 5063,
+        "points": 1
+      },
+      {
+        "id": 881,
+        "index": 1,
+        "kind": "item",
+        "target": 5100,
+        "points": 1
+      },
+      {
+        "id": 887,
+        "index": 1,
+        "kind": "npc",
+        "target": 3381,
+        "points": 12
+      },
+      {
+        "id": 887,
+        "index": 2,
+        "kind": "npc",
+        "target": 3382,
+        "points": 5
+      },
+      {
+        "id": 891,
+        "index": 4,
+        "kind": "item",
+        "target": 5078,
+        "points": 8
+      },
+      {
+        "id": 895,
+        "index": 1,
+        "kind": "item",
+        "target": 5084,
+        "points": 1
+      },
+      {
+        "id": 896,
+        "index": 1,
+        "kind": "item",
+        "target": 5097,
+        "points": 1
+      },
+      {
+        "id": 901,
+        "index": 1,
+        "kind": "item",
+        "target": 5089,
+        "points": 1
+      },
+      {
+        "id": 903,
+        "index": 1,
+        "kind": "item",
+        "target": 5096,
+        "points": 6
+      },
+      {
+        "id": 924,
+        "index": 1,
+        "kind": "object",
+        "target": 3525,
+        "points": 1
+      },
+      {
+        "id": 1195,
+        "index": 1,
+        "kind": "item",
+        "target": 5868,
+        "points": 1
+      },
+      {
+        "id": 1501,
+        "index": 1,
+        "kind": "item",
+        "target": 6535,
+        "points": 1
+      },
+      {
+        "id": 1504,
+        "index": 1,
+        "kind": "npc",
+        "target": 5676,
+        "points": 1
+      },
+      {
+        "id": 1944,
+        "index": 1,
+        "kind": "item",
+        "target": 7268,
+        "points": 1
+      },
+      {
+        "id": 3281,
+        "index": 1,
+        "kind": "item",
+        "target": 5061,
+        "points": 1
+      },
+      {
+        "id": 3901,
+        "index": 1,
+        "kind": "npc",
+        "target": 1890,
+        "points": 8
+      },
+      {
+        "id": 3902,
+        "index": 1,
+        "kind": "item",
+        "target": 11127,
+        "points": 4
+      },
+      {
+        "id": 5041,
+        "index": 1,
+        "kind": "item",
+        "target": 12708,
+        "points": 1
+      },
+      {
+        "id": 5726,
+        "index": 1,
+        "kind": "item",
+        "target": 14544,
+        "points": 1
+      },
+      {
+        "id": 5727,
+        "index": 1,
+        "kind": "npc",
+        "target": 3216,
+        "points": 1
+      },
+      {
+        "id": 6395,
+        "index": 1,
+        "kind": "object",
+        "target": 178090,
+        "points": 1
+      },
+      {
+        "id": 6441,
+        "index": 1,
+        "kind": "item",
+        "target": 5481,
+        "points": 15
+      },
+      {
+        "id": 6462,
+        "index": 1,
+        "kind": "item",
+        "target": 16602,
+        "points": 2
+      },
+      {
+        "id": 6503,
+        "index": 1,
+        "kind": "npc",
+        "target": 12856,
+        "points": 9
+      },
+      {
+        "id": 6563,
+        "index": 1,
+        "kind": "item",
+        "target": 16784,
+        "points": 6
+      },
+      {
+        "id": 91920,
+        "index": 1,
+        "kind": "item",
+        "target": 730,
+        "points": 3
+      },
+      {
+        "id": 95494,
+        "index": 1,
+        "kind": "item",
+        "target": 269715,
+        "points": 6
+      },
+      {
+        "id": 95507,
+        "index": 1,
+        "kind": "item",
+        "target": 269719,
+        "points": 2
+      },
+      {
+        "id": 95774,
+        "index": 1,
+        "kind": "item",
+        "target": 277277,
+        "points": 4
+      },
+      {
+        "id": 96825,
+        "index": 1,
+        "kind": "item",
+        "target": 275718,
+        "points": 8
+      },
+      {
+        "id": 97242,
+        "index": 1,
+        "kind": "item",
+        "target": 277278,
+        "points": 2
+      },
+      {
+        "id": 97242,
+        "index": 2,
+        "kind": "item",
+        "target": 277279,
+        "points": 2
+      },
+      {
+        "id": 97250,
+        "index": 1,
+        "kind": "npc",
+        "target": 268622,
+        "points": 2
+      },
+      {
+        "id": 97250,
+        "index": 2,
+        "kind": "npc",
+        "target": 268623,
+        "points": 2
+      },
+      {
+        "id": 97253,
+        "index": 1,
+        "kind": "item",
+        "target": 277331,
+        "points": 4
+      },
+      {
+        "id": 97282,
+        "index": 1,
+        "kind": "item",
+        "target": 277665,
+        "points": 5
+      },
+      {
+        "id": 98252,
+        "index": 1,
+        "kind": "npc",
+        "target": 271182,
+        "points": 1
+      },
+      {
+        "id": 98389,
+        "index": 1,
+        "kind": "npc",
+        "target": 271961,
+        "points": 5
+      },
+      {
+        "id": 99051,
+        "index": 1,
+        "kind": "item",
+        "target": 286008,
+        "points": 7
+      },
+      {
+        "id": 99052,
+        "index": 1,
+        "kind": "item",
+        "target": 286009,
+        "points": 2
+      },
+      {
+        "id": 99134,
+        "index": 1,
+        "kind": "npc",
+        "target": 1746,
+        "points": 4
+      },
+      {
+        "id": 99156,
+        "index": 1,
+        "kind": "item",
+        "target": 286326,
+        "points": 1
+      }
+    ],
+    "rejected": [
+      {
+        "id": 25,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 216,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 216,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 356,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 356,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 364,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 364,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 376,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 376,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 437,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 447,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 447,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 821,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 821,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 822,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 822,
+        "index": 3,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 837,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 837,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 837,
+        "index": 3,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 837,
+        "index": 4,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 846,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 846,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 846,
+        "index": 3,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 870,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 871,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 871,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 872,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 872,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 879,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 879,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 879,
+        "index": 3,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 891,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 891,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 891,
+        "index": 3,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 893,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 893,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 893,
+        "index": 3,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 900,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 900,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 900,
+        "index": 3,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 5723,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 5723,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 5725,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 5725,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 5728,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 5728,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 5761,
+        "index": 1,
+        "reason": "no_valid_progress_position"
+      },
+      {
+        "id": 6504,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 6504,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 6504,
+        "index": 3,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 6561,
+        "index": 1,
+        "reason": "no_valid_progress_position"
+      },
+      {
+        "id": 6565,
+        "index": 1,
+        "reason": "no_valid_progress_position"
+      },
+      {
+        "id": 6921,
+        "index": 1,
+        "reason": "no_valid_progress_position"
+      },
+      {
+        "id": 96607,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 96607,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 98093,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 98093,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 98251,
+        "index": 1,
+        "reason": "ambiguous_or_unmatched_requirement"
+      },
+      {
+        "id": 98251,
+        "index": 2,
+        "reason": "ambiguous_or_unmatched_requirement"
+      }
+    ],
+    "scope": "Character positions when counts increased; approximate fallback only, never target spawns or completion proof."
+  },
   "scope": "Base rewards only; native current-level rewards take priority. No character XP bonuses inferred.",
   "flagReference": "https://master.trinitycore.net/d8/d60/structquestobjective",
   "transformation": "IDs, fixed levels, XP curves and monster/object/item/area-trigger requirements. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; negative reward money retained as a payment exclusion. No text, eligibility or item rewards copied."
