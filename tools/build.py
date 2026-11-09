@@ -43,7 +43,8 @@ def main():
     bindings = ROOT / 'Bindings.xml'
     names = [binding.attrib['name'] for binding in ET.parse(bindings).getroot()]
     assert names == [f'CLICK AiLevelingItem{i}:LeftButton' for i in range(1, 5)] + [
-        'CLICK AiLevelingTarget:LeftButton', 'CLICK AiLevelingTarget:RightButton', 'AILEVELING_TARGET_NEXT']
+        'CLICK AiLevelingTarget:LeftButton', 'CLICK AiLevelingTarget:RightButton',
+        'CLICK AiLevelingFollowLeader:LeftButton', 'AILEVELING_TARGET_NEXT']
     entries.append(bindings)
     output = ROOT / 'dist' / f'AiLeveling-{version}.zip'
     output.parent.mkdir(exist_ok=True)

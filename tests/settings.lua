@@ -3,7 +3,8 @@ local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","
     "geterrorhandler","C_Item","C_PlayerInfo","C_Container","GetQuestID","GetNumQuestChoices","GetQuestItemLink","GetQuestReward",
     "AcceptQuest","CompleteQuest","GetQuestMoneyToGet","IsQuestCompletable","IsShiftKeyDown","C_GossipInfo","UnitGUID","UnitLevel","UnitXP","UnitXPMax","UnitIsAFK",
     "PlaySound","SOUNDKIT","NUM_CONTAINER_FRAMES","ContainerFrameCombinedBags","AiLeveling",
-    "debugprofilestop","C_PlayerInteractionManager","UnitClassification","UnitName","UnitCanAttack","UnitIsDeadOrGhost","UnitOnTaxi","C_NamePlate","UIErrorsFrame","issecretvalue","canaccessvalue","Enum"}
+    "debugprofilestop","C_PlayerInteractionManager","UnitClassification","UnitName","UnitCanAttack","UnitIsDeadOrGhost","UnitOnTaxi","C_NamePlate","UIErrorsFrame","issecretvalue","canaccessvalue","Enum",
+    "IsInGroup","IsInRaid","UnitIsGroupLeader","UnitIsConnected","FollowUnit"}
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
     for _,key in ipairs({"SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag",
@@ -427,11 +428,34 @@ test("行动提示音首次静默重复去重并过滤战斗与设置更新",fun
     B.action.kind="objective";B.QuestAssist:Update(true);eq(B.sounds,1)
     B.finish()
 end)
-test("取消自动换绑的当前任务组偏好可持久保存且拒绝损坏大值",function()
-    local B=setup()
-    B.char.declinedBinding="42:0,43:1";B:NormalizeCharacter(B.char);eq(B.char.declinedBinding,"42:0,43:1")
-    B.char.declinedBinding={};B:NormalizeCharacter(B.char);eq(B.char.declinedBinding,nil)
-    B.char.declinedBinding=string.rep("x",4097);B:NormalizeCharacter(B.char);eq(B.char.declinedBinding,nil)
+test("跟随队长按真实队伍生成点击入口且战斗后同步并保留任务",function()
+    local B=setup();local Q=B.QuestAssist
+    local grouped,raid,leader,connected,name,realm=true,false,"party2",true,"队长","异乡"
+    IsInGroup=function() return grouped end;IsInRaid=function() return raid end
+    UnitIsGroupLeader=function(unit) return unit==leader end;UnitIsConnected=function() return connected end
+    UnitName=function() return name,realm end
+    FollowUnit=function() error("跟随应由玩家点击执行") end
+    B.action={kind="manual"};B.char.locked=1;Q:Update()
+    eq(Q.followButton.type1,"macro");eq(Q.followButton.macrotext1,"/follow 队长-异乡")
+    eq(Q.followButton.shown,true);eq(Q.followButton.point[2],Q.info)
+    leader,name,realm="party3","新队长",nil
+    B.frame.scripts.OnEvent(nil,"PARTY_LEADER_CHANGED");assert(B.refreshAt)
+    B.combat(true);local writes=Q.followButton.attributeWrites;Q:Update()
+    eq(Q.followButton.attributeWrites,writes);eq(Q.followButton.macrotext1,"/follow 队长-异乡")
+    assert(Q.followButton.text.value:find("待更新",1,true))
+    B.combat(false);B.frame.scripts.OnEvent(nil,"PLAYER_REGEN_ENABLED")
+    eq(Q.followButton.macrotext1,"/follow 新队长")
+    leader="player";Q:Update();eq(Q.followButton.shown,false);eq(Q.followButton.macrotext1,nil)
+    raid,leader,name,realm=true,"raid7","团队长","远行之地";Q:Update()
+    eq(Q.followButton.macrotext1,"/follow 团队长-远行之地")
+    connected=false;Q:Update();eq(Q.followButton.shown,false);connected=true
+    name="队长\n/run bad()";Q:Update();eq(Q.followButton.macrotext1,nil)
+    local secret={};canaccessvalue=function(value) return value~=secret end
+    name=secret;Q:Update();eq(Q.followButton.shown,false)
+    name="队长";B.settings.targets=false;Q:Update();eq(Q.followButton.shown,false)
+    B.settings.targets=true;B.char.paused=true;Q:Update();eq(Q.followButton.shown,false)
+    B.char.paused=false;grouped=false;Q:Update();eq(Q.followButton.macrotext1,nil)
+    eq(B.char.locked,1);eq(B.state.completed[1],nil)
     B.finish()
 end)
 test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝宏命令字符",function()

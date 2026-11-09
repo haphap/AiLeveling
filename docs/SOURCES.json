@@ -392,9 +392,19 @@
           "file": "Interface/AddOns/Blizzard_APIDocumentationGenerated/RaidMarkersDocumentation.lua",
           "sha256": "f3375f723c1a2ba3a02872db3cfec4408f85b383fa192953179925adfc9fd464",
           "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_APIDocumentationGenerated/RaidMarkersDocumentation.lua"
+        },
+        {
+          "file": "Interface/AddOns/Blizzard_ChatFrameBase/Shared/SlashCommands.lua",
+          "sha256": "8c59b81deb2d8ccf9cb9687dfacd7ff7e82d1a8a83f8414843a23b8d58819072",
+          "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_ChatFrameBase/Shared/SlashCommands.lua"
+        },
+        {
+          "file": "Interface/AddOns/Blizzard_APIDocumentationGenerated/PartyInfoDocumentation.lua",
+          "sha256": "8bcc5fed8ddc03c06163da0bcd5a70fcc31afbdc53d21dbd3e9300ce7e3f89ef",
+          "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_APIDocumentationGenerated/PartyInfoDocumentation.lua"
         }
       ],
-      "scope": "Secure macrotext hardware-click action, raidtarget set-unmarked action, public UnitXP/UnitXPMax/UnitLevel/UnitIsAFK and player XP events. No native code copied. Activity time uses session clock, excludes offline/pause/AFK; client event order and protected actions await live verification. Rare discovery also uses public UnitClassification, UnitCanAttack, UnitIsDeadOrGhost, UnitGUID, UnitName and UnitLevel from native nameplate/target/mouseover events; protected target buttons update outside combat.",
+      "scope": "Secure macrotext hardware-click action, raidtarget set-unmarked action, public UnitXP/UnitXPMax/UnitLevel/UnitIsAFK and player XP events. No native code copied. Activity time uses session clock, excludes offline/pause/AFK; client event order and protected actions await live verification. Rare discovery also uses public UnitClassification, UnitCanAttack, UnitIsDeadOrGhost, UnitGUID, UnitName and UnitLevel from native nameplate/target/mouseover events; protected target buttons update outside combat. Party follow resolves the actual connected group leader using UnitIsGroupLeader, UnitIsConnected and accessible UnitName/name-realm data. The native FOLLOW slash handler passes its literal message to FollowUnit; a secure hardware-click macro uses that name, with updates deferred in combat. Group/leader/name events refresh the button. Live follow and cross-realm verification remain pending.",
       "clientVerified": false
     },
     {
