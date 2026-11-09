@@ -60,6 +60,49 @@ run("多入口副本按当前可用交通选择更快入口",function()
     s.bags[6948]=nil;eq(B.Dungeon.TaskApproach(action,s,data).position.x,0.2)
     eq(s.completed[1],nil);eq(s.money,100)
 end)
+run("副本等队保留准备与批次，附近已接目标可中断并随时恢复入口",function()
+    local B,s,data,q=fixture()
+    B.settings.waitMinutes=10;s.completed[3]=true
+    s.quests[1]={objectives={{text="本内目标",numRequired=1,numFulfilled=0}}}
+    s.quests[2]={objectives={{text="本内目标",numRequired=1,numFulfilled=0}}}
+    s.quests[4]={objectives={{text="野外目标",type="monster",numRequired=1,numFulfilled=0}}}
+    assert(B.Dungeon:StartTaskBatch("ref"))
+    local p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonEnter")
+    assert(B.Dungeon:ToggleTaskBatchWait());eq(s.taskBatch.waiting,true)
+    assert(B.Dungeon.ValidTaskBatch(B.char.taskBatch))
+    eq(B.Dungeon.ValidTaskBatch({id="ref",baselines={[1]=0},waiting="yes"}),false)
+    p=plan(s,data,B.settings,B)
+    eq(p.fallback.kind,"objective");eq(p.fallback.questId,4)
+    eq(p.taskBatch.waiting,true);eq(p.taskBatch.remaining,2);eq(B.char.taskBatch.baselines[4],nil)
+    eq(s.completed[4],nil);eq(s.quests[1].ready,nil)
+    eq(p.travelActions[#p.travelActions].questId,4)
+    local model=B.UI.TrackerModel(s,p,p.fallback,false);assert(model.hint:find("等队",1,true))
+    assert(B.Dungeon:ToggleTaskBatchWait());eq(s.taskBatch.waiting,nil)
+    p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonEnter");eq(p.fallback.questId,1)
+    assert(B.Dungeon:ToggleTaskBatchWait())
+    B.settings.waitMinutes=0;p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonWait");eq(p.fallback.position,nil)
+    B.settings.waitMinutes=10
+    s.quests[4].objectives[1].type="event";p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonWait")
+    s.quests[4].objectives[1].type="monster"
+    local blocked=B.TaskGuide.ItemGainBlocked
+    B.TaskGuide.ItemGainBlocked=function(action,state) return action.questId==4 or blocked(action,state) end
+    p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonWait");B.TaskGuide.ItemGainBlocked=blocked
+    s.quests[4].ready=true
+    p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonWait")
+    s.quests[4].ready=nil;s.dead=true
+    p=plan(s,data,B.settings,B);assert(p.fallback.questId~=4);s.dead=nil
+    s.quests[2]=nil
+    p=plan(s,data,B.settings,B);eq(p.fallback.kind,"accept");eq(p.fallback.questId,2)
+    s.quests[2]={objectives={{text="本内目标",numRequired=1,numFulfilled=0}}}
+    local distance=B.Navigation.Distance
+    B.Navigation.Distance=function(_,a,b) if a.map==b.map then return 100000 end end
+    p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonWait")
+    B.Navigation.Distance=distance
+    B.refreshAt=1;eq(B.Dungeon:ToggleTaskBatchWait(),false);eq(B.char.taskBatch.waiting,true);B.refreshAt=nil
+    s.inInstance,s.instanceId,s.position=true,42,{map=2,x=0,y=0}
+    B.State:Refresh();eq(B.char.taskBatch.waiting,nil)
+    p=plan(s,data,B.settings,B);eq(p.fallback.kind,"objective");assert(p.fallback.questId~=4)
+end)
 run("关闭副本建议排除自动进本且不拖住同收件人的野外交付",function()
     local B,s,data=fixture();s.completed[3]=true;B.settings.dungeons=false
     s.quests[1]={objectives={{text="本内目标",numRequired=1,numFulfilled=0}}}

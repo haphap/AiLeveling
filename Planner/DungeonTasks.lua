@@ -285,7 +285,7 @@ end
 
 function D.ValidTaskBatch(batch)
     if type(batch)~="table" or (type(batch.id)~="string" and type(batch.id)~="number") or
-        type(batch.baselines)~="table" then return false end
+        type(batch.baselines)~="table" or (batch.waiting~=nil and type(batch.waiting)~="boolean") then return false end
     if type(batch.id)=="string" and (#batch.id==0 or #batch.id>128) or
         type(batch.id)=="number" and (batch.id<=0 or batch.id>=math.huge or batch.id%1~=0) then return false end
     local count=0
@@ -314,8 +314,9 @@ function D:TaskBatchSnapshot(state)
     end
     if #ids==0 then A.char.taskBatch=nil;return "" end
     table.sort(ids)
-    state.taskBatch={id=batch.id,baselines=baselines}
-    return "dungeonTasks:"..tostring(batch.id)..":"..table.concat(ids,",")
+    if state.inInstance then batch.waiting=nil end
+    state.taskBatch={id=batch.id,baselines=baselines,waiting=batch.waiting}
+    return "dungeonTasks:"..tostring(batch.id)..":"..tostring(batch.waiting)..":"..table.concat(ids,",")
 end
 
 function D:StartTaskBatch(id)
@@ -335,6 +336,52 @@ function D:StartTaskBatch(id)
     A.char.paused=false;A.Navigation.manual=nil
     A.State:Refresh(true)
     return true
+end
+
+function D:ToggleTaskBatchWait()
+    if not A.ready or A.refreshAt then return false,"任务状态正在更新" end
+    if not A.char.taskBatch then return false,"请先安排副本关联任务" end
+    if A.state.inInstance or A.Transport and A.Transport:InFlight() then return false,"离开副本并落地后再切换" end
+    A.char.taskBatch.waiting=not A.char.taskBatch.waiting or nil
+    A.State:Refresh(true)
+    return true
+end
+
+-- Waiting is an explicit choice; nearby outdoor objectives never join the dungeon's reward batch.
+function D.TaskBatchWaitPlan(plan,state,data,options)
+    local batch=state.taskBatch
+    local entry=plan.fallback
+    if not (batch and batch.waiting and entry and entry.kind=="dungeonEnter") or
+        state.inInstance or state.dead or state.onTaxi or state.serviceStop then return end
+    local ids={}
+    for id,active in pairs(state.quests) do
+        if not batch.baselines[id] and not active.ready then ids[#ids+1]=id end
+    end
+    table.sort(ids)
+    local context={};for key,value in pairs(state) do context[key]=value end
+    context.taskBatch=nil
+    local wait=math.min(options.waitMinutes or 0,options.minutes or 0)*60
+    local speed=state.runSpeed or 7
+    local choices=A.Planner.TaskChoices(context,data,ids,true)
+    local action
+    for _,choice in ipairs(choices) do
+        local step=(choice.stages or choice.actions)[1]
+        local objective=(state.quests[choice.questId].objectives or {})[step.objectiveIndex]
+        local kind=step.objectiveType or objective and objective.type
+        if step.targetKind=="item" and step.need then step.itemGain=math.max(0,step.need-(step.have or 0)) end
+        local map=step.position and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(step.position.map)
+        local instance=D.TaskInstance(step.position,state,data,step.areaId) or D.TaskPvP(step.position,state,data,step.areaId)
+        if step.kind=="objective" and (kind=="monster" or kind=="item") and not choice.lowValue and
+            not choice.entryBlocked and not choice.requireCheck and not (A.TaskGuide and A.TaskGuide.ItemGainBlocked(step,state)) and map and (map.mapType==2 or map.mapType==3) and not instance and entry.position and speed>0 then
+            local outward=A.Navigation:Distance(state.position,step.position)
+            local back=A.Navigation:Distance(step.position,entry.position)
+            if outward and back and (outward+back)/speed<=wait then action=step;break end
+        end
+    end
+    plan.taskBatch.waiting=true
+    plan.fallback=action or {kind="dungeonWait",title=plan.taskBatch.title,text="等待队伍；准备好后在副本页点击“队伍就绪”。"}
+    plan.travelActions={plan.fallback}
+    plan.referenceJourney,plan.referenceFlight=nil,nil
 end
 
 -- Expand only today's executable prerequisites; real turn-ins unlock the next frontier.

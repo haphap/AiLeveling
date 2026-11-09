@@ -434,7 +434,15 @@ return function(test,eq,F,plan)
         B.Selection.Automatic=function() B.char.taskBatch=nil;return true end
         eq(ui.taskBatch.enabled,true);ui.taskBatch.click();eq(started,"ref")
         eq(ui.taskBatch.text.value,"结束任务安排");assert(table.concat(ui:Lines(),"\n"):find("已安排",1,true))
+        eq(ui.ready.shown,true);eq(ui.ready.text.value,"等队做任务");eq(ui.bodyTop,250)
+        local waitRefresh=B.State.Refresh
+        B.State.Refresh=function() end
+        ui.ready.click();eq(B.char.taskBatch.waiting,true);eq(ui.ready.text.value,"队伍就绪")
+        assert(ui.status.value:find("等队",1,true))
+        ui.ready.click();eq(B.char.taskBatch.waiting,nil);eq(ui.ready.text.value,"等队做任务")
+        B.State.Refresh=waitRefresh
         ui.taskBatch.click();eq(B.char.taskBatch,nil);eq(ui.taskBatch.text.value,"安排关联任务")
+        eq(ui.ready.shown,false);eq(ui.bodyTop,214)
         B.Dungeon.StartTaskBatch=startBatch
         ui.taskChain.click();eq(focused,1)
         ui.taskGo.click();eq(locked,1)

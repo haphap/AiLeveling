@@ -29,6 +29,8 @@ function UI:Create(parent)
         local button = A.UI:Button(frame,label,106,function()
             local ok,reason
             if event=="accept" then ok,reason=A.Dungeon:Accept(self.selected)
+            elseif event=="ready" and A.char.taskBatch and A.char.taskBatch.id==self.selected then
+                ok,reason=A.Dungeon:ToggleTaskBatchWait()
             else ok,reason=A.Dungeon:Control(event) end
             self.message = ok and nil or reason
             self:Refresh(); A.UI:SelectTab(4)
@@ -119,17 +121,21 @@ function UI:Refresh()
     for _,button in ipairs({self.accept,self.ready,self.finish,self.again,self.stop,self.confirmReset,self.retry}) do button:SetShown(not compact) end
     local entryError=not A.state.inInstance and A.state.instanceEntryError
     local retryRow=compact and entryError and 36 or 0
+    local waitRow=compact and batch and batch.id==self.selected and not A.state.inInstance and 36 or 0
     self.retry:SetShown(not compact or not not entryError)
     self.retry:ClearAllPoints();self.retry:SetPoint("TOPLEFT",compact and 0 or 180,compact and -76 or -72)
-    self.bodyTop=compact and 214+retryRow or 314
-    self.frame:SetHeight(compact and 114+retryRow or 214)
+    self.bodyTop=compact and 214+retryRow+waitRow or 314
+    self.frame:SetHeight(compact and 114+retryRow+waitRow or 214)
     self.status:ClearAllPoints();self.status:SetPoint("TOPLEFT",0,compact and -36 or -110)
     self.status:SetHeight(compact and 32 or 60)
     for _,entry in ipairs({{self.taskSelector,0},{self.taskChain,328},{self.taskGo,444}}) do
-        entry[1]:ClearAllPoints();entry[1]:SetPoint("TOPLEFT",entry[2],compact and -76-retryRow or -176)
+        entry[1]:ClearAllPoints();entry[1]:SetPoint("TOPLEFT",entry[2],compact and -76-retryRow-waitRow or -176)
     end
     self.accept:SetEnabled(candidate~=nil and (not session or session.phase=="complete"))
-    self.ready:SetEnabled(session~=nil and not session.settled and session.phase~="inside")
+    self.ready:SetShown(not compact or waitRow>0)
+    self.ready:ClearAllPoints();self.ready:SetPoint("TOPLEFT",compact and 0 or 114,compact and -76-retryRow or -36)
+    self.ready.text:SetText(waitRow>0 and (batch.waiting and "队伍就绪" or "等队做任务") or "队伍就绪")
+    self.ready:SetEnabled(waitRow>0 and A.ready and not A.refreshAt or session~=nil and not session.settled and session.phase~="inside")
     self.finish:SetEnabled(session~=nil and session.entered==true and not session.settled)
     local again
     if session and session.settled and not A.state.inInstance and A.ready then
@@ -152,7 +158,8 @@ function UI:Refresh()
         lines[#lines+1] = string.format("行程预算剩余 %.1f 分钟；再刷时重新计算收益与往返成本",math.max(0,session.budget-session.elapsed)/60)
     elseif batch and batch.id==self.selected then
         local count=0;for _ in pairs(batch.baselines) do count=count+1 end
-        lines[#lines+1]="已安排 "..count.." 项任务，按当前进度接续准备、目标与交付。"
+        lines[#lines+1]=batch.waiting and "等队期间先完成准备，再做附近任务；队伍就绪后出发。" or
+            "已安排 "..count.." 项任务，按当前进度接续准备、目标与交付。"
     elseif reason then lines[#lines+1]=reason
     else lines[#lines+1]="点击接受，开始副本行程。" end
     if entryError then lines={entryError}

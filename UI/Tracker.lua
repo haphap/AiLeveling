@@ -37,6 +37,7 @@ function UI.TrackerModel(state,plan,action,paused)
     elseif action and action.referenceFlight then model.hint="从当前飞行点前往任务区域，落地后继续目标指引"
     elseif action and action.sharedObjectives and #action.sharedObjectives>1 then
         model.hint="此目标可同时推进 "..#action.sharedObjectives.." 个任务"
+    elseif plan.taskBatch and plan.taskBatch.waiting then model.hint="等队时先做附近任务；队伍就绪后继续副本"
     elseif plan.taskBatch then model.hint=plan.taskBatch.title.." · 任务安排剩余 "..plan.taskBatch.remaining.." 项"
     elseif state.locked and action and state.locked==action.questId then model.hint="按你锁定的任务继续" end
     local groups,byQuest={},{}
