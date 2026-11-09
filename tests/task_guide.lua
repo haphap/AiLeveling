@@ -121,11 +121,6 @@ test("实际新增任务缓存经验补缺且不冒充完整奖励或任务资�
     local courier=B.TaskFacts.cacheXP.quests[99101]
     eq(courier.level,9);eq(courier.sourceItemId,286104);eq(courier.objectives[1].count,1)
     eq(B.TaskGuide.XP({id=99101,questLevel=9},9,s),nil)
-    B.clientVersion,B.build,B.interface="1.60.1","70862",16001
-    local quests,rewards,xp=B.TaskGuide.Counts();assert(quests>4245 and xp>3492);eq(rewards,4140)
-    B.TaskFacts.cacheXP.quests[99101]=nil
-    local without,_,models=B.TaskGuide.Counts();eq(without,quests-1);eq(models,xp)
-    B.TaskFacts.cacheXP.quests[99101]=courier
 end)
 test("缓存经验补齐后进入任务收益排序与低价值保护",function()
     local B={};for k,v in pairs(A) do B[k]=v end
@@ -151,16 +146,6 @@ test("只剩一个目标时原生航点优先且不重复添加数据库目标",
     local stages,complete=B.TaskGuide.Stages(q,s,data,{kind="objective",position={map=1,x=7,label="客户端任务目标"}})
     eq(#stages,2);eq(stages[1].objectiveIndex,2);eq(stages[1].position.x,7);eq(complete,true)
 end)
-test("完整后续资料未知时按当前目标直线距离比较",function()
-    local B,s=fixture()
-    B.TaskGuide.Distance=function() return nil end
-    B.Navigation.hbd={}
-    assert(loadfile("Planner/Planner.lua"))("AiLeveling",B)
-    s.quests={[1]={},[2]={}}
-    local order=B.Planner.TaskOrder(s,{{questId=1,actions={{position={map=1,x=1}}}},
-        {questId=2,actions={{position={map=1,x=10}}}}})
-    eq(order[1].questId,1);eq(order[1].orderBasis,"geometry")
-end)
 test("节日退役参考任务不抢占自动首选但实际日志和明确锁定保留",function()
     local s=F.State();s.position={map=1,x=0};local q1,q2=F.Quest(1),F.Quest(2)
     q1.verified,q2.verified=false,false;q1.taskFacts={hidden="seasonal"}
@@ -168,13 +153,5 @@ test("节日退役参考任务不抢占自动首选但实际日志和明确锁�
     local p=plan(s,d);eq(p.fallback.questId,2)
     s.locked=1;p=plan(s,d);eq(p.fallback.questId,1)
     s.locked=nil;s.quests[1]={objectives={}};p=plan(s,d);eq(p.taskChoices[1].requireCheck,nil)
-end)
-test("真实参考事实包含目标数量奖励与等级经验且不覆盖任务资格",function()
-    local B={};assert(loadfile("Data/TaskFacts.lua"))("AiLeveling",B)
-    B.Travel=A.Travel;assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
-    local n=0;for _ in pairs(B.TaskFacts.quests) do n=n+1 end;eq(n,4245)
-    local q=B.TaskFacts.quests[7];eq(q.objectives[1].id,6);eq(q.objectives[1].count,10)
-    assert(B.TaskGuide.XP({questLevel=q.level,taskFacts=q},1)>0)
-    eq(B.TaskFacts.clientVerified,false)
 end)
 end

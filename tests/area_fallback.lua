@@ -36,16 +36,6 @@ test("缓存区域触发保留探索要求并复用事件地点而不重复步�
     s.quests[1].objectives[1].finished=true
     eq(#B.Data:ObjectiveTargets(q,s),0);eq(s.completed[1],nil)
 end)
-test("区域触发缺精确点时用所属区域而错误构建不补缓存探索",function()
-    local B,q,s,rows=fixture();q.questLevel=10;s.quests={};rows.objectives={}
-    s.clientVersion,s.clientBuild,s.interface="1.60.1","70862",16001
-    B.TaskFacts={cacheXP={version="1.60.1",build="70862",interface=16001,quests={
-        [1]={level=10,objectives={{kind="areaTrigger",id=216,count=1}},complex=false}}}}
-    local descriptions,positions=B.Data:ReferenceObjectiveTargets(q,s)
-    eq(#descriptions,1);eq(positions[1].approximate,true);eq(positions[1].x,0.5)
-    s.clientBuild="other";descriptions=B.Data:ReferenceObjectiveTargets(q,s);eq(#descriptions,0)
-    s.clientBuild="70862";q.questLevel=11;descriptions=B.Data:ReferenceObjectiveTargets(q,s);eq(#descriptions,0)
-end)
 test("零数量进入区域仍需实际完成且多个触发目标分别保留",function()
     local B,q,s,rows=fixture();q.questLevel=10;s.quests={};rows.objectives={}
     s.clientVersion,s.clientBuild,s.interface="1.60.1","70862",16001
@@ -128,15 +118,6 @@ test("事件物品付款与未知资料不被归为仅交付任务",function()
     s.clientVersion,s.clientBuild,s.interface="1.60.1","70862",16001;eq(B.Data:DeliveryOnly(q,s),true)
     facts.itemUses={[500]={spellId=123}};eq(B.Data:DeliveryOnly(q,s),false);facts.itemUses=nil
     s.clientBuild="old";eq(B.Data:DeliveryOnly(q,s),false)
-end)
-test("送信目标保留原生坐标优先及交付者无内部地图区域",function()
-    local B,q,s,rows,npcs=fixture();q.questLevel=10;rows.objectives={}
-    q.taskFacts={level=10,complex=false,objectives={}};s.quests[1]={objectives={}}
-    npcs[9].spawns={[97]={{20,30}}}
-    eq(B.Data:UnmappedTargetArea(q,s),97);eq(B.Data:Target(q,s),nil)
-    C_QuestLog.GetNextWaypoint=function() return 1,0.2,0.3 end
-    local point=B.Data:Target(q,s);eq(point.x,0.2);eq(point.label,"客户端任务目标")
-    eq(s.quests[1].ready,nil);eq(s.completed[1],nil)
 end)
 test("接取时发放的单件交付物品不重复规划收集且不写入背包",function()
     local B,q,s,rows=fixture();s.quests={};s.bags={};rows.objectives={[3]={{100,count=1}}}
@@ -377,15 +358,6 @@ test("事件与怪物混合目标保持独立且不猜测多个事件的对应",
     p=d:ObjectiveTargets(q,s);eq(p[1].sourceKind,nil);eq(p[2].sourceKind,nil)
     rows.objectives={};s.quests[1].objectives={{text="无类型事件"}}
     eq(d:Target(q,s).sourceKind,"trigger")
-end)
-test("事件位置沿用坐标校验和区域标记且优先精确点",function()
-    local B,q,s,rows=fixture();local d=B.Data
-    C_Map.GetMapInfo=function(map) if map==1 or map==2 then return {} end end;d.maps[99]=2
-    rows.triggerEnd={"Event",{[12]={{-1,-1}},[99]={{20,30}}}}
-    local p=d:TriggerTarget(q,s);eq(p.map,2);eq(p.approximate,nil)
-    rows.triggerEnd[2][99]=nil;p=d:TriggerTarget(q,s);eq(p.map,1);eq(p.approximate,true)
-    rows.triggerEnd[2][12]={{-1,-1,1},{200,10},{-1,10}};eq(d:TriggerTarget(q,s),nil)
-    rows.triggerEnd[2]={[100]={{20,30}}};eq(d:TriggerTarget(q,s),nil)
 end)
 test("单目标特殊坐标修复钓鱼来源并保持目标身份和完成判据",function()
     local B,q,s,rows,npcs=fixture();local d=B.Data
@@ -715,13 +687,6 @@ test("职业分类缺目标位置时沿用发布者区域中心并保持真实�
     p=d:Target(q,s);eq(p.targetId,6);eq(p.entityId,nil)
     s.quests[1].objectives={};p=d:Target(q,s);eq(p.x,0.5)
     eq(s.quests[1].ready,nil);eq(s.completed[1],nil)
-end)
-test("职业分类缺交付坐标时用区域参考点且收件人仍为实际交付者",function()
-    local B,q,s,rows,npcs=fixture();local d=B.Data
-    q.zoneOrSort=-666;npcs[8].spawns={[12]={{20,30}}};s.quests[1].ready=true
-    local p=d:Target(q,s);assert(p);eq(p.map,1);eq(p.x,0.5);eq(p.entityId,9)
-    eq(p.entityName,"交付者");eq(p.approximate,true)
-    npcs[9].spawns={[12]={{40,60}}};p=d:Target(q,s);eq(p.x,0.4);eq(p.approximate,nil)
 end)
 test("发布者区域兜底覆盖参考阶段但不覆盖已知缺图目标或原生坐标",function()
     local B,q,s,rows,npcs=fixture();local d=B.Data

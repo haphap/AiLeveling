@@ -160,11 +160,6 @@ test("未观察到完整起飞和非计划航班保持实际落地重算",functi
     B=fixture({{kind="objective",questId=1,position=position(1)}});start(B);finish(B)
     eq(B.Navigation.index,1);eq(B.refreshes,1);eq(next(B.char.samples),nil)
 end)
-test("登录时已在飞行中不反推起点或完整耗时",function()
-    local B=fixture();B.Transport.wasFlying=nil
-    start(B);eq(B.Transport.flight.action,nil);finish(B)
-    eq(B.Navigation.index,1);eq(B.refreshes,1);eq(next(B.char.samples),nil)
-end)
 test("出发点附近未处理的移动动作可接续真实起飞",function()
     local B=fixture();local flight=B.plan.best.actions[1]
     B.Navigation.actions={{kind="move",node="a",position=position(0)},flight}

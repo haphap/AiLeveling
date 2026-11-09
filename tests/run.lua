@@ -27,29 +27,6 @@ test("Forever 高位种族掩码不截断",function()
     eq(A.Eligibility.InMask(8589934593,4294967296),false)
     eq(A.Eligibility.InMask(1,nil),nil)
 end)
-test("可交付尚未解除交付前置",function()
-    local s,q=F.State(),F.Quest(2)
-    s.quests[1]={ready=true};q.preQuestGroup={1}
-    eq(A.State.Status(s,1),"ready");eq(A.Eligibility.Check(q,s),false)
-    s.quests[1]=nil;s.completed[1]=true
-    eq(A.Eligibility.Check(q,s),true)
-end)
-test("全部与任一前置分别检查",function()
-    local s,q=F.State(),F.Quest(3)
-    q.preQuestGroup={1,2};q.preQuestSingle={4,5};s.completed[1]=true;s.completed[4]=true
-    eq(A.Eligibility.Check(q,s),false)
-    s.completed[2]=true;eq(A.Eligibility.Check(q,s),true)
-end)
-test("互斥与专业未知不放行",function()
-    local s,q=F.State(),F.Quest(3)
-    q.exclusiveTo={2};s.quests[2]={};eq(A.Eligibility.Check(q,s),false)
-    s.quests={};q.requiredSkill={164,75};eq(A.Eligibility.Check(q,s),false)
-    s.skills[164]=75;eq(A.Eligibility.Check(q,s),true)
-end)
-test("放弃任务与用户暂缓都不写成完成",function()
-    local s=F.State();s.skipped[1]=true
-    eq(A.State.Status(s,1),"notStarted");eq(A.Eligibility.Check(F.Quest(1),s),false)
-end)
 test("重复交付事件只结算一次",function()
     A.state=F.State();A.char={turnIns={}};A.State.confirmed={}
     A.State:TurnedIn(1);A.State:TurnedIn(1)
@@ -81,39 +58,17 @@ test("已完成目标只规划交付余程",function()
     local r=A.Planner.Evaluate(q,s,d,{minutes=60},"goal")
     eq(r.seconds,20);eq(r.actions[#r.actions].kind,"turnin")
 end)
-test("任务排序忽略旧耗时、武器计时模型与执行样本",function()
-    local q,s=F.Quest(1),F.State();local data=F.Data({[1]=q})
-    local baseline=A.Planner.Evaluate(q,s,data,{minutes=60},"start")
-    q.seconds=100000;q.failureProbability=1;q.recoverySeconds=100000;q.gearTimeModel={class="WARRIOR",byWeapon={[999]=1}}
-    q.actions[2].seconds=100000
-    s.equipment[16]={id=999};s.samples.quest={n=100,mean=4,m2=0,unit="ratio"}
-    local result=A.Planner.Evaluate(q,s,data,{minutes=60},"start")
-    assert(result);eq(result.seconds,baseline.seconds);eq(result.xp,baseline.xp)
-    q.seconds=nil;q.actions[2].seconds=nil
-    result=A.Planner.Evaluate(q,s,data,{minutes=60},"start")
-    assert(result);eq(result.seconds,baseline.seconds)
-end)
 test("短程搜索保留高价值后续的必要前置",function()
     local s,q1,q2,q3=F.State(),F.Quest(1),F.Quest(2),F.Quest(3)
     q1.xp=1;q1.setup=true;q2.preQuestGroup={1};q2.xp=20000;q3.xp=1000
     local p=plan(s,F.Data({[1]=q1,[2]=q2,[3]=q3}))
     eq(p.best.questId,1);assert(p.best.xp>=20001)
 end)
-test("比较使用重新计算的候选与新状态",function()
-    local old={revision=1,best={id=1,rate=999999}}
-    local fresh={revision=2,best={id=2,rate=1},alternatives={{id=1,rate=0.1},{id=2,rate=1}}}
-    eq(A.Planner.Choose(old,fresh).best.id,2)
-end)
 test("副本等待与可中断任务的重叠时间只计一次",function()
     local d={id=1,title="测试副本",verified=true,minLevel=10,maxLevel=30,
         travelSeconds=100,runSeconds=600,waitSeconds=300,interruptibleSeconds=200,xp=1000}
     local c=A.Dungeon.Evaluate(d,F.State(),{dungeons=true,minutes=60,role="DAMAGER"})
     eq(c.seconds,1000)
-end)
-test("离开副本不等于本轮完成且只结算一次",function()
-    local session={phase="inside",entered=true}
-    eq(A.Dungeon.Transition(session,"leave"),false);eq(session.phase,"outside")
-    eq(A.Dungeon.Transition(session,"finish"),true);eq(A.Dungeon.Transition(session,"finish"),false)
 end)
 test("任务物品移格后身份不变且去重",function()
     local s=F.State();s.quests[1]={itemId=123}
@@ -127,24 +82,9 @@ test("战斗中合并待更新物品且不触碰安全属性",function()
     A.QuestAssist:ApplyPending();eq(calls,0)
     A.QuestAssist.pending={456};A.QuestAssist:ApplyPending();eq(A.QuestAssist.pending[1],456);eq(calls,0)
 end)
-test("任务链解释能检测循环并保留 AND/OR 关系",function()
-    local q1,q2=F.Quest(1),F.Quest(2);q1.preQuestGroup={2};q2.preQuestSingle={1}
-    local nodes,cycles=A.Chains.Explain(1,F.Data({[1]=q1,[2]=q2}),F.State())
-    eq(#nodes,2);eq(#cycles,1)
-end)
-test("本地样本排除明显挂机区间",function()
-    local samples={}
-    for _=1,6 do A.State.Observe(samples,"quest",60) end
-    A.State.Observe(samples,"quest",3600);eq(samples.quest.n,6);eq(samples.quest.mean,60)
-end)
 test("地图支持表只解析数值不执行源码",function()
     local maps=A.Data.ParseMap("return {[1]=2, -- [3]=4\n [9]=0}; error('never execute')")
     eq(maps[1],2);eq(maps[3],nil);eq(maps[9],0)
-end)
-test("未知真实内容不产生模拟最优行程",function()
-    local q=F.Quest(1);q.verified=false
-    local p=plan(F.State(),F.Data({[1]=q}))
-    eq(p.best,nil);eq(p.unverified,true)
 end)
 test("状态重建不修改正在计算的旧快照且走动不递增版本",function()
     local provider,oldNavigation=A.Data,A.Navigation
@@ -278,11 +218,6 @@ test("带符号组前置区分指定交付与互斥分支替代",function()
     eq(A.Eligibility.Check(q,s,data),true)
     q.preQuestGroup={-1};eq(A.Eligibility.Check(q,s,data),false)
     s.completed[1]=true;eq(A.Eligibility.Check(q,s,data),true)
-end)
-test("明确锁定优先于切换稳定阈值",function()
-    local old={best={id=1,questId=1,rate=100}}
-    local fresh={best={id=2,questId=2,rate=100},alternatives={{id=1,questId=1,rate=99}}}
-    eq(A.Planner.Choose(old,fresh,2).best.id,2)
 end)
 test("恢复采样仅在确认后结算且排除挂机与中断",function()
     local o=A.Observations

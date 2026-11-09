@@ -49,16 +49,6 @@ test("互斥关闭和禁接关系不扩大整链暂缓范围",function()
     local graph=B.Chains.Graph(1,B.Data,B.state)
     eq(graph.cycle,nil);eq(#graph.nodes,5)
 end)
-test("图形视图有界而整链范围和关联探索保留全部任务",function()
-    local qs={[1]=F.Quest(1)}
-    for id=2,81 do qs[id]=F.Quest(id);qs[id].preQuestSingle={1} end
-    local B=fixture(qs)
-    local graph=B.Chains.Graph(1,B.Data,B.state)
-    eq(#graph.nodes,40);eq(graph.truncated,true);eq(#graph.related,80)
-    local preview=B.Chains.Preview(1,B.Data,B.state);eq(#preview.ids,81)
-    graph=B.Chains.Graph(81,B.Data,B.state)
-    assert(graph.byId[81]);assert(graph.byId[1]);eq(#graph.nodes,40)
-end)
 test("依赖循环终止且缺失前置去重展示",function()
     local qs=linked(2);qs[1].preQuestGroup={2,99,99}
     local B=fixture(qs);local graph=B.Chains.Graph(1,B.Data,B.state)
@@ -67,16 +57,6 @@ test("依赖循环终止且缺失前置去重展示",function()
     local nodes=B.Chains.Explain(1,B.Data,B.state);local missing=0
     for _,node in ipairs(nodes) do if node.id==99 then missing=missing+1 end end
     eq(missing,1)
-end)
-test("密集关系限制绘制数量但保留完整链范围",function()
-    local qs={}
-    for id=1,40 do
-        qs[id]=F.Quest(id);qs[id].preQuestSingle={}
-        for other=1,40 do if other~=id then qs[id].preQuestSingle[#qs[id].preQuestSingle+1]=other end end
-    end
-    local B=fixture(qs);local graph=B.Chains.Graph(1,B.Data,B.state)
-    eq(#graph.nodes,40);eq(#graph.edges,120);eq(graph.edgesTruncated,true)
-    eq(#B.Chains.Preview(1,B.Data,B.state).ids,40);eq(#graph.related,78)
 end)
 test("整链预览只读并在应用后保存独立起点偏好",function()
     local B=fixture(linked(3));B.state.quests[2]={ready=true,objectives={}};B.state.completed[1]=true

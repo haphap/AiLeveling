@@ -1,15 +1,4 @@
 return function(test,eq,F,A,plan)
-test("700码按7码每秒估为100秒且道路资料完全不参与",function()
-    local nav={Distance=function() return 700 end}
-    local B={Travel=A.Travel,Roads=setmetatable({},{__index=function() error("不应读取道路") end})}
-    assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
-    local s={runSpeed=7}
-    local choice={stagesComplete=true,stages={{kind="objective",position={map=1,x=1,y=0}}},
-        work={seconds=20,low=20,high=20,missing=0},remainingXP=240}
-    local t=B.TaskGuide.Timing({map=1,x=0,y=0},choice,s,nav)
-    eq(t.travel,100);eq(t.seconds,100);eq(t.turninRate,nil);eq(t.coarse,true)
-    s.runSpeed=14;eq(B.TaskGuide.Timing({map=1,x=0,y=0},choice,s,nav).travel,50)
-end)
 test("速度或跨世界距离未知时保留未知而原地移动为零",function()
     local p,q={map=1,x=0,y=0},{map=2,x=0,y=0}
     eq(A.Travel.Walk(p,p,{}),0)
@@ -53,9 +42,5 @@ test("当前位置未接入任何命名节点时仍可直线前往目的地",fun
     local r=A.Travel.Route(d.content,origin,"goal",s)
     eq(r.seconds,10);eq(r.actions[1].position,d.content.nodes.goal.position)
     eq(r.actions[1].fromPosition,origin)
-end)
-test("道路模块和资料退出游戏加载与打包入口",function()
-    local f=assert(io.open("AiLeveling.toc"));local toc=f:read("*a");f:close()
-    assert(not toc:find("Roads.lua",1,true))
 end)
 end

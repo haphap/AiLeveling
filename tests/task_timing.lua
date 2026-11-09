@@ -15,21 +15,6 @@ local function timingFixture()
     return B,s,choices
 end
 
-test("缺静态经验的已接任务按原生奖励排序并生成交付预测",function()
-    local B=timingFixture();B.Progression=A.Progression;B.Eligibility=A.Eligibility
-    local s=F.State();s.quests={[1]={ready=true,rewardXP=100,rewardXPLevel=s.level},
-        [2]={ready=true,rewardXP=1800,rewardXPLevel=s.level}}
-    local data={content={},GetQuest=function(_,id) return {id=id,questLevel=s.level} end,
-        Target=function(_,q) return {map=1,x=q.id*7,y=0} end}
-    local choices=B.Planner.TaskChoices(s,data,{1,2})
-    eq(choices[1].questId,2);eq(choices[1].remainingXP,1800)
-    eq(choices[1].forecast.xp,s.xp+1800);eq(s.completed[2],nil)
-    s.quests[2].rewardXP=nil
-    choices=B.Planner.TaskChoices(s,data,{1,2});eq(choices[1].questId,1)
-    choices=B.Planner.TaskChoices(s,data,{1,2,3});eq(choices[1].questId,1)
-    s.quests[2].rewardXP=1800
-    choices=B.Planner.TaskChoices(s,data,{1,2,3});eq(choices[1].questId,2)
-end)
 
 test("移动估时不依赖执行样本掉率或任务数量且不伪报总完成时间",function()
     local B,s,choices=timingFixture()
@@ -43,20 +28,6 @@ test("移动估时不依赖执行样本掉率或任务数量且不伪报总完�
     eq(B.TaskGuide.Timing(s.position,choices[1],s,B.Navigation).seconds,nil)
 end)
 
-test("所有模式综合经验与移动时间且执行耗时不影响排序",function()
-    local B,s,choices=timingFixture()
-    for _,mode in ipairs({"fast","relaxed","story"}) do
-        s.mode=mode
-        local order=B.Planner.TaskOrder(s,choices)
-        eq(order[1].questId,1);eq(order[1].orderBasis,"movement-xp")
-        eq(order[2].orderTiming.seconds,19);eq(s.position.x,0)
-    end
-    choices[1].work={seconds=0,missing=0};choices[1].remainingXP=1000000;choices[2].remainingXP=0
-    eq(B.Planner.TaskOrder(s,choices)[1].questId,1)
-    choices[1].remainingXP=12;choices[2].remainingXP=850
-    eq(B.Planner.TaskOrder(s,choices)[1].questId,2)
-    s.locked=1;eq(B.Planner.TaskOrder(s,choices)[1].questId,1)
-end)
 
 test("移动时间接近时继续当前任务且明显减少跑路才切换",function()
     local B,s,choices=timingFixture();s.currentTask=1
@@ -81,20 +52,6 @@ test("经验移动比处理同路程同经验零移动零经验与缺失经验",
     local order=B.Planner.TaskOrder(s,c);eq(#order,2);eq(order[1].questId,2);eq(order[1].orderBasis,"movement-time")
 end)
 
-test("未接候选同样按经验与完整移动成本比较且未知经验不阻断",function()
-    local B,s=timingFixture();s.quests={};s.level=20
-    B.Eligibility={Check=function() return true end};B.Progression={Advance=function() return {} end}
-    local quests={
-        {id=1,questLevel=20,taskFacts={level=20,xp={{1,100}}}},
-        {id=2,questLevel=20,taskFacts={level=20,xp={{1,1000}}}}}
-    local data={content={},GetQuest=function(_,id) return quests[id] end,
-        Target=function(_,q) return {map=1,x=q.id*7} end,
-        ReferenceObjectiveTargets=function(_,q) return {{text="目标"}},{{map=1,x=q.id*7}},false end}
-    local choices=B.Planner.TaskChoices(s,data,{1,2})
-    eq(choices[1].questId,2);eq(choices[1].status,"accept")
-    quests[2].taskFacts.xp=nil
-    choices=B.Planner.TaskChoices(s,data,{1,2});eq(#choices,2);eq(choices[1].questId,1)
-end)
 
 test("同状态含未知经验时按移动排序且保留手动和已接任务",function()
     local B,s=timingFixture();s.quests={};s.level=20

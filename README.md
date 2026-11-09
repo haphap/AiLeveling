@@ -73,6 +73,8 @@ python3 tools/build.py
 
 构建已包含语法、单元回归及数据检查，无需重复执行。仅调试逻辑时可单独运行 `lua5.1 tests/run.lua`。
 
+回归以实际用户行为为单位，已有场景覆盖的规则直接复用；固定数据结构由 `tools/validate.lua` 检查。删除重复的基础规则、缓存调用次数和逐条数据抄录检查，避免为内部实现细节单独维护场景。
+
 参考数据变化时按需运行 `python3 tools/check_reference.py inventory area cache delivery`，可只选受影响项。库存只检查双阵营代表；任务数据检查保留 18 个阵营／职业修正上下文。连续任务覆盖诊断使用现有 `tools/check_continuous_personas.py`，不随每个专项重复执行。
 
 固定版本依赖与含修正的离线盘点：

@@ -33,15 +33,6 @@ test("直线往返更快时保留炉石而不受旧单向道路限制",function(
     eq(p.best.xp,20001);assert(math.abs(p.best.seconds-3)<0.000001);eq(p.best.resources.hearthReady,3701)
     eq(s.hearthReady,100)
 end)
-test("束宽按任务序列计算且路线稳定比较完整动作身份",function()
-    local list={}
-    for index=1,12 do list[index]={id=1,sequence="one",routeKey="route"..index} end
-    list[13]={id=2,sequence="two",routeKey="second"}
-    local selected,count=A.Planner.Select(list,2);eq(#selected,13);eq(count,2)
-    local old={best={id=1,routeKey="old"}}
-    local fresh={best={id=2,routeKey="new",rate=100},alternatives={{id=1,routeKey="different",rate=100}}}
-    eq(A.Planner.Choose(old,fresh).best.id,2)
-end)
 test("已消耗等队时间从后续副本比较中扣除",function()
     local c,s=graph(),F.State();s.money=80;s.now=100
     local B,d=dungeon(c,s);d.waitSeconds=300

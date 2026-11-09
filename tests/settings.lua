@@ -361,11 +361,6 @@ test("行动提示音首次静默重复去重并过滤战斗与设置更新",fun
     B.action.kind="objective";B.QuestAssist:Update(true);eq(B.sounds,1)
     B.finish()
 end)
-test("装备偏好关闭时保留经验排序和手动来源优先",function()
-    local base={rate=100,priority=0};local gear={rate=97,priority=0,gear={upgrade={delta=10},chanceLow=1},gearSources={wanted=true}}
-    eq(A.Gear.Prefer({base,gear},base,{}, {mode="relaxed",gearPreference="xp"}),base)
-    eq(A.Gear.Prefer({base,gear},base,{gearTarget="wanted"},{mode="relaxed",gearPreference="xp"}),gear)
-end)
 test("取消自动换绑的当前任务组偏好可持久保存且拒绝损坏大值",function()
     local B=setup()
     B.char.declinedBinding="42:0,43:1";B:NormalizeCharacter(B.char);eq(B.char.declinedBinding,"42:0,43:1")

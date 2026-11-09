@@ -25,16 +25,6 @@ local function fixture()
     end
     return B,state,action,nav
 end
-test("参考飞行资料保留当前构建节点有向航线和分阵营耗时",function()
-    local B={};assert(loadfile("Data/Flights.lua"))("AiLeveling",B)
-    local n,p,t=0,0,0
-    for _,node in pairs(B.FlightData.nodes) do n=n+1;assert(#node.world==3 and node.factionMask>0) end
-    for _,edge in pairs(B.FlightData.paths) do p=p+1;assert(B.FlightData.nodes[edge[1]] and B.FlightData.nodes[edge[2]]) end
-    for _,times in pairs(B.FlightData.durations) do for _,seconds in pairs(times) do t=t+1;assert(seconds>0) end end
-    eq(n,71);eq(p,292);eq(t,881)
-    assert(B.FlightData.nodes[3276]);assert(not B.FlightData.nodes[3207])
-    assert(B.FlightData.durations.Alliance["2:4"]~=B.FlightData.durations.Alliance["4:2"])
-end)
 test("原生可达即可接续跨图任务，忽略票价与金币",function()
     local B,s,a,nav=fixture();local route=B.Flights.Guide(a,s,nav)
     eq(route.from,1);eq(route.to,2);eq(route.cost,nil);eq(route.flightSeconds,100)
@@ -66,30 +56,6 @@ test("新航线未知耗时可保留指引且有效绝对样本优先",function(
     B.FlightData.durations.Alliance["1:2"]=100;eq(B.Flights.Seconds(1,2,s),80)
     eq(B.Flights.Seconds(2,1,s),nil);s.faction="Horde";eq(B.Flights.Seconds(1,2,s),nil)
 end)
-test("同构建真实飞行记录按方向阵营使用且本角色有效样本优先",function()
-    local B,s=fixture();assert(loadfile("Data/Flights.lua"))("AiLeveling",B)
-    s.faction="Horde"
-    local expected={["10:11"]=112,["22:77"]=87,["23:25"]=110,["23:61"]=89,["25:23"]=142,
-        ["25:29"]=150,["25:77"]=90,["77:25"]=80,["80:23"]=210,["80:25"]=205/3}
-    local count=0
-    for key,value in pairs(B.FlightData.observedDurations.Horde) do
-        count=count+1;assert(expected[key]);assert(math.abs(value-expected[key])<0.000001)
-        local from,to=key:match("(%d+):(%d+)")
-        local seconds,source=B.Flights.Seconds(tonumber(from),tonumber(to),s)
-        assert(math.abs(seconds-expected[key])<0.000001);eq(source,"当前构建飞行记录")
-        s.taxiHops={[key]=B.FlightData.observedHops.Horde[key]}
-        seconds,source=B.Flights.Seconds(tonumber(from),tonumber(to),s)
-        assert(math.abs(seconds-expected[key])<0.000001);eq(source,"当前构建飞行记录")
-        s.taxiHops=nil
-    end
-    eq(count,10);eq(next(B.FlightData.observedDurations.Alliance),nil)
-    eq(B.Flights.Seconds(11,10,s),B.FlightData.durations.Horde["11:10"])
-    local key=B.Flights.TimeKey(23,25,s.faction,nil,s.taxiSpeed)
-    s.samples[key]={unit="seconds",n=2,mean=108};eq(B.Flights.Seconds(23,25,s),110)
-    s.samples[key].n=3;local seconds,source=B.Flights.Seconds(23,25,s);eq(seconds,108);eq(source,"本地实测")
-    s.faction="Alliance";eq(B.Flights.Seconds(23,25,s),nil)
-    s.faction="Horde";s.clientBuild="70863";eq(B.Flights.Seconds(23,25,s),nil)
-end)
 test("原生停靠改变时按实际分段估时且隔离不同路线的本地样本",function()
     local B,s=fixture()
     B.FlightData.observedDurations={Alliance={["1:2"]=80,["1:4"]=40,["4:2"]=20}}
@@ -104,15 +70,6 @@ test("原生停靠改变时按实际分段估时且隔离不同路线的本地�
     s.samples[via]=nil;B.FlightData.observedDurations.Alliance["4:2"]=nil
     eq(B.Flights.Seconds(1,2,s),nil)
     s.taxiHops={};eq(B.Flights.Seconds(1,2,s),30)
-end)
-test("真实转乘记录只匹配相同原生停靠顺序",function()
-    local B,s=fixture();assert(loadfile("Data/Flights.lua"))("AiLeveling",B);s.faction="Horde"
-    s.taxiHops={["80:23"]="80:25:23"}
-    local seconds,label=B.Flights.Seconds(80,23,s);eq(seconds,210);eq(label,"当前构建飞行记录")
-    s.taxiHops["80:23"]="80:25:61:23"
-    seconds,label=B.Flights.Seconds(80,23,s)
-    assert(math.abs(seconds-(205/3+B.FlightData.durations.Horde["25:61"]+B.FlightData.durations.Horde["61:23"]))<0.000001)
-    eq(label,"分段飞行参考")
 end)
 test("飞行加速只读取当前构建已学法术且接口未知保持未知",function()
     local B,s=fixture();local old=C_SpellBook
@@ -408,19 +365,6 @@ test("重新分配完整与部分库存保持数量且不会沿用旧短缺",fun
     end
     eq(prepared[1].itemShortage,nil);eq(prepared[2].itemShortage,true)
 end)
-test("相同物品分配复用路线缓存且不同分配隔离",function()
-    local B,s,nav,a,b=sharedItemsFixture()
-    local calls,timing,cache=0,B.TaskGuide.Timing,{}
-    B.TaskGuide.Timing=function(...) calls=calls+1;return timing(...) end
-    local first=B.TaskQueue.Evaluate({a,b},s,nav,nil,cache);assert(first)
-    local count=calls;assert(count>0)
-    collectgarbage("collect")
-    local again=B.TaskQueue.Evaluate({a,b},s,nav,nil,cache);assert(again)
-    eq(calls,count);eq(again.seconds,first.seconds)
-    s.bags[2592]=120
-    local full=B.TaskQueue.Evaluate({a,b},s,nav,nil,cache);assert(full)
-    assert(calls>count);eq(#full.steps[2].choice.stages,1);eq(full.bags[2592],0)
-end)
 test("持有上限按构建启用且同时计算接取发放与收集数量",function()
     local B,s,nav,a,b=limitedItemsFixture()
     local stage={targetId=18250,itemGain=1,gainItems={[18250]=1}}
@@ -576,17 +520,6 @@ test("相邻任务目标先集中完成再交付且经验只在交付计入",fun
     a.stagesComplete=false
     local nextOrder=B.TaskQueue.Solve({a,b},s,nav)
     eq(nextOrder[1],b);eq(a.executionAction,nil);eq(a.executionTiming,nil)
-end)
-test("交错移动缓存区分同一任务不同阶段和多个目标",function()
-    local B,s,nav,O,a,b=stagedFixture()
-    table.insert(a.stages,2,{kind="objective",questId=1,objectiveIndex=2,position={map=1,x=0.85,y=0}})
-    local _,queue=B.TaskQueue.Solve({a,b},s,nav)
-    eq(queue.seconds,180);eq(#queue.steps,5);eq(queue.xp,20)
-    local seen=0
-    for _,step in ipairs(queue.steps) do
-        if step.choice==a then seen=seen+1;eq(step.stage,a.stages[seen]) end
-    end
-    eq(seen,3)
 end)
 test("交错目标期间不提前获得交付经验或跨级减奖励",function()
     local B,s,nav,O,a,b=stagedFixture()
