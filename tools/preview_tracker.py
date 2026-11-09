@@ -13,11 +13,11 @@ FONT = '/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc'
 
 
 def main():
-    mode = 'dungeon' if len(sys.argv) > 1 and sys.argv[1] == 'dungeon' else 'tracker'
+    mode = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] in ('dungeon', 'assist') else 'tracker'
     blocked = mode == 'dungeon' and 'entry-blocked' in sys.argv[2:]
     journey = mode == 'dungeon' and 'journey' in sys.argv[2:]
     loot = mode == 'dungeon' and 'loot' in sys.argv[2:]
-    large = mode == 'tracker' and 'large' in sys.argv[1:]
+    large = mode != 'dungeon' and 'large' in sys.argv[1:]
     records = json.loads(subprocess.check_output(['lua5.1', 'tools/preview_tracker.lua', mode] + (['entry-blocked'] if blocked else ['journey'] if journey else ['loot'] if loot else ['large'] if large else []), cwd=ROOT))
     canvas = Image.new('RGBA', (round(records[0]['rect']['w'] * SCALE), round(records[0]['rect']['h'] * SCALE)))
     draw = ImageDraw.Draw(canvas)

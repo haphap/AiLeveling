@@ -371,6 +371,28 @@
       ],
       "scope": "Available/active gossip quest IDs, accepting, completable progress and reward choice indexes. Native payment confirmation and multiple choices retained for manual handling.",
       "clientVerified": false
+    },
+    {
+      "name": "Forever secure targeting and leveling statistics",
+      "sources": [
+        {
+          "file": "Interface/AddOns/Blizzard_FrameXML/SecureTemplates.lua",
+          "sha256": "b6e91f1d54f269a8bd66312b368e6fd7706028d366eee0167161ace9004cae23",
+          "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_FrameXML/SecureTemplates.lua"
+        },
+        {
+          "file": "Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitDocumentation.lua",
+          "sha256": "93004ac1b260127741471b7861360cdf7536afcb18d4c1db73b7259faa43e61c",
+          "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitDocumentation.lua"
+        },
+        {
+          "file": "Interface/AddOns/Blizzard_APIDocumentationGenerated/RaidMarkersDocumentation.lua",
+          "sha256": "f3375f723c1a2ba3a02872db3cfec4408f85b383fa192953179925adfc9fd464",
+          "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_APIDocumentationGenerated/RaidMarkersDocumentation.lua"
+        }
+      ],
+      "scope": "Secure macrotext hardware-click action, raidtarget set-unmarked action, public UnitXP/UnitXPMax/UnitLevel/UnitIsAFK and player XP events. No native code copied. Activity time uses session clock, excludes offline/pause/AFK; client event order and protected actions await live verification.",
+      "clientVerified": false
     }
   ],
   "native_symbol_checks": {

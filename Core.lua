@@ -6,7 +6,7 @@ A.defaults = { mode = "relaxed", minutes = 60, dungeons = true, role = "DAMAGER"
     scale = 1, alpha = 0.94, arrow = true, pins = true, items = true, highlight = true, worldHighlight = true,
     combatFold = true, learn = true, waitMinutes = 10, damageStyle = "auto",
     fontScale=1,density="normal",lockWindow=false,routes=true,minimapPins=true,
-    distanceUnits="yards",transportHints=true,quantity=true,missingChecks=true,rewardAdvice=true,sound=false,gearPreference="nearby",autoAccept=true,autoTurnIn=true }
+    distanceUnits="yards",transportHints=true,quantity=true,missingChecks=true,rewardAdvice=true,sound=false,gearPreference="nearby",autoAccept=true,autoTurnIn=true,targets=true,levelingStats=true }
 A.jobs, A.dirty, A.requestedItems = {}, false, {}
 
 function A:NormalizeSettings(settings)
@@ -37,6 +37,7 @@ function A:NormalizeSettings(settings)
 end
 
 function A:NormalizeCharacter(char)
+    if self.LevelingTracker then self.LevelingTracker.Normalize(char) end
     char.ignoreRepair=char.ignoreRepair==true or nil
     for _,key in ipairs({"skipped","deferredChains","samples","turnIns","pendingResets"}) do if type(char[key])~="table" then char[key]={} end end
     for _,key in ipairs({"skipped","deferredChains"}) do
@@ -137,7 +138,9 @@ function A:Replan()
 end
 
 function A:SetOption(key, value)
+    if key=="levelingStats" and self.LevelingTracker then self.LevelingTracker:Update("option") end
     self.settings[key] = value
+    if key=="levelingStats" and self.LevelingTracker then self.LevelingTracker:Update("option") end
     if key=="learn" then
         self.Observations:Reset(); self.Dungeon.runSample=nil;self.Transport:InvalidateSample()
         if self.Hearth then self.Hearth:InvalidateSample() end
@@ -172,12 +175,15 @@ function A:RestoreSettings()
 end
 
 function A:TogglePause()
+    if self.LevelingTracker then self.LevelingTracker:Update("pause") end
     self.char.paused = not self.char.paused
+    if self.LevelingTracker then self.LevelingTracker:Update("pause") end
     self.Observations:Reset()
     self.Transport:InvalidateSample()
     if self.Hearth then self.Hearth:InvalidateSample() end
     if self.WorldInteract then self.WorldInteract:Refresh() end
     self.Navigation:RefreshPins()
+    if self.QuestAssist then self.QuestAssist:Update(true) end
     self.dirty = true
 end
 
@@ -276,6 +282,9 @@ local frame = CreateFrame("Frame")
 A.frame = frame
 frame:RegisterEvent("ADDON_LOADED")
 frame:SetScript("OnEvent", function(_, event, ...)
+    if A.ready and A.LevelingTracker and (event=="PLAYER_ENTERING_WORLD" or event=="PLAYER_XP_UPDATE" and (...)=="player" or
+        event=="PLAYER_FLAGS_CHANGED" and (...)=="player" or event=="PLAYER_LEVEL_UP" or event=="PLAYER_DEAD" or
+        event=="PLAYER_ALIVE" or event=="PLAYER_UNGHOST" or event=="PLAYER_LOGOUT") then A.LevelingTracker:Update(event) end
     if A.ready and A.State and A.State.QuestOffersEvent then A.State:QuestOffersEvent(event) end
     local hearthChanged=A.ready and A.Hearth and A.Hearth:Event(event,...)
     if hearthChanged then A.dirty=true end
@@ -287,7 +296,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if not A.ready then return end
         for _, name in ipairs({"PLAYER_ENTERING_WORLD", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED",
             "QUEST_DATA_LOAD_RESULT", "QUEST_REMOVED", "QUEST_TURNED_IN", "QUEST_COMPLETE", "QUEST_PROGRESS", "QUEST_FINISHED", "GOSSIP_SHOW", "GOSSIP_CLOSED", "QUEST_DETAIL", "PLAYER_LEVEL_UP", "PLAYER_XP_UPDATE",
-            "PLAYER_EQUIPMENT_CHANGED", "BAG_UPDATE_DELAYED", "GROUP_ROSTER_UPDATE", "UNIT_CONNECTION", "PLAYER_ROLES_ASSIGNED", "UNIT_SPEED",
+            "PLAYER_EQUIPMENT_CHANGED", "BAG_UPDATE_DELAYED", "GROUP_ROSTER_UPDATE", "UNIT_CONNECTION", "PLAYER_ROLES_ASSIGNED", "UNIT_SPEED", "PLAYER_TARGET_CHANGED", "PLAYER_FLAGS_CHANGED", "PLAYER_LOGOUT",
             "ZONE_CHANGED_NEW_AREA", "PLAYER_DIFFICULTY_CHANGED", "PLAYER_ALIVE", "PLAYER_DEAD", "PLAYER_UNGHOST", "PLAYER_REGEN_ENABLED",
             "PLAYER_REGEN_DISABLED", "GET_ITEM_INFO_RECEIVED", "BAG_UPDATE_COOLDOWN", "BAG_OPEN", "BAG_CLOSED", "UPDATE_INVENTORY_DURABILITY", "MERCHANT_SHOW", "MERCHANT_UPDATE", "MERCHANT_CLOSED", "MERCHANT_FILTER_ITEM_UPDATE"}) do
             frame:RegisterEvent(name)
@@ -320,7 +329,9 @@ frame:SetScript("OnEvent", function(_, event, ...)
         local id,success=...
         if success and A.state.quests and A.state.quests[id] then A:RequestRefresh() end
     elseif event == "QUEST_TURNED_IN" then
+        local before=A.char.turnIns[(...)] or 0
         A.State:TurnedIn(...)
+        if A.LevelingTracker and (A.char.turnIns[(...)] or 0)>before then A.LevelingTracker:QuestTurnedIn() end
         A:RequestRefresh()
     elseif event=="UNIT_SPEED" then
         if (...)=="player" then A:RequestRefresh() end
@@ -330,6 +341,8 @@ frame:SetScript("OnEvent", function(_, event, ...)
         A.QuestAssist:ApplyPending()
         A.UI:Combat(false)
         A:RequestRefresh()
+    elseif event=="PLAYER_TARGET_CHANGED" then
+        A.QuestAssist:TargetStatus()
     elseif event == "PLAYER_REGEN_DISABLED" then
         A.UI:Combat(true)
     elseif event == "BAG_UPDATE_COOLDOWN" then
@@ -403,6 +416,7 @@ frame:SetScript("OnUpdate", function(_, elapsed)
         A.Instances:Update()
         A.Dungeon:Update()
         A.Observations:Update()
+        if A.LevelingTracker then A.LevelingTracker:Update() end
         A.Navigation:Update()
         if A.Routes then A.Routes:Update() end
         if A.dirty then A.UI:Render(); A.dirty = false end
@@ -414,12 +428,15 @@ SlashCmdList.AILEVELING = function(command)
     if A.startupError then A.UI:ShowStartupError(A.startupError);return end
     if not A.UI.frame then return end
     if command == "status" then A.UI:ShowText(A:Diagnostics())
+    elseif command=="stats" and A.LevelingTracker then A.UI:ShowText(A.LevelingTracker:Report())
     elseif command == "pause" then A:TogglePause()
     elseif command == "resume" then
         A.Selection:Clear()
         A.char.serviceStop=nil
         if A.Services then A.Services.binding=nil end
+        if A.LevelingTracker then A.LevelingTracker:Update("resume") end
         A.char.paused=false
+        if A.LevelingTracker then A.LevelingTracker:Update("resume") end
         A.Navigation.manual=nil
         A.State:Refresh(true)
     elseif command:match("^way ") then

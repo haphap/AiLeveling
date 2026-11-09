@@ -4,7 +4,7 @@
 ## Notes-zhCN: 根据角色状态衔接任务、导航与任务物品。开发构建。
 ## Notes: Adaptive leveling assistant (development build).
 ## Author: AiLeveling
-## Version: 0.1.128-dev
+## Version: 0.1.129-dev
 ## Dependencies: QuestieDB, HereBeDragons
 ## SavedVariables: AiLevelingDB
 ## SavedVariablesPerCharacter: AiLevelingCharDB
@@ -18,6 +18,7 @@ Transport.lua
 Hearth.lua
 Instances.lua
 Observations.lua
+LevelingTracker.lua
 Data/Content.lua
 Data/TaskFacts.lua
 Data/ItemLimits.lua

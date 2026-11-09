@@ -1,7 +1,7 @@
 return function(test,eq,F,A,plan)
 local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","SlashCmdList","InCombatLockdown","GetTime","UnitClass","RAID_CLASS_COLORS",
     "geterrorhandler","C_Item","C_PlayerInfo","C_Container","GetQuestID","GetNumQuestChoices","GetQuestItemLink","GetQuestReward",
-    "AcceptQuest","CompleteQuest","GetQuestMoneyToGet","IsQuestCompletable","IsShiftKeyDown","C_GossipInfo",
+    "AcceptQuest","CompleteQuest","GetQuestMoneyToGet","IsQuestCompletable","IsShiftKeyDown","C_GossipInfo","UnitGUID","UnitLevel","UnitXP","UnitXPMax","UnitIsAFK",
     "PlaySound","SOUNDKIT","NUM_CONTAINER_FRAMES","ContainerFrameCombinedBags","AiLeveling"}
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
@@ -63,6 +63,7 @@ local function setup(fullUI)
     B.Dungeon={};B.Transport={InvalidateSample=function() end,InFlight=function() return false end}
     B.State={Refresh=function() B.refreshes=(B.refreshes or 0)+1;B.state.revision=B.state.revision+1 end}
     B.Gear=A.Gear;B.ready=true
+    assert(loadfile("LevelingTracker.lua"))("AiLeveling",B)
     B.Selection={CanChoose=function() return false,"没有候选行程" end}
     local items={[500]={name="道具",loc="",stats=nil},[100]={name="奖励甲",loc="INVTYPE_HEAD",stats={ITEM_MOD_STRENGTH_SHORT=1}},
         [101]={name="奖励乙",loc="INVTYPE_HEAD",stats={ITEM_MOD_STRENGTH_SHORT=10}},[102]={name="药水",loc="",stats=nil}}
@@ -370,6 +371,97 @@ test("取消自动换绑的当前任务组偏好可持久保存且拒绝损坏�
     B.char.declinedBinding="42:0,43:1";B:NormalizeCharacter(B.char);eq(B.char.declinedBinding,"42:0,43:1")
     B.char.declinedBinding={};B:NormalizeCharacter(B.char);eq(B.char.declinedBinding,nil)
     B.char.declinedBinding=string.rep("x",4097);B:NormalizeCharacter(B.char);eq(B.char.declinedBinding,nil)
+    B.finish()
+end)
+test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝宏命令字符",function()
+    local B=setup();local Q=B.QuestAssist
+    local entities={[10]="矿工约翰",[20]="森林蜘蛛",[30]="旅店老板"}
+    B.Data.db={Npc={Get=function(id,key) eq(key,"name");return entities[id] end}}
+    B.action={kind="accept",questId=1,position={entityKind="npc",entityId=10}}
+    Q:Update();eq(Q.targetActive.id,10);eq(Q.targetButton.macrotext1,"/targetexact 矿工约翰")
+    eq(Q.targetButton.type1,"macro");eq(Q.targetButton.type2,"raidtarget")
+    eq(Q.targetButton.action2,"set-unmarked");eq(Q.targetButton.unit2,"target");eq(Q.targetButton.marker2,8)
+    eq(Q.targetButton.shown,true)
+    UnitGUID=function() return "Creature-0-1-2-3-10-0000" end
+    B.refreshAt=nil;B.frame.scripts.OnEvent(nil,"PLAYER_TARGET_CHANGED")
+    assert(Q.targetButton.status.value:find("已选中",1,true));eq(B.refreshAt,nil)
+    UnitGUID=function() return "Player-0-1-2-3-10-0000" end
+    Q:TargetStatus();eq(Q.targetButton.status.value:find("已选中",1,true),nil)
+    B.action={kind="objective",questId=1,objectiveIndex=1,targetKind="npc",targetId=20}
+    B.state.quests[1].objectives={{finished=false}}
+    B.combat(true);local writes=Q.targetButton.attributeWrites
+    Q:Update();eq(Q.targetActive.id,10);eq(Q.targetWanted.id,20);eq(Q.targetButton.attributeWrites,writes)
+    assert(Q.targetButton.status.value:find("战斗结束",1,true))
+    B.combat(false);B.frame.scripts.OnEvent(nil,"PLAYER_REGEN_ENABLED")
+    eq(Q.targetActive.id,20);eq(Q.targetButton.macrotext1,"/targetexact 森林蜘蛛")
+    B.state.quests[1].objectives[1].finished=true;Q:Update();eq(Q.targetButton.shown,false)
+    B.state.quests[1].objectives[1].finished=false
+    B.action.targetKind="item";B.action.targetId=100
+    B.Data.ObjectiveTargets=function() return {{objectiveIndex=1,entityKind="npc",entityId=20}} end
+    Q:Update();eq(Q.targetActive.id,20)
+    B.Data.ObjectiveTargets=function() return {{objectiveIndex=1,entityKind="object",entityId=20}} end
+    Q:Update();eq(Q.targetButton.shown,false)
+    B.action={kind="turnin",questId=1}
+    B.Data.Target=function(_,q,s) eq(s.quests[1].ready,true);return {entityKind="npc",entityId=10} end
+    Q:Update();eq(Q.targetActive.id,10)
+    B.action={kind="service",npcId=30};Q:Update();eq(Q.targetActive.id,30)
+    B.action={kind="manual"};Q:Update();eq(Q.targetButton.shown,false)
+    B.action={kind="service",npcId=30};B:SetOption("targets",false);eq(Q.targetButton.shown,false)
+    B:SetOption("targets",true);eq(Q.targetButton.shown,true)
+    B:TogglePause();eq(Q.targetButton.shown,false);B:TogglePause();eq(Q.targetButton.shown,true)
+    for _,name in ipairs({"NPC\n/run bad()","NPC;bad","NPC[foo]","NPC/bar","NPC\\bar"," NPC","NPC "}) do
+        entities[30]=name;Q:Update();eq(Q.targetButton.shown,false);eq(Q.targetButton.macrotext1,nil)
+    end
+    eq(B.state.quests[1].ready,nil);eq(next(B.state.completed),nil)
+    B.finish()
+end)
+test("练级统计按原生经验跨级结算，暂停AFK离线不计时并保留等级历史",function()
+    local B=setup();local T=B.LevelingTracker
+    local level,xp,maxXP,afk=20,900,1000,false
+    UnitLevel=function() return level end;UnitXP=function() return xp end;UnitXPMax=function() return maxXP end
+    UnitIsAFK=function(unit) eq(unit,"player");return afk end
+    local event=B.frame.scripts.OnEvent
+    event(nil,"PLAYER_XP_UPDATE","player")
+    eq(B.char.leveling.levels[20].partial,true)
+    B.time(20);xp=950;event(nil,"PLAYER_XP_UPDATE","target");eq(T.last.xp,900)
+    event(nil,"PLAYER_XP_UPDATE","player");eq(B.char.leveling.levels[20].xp,50)
+    B.time(30);xp=40;event(nil,"PLAYER_XP_UPDATE","player");eq(T.last.xp,950)
+    level=21;maxXP=2000;event(nil,"PLAYER_LEVEL_UP",21);event(nil,"PLAYER_XP_UPDATE","player")
+    eq(B.char.leveling.levels[20].xp,100);eq(B.char.leveling.levels[21].xp,40)
+    eq(T.sessionXP,140);eq(B.char.leveling.levels[20].completed,true)
+    eq(B.char.leveling.levels[20].seconds,20);eq(B.char.leveling.levels[21].partial,false)
+    B.time(40);B:TogglePause();eq(T.running,false)
+    B.time(90);xp=100;event(nil,"PLAYER_XP_UPDATE","player");B:TogglePause()
+    B.time(100);afk=true;event(nil,"PLAYER_FLAGS_CHANGED","player")
+    B.time(160);xp=150;event(nil,"PLAYER_XP_UPDATE","player")
+    afk=false;event(nil,"PLAYER_FLAGS_CHANGED","player")
+    B.time(170);xp=180;event(nil,"PLAYER_XP_UPDATE","player")
+    eq(T.sessionSeconds,50);eq(T.sessionXP,170)
+    event(nil,"PLAYER_DEAD");event(nil,"PLAYER_DEAD");eq(B.char.leveling.levels[21].deaths,1)
+    event(nil,"PLAYER_ALIVE");event(nil,"PLAYER_DEAD");eq(B.char.leveling.levels[21].deaths,2)
+    local stateModule={};assert(loadfile("State.lua"))("AiLeveling",stateModule)
+    B.State.TurnedIn=stateModule.State.TurnedIn
+    -- The module closure needs this addon's actual state and character tables.
+    stateModule.state=B.state;stateModule.char=B.char
+    event(nil,"QUEST_TURNED_IN",1,100,0);event(nil,"QUEST_TURNED_IN",1,100,0)
+    eq(B.char.leveling.levels[21].quests,1)
+    B.time(180);B:SetOption("levelingStats",false)
+    local before=B.char.leveling.levels[21].seconds
+    B.time(280);xp=300;event(nil,"PLAYER_XP_UPDATE","player");eq(B.char.leveling.levels[21].seconds,before)
+    B:SetOption("levelingStats",true);B.time(290);xp=320;event(nil,"PLAYER_XP_UPDATE","player")
+    eq(T.sessionSeconds,70);eq(T.sessionXP,190)
+    event(nil,"PLAYER_LOGOUT")
+    assert(loadfile("LevelingTracker.lua"))("AiLeveling",B);T=B.LevelingTracker
+    B.time(2000);event(nil,"PLAYER_XP_UPDATE","player")
+    eq(B.char.leveling.levels[21].seconds,before+10);eq(T.sessionSeconds,nil)
+    B.time(2010);xp=350;event(nil,"PLAYER_XP_UPDATE","player")
+    eq(T.sessionSeconds,10);eq(T.sessionXP,30)
+    local report=T:Report();assert(report:find("累计活动 0:01:20",1,true));assert(report:find("经验 220",1,true))
+    assert(report:find("20 级（中途开始） · 已升级",1,true));assert(report:find("交付 1 · 死亡 2",1,true))
+    B.char.leveling.levels[1]={seconds=0/0,xp=10,quests=0,deaths=0}
+    B.char.leveling.levels[61]={seconds=1,xp=10,quests=0,deaths=0}
+    T.Normalize(B.char);eq(B.char.leveling.levels[1],nil);eq(B.char.leveling.levels[61],nil)
+    eq(B.char.leveling.levels[20].completed,true)
     B.finish()
 end)
 dofile("tests/tracker.lua")(test,eq,setup)

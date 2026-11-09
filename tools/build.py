@@ -42,7 +42,8 @@ def main():
     entries.append(ROOT / 'docs' / 'LICENSE.InFlight.txt')
     bindings = ROOT / 'Bindings.xml'
     names = [binding.attrib['name'] for binding in ET.parse(bindings).getroot()]
-    assert names == [f'CLICK AiLevelingItem{i}:LeftButton' for i in range(1, 5)]
+    assert names == [f'CLICK AiLevelingItem{i}:LeftButton' for i in range(1, 5)] + [
+        'CLICK AiLevelingTarget:LeftButton', 'CLICK AiLevelingTarget:RightButton']
     entries.append(bindings)
     output = ROOT / 'dist' / f'AiLeveling-{version}.zip'
     output.parent.mkdir(exist_ok=True)

@@ -3,6 +3,73 @@ A.QuestAssist = { buttons = {}, highlights = {} }
 local Q = A.QuestAssist
 BINDING_HEADER_AILEVELING = "AiLeveling"
 for i=1,4 do _G["BINDING_NAME_CLICK AiLevelingItem"..i..":LeftButton"] = "使用当前任务物品 "..i end
+_G["BINDING_NAME_CLICK AiLevelingTarget:LeftButton"]="选中当前任务目标"
+_G["BINDING_NAME_CLICK AiLevelingTarget:RightButton"]="标记当前选中的目标"
+
+function Q.TargetNPC(action,state,data)
+    if not action or not state or not data or
+        (action.kind~="accept" and action.kind~="turnin" and action.kind~="objective" and action.kind~="service") then return end
+    local point=action.position
+    local id=action.npcId or (point and point.entityKind=="npc" and point.entityId)
+    local q=action.questId and data:GetQuest(action.questId)
+    local active=action.questId and (state.quests or {})[action.questId]
+    if action.kind=="objective" then
+        if not active or active.ready then return end
+        local objective=action.objectiveIndex and (active.objectives or {})[action.objectiveIndex]
+        if objective and objective.finished then return end
+        if not id and action.targetKind=="npc" then id=action.targetId end
+        if not id and q and data.ObjectiveTargets then
+            local points=data:ObjectiveTargets(q,state)
+            for _,p in ipairs(points) do
+                if (action.objectiveIndex and p.objectiveIndex==action.objectiveIndex or not action.objectiveIndex and #points==1) and p.entityKind=="npc" then
+                    point,id=p,p.entityId;break
+                end
+            end
+        end
+    elseif not id and q and data.Target then
+        local lookup={position=state.position,faction=state.faction,completed=state.completed,quests={}}
+        if action.kind=="turnin" then lookup.quests[q.id]={ready=true} end
+        point=data:Target(q,lookup)
+        id=point and point.entityKind=="npc" and point.entityId
+    end
+    if type(id)~="number" or id<=0 or id>=2147483648 or id%1~=0 then return end
+    local name=data.db and data.db.Npc.Get(id,"name") or
+        point and point.entityKind=="npc" and point.entityId==id and point.entityName
+    -- Names enter a secure macro: reject command syntax instead of escaping it.
+    if type(name)~="string" or name=="" or #name>200 or name:find("[%c%[%];/\\]") or name:match("^%s") or name:match("%s$") then return end
+    return {id=id,name=name}
+end
+
+function Q:TargetStatus()
+    if not self.targetButton then return end
+    local target=self.targetActive
+    self.targetButton.text:SetText(target and ("选中 "..target.name) or "")
+    local status="右键：为当前选中的目标加骷髅标记"
+    if self.targetQueued then status="战斗结束后更新目标"
+    elseif target and UnitGUID then
+        local guid=UnitGUID("target")
+        if (not canaccessvalue or canaccessvalue(guid)) and type(guid)=="string" then
+            local kind,id=guid:match("^(%a+)%-[^%-]+%-[^%-]+%-[^%-]+%-[^%-]+%-(%d+)%-")
+            if (kind=="Creature" or kind=="Vehicle") and tonumber(id)==target.id then status="已选中 · "..target.name.." · 右键标记" end
+        end
+    end
+    self.targetButton.status:SetText(status)
+end
+
+function Q:ApplyTarget()
+    if not self.targetButton then return end
+    if InCombatLockdown() then
+        self.targetQueued=(self.targetActive and self.targetActive.id)~=(self.targetWanted and self.targetWanted.id)
+        self:TargetStatus();return
+    end
+    self.targetQueued=nil
+    local target=self.targetWanted
+    self.targetActive=target
+    self.targetButton:SetAttribute("macrotext1",target and ("/targetexact "..target.name) or nil)
+    self.targetButton:SetShown(target~=nil)
+    self.targetButton:SetScale(A.settings.scale or 1)
+    self:TargetStatus()
+end
 
 function Q.DialogChoice(id,kind)
     local state,plan=A.state,A.plan
@@ -147,6 +214,25 @@ function Q:Create()
         self:Update()
     end)
     self.next:SetPoint("TOPLEFT",0,-80)
+    local target=CreateFrame("Button","AiLevelingTarget",UIParent,"SecureActionButtonTemplate,BackdropTemplate")
+    self.targetButton=target
+    target:SetSize(340,54);target:SetPoint("TOP",self.info,"BOTTOM",0,-8)
+    target:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1})
+    target:SetBackdropColor(0.035,0.05,0.065,0.96);target:SetBackdropBorderColor(A.UI:Accent())
+    target:RegisterForClicks("AnyUp","AnyDown")
+    target:SetAttribute("type1","macro")
+    target:SetAttribute("type2","raidtarget");target:SetAttribute("unit2","target")
+    target:SetAttribute("marker2",8);target:SetAttribute("action2","set-unmarked")
+    target.text=A.UI:Text(target,15);target.text:SetPoint("TOPLEFT",10,-8);target.text:SetWidth(320);target.text:SetMaxLines(1)
+    target.status=A.UI:Text(target,11);target.status:SetPoint("TOPLEFT",10,-32);target.status:SetWidth(320);target.status:SetMaxLines(1)
+    target:SetScript("OnEnter",function(b)
+        if self.targetActive then
+            GameTooltip:SetOwner(b,"ANCHOR_RIGHT");GameTooltip:SetText(self.targetActive.name)
+            GameTooltip:AddLine("左键选中任务目标；右键标记当前选中的目标。",1,1,1,true);GameTooltip:Show()
+        end
+    end)
+    target:SetScript("OnLeave",function() GameTooltip:Hide() end)
+    target:Hide()
     for i = 1, 4 do
         local button = CreateFrame("Button", "AiLevelingItem" .. i, f, "SecureActionButtonTemplate")
         button:SetSize(38, 38)
@@ -269,6 +355,7 @@ end
 function Q:Update(quiet)
     if not A.state or not A.settings then return end
     local action = A.Navigation:Current()
+    self.targetWanted=A.settings.targets~=false and not A.char.paused and Q.TargetNPC(action,A.state,A.Data) or nil
     local wanted = Q.Desired(action,A.state,A.settings.items,A.Data)
     local key = table.concat(wanted,":")
     if key~=self.key then self.page=1; self.key=key end
@@ -303,8 +390,9 @@ function Q:Update(quiet)
 end
 
 function Q:ApplyPending()
-    if InCombatLockdown() then return end
+    if InCombatLockdown() then self:ApplyTarget();return end
     self:Create()
+    self:ApplyTarget()
     if not self.pending then return end
     local items = self.pending
     self.active, self.pending = items, nil
