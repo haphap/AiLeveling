@@ -229,6 +229,32 @@ function UI.QuestStatus(state,id,plan)
     return "未接取"
 end
 
+function UI:QuestClick(id,button)
+    if type(id)~="number" or id<=0 or id%1~=0 then return end
+    if button~="RightButton" and IsModifiedClick and IsModifiedClick("CHATLINK") then
+        local link=GetQuestLink and GetQuestLink(id)
+        if (not canaccessvalue or canaccessvalue(link)) and type(link)=="string" and link~="" and
+            ChatFrameUtil and ChatFrameUtil.InsertLink and ChatFrameUtil.OpenChat then
+            if not ChatFrameUtil.InsertLink(link) then ChatFrameUtil.OpenChat(link) end
+        end
+        return true
+    end
+    if button~="RightButton" then return end
+    local index=C_QuestLog and C_QuestLog.GetLogIndexForQuestID and C_QuestLog.GetLogIndexForQuestID(id)
+    if (not canaccessvalue or canaccessvalue(index)) and type(index)=="number" and index>0 and QuestMapFrame_OpenToQuestDetails then
+        QuestMapFrame_OpenToQuestDetails(id)
+    else
+        for _,candidate in ipairs(self.Plan.Rows(A.plan)) do
+            if candidate.questId==id then
+                self.Plan.key=self.Plan.Key(candidate);self.Plan.message=nil
+                self.scroll:SetVerticalScroll(0);self.details:Show();self:SelectTab(1)
+                break
+            end
+        end
+    end
+    return true
+end
+
 function UI:TaskLines(compact)
     local state,plan=A.state or {},A.plan or {}
     local quests,ids,seen=state.quests or {},{},{}

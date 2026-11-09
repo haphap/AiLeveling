@@ -455,6 +455,29 @@
       ],
       "scope": "Native GetOptions status and base icon, SelectOption(gossipOptionID) and SelectOptionByIndex(orderIndex). Service icons follow the independently verified RestedXP behavior: trainer 132058, taxi 132057, binder 132052; shared icon 136458 also requires the native localized HOME token. Planned NPC or flight departure, live gossip context, quest priority, fresh plan, manual overrides and repeated-event suppression are checked before selection. No completion or flight departure is inferred from opening a service window.",
       "clientVerified": false
+    },
+    {
+      "name": "Forever quest details and chat links",
+      "build": "1.60.1.70862",
+      "sources": [
+        {
+          "file": "Interface/AddOns/Blizzard_UIPanels_Game/Mainline/QuestMapFrame.lua",
+          "sha256": "9685c713d6df62fa67f8774b55736025baadb2a219ed50ac3b421e7efefdd241",
+          "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/QuestMapFrame.lua"
+        },
+        {
+          "file": "Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua",
+          "sha256": "6a02ff22782645e4e24072a388f6ceba670a237839f315e6c659e2c55abdaab5",
+          "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua"
+        },
+        {
+          "file": "Interface/AddOns/Blizzard_ChatFrameBase/Camelot/ChatFrameUtilOverrides.lua",
+          "sha256": "1e62ae31d53328373e43c50929070f5a7ff13fff0d1ec42a46f60dfae2f00e6d",
+          "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_ChatFrameBase/Camelot/ChatFrameUtilOverrides.lua"
+        }
+      ],
+      "scope": "GetQuestLink takes a quest ID; native quest UI uses ChatFrameUtil.InsertLink and OpenChat to place links in the chat editor. QuestMapFrame_OpenToQuestDetails opens a selected quest. AiLeveling checks the current native GetLogIndexForQuestID before opening accepted quest details; unaccepted tasks reuse their existing plan preview. Only explicit mouse actions invoke these operations; current task, locks and progress are preserved. Layout, native window interaction and chat editor behavior await live verification.",
+      "clientVerified": false
     }
   ],
   "native_symbol_checks": {

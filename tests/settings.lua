@@ -4,7 +4,8 @@ local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","
     "AcceptQuest","CompleteQuest","GetQuestMoneyToGet","IsQuestCompletable","IsShiftKeyDown","C_GossipInfo","UnitGUID","UnitLevel","UnitXP","UnitXPMax","UnitIsAFK",
     "PlaySound","SOUNDKIT","NUM_CONTAINER_FRAMES","ContainerFrameCombinedBags","AiLeveling",
     "debugprofilestop","C_PlayerInteractionManager","UnitClassification","UnitName","UnitCanAttack","UnitIsDeadOrGhost","UnitOnTaxi","C_NamePlate","UIErrorsFrame","issecretvalue","canaccessvalue","Enum",
-    "IsInGroup","IsInRaid","UnitIsGroupLeader","UnitIsConnected","FollowUnit"}
+    "IsInGroup","IsInRaid","UnitIsGroupLeader","UnitIsConnected","FollowUnit",
+    "GetQuestLink","ChatFrameUtil","IsModifiedClick","QuestMapFrame_OpenToQuestDetails"}
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
     for _,key in ipairs({"SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag",
@@ -29,6 +30,7 @@ local function widget()
     w.SetBackdropColor=w.SetTextColor
     w.SetScale=function(self,v) self.scale=v end;w.SetAlpha=function(self,v) self.alpha=v end
     w.SetScript=function(self,event,callback) self.scripts[event]=callback end
+    w.RegisterForClicks=function(self,...) self.clicks={...} end
     w.RegisterEvent=function(self,event) self.events=self.events or {};self.events[event]=true end
     w.StartMoving=function(self) self.moving=true end;w.StopMovingOrSizing=function(self) self.moving=false end
     w.Show=function(self) self.shown=true end;w.Hide=function(self) self.shown=false end

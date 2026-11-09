@@ -261,6 +261,12 @@ local function text(parent,size,color)
     return value
 end
 
+local function questTooltip(owner,primary)
+    if not owner.questId then return end
+    GameTooltip:SetOwner(owner,"ANCHOR_RIGHT");GameTooltip:SetText(primary)
+    GameTooltip:AddLine("右键：查看任务详情\nShift+左键：插入任务链接",1,1,1,true);GameTooltip:Show()
+end
+
 function UI:CreateTracker()
     local f=CreateFrame("Frame","AiLevelingMain",UIParent)
     self.frame,self.tracker=f,{}
@@ -281,6 +287,13 @@ function UI:CreateTracker()
     T.rail=T.card:CreateTexture(nil,"ARTWORK");T.rail:SetPoint("TOPLEFT",0,-1);T.rail:SetPoint("BOTTOMLEFT",0,1);T.rail:SetWidth(2)
     T.step=text(T.card,12,"accent");T.step:SetPoint("TOPLEFT",16,-13)
     self.title=text(T.card,19);self.title:SetPoint("TOPLEFT",16,-36);self.title:SetWidth(326)
+    T.questTitle=CreateFrame("Button",nil,T.card);T.questTitle:SetAllPoints(self.title)
+    T.questTitle:RegisterForClicks("LeftButtonUp","RightButtonUp")
+    T.questTitle:SetScript("OnClick",function(_,mouse)
+        if not self:QuestClick(T.questTitle.questId,mouse) then self:QuestClick(T.questTitle.questId,"RightButton") end
+    end)
+    T.questTitle:SetScript("OnEnter",function(button) questTooltip(button,"左键：查看任务详情") end)
+    T.questTitle:SetScript("OnLeave",function() GameTooltip:Hide() end)
     T.currentScroll=CreateFrame("ScrollFrame",nil,T.card,"UIPanelScrollFrameTemplate")
     T.currentScroll:SetSize(308,80)
     T.currentChild=CreateFrame("Frame",nil,T.currentScroll);T.currentChild:SetSize(302,80);T.currentScroll:SetScrollChild(T.currentChild)
@@ -343,9 +356,12 @@ function UI:TrackerRow(index)
     row.metrics=text(row,13,palette.gold);row.metrics:SetWidth(270)
     row.separator=row:CreateTexture(nil,"BACKGROUND");row.separator:SetColorTexture(0.6,0.7,0.8,0.15)
     row.separator:SetPoint("BOTTOMLEFT",0,0);row.separator:SetSize(302,1)
-    row:SetScript("OnEnter",function() row:SetBackdropColor(0.15,0.23,0.27,0.35) end)
-    row:SetScript("OnLeave",function() row:SetBackdropColor(0,0,0,0) end)
-    row:SetScript("OnClick",function()
+    row:RegisterForClicks("LeftButtonUp","RightButtonUp")
+    row:SetScript("OnEnter",function() row:SetBackdropColor(0.15,0.23,0.27,0.35);questTooltip(row,row.lockable and "左键：锁定任务" or "任务详情") end)
+    row:SetScript("OnLeave",function() row:SetBackdropColor(0,0,0,0);GameTooltip:Hide() end)
+    row:SetScript("OnClick",function(_,button)
+        if self:QuestClick(row.questId,button) then return end
+        if not row.lockable then return end
         local ok,why=A.Selection:Lock(row.candidate,row.revision)
         if not ok then A:Message(why) end
     end)
@@ -360,6 +376,7 @@ function UI:RenderTracker()
     local action=A.Navigation:Current()
     local model=UI.TrackerModel(state,plan,action,A.char.paused)
     T.model=model
+    T.questTitle.questId=model.questId;T.questTitle:SetEnabled(model.questId~=nil)
     local map=state.position and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(state.position.map)
     T.zone:SetText(map and map.name or "AiLeveling")
     local ratio=state.maxXP and state.maxXP>0 and math.max(0,math.min(1,(state.xp or 0)/state.maxXP)) or 0
@@ -420,9 +437,9 @@ function UI:RenderTracker()
         row.status:SetTextColor(unpack(color));row.statusBack:SetColorTexture(color[1],color[2],color[3],0.16)
         row.progress:SetText(item.delivery or item.progress)
         row.metrics:SetText(item.metrics)
-        row.candidate,row.revision=item.candidate,plan.revision
-        local can=A.Selection.CanChoose(item.candidate,plan.revision)
-        row:SetEnabled(not item.deferred and can==true);row:Show()
+        row.candidate,row.revision,row.questId=item.candidate,plan.revision,item.questId
+        row.lockable=not item.deferred and A.Selection.CanChoose(item.candidate,plan.revision)==true
+        row:SetEnabled(true);row:Show()
     end
     for i=#model.rows+1,#T.rows do T.rows[i]:Hide() end
     T.queueLabel:SetText(string.format("%s  ·  已接取 %d  ·  未接取 %d",A.Navigation.manual and "任务列表" or "接下来",

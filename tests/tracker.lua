@@ -1,6 +1,6 @@
 return function(test,eq,setup)
-local function ready()
-    local B=setup()
+local function ready(fullUI)
+    local B=setup(fullUI)
     B.Message=function(_,message) B.lastMessage=message end
     B.indexReady=true
     B.state.quests={
@@ -100,17 +100,39 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     eq(T.rows[2].progress.value,"物品 2/4");eq(T.rows[1].enabled,true)
     B.state.quests[3].objectives[1].text="收集物品";B.UI:RenderTracker()
     eq(T.rows[2].progress.value,"收集物品 · 2/4")
+    local shown,inserted,opened,modified,focused=nil,nil,nil,false,true
+    C_QuestLog.GetLogIndexForQuestID=function(id) return id<=3 and id+10 end
+    QuestMapFrame_OpenToQuestDetails=function(id) shown=id end
+    GetQuestLink=function(id) return "|Hquest:"..id..":20|h[任务]|h" end
+    IsModifiedClick=function() return modified end
+    ChatFrameUtil={InsertLink=function(link) inserted=link;return focused end,OpenChat=function(link) opened=link end}
+    eq(T.rows[1].clicks[2],"RightButtonUp")
+    T.rows[1].scripts.OnClick(nil,"RightButton");eq(shown,2);eq(B.char.locked,nil)
+    T.questTitle.scripts.OnClick(nil,"LeftButton");eq(shown,1);eq(B.char.locked,nil)
+    modified=true;T.rows[1].scripts.OnClick(nil,"LeftButton")
+    eq(inserted,GetQuestLink(2));eq(opened,nil);eq(B.char.locked,nil)
+    focused=false;T.questTitle.scripts.OnClick(nil,"LeftButton");eq(opened,GetQuestLink(1))
+    GetQuestLink=function() end;opened=nil;T.rows[1].scripts.OnClick(nil,"LeftButton");eq(opened,nil);eq(B.char.locked,nil)
+    modified=false
     T.rows[1].scripts.OnClick();eq(B.char.locked,2)
+    B.state.revision=B.state.revision+1;T.rows[1].scripts.OnClick(nil,"RightButton");eq(shown,2)
+    eq(B.char.locked,2);eq(B.state.completed[2],nil)
     B.finish()
 end)
 test("后续任务按真实日志区分已接和未接且接取后更新进度",function()
-    local B=ready();local T=B.UI.tracker
+    local B=ready(true);local T=B.UI.tracker
     B.plan.taskChoices[#B.plan.taskChoices+1]={id="task:4",questId=4,kind="task",title="未接任务",
         actions={{questId=4,kind="accept",title="未接任务"}}}
     B.UI:RenderTracker()
     eq(T.rows[2].status.value,"已接取");eq(T.rows[3].status.value,"未接取")
     eq(T.rows[3].progress.value,"先接取，再推进任务目标")
     eq(T.model.acceptedCount,2);eq(T.model.unacceptedCount,1)
+    T.rows[3].scripts.OnClick(nil,"RightButton")
+    eq(B.UI.Plan.preview.questId,4);eq(B.UI.details.shown,true);eq(B.char.locked,nil)
+    B.state.skipped[4]=true;B.UI:RenderTracker();eq(T.rows[3].enabled,true)
+    T.rows[3].scripts.OnClick(nil,"LeftButton");eq(B.char.locked,nil);eq(B.state.skipped[4],true)
+    T.rows[3].scripts.OnClick(nil,"RightButton");eq(B.UI.Plan.preview.questId,4)
+    B.state.skipped[4]=nil
     assert(T.queueLabel.value:find("未接取 1",1,true))
     local starter=B.plan.taskChoices[4].actions[1]
     starter.position={map=1,x=0.5,y=0.5,startItemId=500};starter.text="使用「任务信件」接取任务。"
