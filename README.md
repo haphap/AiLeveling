@@ -14,7 +14,7 @@
 
 本地开发使用 QuestieDB 1.0.12 Forever 与 HereBeDragons 2.18；这两个依赖独立安装。
 
-升级时退出游戏，备份原 `AiLeveling` 目录及 `WTF/Account/<账号>/SavedVariables/AiLevelingDB.lua` 和 `WTF/Account/<账号>/<服务器>/<角色>/SavedVariables/AiLevelingCharDB.lua`，再用新包替换插件目录。保留 SavedVariables，原有配置会迁移为“默认”，角色任务选择和进度继续保留。回退时恢复原插件目录；若需还原升级前的设置，同时恢复备份的存档。
+升级时退出游戏，备份原 `AiLeveling` 目录及 `WTF/Account/<账号>/SavedVariables/AiLeveling.lua` 和 `WTF/Account/<账号>/<服务器>/<角色>/SavedVariables/AiLeveling.lua`，存在同名 `.lua.bak` 时一并备份，再用新包替换插件目录。保留 SavedVariables，原有配置会迁移为“默认”，角色任务选择和进度继续保留。回退时恢复原插件目录；若需还原升级前的设置，同时恢复备份的存档。
 
 统一验收包从 [Actions → Release](https://github.com/haphap/AiLeveling/actions/workflows/release.yml) 对应运行的 Artifacts 下载。解压下载文件后，使用其中的 `AiLeveling-*.zip` 安装；`BUILD.txt` 标明提交，`SHA256SUMS` 用于核对安装包。验收包与公开 Release 分开保存。
 
