@@ -603,15 +603,15 @@
       "build": "1.60.1.70862",
       "file": "Data/Dungeons.lua",
       "generator": "tools/build_dungeon_catalog.py",
-      "scope": "Readable party maps, provider entrances and candidate quest associations, including official Dalaran entry preparation. Runtime builds trips from native progress; announced maps without identity remain in DUNGEON_COVERAGE.",
+      "scope": "39 party-map identities: 34 readable Map records plus five same-build supplemental identities matched to native encounter records. Provider entrances, verified quest associations and regional-center approaches feed runtime trips from native progress.",
       "client_verified": false,
       "inputs": {
-        "docs/DUNGEON_COVERAGE.json": "2c2cc5a2644675799f7c22b3a1158de37244f890e3e575ce5415bbde13689d55",
+        "docs/DUNGEON_COVERAGE.json": "8b65f6c7e2df10d8842b8ad4296be8ff7602975ccaee0fd77ebca6e4436b8b36",
         "docs/DUNGEON_QUEST_LOCATIONS.json": "9a8376675167acabe6e0e5c2b9c3191ca3c829d10330c73dcf741f63aa310203"
       },
       "provider": "QuestieDB v1.0.12",
       "evidence_recipe": "docs/QUEST_LOCATION_RECIPE.json",
-      "sha256": "88a7770496257ca6c170ffd963839320ef948179e2b724425489129ba0aee116"
+      "sha256": "3003789ac2a1221839e8c8518d2636b3b6491cd96b7d7ddf87032b6ade620fcb"
     },
     {
       "id": "Forever-item-sets-1.60.1.70862",
@@ -828,7 +828,7 @@
       "build": "1.60.1.70862",
       "file": ".dependencies/DungeonEncounter-1.60.1.70862-zhCN.csv",
       "sha256": "13c1a984836ccd90fc0adb56d7a52aeacab794b7276e836f30e18a80725e8677",
-      "use": "263 encounter identities in 27 maps from the 34 party-map census. Used for known map/difficulty conflicts and missing native names. Not a required boss list, route, or proof of a full clear. Difficulty zero remains unspecified.",
+      "use": "297 encounter identities in 32 maps from the 39-entry party catalog. Used for known map/difficulty conflicts and missing native names. Difficulty zero remains unspecified; encounter identities do not require every optional boss or wing to be cleared.",
       "generator": "tools/build_dungeon_catalog.py",
       "verification": "tools/check_dungeon_encounters.py",
       "clientVerified": false
@@ -884,9 +884,18 @@
       "id": "Forever-announced-leveling-dungeons",
       "url": "https://news.blizzard.com/en-us/article/24301455/explore-the-new-dungeons-of-world-of-warcraft-forever",
       "checked": "2026-11-10",
-      "scope": "Nine announced new five-player leveling dungeons, recommended levels and locations; four mapped to readable 1.60.1.70862 records, five identities unresolved. Dalaran entry tasks matched by QuestieDB names and giver identities: Alliance 92432, Horde 93680 and 544. No inferred entry level, final unlock flag or exact entrance coordinate.",
+      "scope": "Nine announced new five-player leveling dungeons, recommended levels and locations. Five supplemental map identities matched to native encounter rows; fixed server cache adds 23 quest associations, with 15 explicitly located inside. Shaper's Terrace has no fixed quest association in these sources. Dalaran preparation: Alliance 92432, Horde 93680 and 544. Runtime uses native progress and regional centers where precise entrances are absent.",
       "audit": "docs/DUNGEON_COVERAGE.json",
-      "clientVerified": false
+      "clientVerified": false,
+      "identitySources": [
+        "https://wowforevertalents.com/dungeons/the-drowned-city/",
+        "https://wowforevertalents.com/dungeons/krol-dok-stronghold/",
+        "https://wowforevertalents.com/dungeons/alcaz-prison/",
+        "https://wowforevertalents.com/dungeons/blackmaw-hold/",
+        "https://wowforevertalents.com/dungeons/the-shaper-s-terrace/"
+      ],
+      "questSource": "https://github.com/JIVESCORP/eg-link-output-wowf/blob/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862/quests.enUS.json",
+      "questLicense": "CC BY 4.0"
     }
   ]
 }

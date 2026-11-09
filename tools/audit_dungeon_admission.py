@@ -69,7 +69,7 @@ def join(maps, tables):
     ids = {m['mapId'] for m in records}
     return {'maps': records, 'conditionIds': sorted(used), 'missingConditionIds': sorted(missing),
             'lfgWithoutMapId': [r for _, r in sorted(tables['LFGDungeons'].items()) if int(r['MapID']) == 0],
-            'mapDifficultyOutsideReadableParty': [r for _, r in sorted(tables['MapDifficulty'].items())
+            'mapDifficultyOutsideCatalog': [r for _, r in sorted(tables['MapDifficulty'].items())
                                                   if int(r['MapID']) not in ids]}
 
 
@@ -84,7 +84,7 @@ def build():
     census = json.loads(path.read_text())
     assert census['build'] == BUILD
     sources.append({'path': str(path.relative_to(ROOT)), 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()})
-    report = join(census['maps'], tables)
+    report = join(census['maps'] + census['supplementalMaps'], tables)
     report.update({'schema': 1, 'build': BUILD, 'sources': sources, 'clientVerified': False,
                    'coverageLocked': False, 'unreadableMapRecords': census['mapRead']['unreadableRecords']})
     report['counts'] = {'partyMaps': len(report['maps']),
@@ -99,7 +99,7 @@ def markdown(report):
     c = report['counts']
     lines = ['# Forever 副本准入资料核对', '',
              f'构建 {BUILD}；运行 `python3 tools/audit_dungeon_admission.py --check` 可重现核对。', '',
-             f'已关联 {c["partyMaps"]} 个可读 party 地图、{c["mapDifficulties"]} 条地图难度记录。'
+             f'已关联目录中 {c["partyMaps"]} 个副本（含五个补充身份）、{c["mapDifficulties"]} 条地图难度记录。'
              f'引用 {c["referencedConditions"]} 个角色条件，其中 {c["missingConditions"]} 个条件行未出现在固定版本下载表中。', '',
              'MapDifficulty 的提示文字、PlayerCondition 的原始等级、ContentTuning 的等级配置分开保留。'
              '角色条件使用 Flags 和 ContentTuningID，字段含义及运行时覆盖需继续确认；不从提示文字推导准入等级。', '',
@@ -114,10 +114,9 @@ def markdown(report):
         if not m['difficulties']:
             lines.append(f'| {m["mapId"]} | {m["name"]} | 未找到 | — | — |')
     lines += ['', f'LFG 表有 {c["lfgWithoutMapId"]} 条 MapID=0 的记录，保留原文，不按同名或相同调节表推断实例身份。', '',
-              f'原地图盘点另有 {report["unreadableMapRecords"]} 条未读记录，未纳入已关联分母。', '',
+              f'原地图表仍有 {report["unreadableMapRecords"]} 条未读记录；补充身份的来源与范围见 DUNGEON_COVERAGE.md，未将其计作成功解码。', '',
               '数据来源、SHA256、全部原始条件字段与逐难度关联见 DUNGEON_ADMISSION.json。', '',
-              '下一步：确认当前构建的条件标志与动态覆盖；补齐缺失条件或读取客户端准入结果；'
-              '再按实际难度接入入口限制。任务的接取等级和场景缩放等级不能代替进入条件。', '']
+              '运行时沿用客户端返回的进入错误与实际实例状态，允许重新检查和退出安排；静态资料用于核对。任务接取等级和推荐等级分别保留。', '']
     return '\n'.join(lines)
 
 

@@ -4,7 +4,7 @@
 
 地图表 81 条中读取 73 条，另 8 条当前不可读取，编号未知。分类基于实例类型；练级范围和完整行程尚未验收。
 
-[官方新练级副本清单](https://news.blizzard.com/en-us/article/24301455/explore-the-new-dungeons-of-world-of-warcraft-forever)列出九项；四项已关联当前地图，另五项尚缺地图身份和入口资料。推荐等级不作为准入等级。
+[官方新练级副本清单](https://news.blizzard.com/en-us/article/24301455/explore-the-new-dungeons-of-world-of-warcraft-forever)列出九项；四项来自可读地图表，另五项以同构建客户端提取记录关联原生首领表补入目录。原始地图读取分母保持不变。推荐等级不作为准入等级。
 
 | 官方名称 | 推荐等级 | 地区 | 实例 ID |
 | --- | --- | --- | --- |
@@ -12,11 +12,22 @@
 | Ruins of Lordaeron | 15—20 | Tirisfal Glades | 2999 |
 | Excavation Site | 24—29 | Wetlands | 2998 |
 | City of Dalaran | 28—33 | Alterac Mountains | 2959 |
-| The Drowned City | 35—40 | Stranglethorn Vale, west of Grom'gol | 尚未关联 |
-| Krol'dok Stronghold | 40—45 | Riverglades | 尚未关联 |
-| Alcaz Prison | 48—53 | Dustwallow Marsh, Alcaz Island | 尚未关联 |
-| Blackmaw Hold | 55—60 | Azshara | 尚未关联 |
-| Shaper's Terrace | 58—60 | Un'Goro Crater, northern hills | 尚未关联 |
+| The Drowned City | 35—40 | Stranglethorn Vale, west of Grom'gol | 2970 |
+| Krol'dok Stronghold | 40—45 | Riverglades | 3039 |
+| Alcaz Prison | 48—53 | Dustwallow Marsh, Alcaz Island | 2994 |
+| Blackmaw Hold | 55—60 | Azshara | 2974 |
+| Shaper's Terrace | 58—60 | Un'Goro Crater, northern hills | 3001 |
+
+补充地图身份来源及目标资料：
+
+- [沉没之城](https://wowforevertalents.com/dungeons/the-drowned-city/)：实例 2970，原生首领 6 项，缓存关联任务 7 项。
+- [克罗多克要塞](https://wowforevertalents.com/dungeons/krol-dok-stronghold/)：实例 3039，原生首领 5 项，缓存关联任务 12 项。
+- [奥卡兹监狱](https://wowforevertalents.com/dungeons/alcaz-prison/)：实例 2994，原生首领 5 项，缓存关联任务 3 项。
+- [黑喉要塞](https://wowforevertalents.com/dungeons/blackmaw-hold/)：实例 2974，原生首领 7 项，缓存关联任务 1 项。
+- [塑造者之台](https://wowforevertalents.com/dungeons/the-shaper-s-terrace/)：实例 3001，原生首领 11 项，缓存关联任务 0 项。
+
+补充目录的入口使用官方所在地区中心及入口方向说明；已确认在本内完成的目标由同构建服务器任务原文关联，其他分类任务保持普通关联。任务接交者仍从 QuestieDB 查询，缺少的任务以实际日志接入。塑造者之台的固定任务关联尚缺。
+
 
 达拉然入城准备：联盟从任务 92432（An Alarming Request）开始，部落关联 93680（Key to the City）及 544（Prison Break In）。目录接入这些准备任务，资格和进度继续由数据库及原生日志决定；资料尚未给出整条解锁链的最终完成标记。
 

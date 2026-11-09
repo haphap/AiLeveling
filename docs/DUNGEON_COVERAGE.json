@@ -26,6 +26,18 @@
     {
       "path": ".dependencies/terrain-crop-active-70862-zhCN/extract0-rdx8bxsz/dbc/zhCN/Map.db2",
       "sha256": "e1c512fb47642216fc0e90a4bcf9bddf73a30d8cd1f7b39a22171dfdb6fff580"
+    },
+    {
+      "path": ".dependencies/LFGDungeons-1.60.1.70862-zhCN.csv",
+      "sha256": "5005d79edb52a8c75d642174c475fa2a81c728f8b0ed0f5b9e4575a1e53cbfb6"
+    },
+    {
+      "path": ".dependencies/DungeonEncounter-1.60.1.70862-zhCN.csv",
+      "sha256": "13c1a984836ccd90fc0adb56d7a52aeacab794b7276e836f30e18a80725e8677"
+    },
+    {
+      "path": ".dependencies/eg-link-156f29c9/1.60.1.70862/quests.enUS.json",
+      "sha256": "0f8b890bbedc79f6c80b99511a88ff5f699048f4a34303bd6d0a0281cfde4b7a"
     }
   ],
   "counts": {
@@ -3935,6 +3947,218 @@
       "reason": "not-linked-to-readable-client-map"
     }
   ],
+  "supplementalMaps": [
+    {
+      "mapId": 2970,
+      "name": "沉没之城",
+      "classification": "party",
+      "mapRecordDecoded": false,
+      "identitySource": "https://wowforevertalents.com/dungeons/the-drowned-city/",
+      "encounterIds": [
+        3474,
+        3475,
+        3476,
+        3478,
+        3479,
+        3511
+      ],
+      "aliases": [
+        16550
+      ],
+      "entrances": [],
+      "entryArea": 33,
+      "entryHint": "前往荆棘谷格罗姆高营地以西的海域，从水下洞口进入沉没之城。",
+      "categoryQuestIds": [
+        95775,
+        95776,
+        95787,
+        95789,
+        95791,
+        96774,
+        97130
+      ],
+      "objectiveAreas": {
+        "95775": {
+          "item:270308": 16550,
+          "item:270309": 16550,
+          "item:270310": 16550,
+          "item:270311": 16550
+        },
+        "95776": {
+          "npc:258924": 16550
+        },
+        "95787": {
+          "item:270308": 16550,
+          "item:270309": 16550,
+          "item:270310": 16550,
+          "item:270311": 16550
+        },
+        "95789": {
+          "item:270333": 16550
+        },
+        "95791": {
+          "npc:260042": 16550,
+          "npc:260353": 16550
+        },
+        "96774": {
+          "item:276894": 16550
+        },
+        "97130": {
+          "item:276894": 16550
+        }
+      },
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 3039,
+      "name": "克罗多克要塞",
+      "classification": "party",
+      "mapRecordDecoded": false,
+      "identitySource": "https://wowforevertalents.com/dungeons/krol-dok-stronghold/",
+      "encounterIds": [
+        3449,
+        3450,
+        3451,
+        3452,
+        3453
+      ],
+      "aliases": [
+        16842
+      ],
+      "entrances": [],
+      "entryArea": 16591,
+      "entryHint": "前往河谷林地北部的克罗多克要塞，从山间洞口进入。",
+      "categoryQuestIds": [
+        94968,
+        94972,
+        94973,
+        94974,
+        94980,
+        94981,
+        94982,
+        94983,
+        94984,
+        94997,
+        94998,
+        96771
+      ],
+      "objectiveAreas": {
+        "94968": {
+          "item:267086": 16842
+        },
+        "94972": {
+          "item:267104": 16842
+        },
+        "94982": {
+          "item:267086": 16842
+        },
+        "94983": {
+          "item:267234": 16842
+        },
+        "94984": {
+          "item:267104": 16842
+        },
+        "96771": {
+          "npc:268423": 16842
+        }
+      },
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2994,
+      "name": "奥卡兹监狱",
+      "classification": "party",
+      "mapRecordDecoded": false,
+      "identitySource": "https://wowforevertalents.com/dungeons/alcaz-prison/",
+      "encounterIds": [
+        3403,
+        3409,
+        3410,
+        3415,
+        3418
+      ],
+      "aliases": [
+        16620
+      ],
+      "entrances": [],
+      "entryArea": 15,
+      "entryHint": "前往尘泥沼泽东北方的奥卡兹岛，进入岛下的奥卡兹监狱。",
+      "categoryQuestIds": [
+        96337,
+        96377,
+        96772
+      ],
+      "objectiveAreas": {
+        "96772": {
+          "item:276890": 16620
+        }
+      },
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2974,
+      "name": "黑喉要塞",
+      "classification": "party",
+      "mapRecordDecoded": false,
+      "identitySource": "https://wowforevertalents.com/dungeons/blackmaw-hold/",
+      "encounterIds": [
+        3315,
+        3316,
+        3322,
+        3323,
+        3327,
+        3334,
+        3336
+      ],
+      "aliases": [
+        16554
+      ],
+      "entrances": [],
+      "entryArea": 16,
+      "entryHint": "前往艾萨拉北部的熊怪城门，沿隧道进入黑喉要塞。",
+      "categoryQuestIds": [
+        97173
+      ],
+      "objectiveAreas": {
+        "97173": {
+          "item:276893": 16554
+        }
+      },
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 3001,
+      "name": "塑造者之台",
+      "classification": "party",
+      "mapRecordDecoded": false,
+      "identitySource": "https://wowforevertalents.com/dungeons/the-shaper-s-terrace/",
+      "encounterIds": [
+        3498,
+        3499,
+        3500,
+        3501,
+        3502,
+        3503,
+        3504,
+        3505,
+        3507,
+        3597,
+        3600
+      ],
+      "aliases": [],
+      "entrances": [],
+      "entryArea": 490,
+      "entryHint": "前往安戈洛环形山北部山地，进入塑造者之台。",
+      "categoryQuestIds": [],
+      "objectiveAreas": {},
+      "clientVerified": false,
+      "itineraryReady": false
+    }
+  ],
   "announcedLevelingDungeons": {
     "source": "https://news.blizzard.com/en-us/article/24301455/explore-the-new-dungeons-of-world-of-warcraft-forever",
     "entries": [
@@ -3990,7 +4214,21 @@
           40
         ],
         "location": "Stranglethorn Vale, west of Grom'gol",
-        "mapId": null
+        "mapId": 2970,
+        "identitySource": "https://wowforevertalents.com/dungeons/the-drowned-city/",
+        "lfgId": 3270,
+        "areaId": 16550,
+        "entryArea": 33,
+        "entryHint": "前往荆棘谷格罗姆高营地以西的海域，从水下洞口进入沉没之城。",
+        "objectiveQuestIds": [
+          95775,
+          95776,
+          95787,
+          95789,
+          95791,
+          96774,
+          97130
+        ]
       },
       {
         "name": "Krol'dok Stronghold",
@@ -3999,7 +4237,20 @@
           45
         ],
         "location": "Riverglades",
-        "mapId": null
+        "mapId": 3039,
+        "identitySource": "https://wowforevertalents.com/dungeons/krol-dok-stronghold/",
+        "lfgId": 3275,
+        "areaId": 16842,
+        "entryArea": 16591,
+        "entryHint": "前往河谷林地北部的克罗多克要塞，从山间洞口进入。",
+        "objectiveQuestIds": [
+          94968,
+          94972,
+          94982,
+          94983,
+          94984,
+          96771
+        ]
       },
       {
         "name": "Alcaz Prison",
@@ -4008,7 +4259,15 @@
           53
         ],
         "location": "Dustwallow Marsh, Alcaz Island",
-        "mapId": null
+        "mapId": 2994,
+        "identitySource": "https://wowforevertalents.com/dungeons/alcaz-prison/",
+        "lfgId": 3269,
+        "areaId": 16620,
+        "entryArea": 15,
+        "entryHint": "前往尘泥沼泽东北方的奥卡兹岛，进入岛下的奥卡兹监狱。",
+        "objectiveQuestIds": [
+          96772
+        ]
       },
       {
         "name": "Blackmaw Hold",
@@ -4017,7 +4276,15 @@
           60
         ],
         "location": "Azshara",
-        "mapId": null
+        "mapId": 2974,
+        "identitySource": "https://wowforevertalents.com/dungeons/blackmaw-hold/",
+        "lfgId": 3268,
+        "areaId": 16554,
+        "entryArea": 16,
+        "entryHint": "前往艾萨拉北部的熊怪城门，沿隧道进入黑喉要塞。",
+        "objectiveQuestIds": [
+          97173
+        ]
       },
       {
         "name": "Shaper's Terrace",
@@ -4026,7 +4293,11 @@
           60
         ],
         "location": "Un'Goro Crater, northern hills",
-        "mapId": null
+        "mapId": 3001,
+        "identitySource": "https://wowforevertalents.com/dungeons/the-shaper-s-terrace/",
+        "lfgId": 3267,
+        "entryArea": 490,
+        "entryHint": "前往安戈洛环形山北部山地，进入塑造者之台。"
       }
     ]
   },

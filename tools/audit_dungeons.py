@@ -23,11 +23,23 @@ ANNOUNCED = [
     {'name':'Excavation Site','levels':[24,29],'location':'Wetlands','mapId':2998},
     {'name':'City of Dalaran','levels':[28,33],'location':'Alterac Mountains','mapId':2959,
      'preparationQuests':{'Alliance':[92432],'Horde':[93680,544]}},
-    {'name':'The Drowned City','levels':[35,40],'location':'Stranglethorn Vale, west of Grom\'gol','mapId':None},
-    {'name':"Krol'dok Stronghold",'levels':[40,45],'location':'Riverglades','mapId':None},
-    {'name':'Alcaz Prison','levels':[48,53],'location':'Dustwallow Marsh, Alcaz Island','mapId':None},
-    {'name':'Blackmaw Hold','levels':[55,60],'location':'Azshara','mapId':None},
-    {'name':"Shaper's Terrace",'levels':[58,60],'location':"Un'Goro Crater, northern hills",'mapId':None},
+    {'name':'The Drowned City','levels':[35,40],'location':'Stranglethorn Vale, west of Grom\'gol','mapId':2970,
+     'identitySource':'https://wowforevertalents.com/dungeons/the-drowned-city/','lfgId':3270,'areaId':16550,'entryArea':33,
+     'entryHint':'前往荆棘谷格罗姆高营地以西的海域，从水下洞口进入沉没之城。',
+     'objectiveQuestIds':[95775,95776,95787,95789,95791,96774,97130]},
+    {'name':"Krol'dok Stronghold",'levels':[40,45],'location':'Riverglades','mapId':3039,
+     'identitySource':'https://wowforevertalents.com/dungeons/krol-dok-stronghold/','lfgId':3275,'areaId':16842,'entryArea':16591,
+     'entryHint':'前往河谷林地北部的克罗多克要塞，从山间洞口进入。',
+     'objectiveQuestIds':[94968,94972,94982,94983,94984,96771]},
+    {'name':'Alcaz Prison','levels':[48,53],'location':'Dustwallow Marsh, Alcaz Island','mapId':2994,
+     'identitySource':'https://wowforevertalents.com/dungeons/alcaz-prison/','lfgId':3269,'areaId':16620,'entryArea':15,
+     'entryHint':'前往尘泥沼泽东北方的奥卡兹岛，进入岛下的奥卡兹监狱。','objectiveQuestIds':[96772]},
+    {'name':'Blackmaw Hold','levels':[55,60],'location':'Azshara','mapId':2974,
+     'identitySource':'https://wowforevertalents.com/dungeons/blackmaw-hold/','lfgId':3268,'areaId':16554,'entryArea':16,
+     'entryHint':'前往艾萨拉北部的熊怪城门，沿隧道进入黑喉要塞。','objectiveQuestIds':[97173]},
+    {'name':"Shaper's Terrace",'levels':[58,60],'location':"Un'Goro Crater, northern hills",'mapId':3001,
+     'identitySource':'https://wowforevertalents.com/dungeons/the-shaper-s-terrace/','lfgId':3267,'entryArea':490,
+     'entryHint':'前往安戈洛环形山北部山地，进入塑造者之台。'},
 ]
 
 def digest(path):
@@ -101,14 +113,45 @@ def build():
     unresolved = [{'areaId':int(area),'name':d['name'],'reason':'not-linked-to-readable-client-map'}
                   for area,d in base['dungeons'].items() if int(area) not in represented]
     rows.sort(key=lambda r:r['mapId']); unresolved.sort(key=lambda r:r['areaId'])
+    extra_sources = {
+        '.dependencies/LFGDungeons-1.60.1.70862-zhCN.csv':'5005d79edb52a8c75d642174c475fa2a81c728f8b0ed0f5b9e4575a1e53cbfb6',
+        '.dependencies/DungeonEncounter-1.60.1.70862-zhCN.csv':'13c1a984836ccd90fc0adb56d7a52aeacab794b7276e836f30e18a80725e8677',
+        '.dependencies/eg-link-156f29c9/1.60.1.70862/quests.enUS.json':'0f8b890bbedc79f6c80b99511a88ff5f699048f4a34303bd6d0a0281cfde4b7a',
+    }
+    for name,expected in extra_sources.items(): assert digest(ROOT/name)==expected, name
+    lfg = {int(r['ID']):r for r in csv.DictReader(io.StringIO((ROOT / '.dependencies/LFGDungeons-1.60.1.70862-zhCN.csv').read_text()))}
+    encounters = list(csv.DictReader(io.StringIO((ROOT / '.dependencies/DungeonEncounter-1.60.1.70862-zhCN.csv').read_text())))
+    cached = json.loads((ROOT / '.dependencies/eg-link-156f29c9/1.60.1.70862/quests.enUS.json').read_text())['quests']
+    supplemental=[]
+    for announced in ANNOUNCED:
+        if not announced.get('identitySource'): continue
+        mid,area=announced['mapId'],announced.get('areaId')
+        encounter_ids=sorted(int(r['ID']) for r in encounters if int(r['MapID'])==mid)
+        assert encounter_ids and mid not in {r['mapId'] for r in rows}
+        quests=sorted(int(id) for id,q in cached.items() if area and q.get('zoneAreaId')==area)
+        targets={}
+        for id in announced.get('objectiveQuestIds',[]):
+            quest=cached[str(id)]
+            assert quest['zoneAreaId']==area and id in quests
+            targets[str(id)]={}
+            for o in quest['objectives']:
+                kind={'monster':'npc','gameObject':'object','item':'item'}[o['type']]
+                targets[str(id)][f'{kind}:{o["objectId"]}']=area
+        supplemental.append({'mapId':mid,'name':lfg[announced['lfgId']]['Name_lang'],'classification':'party',
+            'mapRecordDecoded':False,'identitySource':announced['identitySource'],'encounterIds':encounter_ids,
+            'aliases':[area] if area else [],'entrances':[],'entryArea':announced['entryArea'],
+            'entryHint':announced['entryHint'],'categoryQuestIds':quests,'objectiveAreas':targets,
+            'clientVerified':False,'itineraryReady':False})
     counts = dict(sorted(Counter(r['classification'] for r in rows).items()))
     return {'schema':1,'build':'1.60.1.70862','clientVerified':False,'coverageLocked':False,
             'scope':'Readable client Map.db2 records plus all 18 effective faction/class correction contexts',
             'mapRead':{'headerRecords':header_records,'decodedRecords':len(rows),'unreadableRecords':header_records-len(rows),'copyRecords':0},
             'sources':[{'path':'.dependencies/'+n,'sha256':h} for n,h in PINS.items()] +
-                      [{'path':str(source.relative_to(ROOT)),'sha256':digest(source)},
-                       {'path':str(raw_map.relative_to(ROOT)),'sha256':digest(raw_map)}],
+                       [{'path':str(source.relative_to(ROOT)),'sha256':digest(source)},
+                        {'path':str(raw_map.relative_to(ROOT)),'sha256':digest(raw_map)}] +
+                       [{'path':name,'sha256':sha} for name,sha in extra_sources.items()],
             'counts':counts,'maps':rows,'identityConflicts':conflicts,'unmatchedProviderAreas':unresolved,
+            'supplementalMaps':supplemental,
             'announcedLevelingDungeons':{'source':ANNOUNCEMENT,'entries':ANNOUNCED},
             'limits':['Eight client map records are inaccessible to this offline reader; their identities are unknown.',
                       'Party type does not prove enabled content, suitable level, entrance access, or a complete itinerary.',
@@ -120,11 +163,15 @@ def markdown(report):
     lines = ['# Forever 副本内容清单', '',
              '目标构建 1.60.1.70862；由 `python3 tools/audit_dungeons.py` 生成。', '',
              '地图表 81 条中读取 73 条，另 8 条当前不可读取，编号未知。分类基于实例类型；练级范围和完整行程尚未验收。', '',
-              f'[官方新练级副本清单]({ANNOUNCEMENT})列出九项；四项已关联当前地图，另五项尚缺地图身份和入口资料。推荐等级不作为准入等级。', '',
+              f'[官方新练级副本清单]({ANNOUNCEMENT})列出九项；四项来自可读地图表，另五项以同构建客户端提取记录关联原生首领表补入目录。原始地图读取分母保持不变。推荐等级不作为准入等级。', '',
               '| 官方名称 | 推荐等级 | 地区 | 实例 ID |',
               '| --- | --- | --- | --- |']
     for row in report['announcedLevelingDungeons']['entries']:
         lines.append(f'| {row["name"]} | {row["levels"][0]}—{row["levels"][1]} | {row["location"]} | {row["mapId"] or "尚未关联"} |')
+    lines += ['', '补充地图身份来源及目标资料：', '']
+    for row in report['supplementalMaps']:
+        lines.append(f'- [{row["name"]}]({row["identitySource"]})：实例 {row["mapId"]}，原生首领 {len(row["encounterIds"])} 项，缓存关联任务 {len(row["categoryQuestIds"])} 项。')
+    lines += ['', '补充目录的入口使用官方所在地区中心及入口方向说明；已确认在本内完成的目标由同构建服务器任务原文关联，其他分类任务保持普通关联。任务接交者仍从 QuestieDB 查询，缺少的任务以实际日志接入。塑造者之台的固定任务关联尚缺。', '']
     lines += ['', '达拉然入城准备：联盟从任务 92432（An Alarming Request）开始，部落关联 93680（Key to the City）及 544（Prison Break In）。目录接入这些准备任务，资格和进度继续由数据库及原生日志决定；资料尚未给出整条解锁链的最终完成标记。', '',
               '以下列出全部可读的 party 类型地图。任务数按区域分类及别名关联，合并 18 个阵营／职业修正上下文；前置含备选分支，实际执行继续检查资格。', '',
              '| 实例 ID | 名称 | 区域 ID | 入口记录 | 分类关联任务 | 前置候选 |',

@@ -4,7 +4,7 @@ local client,metadata=dofile("emulator/client.lua"),dofile("emulator/metadata.lu
 client.install({expansion="Forever",faction=faction,classFile="WARRIOR",locale="zhCN"})
 metadata.load(package.."/QuestieDB_Forever.toc","QuestieDB")
 local db=metadata.loadAddon(package.."/QuestieDB_Forever.toc","QuestieDB",package)
-local A={Navigation={Distance=function(_,a,b)
+local A={settings={learn=false},Navigation={Distance=function(_,a,b)
     if a and b and a.map==b.map then return math.sqrt((a.x-b.x)^2+(a.y-b.y)^2) end
 end}}
 -- Native map types are simulated; quest entities and coordinates come from the pinned database.
@@ -25,7 +25,7 @@ local s={revision=1,level=20,runSpeed=7,freeSlots=16,durability=1,groupSize=1,ro
     raceMask=db.Enum.raceMaskById[faction=="Alliance" and 1 or 2],classMask=db.Enum.classKeys.WARRIOR,
     skills={},reputations={},spells={},specializations={},position={map=1429,x=0.5,y=0.5}}
 local catalog=A.Dungeon.Catalog(s,A.Content)
-local count=0;for _ in pairs(catalog) do count=count+1 end;assert(count==34)
+local count=0;for _ in pairs(catalog) do count=count+1 end;assert(count==39)
 local d=catalog[faction=="Alliance" and "reference:36" or "reference:389"]
 local activeId,readyId=faction=="Alliance" and 166 or 5723,faction=="Alliance" and 167 or 5722
 local function byId()
@@ -119,4 +119,4 @@ s.quests[readyId]=nil;s.completed[readyId]=true
 assert(byId()[readyId].status=="已交付")
 assert(next(A.Content.dungeons)==nil,"reference list must not masquerade as executable content")
 s.clientBuild="next";assert(next(A.Dungeon.Catalog(s,A.Content))==nil)
-print(faction..": 34 catalogue entries; quest eligibility, entrance, exit-to-recipient, indoor delivery, outdoor alternatives and build isolation passed (native instance/map states simulated)")
+print(faction..": 39 catalogue entries; quest eligibility, entrance, exit-to-recipient, indoor delivery, outdoor alternatives and build isolation passed (native instance/map states simulated)")

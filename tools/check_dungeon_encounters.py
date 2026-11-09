@@ -14,9 +14,9 @@ assert records['meta']['clientBuild'] == '1.60.1.70862'
 table = ROOT / '.dependencies/DungeonEncounter-1.60.1.70862-zhCN.csv'
 assert hashlib.sha256(table.read_bytes()).hexdigest() == '13c1a984836ccd90fc0adb56d7a52aeacab794b7276e836f30e18a80725e8677'
 census = json.loads((ROOT / 'docs/DUNGEON_COVERAGE.json').read_text())
-maps = {m['mapId'] for m in census['maps'] if m['classification'] == 'party'}
+maps = {m['mapId'] for m in census['maps'] + census['supplementalMaps'] if m['classification'] == 'party'}
 rows = [r for r in csv.DictReader(table.open()) if int(r['MapID']) in maps]
-assert len(rows) == 263 and len({r['MapID'] for r in rows}) == 27
+assert len(rows) == 297 and len({r['MapID'] for r in rows}) == 32
 roster = ['{%s,%s,%s,%s}' % (r['ID'], r['MapID'], r['DifficultyID'], json.dumps(r['Name_lang'], ensure_ascii=False)) for r in rows]
 cases = []
 for key, record in records['encounters'].items():

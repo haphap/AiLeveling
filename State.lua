@@ -250,7 +250,7 @@ function State:Refresh(force)
         if info and not info.isHeader and info.questID and info.questID > 0 then
             local id = info.questID
             local objectives = C_QuestLog.GetQuestObjectives(id) or {}
-            local q = { id = id, title = info.title, objectives = objectives,
+            local q = { id = id, title = info.title, level = info.level, objectives = objectives,
                 ready = C_QuestLog.ReadyForTurnIn(id) == true, logIndex = i }
             if GetQuestLogSpecialItemInfo then
                 local link = GetQuestLogSpecialItemInfo(i)
@@ -265,7 +265,7 @@ function State:Refresh(force)
             end
             s.quests[id] = q
             if not questCount then s.questCount=s.questCount+1 end
-            local parts = { tostring(id), tostring(q.ready), tostring(q.itemId), tostring(q.rewardXP) }
+            local parts = { tostring(id), tostring(q.ready), tostring(q.level), tostring(q.itemId), tostring(q.rewardXP) }
             for _, o in ipairs(objectives) do
                 parts[#parts + 1] = table.concat({tostring(o.numFulfilled),tostring(o.numRequired),tostring(o.finished),
                     tostring(o.type),tostring(o.text),tostring(o.targetKind),tostring(o.targetId)}, ":")

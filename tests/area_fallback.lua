@@ -678,6 +678,17 @@ test("发布者区域兜底覆盖参考阶段但不覆盖已知缺图目标或�
     eq(d:Target(q,s).x,0.1);C_QuestLog.GetNextWaypoint=nil
     npcs[6].spawns=nil;npcs[8].spawns=nil;eq(d:Target(q,s),nil)
     npcs[8].spawns={[12]={{20,30}}};q.zoneOrSort=97;eq(d:Target(q,s),nil)
+    -- Same-build quest text identifies this objective's dungeon even when all provider placements are absent.
+    q.zoneOrSort=0;s.clientVersion,s.clientBuild="1.60.1","70862"
+    B.DungeonCatalog={version="1.60.1",build="70862",objectiveAreas={[1]={["npc:6"]=97}}}
+    eq(d:UnmappedTargetArea(q,s),97);eq(d:Target(q,s),nil)
+    s.quests[1].ready=true;rows.finishedBy={};rows.startedBy={}
+    C_QuestLog.GetNextWaypoint=function() return 1,0.8,0.9 end
+    C_QuestLog.ReadyForTurnIn=function() return false end
+    eq(d:Target(q,s),nil)
+    C_QuestLog.ReadyForTurnIn=function() return true end
+    local p=d:Target(q,s);eq(p.x,0.8);eq(p.y,0.9);eq(p.entityId,nil)
+    eq(s.completed[1],nil)
 end)
 C_Map,C_QuestLog=savedMap,savedQuest
 C_Reputation,C_Spell=savedReputation,savedSpell

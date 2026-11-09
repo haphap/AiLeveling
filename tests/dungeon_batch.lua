@@ -478,6 +478,7 @@ end)
 
 run("缺本内坐标的已接任务可单独继续并完整加入同NPC交付组",function()
     local B,s,data,q,d=fixture();s.completed[3]=true
+    d.entrances={};d.entryArea=200;d.entryHint="从所在地区进入副本。"
     for id=1,2 do q[id].questLevel=20;q[id].taskFacts={level=20,xp={{1,id*100}},rewards={}} end
     local target=data.Target
     data.Target=function(self,quest,state)
@@ -497,6 +498,7 @@ run("缺本内坐标的已接任务可单独继续并完整加入同NPC交付组
     assert(B.Dungeon:ContinueTask(d,2));eq(s.locked,2)
     assert(B.Dungeon:StartTaskBatch("ref"));eq(B.char.taskBatch.baselines[2],0);eq(s.locked,nil)
     local p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonEnter");eq(p.fallback.questId,2)
+    eq(p.fallback.position.approximate,true);eq(p.fallback.position.x,0.5)
     eq(p.taskBatch.remaining,2);eq(p.taskBatch.rewards.count,2)
     eq(#B.TaskGuide.DeliveryGroups(p.taskChoices,s),1)
     s.position=p.fallback.position;p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonEnter")
@@ -511,6 +513,24 @@ run("缺本内坐标的已接任务可单独继续并完整加入同NPC交付组
         local id=p.fallback.questId;s.quests[id]=nil;s.completed[id]=true;B.char.turnIns[id]=1;B.State:Refresh()
     end
     eq(s.taskBatch,nil)
+    -- An active quest absent from the provider/catalog joins by its actual instance map and stays selected for delivery.
+    q[4]=nil;s.quests[4]={title="新副本任务",level=20,objectives={{text="本内目标",numRequired=1,numFulfilled=0}}}
+    data.Target=function(_,quest,state)
+        local active=state.quests[quest.id]
+        return {map=active and not active.ready and 9 or 1,x=0.2,y=0.3}
+    end
+    B.Navigation={Distance=F.Navigation.Distance,hbd={GetWorldCoordinatesFromZone=function(_,x,y,map)
+        if map==9 then return x,y,42 end
+    end}}
+    data.ObjectiveTargets=function() return {{map=9,x=0.2,y=0.3,objectiveIndex=1}} end
+    assert(B.Dungeon:StartTaskBatch("ref"));eq(s.taskBatch.baselines[4],0)
+    p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonEnter");eq(p.fallback.questId,4)
+    s.inInstance,s.instanceId,s.position=true,42,{map=9,x=0.2,y=0.3}
+    p=plan(s,data,B.settings,B);eq(p.fallback.kind,"objective")
+    s.quests[4].ready=true;p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonLeave")
+    s.inInstance=false;s.position={map=1,x=0,y=0}
+    p=plan(s,data,B.settings,B);eq(p.fallback.kind,"turnin");eq(p.fallback.questId,4)
+    s.quests[4]=nil;B.char.turnIns[4]=1;B.State:Refresh();eq(s.taskBatch,nil)
 end)
 run("缺图目的地必须属于当前构建副本，资格受阻和真正未知仍不加入任务组",function()
     local B,s,data,q,d=fixture();q[1].preQuestGroup=nil;d.quests.Alliance={[1]="inside"}

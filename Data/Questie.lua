@@ -301,14 +301,21 @@ function D:QuestAreaTarget(q,state)
     end
 end
 
-function D:Target(q, state)
-    local status = A.State.Status(state, q.id)
-    local active = state.quests[q.id]
-    if active and status ~= "ready" and C_QuestLog and C_QuestLog.GetNextWaypoint then
-        local map, x, y = C_QuestLog.GetNextWaypoint(q.id)
+local function nativeWaypoint(id)
+    if C_QuestLog and C_QuestLog.GetNextWaypoint then
+        local map, x, y = C_QuestLog.GetNextWaypoint(id)
         if map and map > 0 and x and y and x >= 0 and x <= 1 and y >= 0 and y <= 1 then
             return { map = map, x = x, y = y, label = "客户端任务目标" }
         end
+    end
+end
+
+function D:Target(q, state)
+    local status = A.State.Status(state, q.id)
+    local active = state.quests[q.id]
+    if active and status ~= "ready" then
+        local point=nativeWaypoint(q.id)
+        if point then return point end
     end
     local group = status == "ready" and "finishedBy" or "startedBy"
     if status == "active" then
@@ -360,6 +367,11 @@ function D:Target(q, state)
         end
     end
     if best then return best end
+    -- Forecast turn-ins use a virtual ready state; only a genuinely ready quest has a native recipient waypoint.
+    if active and active.ready and C_QuestLog and C_QuestLog.ReadyForTurnIn and C_QuestLog.ReadyForTurnIn(q.id) then
+        local point=nativeWaypoint(q.id)
+        if point then return point end
+    end
     if (sourceCount>0 or offeredOnly) and unavailable==sourceCount then return end
     if self:UnmappedTargetArea(q,state) then return end
     local point=status=="ready" and self:QuestAreaTarget(q,state) or self:AreaTarget(q)
@@ -677,6 +689,9 @@ end
 
 -- Preserve a destination's known area when no UI-map coordinate can be produced.
 function D:UnmappedTargetArea(q,state,objectiveIndex)
+    local catalog=A.DungeonCatalog
+    local objectiveAreas=catalog and (state.clientVersion or A.clientVersion)==catalog.version and
+        tostring(state.clientBuild or A.build)==catalog.build and catalog.objectiveAreas and catalog.objectiveAreas[q.id]
     local function areaOf(lists)
         local found
         for _,spawns in ipairs(lists) do
@@ -741,6 +756,8 @@ function D:UnmappedTargetArea(q,state,objectiveIndex)
                 end
             end
             local area=areaOf(lists)
+            if area then return area,index end
+            area=entry and objectiveAreas and objectiveAreas[entry.kind..":"..entry.id]
             if area then return area,index end
             -- A missing source still has the quest's area; retain it when that area has no UI map.
             if entry and #lists==0 and type(q.zoneOrSort)=="number" and q.zoneOrSort>0 and not self:AreaTarget(q) then

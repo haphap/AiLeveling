@@ -33,6 +33,13 @@ end
 function D.TaskInstance(position,state,data,areaId)
     local catalog=catalogFor(state)
     if not catalog or not data.maps then return end
+    local hbd=A.Navigation and A.Navigation.hbd
+    if position and hbd and hbd.GetWorldCoordinatesFromZone then
+        local _,_,mapId=hbd:GetWorldCoordinatesFromZone(position.x,position.y,position.map)
+        if mapId then
+            for _,d in pairs(catalog.entries) do if d.instanceId==mapId then return d end end
+        end
+    end
     local sourceArea=position and position.sourceAreaId or not position and areaId
     if sourceArea or not position then
         if not sourceArea then return end
@@ -146,6 +153,14 @@ function D.TaskApproach(action,state,data)
         end
     end
     nearest=fastest or nearest
+    if not nearest and instance.entryArea and data.maps[instance.entryArea] then
+        local map=data.maps[instance.entryArea]
+        local info=C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(map)
+        if info then
+            return {kind="dungeonEnter",questId=action.questId,title=action.title,
+                position={map=map,x=0.5,y=0.5,approximate=true,label=info.name or instance.title},text=instance.entryHint}
+        end
+    end
     if not nearest then
         if action.position then return action end
         local guide={};for k,v in pairs(action) do guide[k]=v end
@@ -197,10 +212,21 @@ function D.Tasks(d,state,data)
     else
         for _,action in ipairs(d.actions or {}) do if action.questId then refs[action.questId]="inside" end end
     end
+    if state.taskBatch and state.taskBatch.id==d.id then
+        for id in pairs(state.taskBatch.baselines) do refs[id]=refs[id] or "selected" end
+    end
+    for id,active in pairs(state.quests) do
+        if not refs[id] then
+            local q=data:GetQuest(id) or {id=id,title=active.title,questLevel=active.level}
+            local position=data:Target(q,state)
+            local instance=D.TaskInstance(position,state,data)
+            if instance and instance.instanceId==d.instanceId then refs[id]="inside" end
+        end
+    end
     local rows={}
     for id,relation in pairs(refs) do
-        local q=data:GetQuest(id)
         local active=state.quests[id]
+        local q=data:GetQuest(id) or active and {id=id,title=active.title,questLevel=active.level}
         if q and (active or A.Eligibility.InMask(q.requiredRaces,state.raceMask)==true and
             A.Eligibility.InMask(q.requiredClasses,state.classMask)==true) then
             local status=A.State.Status(state,id)

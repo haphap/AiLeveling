@@ -46,9 +46,9 @@ class AdmissionEvidenceTests(unittest.TestCase):
 
     def test_pinned_real_build_retains_conflicting_raw_fields(self):
         report = audit.build()
-        self.assertEqual(report['counts']['partyMaps'], 34)
-        self.assertEqual(report['counts']['referencedConditions'], 42)
-        self.assertEqual(report['counts']['missingConditions'], 33)
+        self.assertEqual(report['counts']['partyMaps'], 39)
+        self.assertEqual(report['counts']['referencedConditions'], 47)
+        self.assertEqual(report['counts']['missingConditions'], 38)
         scholo = next(m for m in report['maps'] if m['mapId'] == 289)
         normal = next(d for d in scholo['difficulties'] if d['record']['DifficultyID'] == '1')
         level = next(c for c in normal['conditions'] if c['link']['PlayerConditionID'] == '159274')
