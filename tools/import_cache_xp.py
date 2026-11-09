@@ -15,6 +15,7 @@ PINS = {
     f'{BASE}/quests.enUS.json': '0f8b890bbedc79f6c80b99511a88ff5f699048f4a34303bd6d0a0281cfde4b7a',
     f'{BASE}/turn_ins.json': '567debf36003b2c7010e449d3b6f40ce2d7f277e6ea179c60d909b04b2847f02',
     f'{BASE}/objectives.json': 'c71832408f23261698a60c69f6ed69223944d85cd1d931028be36693dda557f9',
+    f'{BASE}/item_uses.json': '2994bdaa81f0db8fff891eb9bc30e8b46a3acac126ad801d3787fa0f1b8f5f01',
     f'.dependencies/QuestXP-{BUILD}.csv': '1513f3f2646ae0b33b79de6219614792f0dbc050bb5bd76c1c4f0fce668a86fd',
 }
 
@@ -33,7 +34,8 @@ def load():
     cache = json.loads((ROOT / BASE / 'quests.enUS.json').read_text())
     observations = json.loads((ROOT / BASE / 'turn_ins.json').read_text())
     locations = json.loads((ROOT / BASE / 'objectives.json').read_text())
-    for obj, dataset in [(cache, 'quests'), (observations, 'turn_ins'), (locations, 'objectives')]:
+    uses = json.loads((ROOT / BASE / 'item_uses.json').read_text())
+    for obj, dataset in [(cache, 'quests'), (observations, 'turn_ins'), (locations, 'objectives'), (uses, 'item_uses')]:
         assert obj['meta']['clientBuild'] == BUILD and obj['meta']['product'] == 'wowf'
         assert obj['meta']['schemaVersion'] == 1 and obj['meta']['dataset'] == dataset
     with (ROOT / f'.dependencies/QuestXP-{BUILD}.csv').open() as stream:
@@ -97,6 +99,22 @@ def load():
                 continue
             matches[0]['locations'] = [dict(map=m, x=x, y=y) for m, x, y in sorted(points)]
             located.append(dict(id=int(id), index=int(index), kind=kind, target=matches[0]['id'], points=len(points)))
+    used_items, rejected_uses = [], []
+    for id, items in uses['quests'].items():
+        for item, observed in items.items():
+            spell = observed.get('spellId')
+            assert item.isdigit() and int(item) > 0
+            if id not in curves or type(spell) is not int or spell <= 0 or observed.get('progressed', 0) <= 0 or observed.get('uses') != observed.get('progressed'):
+                rejected_uses.append(dict(id=int(id), item=int(item), reason='no_matching_cache_or_consistent_progress'))
+                continue
+            assert observed.get('sources', 0) > 0 and observed['uses'] >= observed['progressed']
+            targets = []
+            for target, count in sorted(observed.get('targets', {}).items()):
+                parts = target.split(':')
+                if len(parts) == 2 and parts[0] in ('npc', 'object') and parts[1].isdigit() and int(parts[1]) > 0 and count > 0:
+                    targets.append(dict(kind=parts[0], id=int(parts[1])))
+            curves[id].setdefault('itemUses', {})[item] = dict(spellId=spell, targets=targets)
+            used_items.append(dict(id=int(id), item=int(item), spell=spell))
     matched, skipped = [], []
     for id, records in observations['quests'].items():
         for observed in records:
@@ -121,6 +139,8 @@ def load():
                   objectiveLocations=dict(quests=len({o['id'] for o in located}), objectives=len(located),
                                           points=sum(o['points'] for o in located), accepted=located, rejected=rejected,
                                           scope='Character positions when counts increased; approximate fallback only, never target spawns or completion proof.'),
+                  itemUses=dict(quests=len({o['id'] for o in used_items}), items=len(used_items), accepted=used_items,
+                                rejected=rejected_uses, scope='Successful item spells followed by quest progress. Use purpose and observed targets only; no required quantities, consumption or recovery inferred.'),
                   scope='Base rewards only; native current-level rewards take priority. No character XP bonuses inferred.',
                   flagReference='https://master.trinitycore.net/d8/d60/structquestobjective',
                   transformation='IDs, fixed levels, XP curves and monster/object/item/area-trigger requirements. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; negative reward money retained as a payment exclusion. No text, eligibility or item rewards copied.')

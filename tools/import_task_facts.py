@@ -100,7 +100,7 @@ io.write(json(result))
     data.update(source='LibQuestDB-0.1.0-Forever', clientVerified=False)
     data['cacheXP'], cache_report = load_cache_xp()
     generated = ('local _,A=...\n-- Generated LibQuestDB facts (MIT) and Efficient Games XP/objectives (CC BY 4.0).\n'
-                 '-- Data from Efficient Games (https://efficient.games); changed to XP curves, basic objectives and progress-location references. See docs/TASK_XP_AUDIT.json.\n'
+                 '-- Data from Efficient Games (https://efficient.games); changed to XP curves, basic objectives, progress-location references and quest-item uses. See docs/TASK_XP_AUDIT.json.\n'
                  'A.TaskFacts=' + lua(data) + '\n')
     effective = json.loads((ROOT / 'docs/EFFECTIVE_DATA_AUDIT.json').read_text())['base']['quests']
     report = {'source': data['source'], 'archiveSHA256': SHA,

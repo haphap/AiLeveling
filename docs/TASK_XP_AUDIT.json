@@ -10,6 +10,7 @@
     ".dependencies/eg-link-156f29c9/1.60.1.70862/quests.enUS.json": "0f8b890bbedc79f6c80b99511a88ff5f699048f4a34303bd6d0a0281cfde4b7a",
     ".dependencies/eg-link-156f29c9/1.60.1.70862/turn_ins.json": "567debf36003b2c7010e449d3b6f40ce2d7f277e6ea179c60d909b04b2847f02",
     ".dependencies/eg-link-156f29c9/1.60.1.70862/objectives.json": "c71832408f23261698a60c69f6ed69223944d85cd1d931028be36693dda557f9",
+    ".dependencies/eg-link-156f29c9/1.60.1.70862/item_uses.json": "2994bdaa81f0db8fff891eb9bc30e8b46a3acac126ad801d3787fa0f1b8f5f01",
     ".dependencies/QuestXP-1.60.1.70862.csv": "1513f3f2646ae0b33b79de6219614792f0dbc050bb5bd76c1c4f0fce668a86fd"
   },
   "sourceQuests": 3392,
@@ -2281,6 +2282,80 @@
       }
     ],
     "scope": "Character positions when counts increased; approximate fallback only, never target spawns or completion proof."
+  },
+  "itemUses": {
+    "quests": 9,
+    "items": 11,
+    "accepted": [
+      {
+        "id": 849,
+        "item": 5021,
+        "spell": 5140
+      },
+      {
+        "id": 868,
+        "item": 5059,
+        "spell": 5166
+      },
+      {
+        "id": 924,
+        "item": 4986,
+        "spell": 5099
+      },
+      {
+        "id": 1195,
+        "item": 5867,
+        "spell": 6803
+      },
+      {
+        "id": 1504,
+        "item": 7464,
+        "spell": 9222
+      },
+      {
+        "id": 1944,
+        "item": 7269,
+        "spell": 9052
+      },
+      {
+        "id": 6395,
+        "item": 16333,
+        "spell": 20364
+      },
+      {
+        "id": 6504,
+        "item": 16645,
+        "spell": 20529
+      },
+      {
+        "id": 6504,
+        "item": 16649,
+        "spell": 20530
+      },
+      {
+        "id": 6504,
+        "item": 16655,
+        "spell": 20531
+      },
+      {
+        "id": 99134,
+        "item": 286176,
+        "spell": 1319421
+      }
+    ],
+    "rejected": [
+      {
+        "id": 881,
+        "item": 10327,
+        "reason": "no_matching_cache_or_consistent_progress"
+      },
+      {
+        "id": 99141,
+        "item": 286176,
+        "reason": "no_matching_cache_or_consistent_progress"
+      }
+    ],
+    "scope": "Successful item spells followed by quest progress. Use purpose and observed targets only; no required quantities, consumption or recovery inferred."
   },
   "scope": "Base rewards only; native current-level rewards take priority. No character XP bonuses inferred.",
   "flagReference": "https://master.trinitycore.net/d8/d60/structquestobjective",

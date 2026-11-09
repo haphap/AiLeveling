@@ -122,6 +122,7 @@ test("事件物品付款与未知资料不被归为仅交付任务",function()
     q.taskFacts=nil;eq(B.Data:DeliveryOnly(q,s),false)
     B.TaskFacts={cacheXP={version="1.60.1",build="70862",interface=16001,quests={[1]=facts}}}
     s.clientVersion,s.clientBuild,s.interface="1.60.1","70862",16001;eq(B.Data:DeliveryOnly(q,s),true)
+    facts.itemUses={[500]={spellId=123}};eq(B.Data:DeliveryOnly(q,s),false);facts.itemUses=nil
     s.clientBuild="old";eq(B.Data:DeliveryOnly(q,s),false)
 end)
 test("送信目标保留原生坐标优先及交付者无内部地图区域",function()

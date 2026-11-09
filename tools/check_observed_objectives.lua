@@ -44,3 +44,24 @@ for id,row in pairs(A.TaskFacts.cacheXP.quests) do
 end
 assert(imported==82)
 print("SUMMARY",faction,class,imported,checked,improved)
+assert(loadfile(root.."/QuestAssist.lua"))("AiLeveling",A)
+local count=0
+for id,facts in pairs(A.TaskFacts.cacheXP.quests) do
+ if facts.itemUses then
+  local q=assert(A.Data:GetQuest(id));s.quests={[id]={objectives={}}}
+  local action={kind="objective",questId=id}
+  local wanted=A.QuestAssist.Desired(action,s,true,A.Data)
+  local seen={};for _,item in ipairs(wanted) do seen[item]=true end
+  for item in pairs(facts.itemUses) do
+   assert(seen[item],id..":"..item)
+   local found
+   for _,row in ipairs(A.QuestAssist.Requirements(action,s,A.Data)) do if row.id==item then found=row end end
+   assert(found and found.kind=="use" and not found.countKnown)
+   count=count+1;print("itemUse",id,q.title,item,found.target or "")
+  end
+  assert(not A.Data:DeliveryOnly(q,s))
+  s.quests[id].ready=true;assert(#A.QuestAssist.Desired(action,s,true,A.Data)==0)
+ end
+end
+assert(count==11)
+print("ITEMS",faction,class,count)

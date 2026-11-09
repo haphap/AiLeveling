@@ -24,6 +24,30 @@ return function(test,eq,F,A,C)
         local desired=A.QuestAssist.Desired({kind="accept",questId=1},s,true,data)
         eq(desired[1],900)
     end)
+    test("同构建成功物品用途补使用按钮与目标且不猜数量或覆盖明确规则",function()
+        local s,q=F.State(),F.Quest(1);q.questLevel=10;q.sourceItemId=500
+        s.clientVersion,s.clientBuild,s.interface="1.60.1","70862",16001
+        s.quests[1]={objectives={}};s.bags[500]=0
+        local B={TaskFacts={cacheXP={version="1.60.1",build="70862",interface=16001,quests={
+            [1]={level=10,itemUses={[500]={spellId=123,targets={{kind="npc",id=6},{kind="npc",id=6},{kind="object",id=7}}}}}}}}}
+        assert(loadfile("Data/Questie.lua"))("AiLeveling",B)
+        B.Data.GetQuest=function() return q end
+        B.Data.db={Npc={Get=function() return "任务角色" end},Object={Get=function() return "任务物件" end}}
+        local action={kind="objective",questId=1}
+        local rows=A.QuestAssist.Requirements(action,s,B.Data)
+        eq(#rows,1);eq(rows[1].kind,"use");eq(rows[1].countKnown,nil);eq(rows[1].missing,1)
+        eq(rows[1].target,"使用目标：任务角色、任务物件")
+        eq(A.QuestAssist.Desired(action,s,true,B.Data)[1],500)
+        eq(#A.QuestAssist.Desired(action,s,false,B.Data),0)
+        q.itemRules={[500]={kind="key",count=2}}
+        rows=A.QuestAssist.Requirements(action,s,B.Data);eq(rows[1].kind,"key");eq(rows[1].missing,2)
+        eq(#A.QuestAssist.Desired(action,s,true,B.Data),0);q.itemRules=nil
+        s.quests[1].ready=true;eq(#A.QuestAssist.Desired(action,s,true,B.Data),0);s.quests[1].ready=nil
+        s.clientBuild="other";eq(#A.QuestAssist.Desired(action,s,true,B.Data),0);s.clientBuild="70862"
+        q.questLevel=11;eq(#A.QuestAssist.Desired(action,s,true,B.Data),0);q.questLevel=10
+        eq(#A.QuestAssist.Desired({kind="turnin",questId=1},s,true,B.Data),0)
+        eq(#A.QuestAssist.Desired({kind="accept",questId=1},s,true,B.Data),0)
+    end)
     test("超过四件任务物品可翻页且旧页越界时恢复有效页",function()
         local items={1,2,3,4,5,6}
         local page,index,pages=A.QuestAssist.Page(items,2)

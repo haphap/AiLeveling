@@ -1,0 +1,50 @@
+{
+  "version": "0.1.126-dev",
+  "clientVerified": false,
+  "scope": "Fixed QuestieDB API with simulated quest log, inventory and character state. Purpose/target fallback only; no actual item click or combat protection acceptance.",
+  "contexts": [
+    {
+      "faction": "Horde",
+      "class": "WARLOCK",
+      "items": [
+        "itemUse\t849\t加恩的报复\t5021\t使用目标：巴尔莫丹飞行器",
+        "itemUse\t99134\t整肃纪律\t286176\t使用目标：亡灵卫兵伯吉斯、亡灵卫兵特伦斯、亡灵卫兵塞勒斯、亡灵卫兵加文、亡灵卫兵罗亚恩",
+        "itemUse\t6504\t丢失的书页\t16649\t",
+        "itemUse\t6504\t丢失的书页\t16645\t",
+        "itemUse\t6504\t丢失的书页\t16655\t",
+        "itemUse\t1195\t神圣之火\t5867\t",
+        "itemUse\t868\t蝎卵\t5059\t使用目标：异种蝎土丘",
+        "itemUse\t924\t恶魔之种\t4986\t使用目标：火焰祭坛",
+        "itemUse\t1504\t誓缚\t7464\t",
+        "itemUse\t1944\t克萨维亚之水\t7269\t",
+        "itemUse\t6395\t玛拉的遗愿\t16333\t使用目标：Marla's Grave"
+      ],
+      "summary": "ITEMS\tHorde\tWARLOCK\t11"
+    },
+    {
+      "faction": "Alliance",
+      "class": "DRUID",
+      "items": [
+        "itemUse\t849\t加恩的报复\t5021\t使用目标：巴尔莫丹飞行器",
+        "itemUse\t99134\t整肃纪律\t286176\t使用目标：亡灵卫兵伯吉斯、亡灵卫兵特伦斯、亡灵卫兵塞勒斯、亡灵卫兵加文、亡灵卫兵罗亚恩",
+        "itemUse\t6504\t丢失的书页\t16649\t",
+        "itemUse\t6504\t丢失的书页\t16645\t",
+        "itemUse\t6504\t丢失的书页\t16655\t",
+        "itemUse\t1195\t神圣之火\t5867\t",
+        "itemUse\t868\t蝎卵\t5059\t使用目标：异种蝎土丘",
+        "itemUse\t924\t恶魔之种\t4986\t使用目标：火焰祭坛",
+        "itemUse\t1504\t誓缚\t7464\t",
+        "itemUse\t1944\t克萨维亚之水\t7269\t",
+        "itemUse\t6395\t玛拉的遗愿\t16333\t使用目标：Marla's Grave"
+      ],
+      "summary": "ITEMS\tAlliance\tDRUID\t11"
+    }
+  ],
+  "inputs": {
+    "Data/Questie.lua": "8fa6e411259d060682363bfec42a5b0112715a372631d20e55eee07e849b5709",
+    "Data/TaskFacts.lua": "67b60548b7d16edfc043a29421fc5f9eb905e6edc6773fef69aa4b4002c65612",
+    "QuestAssist.lua": "9d1a18956132ae997f62eb77d19dd6672eef92feef610172d155a0a49486324c",
+    "tools/import_cache_xp.py": "e48c5c9c989982199515696fd1eabc8fd4295fdeb2ce4aba75418e0356218a9c",
+    "tools/check_observed_objectives.lua": "9dfb142650a2784725090b50029efd9369210d7b6746ea780a8a2b0c8bf4c452"
+  }
+}

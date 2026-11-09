@@ -368,6 +368,7 @@ function D:DeliveryOnly(q,state)
         next((self:ObjectiveEntries(q,state))) or self.db.Quest.Get(q.id,"triggerEnd") or
         next(q.requiredSourceItems or {}) then return false end
     local cache=self:CacheQuest(q,state)
+    if cache and next(cache.itemUses or {}) then return false end
     -- Unindexed travel hints do not add completion requirements to a cache-confirmed delivery.
     for _,extra in pairs(self.db.Quest.Get(q.id,"extraObjectives") or {}) do
         if not cache or extra[4]~=0 then return false end
@@ -376,6 +377,21 @@ function D:DeliveryOnly(q,state)
     return facts~=nil and facts.level==q.questLevel and facts.complex==false and
         facts.objectives~=nil and #facts.objectives==0 and not facts.moneyCost and
         not (facts.rewards and (facts.rewards.money or 0)<0) and self:Recipient(q)~=nil
+end
+
+function D:ItemUseRules(q,state)
+    local facts=self:CacheQuest(q,state)
+    local rules={}
+    for id,use in pairs(facts and facts.itemUses or {}) do
+        local names,seen={},{}
+        for _,target in ipairs(use.targets or {}) do
+            local entity=target.kind=="npc" and self.db.Npc or self.db.Object
+            local name=entity.Get(target.id,"name")
+            if type(name)=="string" and name~="" and not seen[name] then names[#names+1]=name;seen[name]=true end
+        end
+        rules[id]={kind="use",target=#names>0 and ("使用目标："..table.concat(names,"、")) or nil}
+    end
+    return rules
 end
 
 function D:ObjectiveEntries(q,state)

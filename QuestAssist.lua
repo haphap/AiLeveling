@@ -26,6 +26,9 @@ function Q.Requirements(action,state,data)
             if not stage or stage==action.kind then add(id,rule) end
         end
         if action.kind=="objective" then
+            for id,rule in pairs(data.ItemUseRules and data:ItemUseRules(quest,state) or {}) do
+                if not byId[id] then add(id,rule) end
+            end
             if not byId[quest.sourceItemId] then add(quest.sourceItemId,{kind="source"}) end
             for _,id in ipairs(quest.requiredSourceItems or {}) do if not byId[id] then add(id,{kind="key"}) end end
         elseif action.kind=="accept" then

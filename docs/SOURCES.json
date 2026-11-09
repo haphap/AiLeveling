@@ -703,6 +703,18 @@
       "generator": "tools/import_cache_xp.py",
       "audit": "docs/TASK_XP_AUDIT.json",
       "clientVerified": false
+    },
+    {
+      "id": "Forever-quest-item-uses-1.60.1.70862",
+      "build": "1.60.1.70862",
+      "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862/item_uses.json",
+      "sha256": "2994bdaa81f0db8fff891eb9bc30e8b46a3acac126ad801d3787fa0f1b8f5f01",
+      "license": "CC BY 4.0",
+      "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+      "transformation": "Same-build fixed-level quest cache; 11 item purposes in 9 quests whose successful casts consistently had quest progress. Copy spell identity and explicit NPC/object targets, not observed use counts, required quantities, recovery or consumption. Zero-progress and untied records excluded.",
+      "generator": "tools/import_cache_xp.py",
+      "audit": "docs/TASK_XP_AUDIT.json",
+      "clientVerified": false
     }
   ]
 }
