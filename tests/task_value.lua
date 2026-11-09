@@ -115,6 +115,19 @@ test("低价值已接任务不会阻止推荐未接的有效任务",function()
     A.Chains.IndexQuest(d.chainIndex,good,d)
     local result=plan(s,d,nil,B);eq(result.fallback.questId,2);eq(result.fallback.kind,"accept")
     eq(result.taskChoices[2].questId,1);assert(result.taskChoices[2].lowValue)
+    s.quests={};s.completed[1]=true;q.repeatable=true;q.questLevel=20;good.taskFacts.xp=nil
+    q.taskFacts={level=20,xp={{1,0}},rewards={items={},choices={}}}
+    d.ReferenceObjectiveTargets=function(_,quest) return {{text="目标"}},{{map=1,x=quest.id/10,y=0}},false end
+    result=plan(s,d,nil,B);eq(result.fallback.questId,2);assert(result.taskChoices[2].lowValue)
+    eq(s.skipped[1],nil);eq(s.completed[1],true)
+    s.locked=1;eq(plan(s,d,nil,B).fallback.questId,1);s.locked=nil
+    s.quests[1]={ready=false,objectives={{text="继续目标"}}};eq(B.TaskGuide.LowValue(q,s,d),nil);s.quests={}
+    q.taskFacts.xp=nil;eq(B.TaskGuide.LowValue(q,s,d),nil)
+    q.taskFacts.xp={{1,1000}};eq(B.TaskGuide.LowValue(q,s,d),nil)
+    q.taskFacts.xp={{1,0}};q.taskFacts.rewards.items={{id=900,count=1}};eq(B.TaskGuide.LowValue(q,s,d),nil)
+    q.taskFacts.rewards.items={};q.taskFacts.rewards.choices={{id=900,count=1}};eq(B.TaskGuide.LowValue(q,s,d),nil)
+    q.taskFacts.rewards.choices={};q.taskFacts.rewards.srcItem={id=900,count=1};eq(B.TaskGuide.LowValue(q,s,d),nil)
+    q.taskFacts.rewards.srcItem=nil;s.completed={};eq(B.TaskGuide.LowValue(q,s,d),nil)
 end)
 test("低价值任务不被整程重排重新提升到首位",function()
     local B,s,q,d=fixture()

@@ -285,6 +285,10 @@ function G.LowValue(q,state,data,choice)
     local active=state.quests[q.id]
     if state.locked==q.id or active and active.ready then return end
     local rewards=q.taskFacts and q.taskFacts.rewards
+    if not active and q.repeatable and state.completed[q.id] and G.XP(q,state.level,state)==0 and
+        rewards and #(rewards.items or {})==0 and #(rewards.choices or {})==0 and not rewards.srcItem and (q.sourceItemId or 0)==0 then
+        return {summary="已交付／无经验",reason="已交付过，本次没有经验或物品奖励，先继续其他任务。",suggestion="无需重做"}
+    end
     if not active and q.repeatable and rewards and #(rewards.choices or {})==0 and
         data.DeliveryOnly and data:DeliveryOnly(q,state) then
         for _,item in ipairs(rewards.items or {}) do

@@ -238,6 +238,11 @@ function State:Refresh(force)
     end
     fingerprint[#fingerprint + 1] = "completed:" .. tostring(s.completionKnown)
     for id in pairs(self.confirmed or {}) do s.completed[id] = true end
+    local deliveries=0
+    for id,count in pairs(A.char.turnIns or {}) do
+        if count>0 then s.completed[id]=true;deliveries=deliveries+count end
+    end
+    fingerprint[#fingerprint+1]="turnins:"..deliveries
     local entries,questCount=C_QuestLog.GetNumQuestLogEntries()
     s.questCount=questCount or 0
     s.questLimit=C_QuestLog.GetMaxNumQuestsCanAccept and C_QuestLog.GetMaxNumQuestsCanAccept()

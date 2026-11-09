@@ -133,6 +133,9 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     A.State:QuestOffersEvent("QUEST_TURNED_IN");A.State:Refresh()
     eq(A.state.questOffers[11],nil);assert(offers.questOffers[11]);eq(A.state.revision,offers.revision+1)
     A.State.questOffers,A.State.questOffersRevision=nil,nil
+    local history=A.state;A.char.turnIns[88]=1;A.State.confirmed={};A.State:Refresh()
+    eq(A.state.completed[88],true);eq(history.completed[88],nil);eq(A.state.revision,history.revision+1)
+    history=A.state;A.char.turnIns[88]=2;A.State:Refresh();eq(A.state.revision,history.revision+1)
     C_SkillInfo,A.WeaponSkills=oldSkills,oldWeaponSkills
     A.clientVersion,A.build,A.interface=oldVersion,oldBuild,oldInterface
     A.Data=provider;A.Navigation=oldNavigation

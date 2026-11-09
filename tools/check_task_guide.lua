@@ -381,3 +381,21 @@ do
     assert(#A.QuestAssist.TargetNPCs(action,context,A.Data)==0)
     print(faction..": real #273 exposes "..#targets.." kill-credit NPC targets and removes completed objectives")
 end
+
+if faction=="Horde" then
+    local q=assert(A.Data:GetQuest(889));local context={}
+    for key,value in pairs(s) do context[key]=value end
+    context.level,context.quests,context.completed=20,{}, {[5052]=true,[889]=true}
+    context.position=assert(A.Data:Target(q,context))
+    assert(q.repeatable and A.TaskGuide.XP(q,20,context)==0)
+    local function choices() return run(function() return A.Planner.TaskChoices(context,A.Data,{q.id},true,options) end) end
+    assert(choices()[1].lowValue)
+    local next=run(function() return A.Planner.Build(context,A.Data,options) end)
+    assert(next.fallback and next.fallback.questId~=q.id)
+    context.locked=q.id;assert(not choices()[1].lowValue);context.locked=nil
+    context.quests[q.id]={ready=true,objectives={}};assert(not choices()[1].lowValue)
+    context.quests={};context.completed[q.id]=nil;assert(not choices()[1].lowValue)
+    local unknown=assert(A.Data:GetQuest(16));assert(A.TaskGuide.XP(unknown,20,context)==nil)
+    context.completed[16]=true;assert(not A.TaskGuide.LowValue(unknown,context,A.Data))
+    print("Horde: real #889 is deprioritized after turn-in at 0 XP; manual, active and first-run remain; #16 XP stays unknown")
+end
