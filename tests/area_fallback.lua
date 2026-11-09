@@ -65,6 +65,15 @@ test("同构建确认仅交付时未绑定日志目标的辅助提示不拦住�
     eq(complete,true);eq(#stages,2);eq(stages[2].position.entityId,9)
     eq(s.quests[1],nil);eq(s.completed[1],nil)
     s.clientBuild="other";eq(B.Data:DeliveryOnly(q,s),false)
+    s.clientBuild="70862";q.questLevel=10;rows.finishedBy={{9,10}}
+    npcs[10]={name="另一交付者",spawns={[12]={{20,30}}}}
+    eq(B.Data:DeliveryOnly(q,s),true);eq(B.Data:Recipient(q),nil)
+    stages,complete=B.TaskGuide.Stages(q,s,B.Data,{kind="accept",position=B.Data:Target(q,s)})
+    eq(complete,true);eq(#stages,2);eq(stages[2].position.entityId,10)
+    eq(B.Data:Recipient(q,stages[2].position).entityId,10)
+    s.quests[1]={objectives={}};eq(B.Data:Target(q,s).entityId,10)
+    eq(s.quests[1].ready,nil);eq(s.completed[1],nil)
+    s.quests={};rows.finishedBy={{},{}};eq(B.Data:DeliveryOnly(q,s),false)
 end)
 test("事件物品付款与未知资料不被归为仅交付任务",function()
     local B,q,s,rows=fixture();q.questLevel=10;rows.objectives={};s.quests={}

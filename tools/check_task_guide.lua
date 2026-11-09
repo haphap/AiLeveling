@@ -398,4 +398,16 @@ if faction=="Horde" then
     local unknown=assert(A.Data:GetQuest(16));assert(A.TaskGuide.XP(unknown,20,context)==nil)
     context.completed[16]=true;assert(not A.TaskGuide.LowValue(unknown,context,A.Data))
     print("Horde: real #889 is deprioritized after turn-in at 0 XP; manual, active and first-run remain; #16 XP stays unknown")
+    local courier=assert(A.Data:GetQuest(79007))
+    context.quests,context.completed={},{};context.level=20
+    context.position=assert(A.Data:Target(courier,context))
+    assert(A.Data:DeliveryOnly(courier,context) and not A.Data:Recipient(courier))
+    local stages,complete=A.TaskGuide.Stages(courier,context,A.Data,{kind="accept",questId=courier.id,position=context.position})
+    assert(complete and #stages==2 and stages[2].kind=="turnin")
+    local recipient=stages[2].position
+    assert(recipient.entityKind=="object" and (recipient.entityId==415107 or recipient.entityId==424010))
+    context.quests[courier.id]={objectives={}}
+    assert(A.Data:Target(courier,context).entityId==recipient.entityId)
+    assert(not context.quests[courier.id].ready and not context.completed[courier.id])
+    print("Horde: real #79007 continues to one of its actual object recipients; native completion remains required")
 end

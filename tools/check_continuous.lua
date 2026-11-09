@@ -6,6 +6,7 @@
 -- Loot rates, capacity, rewards, source tools and special retained-item rules are not simulated.
 -- Repeat recommendations stop for inspection: repeatable eligibility alone is not a planner error.
 -- Ground distances use the pinned native zone rectangles; character/game events are simulated.
+-- Public transport uses the planner's current route cost; boarding/arrival events are not simulated.
 local root,package,faction,class,raceId,raceFile=assert(arg[1]),assert(arg[2]),assert(arg[3]),assert(arg[4]),assert(tonumber(arg[5])),assert(arg[6])
 local client,metadata=dofile("emulator/client.lua"),dofile("emulator/metadata.lua")
 client.install({expansion="Forever",faction=faction,classFile=class,raceId=raceId,raceFile=raceFile,locale="zhCN"})
@@ -32,7 +33,7 @@ local A={Navigation={Distance=function(_,a,b)
     if ai and ai==bi then return math.sqrt((ax-bx)^2+(ay-by)^2) end
 end}}
 C_Map={GetMapInfo=function(id) return maps[id] and {mapID=id,mapType=3} end};C_QuestLog={}
-for _,file in ipairs({"State.lua","Hearth.lua","Data/Content.lua","Data/TaskFacts.lua","Data/ItemLimits.lua","Data/Experience.lua","Data/Flights.lua","Data/Dungeons.lua","Data/Questie.lua",
+for _,file in ipairs({"State.lua","Hearth.lua","Data/Content.lua","Data/TaskFacts.lua","Data/ItemLimits.lua","Data/Experience.lua","Data/Flights.lua","Data/PublicTransit.lua","Data/Dungeons.lua","Data/Questie.lua",
     "Planner/Eligibility.lua","Planner/Chains.lua","Planner/TaskGuide.lua","Planner/TaskQueue.lua","Planner/Estimates.lua","Planner/Gear.lua",
     "Planner/Progression.lua","Planner/Travel.lua","Planner/Flights.lua","Planner/Supplies.lua","Planner/Dungeon.lua","Planner/DungeonTasks.lua","Planner/Planner.lua"}) do
     assert(loadfile(root.."/"..file))("AiLeveling",A)
@@ -77,8 +78,11 @@ for step=1,3000 do
     end
     if not a.position then stop("position",id,a.kind);break end
     local distance=A.Navigation:Distance(s.position,a.position)
-    if not distance then stop("world",id,a.kind);break end
-    movement=movement+distance/7;s.position=a.position
+    local route=p.referenceJourney and p.referenceJourney.firstRoute
+    local seconds=route and route.seconds or distance and distance/7
+    if not seconds then stop("world",id,a.kind);break end
+    if not distance then print("CROSS_WORLD",id,s.position.map,a.position.map,seconds) end
+    movement=movement+seconds;s.position=a.position
     if a.kind=="accept" then
         assert(A.Eligibility.Check(q,s,A.Data))
         local active,reason=inventory.Accept(q,s,A.Data)

@@ -383,8 +383,9 @@ function D:DeliveryOnly(q,state)
         if not cache or extra[4]~=0 then return false end
     end
     local facts=cache or q.taskFacts
+    local recipients=self.db.Quest.Get(q.id,"finishedBy") or {}
     return facts~=nil and (facts.level==q.questLevel or q.questLevel==-1 and cache~=nil) and facts.complex==false and
-        facts.objectives~=nil and #facts.objectives==0 and self:Recipient(q)~=nil
+        facts.objectives~=nil and #facts.objectives==0 and #(recipients[1] or {})+#(recipients[2] or {})>0
 end
 
 function D:ItemUseRules(q,state)
