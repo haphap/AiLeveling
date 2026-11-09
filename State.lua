@@ -215,7 +215,8 @@ function State:Refresh(force)
             if not questCount then s.questCount=s.questCount+1 end
             local parts = { tostring(id), tostring(q.ready), tostring(q.itemId), tostring(q.rewardXP) }
             for _, o in ipairs(objectives) do
-                parts[#parts + 1] = tostring(o.numFulfilled) .. "/" .. tostring(o.numRequired) .. ":" .. tostring(o.finished)
+                parts[#parts + 1] = table.concat({tostring(o.numFulfilled),tostring(o.numRequired),tostring(o.finished),
+                    tostring(o.type),tostring(o.text),tostring(o.targetKind),tostring(o.targetId)}, ":")
             end
             fingerprint[#fingerprint + 1] = table.concat(parts, ":")
         end
