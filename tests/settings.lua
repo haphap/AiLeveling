@@ -154,6 +154,33 @@ test("设置开关跨归一化保留且清除已取消的旧采样",function()
     B:NormalizeCharacter(B.char);eq(next(B.char.samples),nil);eq(B.char.sampleContext,nil)
     B.finish()
 end)
+test("配置迁移、复制、切换与恢复保留角色进度，并可刷新任务历史",function()
+    local B=setup();local char=B.char
+    char.turnIns[1]=1;char.locked=1;B.state.completed[1]=true
+    local db={scale=1.3,quantity=false,position={"RIGHT","RIGHT",-120,80}}
+    B:InitializeProfiles(db,char)
+    eq(B.settings.scale,1.3);eq(B.settings.quantity,false);eq(db.scale,nil)
+    local S=B.UI.Settings
+    S.profileName:SetText("大字")
+    S.profileName.scripts.OnEnterPressed()
+    eq(char.profile,"大字");eq(B.settings.scale,1.3)
+    B:SetOption("fontScale",1.2);B.settings.position[3]=-200
+    eq(db.profiles["默认"].position[3],-120)
+    B:SelectProfile("默认");eq(B.settings.fontScale,1);eq(B.UI.frame.point[4],-120)
+    S.profile.scripts.OnClick();eq(char.profile,"大字");eq(B.settings.fontScale,1.2)
+    db.defaultProfile="大字"
+    local other={};B:InitializeProfiles(db,other);eq(other.profile,"大字")
+    B:InitializeProfiles(db,char);B:RestoreSettings()
+    eq(db.profiles["默认"].scale,1.3);eq(B.settings.scale,1);eq(B.settings.position,nil)
+    eq(char.turnIns[1],1);eq(char.locked,1);eq(B.state.completed[1],true)
+    eq(B:DeleteProfile("大字"),false)
+    B:SelectProfile("默认");eq(B:DeleteProfile("默认"),true)
+    eq(char.profile,"大字");eq(db.profiles["默认"],nil)
+    local refreshes=B.refreshes
+    local history=B:QuestHistory();assert(history:find("已完成任务 · 1",1,true));assert(history:find("1 · ",1,true))
+    eq(B.refreshes,refreshes+1);eq(char.turnIns[1],1)
+    B.finish()
+end)
 test("原生任务对话自动接交同NPC任务，保留整组交付、多选奖励及手动覆盖",function()
     local B=setup();assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
     local id,shift,count,money,complete=2,false,0,0,true

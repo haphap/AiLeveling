@@ -96,11 +96,45 @@ function S:Create(parent)
     check(4,"levelingStats","记录练级时间与经验",5)
     local leveling=A.UI:Button(self.groups[4],"查看练级统计",270,function() A.UI:ShowText(A.LevelingTracker:Report()) end)
     leveling:SetPoint("TOPLEFT",position(6))
-    self.summary=A.UI:Text(self.groups[4],12);self.summary:SetPoint("TOPLEFT",286,0);self.summary:SetWidth(268)
+    local history=A.UI:Button(self.groups[4],"刷新并查看已完成任务",270,function() A.UI:ShowText(A:QuestHistory()) end)
+    history:SetPoint("TOPLEFT",position(7))
+    self.profile=A.UI:Button(self.groups[4],"配置",270,function()
+        local names={};for name in pairs(A.db.profiles) do names[#names+1]=name end
+        table.sort(names)
+        for i,name in ipairs(names) do if name==A.char.profile then A:SelectProfile(names[i%#names+1]);break end end
+    end)
+    self.profile:SetPoint("TOPLEFT",position(8));self.profile.text:SetWidth(258)
+    self.profileName=CreateFrame("EditBox",nil,self.groups[4],"InputBoxTemplate")
+    self.profileName:SetSize(258,30);self.profileName:SetPoint("TOPLEFT",292,-40)
+    self.profileName:SetAutoFocus(false);self.profileName:SetMaxLetters(32)
+    A.UI:RegisterFont(self.profileName,13)
+    self.profileName:SetText("新配置")
+    self.profileName:SetScript("OnEscapePressed",function(box) box:ClearFocus() end)
+    local function copyProfile()
+        local ok,why=A:CopyProfile(self.profileName:GetText())
+        if ok then self.profileName:ClearFocus() else A:Message(why) end
+    end
+    local copy=A.UI:Button(self.groups[4],"以此名称复制当前配置",270,copyProfile)
+    copy:SetPoint("TOPLEFT",position(10))
+    self.profileName:SetScript("OnEnterPressed",copyProfile)
+    local useDefault=A.UI:Button(self.groups[4],"设为新角色默认配置",270,function()
+        A.db.defaultProfile=A.char.profile;self:Refresh()
+    end)
+    useDefault:SetPoint("TOPLEFT",position(11))
+    self.deleteProfile=A.UI:Button(self.groups[4],"删除当前配置",270,function()
+        local ok,why=A:DeleteProfile(A.char.profile);if not ok then A:Message(why) end
+    end)
+    self.deleteProfile:SetPoint("TOPLEFT",position(12))
+    self.profileHint=A.UI:Text(self.groups[4],12);self.profileHint:SetPoint("TOPLEFT",286,-200);self.profileHint:SetWidth(268)
+    self.summary=A.UI:Text(self.groups[4],12);self.summary:SetPoint("TOPLEFT",286,-248);self.summary:SetWidth(268)
     self.frame:Hide()
 end
 
 function S:Refresh()
+    self.profile:SetEnabled(A.db~=nil)
+    self.deleteProfile:SetEnabled(A.db~=nil and A.char.profile~=A.db.defaultProfile)
+    self.profile.text:SetText("配置："..(A.char.profile or "默认").."  ›")
+    self.profileHint:SetText("更改自动保存 · 点击配置名切换\n新角色默认："..(A.db and A.db.defaultProfile or "默认"))
     for _,c in ipairs(self.controls) do
         if c.values then
             local value=tostring(A.settings[c.key])

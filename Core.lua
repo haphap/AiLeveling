@@ -89,6 +89,68 @@ function A:NormalizeCharacter(char)
     if char.locked~=nil and (type(char.locked)~="number" or char.locked<=0 or char.locked>=math.huge or char.locked%1~=0) then char.locked=nil end
 end
 
+function A:InitializeProfiles(db, char)
+    if type(db.profiles)~="table" then
+        local previous={}
+        for key,value in pairs(db) do previous[key]=value;db[key]=nil end
+        db.profiles={["默认"]=previous};db.defaultProfile="默认"
+    end
+    for name,settings in pairs(db.profiles) do
+        if type(name)~="string" or type(settings)~="table" then db.profiles[name]=nil end
+    end
+    if not db.profiles[db.defaultProfile] then
+        db.defaultProfile="默认";db.profiles["默认"]=db.profiles["默认"] or {}
+    end
+    if not db.profiles[char.profile] then char.profile=db.defaultProfile end
+    self.db,self.char,self.settings=db,char,db.profiles[char.profile]
+    self:NormalizeSettings(self.settings)
+end
+
+function A:SelectProfile(name)
+    if not self.db.profiles[name] then return false,"请选择已有配置" end
+    if self.LevelingTracker then self.LevelingTracker:Update("profile") end
+    self.char.profile,self.settings=name,self.db.profiles[name]
+    self:NormalizeSettings(self.settings)
+    self:ApplySettings()
+    if self.LevelingTracker then self.LevelingTracker:Update("profile") end
+    return true
+end
+
+function A:CopyProfile(name)
+    name=(name or ""):match("^%s*(.-)%s*$")
+    if name=="" then return false,"请输入新配置名称" end
+    if self.db.profiles[name] then return false,"已有同名配置，请换一个名称" end
+    local settings={}
+    for key in pairs(self.defaults) do settings[key]=self.settings[key] end
+    for _,key in ipairs({"position","detailPosition","navigationPosition"}) do
+        if self.settings[key] then settings[key]={unpack(self.settings[key])} end
+    end
+    self.db.profiles[name]=settings
+    return self:SelectProfile(name)
+end
+
+function A:DeleteProfile(name)
+    if name==self.db.defaultProfile then return false,"请先将其他配置设为默认" end
+    if self.char.profile==name then self:SelectProfile(self.db.defaultProfile) end
+    self.db.profiles[name]=nil
+    self.UI.Settings:Refresh()
+    return true
+end
+
+function A:QuestHistory()
+    if not self.ready then return "任务数据正在加载" end
+    self.State:Refresh(true)
+    local ids={}
+    for id in pairs(self.state.completed) do ids[#ids+1]=id end
+    table.sort(ids)
+    local lines={"已完成任务 · "..#ids}
+    for _,id in ipairs(ids) do
+        local q=self.Data:GetQuest(id)
+        lines[#lines+1]=id.." · "..(q and q.title or "任务 #"..id)
+    end
+    return table.concat(lines,"\n")
+end
+
 function A:Message(text)
     DEFAULT_CHAT_FRAME:AddMessage("|cff53d6c7AiLeveling|r  " .. text)
 end
@@ -152,12 +214,24 @@ function A:SetOption(key, value)
 end
 
 function A:RestoreSettings()
+    if self.LevelingTracker then self.LevelingTracker:Update("settings") end
     for key in pairs(self.settings) do self.settings[key]=nil end
     for key,value in pairs(self.defaults) do self.settings[key]=value end
-    self.UI.frame:ClearAllPoints()
-    self.UI.frame:SetPoint("RIGHT",UIParent,"RIGHT",-60,100)
-    if self.UI.details then self.UI.details:ClearAllPoints();self.UI.details:SetPoint("CENTER") end
-    if self.UI.navFrame then self.UI.navFrame:ClearAllPoints();self.UI.navFrame:SetPoint("CENTER",UIParent,"CENTER",0,-110) end
+    self:ApplySettings()
+    if self.LevelingTracker then self.LevelingTracker:Update("settings") end
+end
+
+function A:ApplySettings()
+    for _,entry in ipairs({{self.UI.frame,"position","RIGHT","RIGHT",-60,100},
+        {self.UI.details,"detailPosition","CENTER","CENTER",0,0},
+        {self.UI.navFrame,"navigationPosition","CENTER","CENTER",0,-110}}) do
+        local frame,p=entry[1],self.settings[entry[2]]
+        if frame then
+            frame:ClearAllPoints()
+            if p then frame:SetPoint(p[1],UIParent,p[2],p[3],p[4])
+            else frame:SetPoint(entry[3],UIParent,entry[4],entry[5],entry[6]) end
+        end
+    end
     self.UI:ApplyStyle()
     self.UI.Settings:Refresh()
     self.Transport:InvalidateSample()
@@ -168,6 +242,7 @@ function A:RestoreSettings()
     self.Navigation:RefreshPins()
     if self.QuestAssist then self.QuestAssist:Update() end
     if self.Routes then self.Routes:Update(true) end
+    self.dirty=true
 end
 
 function A:TogglePause()
@@ -217,8 +292,7 @@ function A:Initialize()
     self.interface = interface
     AiLevelingDB = type(AiLevelingDB)=="table" and AiLevelingDB or {}
     AiLevelingCharDB = type(AiLevelingCharDB)=="table" and AiLevelingCharDB or {}
-    self.settings, self.char = AiLevelingDB, AiLevelingCharDB
-    self:NormalizeSettings(self.settings)
+    self:InitializeProfiles(AiLevelingDB,AiLevelingCharDB)
     self:NormalizeCharacter(self.char)
     self.state = { revision = 0, completed = {}, quests = {} }
     self.UI:Create()
@@ -423,6 +497,7 @@ SlashCmdList.AILEVELING = function(command)
     if A.startupError then A.UI:ShowStartupError(A.startupError);return end
     if not A.UI.frame then return end
     if command == "status" then A.UI:ShowText(A:Diagnostics())
+    elseif command=="history" then A.UI:ShowText(A:QuestHistory())
     elseif command=="stats" and A.LevelingTracker then A.UI:ShowText(A.LevelingTracker:Report())
     elseif command == "pause" then A:TogglePause()
     elseif command == "resume" then
