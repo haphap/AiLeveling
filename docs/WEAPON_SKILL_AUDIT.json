@@ -1,0 +1,125 @@
+{
+  "build": "1.60.1.70862",
+  "clientVerified": false,
+  "inputs": {
+    "SkillLine": "db0fe59fc385e1b3c25528f0504430631fc592de564840dc601a428c2ec646a4",
+    "SkillLineAbility": "13ef58a08253125e3e9dca642a39bc480187987e90cfbe5c8be30e1ab3c8be0a",
+    "SpellEquippedItems": "5750d65b2e990f1cced1cd1e571d4ca7fbcb1db1d9412238f7a9b2608118d52d",
+    "SpellEffect": "cc8f167fe246b495294b560196f6c59439f703e8f937ddb6acd81157bd5f8b9c"
+  },
+  "subclasses": {
+    "5": {
+      "skill": 160,
+      "name": "双手锤",
+      "proficiency": 160,
+      "spell": 199
+    },
+    "6": {
+      "skill": 229,
+      "name": "长柄武器",
+      "proficiency": 229,
+      "spell": 200
+    },
+    "7": {
+      "skill": 43,
+      "name": "单手剑",
+      "proficiency": 43,
+      "spell": 201
+    },
+    "8": {
+      "skill": 55,
+      "name": "双手剑",
+      "proficiency": 55,
+      "spell": 202
+    },
+    "0": {
+      "skill": 44,
+      "name": "单手斧",
+      "proficiency": 44,
+      "spell": 196
+    },
+    "1": {
+      "skill": 172,
+      "name": "双手斧",
+      "proficiency": 172,
+      "spell": 197
+    },
+    "4": {
+      "skill": 54,
+      "name": "单手锤",
+      "proficiency": 54,
+      "spell": 198
+    },
+    "10": {
+      "skill": 136,
+      "name": "法杖",
+      "proficiency": 136,
+      "spell": 227
+    },
+    "2": {
+      "skill": 45,
+      "name": "弓",
+      "proficiency": 45,
+      "spell": 264
+    },
+    "3": {
+      "skill": 46,
+      "name": "枪械",
+      "proficiency": 46,
+      "spell": 266
+    },
+    "16": {
+      "skill": 176,
+      "name": "投掷武器",
+      "proficiency": 176,
+      "spell": 2567
+    },
+    "15": {
+      "skill": 173,
+      "name": "匕首",
+      "proficiency": 173,
+      "spell": 1180
+    },
+    "19": {
+      "skill": 228,
+      "name": "魔杖",
+      "proficiency": 228,
+      "spell": 5009
+    },
+    "18": {
+      "skill": 226,
+      "name": "弩",
+      "proficiency": 226,
+      "spell": 5011
+    },
+    "13": {
+      "skill": 162,
+      "name": "拳套",
+      "proficiency": 473,
+      "spell": 15590
+    }
+  },
+  "excluded": [
+    {
+      "subclass": 14,
+      "spell": 2382,
+      "skills": [
+        183
+      ]
+    },
+    {
+      "subclass": 17,
+      "spell": 3386,
+      "skills": []
+    },
+    {
+      "subclass": 20,
+      "spell": 7738,
+      "skills": [
+        356
+      ]
+    }
+  ],
+  "scope": "Weapon subclass to native skill identity only; no class permissions, hit formulas or time calibration.",
+  "fistWeaponRankSource": "学会使用拳套作战。击中敌人的几率取决于徒手战斗能力的熟练程度。"
+}

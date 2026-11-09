@@ -1,0 +1,9019 @@
+{
+  "build": "1.60.1.70862",
+  "clientVerified": false,
+  "sources": [
+    {
+      "table": "ItemEffect",
+      "sha256": "df9f123861be4e180736e79dcee708151c6f79de9f5e6773ff8e2066430aa434",
+      "url": "https://wago.tools/db2/ItemEffect/csv?build=1.60.1.70862&locale=zhCN"
+    },
+    {
+      "table": "ItemXItemEffect",
+      "sha256": "15dc36eec90ca5768e00469cb8065aedf82efcf205ca03281daf6aac69ca1885",
+      "url": "https://wago.tools/db2/ItemXItemEffect/csv?build=1.60.1.70862&locale=zhCN"
+    },
+    {
+      "table": "SpellEffect",
+      "sha256": "cc8f167fe246b495294b560196f6c59439f703e8f937ddb6acd81157bd5f8b9c",
+      "url": "https://wago.tools/db2/SpellEffect/csv?build=1.60.1.70862&locale=zhCN"
+    }
+  ],
+  "counts": {
+    "items": 1243,
+    "complexItems": 1193,
+    "flatCandidates": 50,
+    "missingEffects": 1,
+    "missingSpells": 9
+  },
+  "missingEffects": [
+    {
+      "ID": "140329",
+      "ItemEffectID": "112960",
+      "ItemID": "167648"
+    }
+  ],
+  "missingSpellIds": [
+    5718,
+    5719,
+    6260,
+    6261,
+    18287,
+    469141,
+    1220874,
+    1226557,
+    1227397
+  ],
+  "policy": "OnEquip only. Exact client build required. Constant self stat auras are considered covered only when live GetItemStats contains their complete totals. All other effects are qualitative; never added to attribute scores.",
+  "items": {
+    "21407": {
+      "spells": [
+        26153
+      ],
+      "stats": {
+        "ATTACK_POWER": 140.0
+      },
+      "complex": false
+    },
+    "2101": {
+      "spells": [
+        29418
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "2662": {
+      "spells": [
+        29415
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "3573": {
+      "spells": [
+        29418
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "3605": {
+      "spells": [
+        29417
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "5439": {
+      "spells": [
+        29418
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "7278": {
+      "spells": [
+        29418
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "7371": {
+      "spells": [
+        29416
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "8217": {
+      "spells": [
+        29413
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "11362": {
+      "spells": [
+        29418
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18714": {
+      "spells": [
+        29414
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19319": {
+      "spells": [
+        29414
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "1131": {
+      "spells": [
+        7617
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "1168": {
+      "spells": [
+        18815,
+        18816
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "1204": {
+      "spells": [
+        18097,
+        1325228
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "1979": {
+      "spells": [
+        19409
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "2824": {
+      "spells": [
+        1316319
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "3475": {
+      "spells": [
+        21142
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "4248": {
+      "spells": [
+        9133
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "4491": {
+      "spells": [
+        4152
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "6182": {
+      "spells": [
+        7363
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "7052": {
+      "spells": [
+        8747
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "7284": {
+      "spells": [
+        9233
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "7375": {
+      "spells": [
+        9160
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "7747": {
+      "spells": [
+        7619
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "7939": {
+      "spells": [
+        9778
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "7953": {
+      "spells": [
+        17746
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "8197": {
+      "spells": [
+        17746
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "8345": {
+      "spells": [
+        17768
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "9419": {
+      "spells": [
+        1293980
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "9452": {
+      "spells": [
+        11789
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "9458": {
+      "spells": [
+        1292880
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "9467": {
+      "spells": [
+        1294477
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "9978": {
+      "spells": [
+        11992
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "10036": {
+      "spells": [
+        17816
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "10501": {
+      "spells": [
+        12418
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "10506": {
+      "spells": [
+        1320643
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "10625": {
+      "spells": [
+        27037
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "11684": {
+      "spells": [
+        1301046
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "11861": {
+      "spells": [
+        7617
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "12588": {
+      "spells": [
+        16550
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "12628": {
+      "spells": [
+        16611
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "12631": {
+      "spells": [
+        7721
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "12632": {
+      "spells": [
+        16615
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "12639": {
+      "spells": [
+        7219
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "12641": {
+      "spells": [
+        16620
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "12802": {
+      "spells": [
+        1314143
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13040": {
+      "spells": [
+        29626
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13243": {
+      "spells": [
+        17350
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13375": {
+      "spells": [
+        17495
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13505": {
+      "spells": [
+        17625
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "14154": {
+      "spells": [
+        18388
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "14576": {
+      "spells": [
+        1298501
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "15138": {
+      "spells": [
+        22683
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16391": {
+      "spells": [
+        23037
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16392": {
+      "spells": [
+        23049
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16397": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16403": {
+      "spells": [
+        23157
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16406": {
+      "spells": [
+        22778
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16410": {
+      "spells": [
+        23300
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16440": {
+      "spells": [
+        23037
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16446": {
+      "spells": [
+        23049
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16448": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16463": {
+      "spells": [
+        28539
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16471": {
+      "spells": [
+        23300
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16484": {
+      "spells": [
+        22778
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16487": {
+      "spells": [
+        23037
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16496": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16498": {
+      "spells": [
+        23049
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16510": {
+      "spells": [
+        22778
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16518": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16530": {
+      "spells": [
+        23157
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16540": {
+      "spells": [
+        23037
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16548": {
+      "spells": [
+        22778
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16555": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16558": {
+      "spells": [
+        23049
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16571": {
+      "spells": [
+        28539
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16573": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16907": {
+      "spells": [
+        7219
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17066": {
+      "spells": [
+        15438
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17104": {
+      "spells": [
+        21185
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17182": {
+      "spells": [
+        21142
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17564": {
+      "spells": [
+        23046
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17577": {
+      "spells": [
+        23046
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17584": {
+      "spells": [
+        23046
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17588": {
+      "spells": [
+        23046
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17596": {
+      "spells": [
+        23043
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17608": {
+      "spells": [
+        23043
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17617": {
+      "spells": [
+        23043
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17620": {
+      "spells": [
+        23043
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17780": {
+      "spells": [
+        21978
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17943": {
+      "spells": [
+        1294794
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18161": {
+      "spells": [
+        22586
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18162": {
+      "spells": [
+        22587
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18163": {
+      "spells": [
+        22588
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18164": {
+      "spells": [
+        22589
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18165": {
+      "spells": [
+        22590
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18168": {
+      "spells": [
+        22618,
+        22620
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18326": {
+      "spells": [
+        1302193
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18608": {
+      "spells": [
+        23236
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18722": {
+      "spells": [
+        7219
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18801": {
+      "spells": [
+        23236
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18825": {
+      "spells": [
+        13959
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18826": {
+      "spells": [
+        13959
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18881": {
+      "spells": [
+        21142
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19158": {
+      "spells": [
+        21142
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19874": {
+      "spells": [
+        25669
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19968": {
+      "spells": [
+        7711
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19982": {
+      "spells": [
+        1300663
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19986": {
+      "spells": [
+        24351
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19998": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20005": {
+      "spells": [
+        24362
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20035": {
+      "spells": [
+        24392
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20048": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20049": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20050": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20051": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20052": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20053": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20054": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20091": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20092": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20093": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20094": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20095": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20096": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20100": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20101": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20102": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20109": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20110": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20111": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20112": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20113": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20114": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20121": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20122": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20123": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20127": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20128": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20129": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20154": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20155": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20156": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20157": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20159": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20160": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20161": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20162": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20167": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20168": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20169": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20170": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20181": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20182": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20183": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20185": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20186": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20187": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20188": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20189": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20199": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20200": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20201": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20202": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20208": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20209": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20210": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20211": {
+      "spells": [
+        23990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20255": {
+      "spells": [
+        17746
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20370": {
+      "spells": [
+        24694
+      ],
+      "stats": {
+        "ATTACK_POWER": 574.0
+      },
+      "complex": false
+    },
+    "20372": {
+      "spells": [
+        24697
+      ],
+      "stats": {
+        "ATTACK_POWER": 280.0
+      },
+      "complex": false
+    },
+    "21128": {
+      "spells": [
+        25767
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "21517": {
+      "spells": [
+        26208
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22003": {
+      "spells": [
+        27037
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22013": {
+      "spells": [
+        27038
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22015": {
+      "spells": [
+        27043
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22060": {
+      "spells": [
+        27225
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22061": {
+      "spells": [
+        27206
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22191": {
+      "spells": [
+        27518
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22194": {
+      "spells": [
+        27522
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22196": {
+      "spells": [
+        27539
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22198": {
+      "spells": [
+        27561
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22589": {
+      "spells": [
+        28142
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22630": {
+      "spells": [
+        28143
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22631": {
+      "spells": [
+        28144
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22632": {
+      "spells": [
+        28145,
+        28154
+      ],
+      "stats": {
+        "ATTACK_POWER": 420.0
+      },
+      "complex": true
+    },
+    "22691": {
+      "spells": [
+        28282
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22856": {
+      "spells": [
+        23049
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22857": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22862": {
+      "spells": [
+        28539
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22863": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22865": {
+      "spells": [
+        23046
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22868": {
+      "spells": [
+        22778
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22869": {
+      "spells": [
+        23043
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22870": {
+      "spells": [
+        23037
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22988": {
+      "spells": [
+        28717
+      ],
+      "stats": {
+        "ATTACK_POWER": 305.0
+      },
+      "complex": false
+    },
+    "23072": {
+      "spells": [
+        7219
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23073": {
+      "spells": [
+        27037
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23221": {
+      "spells": [
+        29150
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23238": {
+      "spells": [
+        29162
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23274": {
+      "spells": [
+        23300
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23279": {
+      "spells": [
+        28539
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23280": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23282": {
+      "spells": [
+        23046
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23285": {
+      "spells": [
+        23049
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23286": {
+      "spells": [
+        22778
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23288": {
+      "spells": [
+        23043
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23290": {
+      "spells": [
+        23037
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "21190": {
+      "spells": [
+        25906
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "11122": {
+      "spells": [
+        13587
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19120": {
+      "spells": [
+        1318000,
+        1287704
+      ],
+      "stats": {
+        "ATTACK_POWER": 42.0,
+        "RANGED_ATTACK_POWER": 42.0
+      },
+      "complex": false
+    },
+    "191312": {
+      "spells": [
+        370391
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "202256": {
+      "spells": [
+        398197
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "205218": {
+      "spells": [
+        408833
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "205420": {
+      "spells": [
+        409930
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "206376": {
+      "spells": [
+        413338
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "206381": {
+      "spells": [
+        413429
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "206382": {
+      "spells": [
+        420799
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "206383": {
+      "spells": [
+        413432
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "206384": {
+      "spells": [
+        413338
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "206385": {
+      "spells": [
+        415012
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "206386": {
+      "spells": [
+        415015
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "206387": {
+      "spells": [
+        413839
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "206388": {
+      "spells": [
+        426257
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "206389": {
+      "spells": [
+        413338
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "206390": {
+      "spells": [
+        413338
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "206391": {
+      "spells": [
+        413338
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "206954": {
+      "spells": [
+        414826
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "208222": {
+      "spells": [
+        418509
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "208414": {
+      "spells": [
+        419288
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "208618": {
+      "spells": [
+        15600
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "208689": {
+      "spells": [
+        420493
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "208208": {
+      "spells": [
+        418738
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "208756": {
+      "spells": [
+        15600
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "208774": {
+      "spells": [
+        420998
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "208849": {
+      "spells": [
+        421510
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "208851": {
+      "spells": [
+        421535
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "209420": {
+      "spells": [
+        422746
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "209576": {
+      "spells": [
+        7499
+      ],
+      "stats": {
+        "SPIRIT": 5.0
+      },
+      "complex": false
+    },
+    "209577": {
+      "spells": [
+        423002
+      ],
+      "stats": {
+        "ATTACK_POWER": 59.0
+      },
+      "complex": false
+    },
+    "209677": {
+      "spells": [
+        423298
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "209678": {
+      "spells": [
+        423299
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "209816": {
+      "spells": [
+        423474
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "209821": {
+      "spells": [
+        423481
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "209823": {
+      "spells": [
+        423484
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "209842": {
+      "spells": [
+        17768
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "210195": {
+      "spells": [
+        424339,
+        424336,
+        423186
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "210534": {
+      "spells": [
+        426072
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "210696": {
+      "spells": [
+        425887
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "210741": {
+      "spells": [
+        435531
+      ],
+      "stats": {
+        "ATTACK_POWER": 69.0
+      },
+      "complex": false
+    },
+    "210794": {
+      "spells": [
+        427144
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "211420": {
+      "spells": [
+        429339
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "211472": {
+      "spells": [
+        429578
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "211500": {
+      "spells": [
+        430432
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "211856": {
+      "spells": [
+        430432
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "211857": {
+      "spells": [
+        430432
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "211940": {
+      "spells": [
+        17232
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "213289": {
+      "spells": [
+        11789
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "213513": {
+      "spells": [
+        435962
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "213594": {
+      "spells": [
+        435097
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "213341": {
+      "spells": [
+        17746
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "213278": {
+      "spells": [
+        439651
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "215371": {
+      "spells": [
+        435869
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "215435": {
+      "spells": [
+        437059
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "215436": {
+      "spells": [
+        436286
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "216490": {
+      "spells": [
+        436287
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "216499": {
+      "spells": [
+        436480
+      ],
+      "stats": {
+        "ATTACK_POWER": 80.0
+      },
+      "complex": false
+    },
+    "216514": {
+      "spells": [
+        29415
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "216515": {
+      "spells": [
+        14828
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "216509": {
+      "spells": [
+        436375
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "216513": {
+      "spells": [
+        436690,
+        436379
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "216516": {
+      "spells": [
+        436469
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "213390": {
+      "spells": [
+        437367
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "216941": {
+      "spells": [
+        438295
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "215461": {
+      "spells": [
+        439731
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "215115": {
+      "spells": [
+        439870
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "217704": {
+      "spells": [
+        440632
+      ],
+      "stats": {
+        "ATTACK_POWER": 36.0
+      },
+      "complex": false
+    },
+    "217727": {
+      "spells": [
+        440841
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "219326": {
+      "spells": [
+        443278
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "219343": {
+      "spells": [
+        443632
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "219945": {
+      "spells": [
+        444509
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220605": {
+      "spells": [
+        446213
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220606": {
+      "spells": [
+        446212
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220689": {
+      "spells": [
+        446092
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220912": {
+      "spells": [
+        446089
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220915": {
+      "spells": [
+        446095
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220607": {
+      "spells": [
+        446220
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221026": {
+      "spells": [
+        446092
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220596": {
+      "spells": [
+        449668
+      ],
+      "stats": {
+        "ATTACK_POWER": 114.0
+      },
+      "complex": false
+    },
+    "221025": {
+      "spells": [
+        446092
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221027": {
+      "spells": [
+        446092
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221307": {
+      "spells": [
+        446392,
+        450110
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221308": {
+      "spells": [
+        446395
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221309": {
+      "spells": [
+        446389,
+        451415
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221310": {
+      "spells": [
+        446390,
+        450109
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220751": {
+      "spells": [
+        446570
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220743": {
+      "spells": [
+        446579
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221369": {
+      "spells": [
+        446675
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221374": {
+      "spells": [
+        446689
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221439": {
+      "spells": [
+        9160
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221440": {
+      "spells": [
+        446705
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221441": {
+      "spells": [
+        446708
+      ],
+      "stats": {
+        "ATTACK_POWER": 73.0
+      },
+      "complex": false
+    },
+    "221446": {
+      "spells": [
+        449668
+      ],
+      "stats": {
+        "ATTACK_POWER": 114.0
+      },
+      "complex": false
+    },
+    "221450": {
+      "spells": [
+        446723
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221451": {
+      "spells": [
+        446724
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221464": {
+      "spells": [
+        446730
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221468": {
+      "spells": [
+        27561
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220741": {
+      "spells": [
+        446518
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221780": {
+      "spells": [
+        447274
+      ],
+      "stats": {
+        "ATTACK_POWER": 67.0
+      },
+      "complex": false
+    },
+    "220750": {
+      "spells": [
+        446518
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220749": {
+      "spells": [
+        446545
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220740": {
+      "spells": [
+        446592
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220738": {
+      "spells": [
+        446579
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220739": {
+      "spells": [
+        446545
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220748": {
+      "spells": [
+        446545
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220747": {
+      "spells": [
+        446579
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220742": {
+      "spells": [
+        446620
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220744": {
+      "spells": [
+        446545
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220860": {
+      "spells": [
+        17746
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220861": {
+      "spells": [
+        17746
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220846": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220835": {
+      "spells": [
+        24090
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220840": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "223077": {
+      "spells": [
+        24090
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221409": {
+      "spells": [
+        17746
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221405": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221393": {
+      "spells": [
+        24090
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "221394": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "223186": {
+      "spells": [
+        448629
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "223964": {
+      "spells": [
+        21978
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "220745": {
+      "spells": [
+        446592
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "224122": {
+      "spells": [
+        451439
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "224279": {
+      "spells": [
+        452466
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "224280": {
+      "spells": [
+        22683,
+        469086
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "224282": {
+      "spells": [
+        468700,
+        452432
+      ],
+      "stats": {
+        "ATTACK_POWER": 338.0
+      },
+      "complex": true
+    },
+    "224281": {
+      "spells": [
+        453017,
+        452428
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "225838": {
+      "spells": [
+        456223
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "226546": {
+      "spells": [
+        459217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "226831": {
+      "spells": [
+        1293068
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "226851": {
+      "spells": [
+        27037
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "226901": {
+      "spells": [
+        27038
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "226902": {
+      "spells": [
+        27043
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "226903": {
+      "spells": [
+        27206
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "226904": {
+      "spells": [
+        27225
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227050": {
+      "spells": [
+        459608
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227053": {
+      "spells": [
+        459608
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227062": {
+      "spells": [
+        459605
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227064": {
+      "spells": [
+        459605
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227075": {
+      "spells": [
+        459593
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227077": {
+      "spells": [
+        459593
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227081": {
+      "spells": [
+        459598
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227087": {
+      "spells": [
+        459598
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227099": {
+      "spells": [
+        459607
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227100": {
+      "spells": [
+        459607
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227111": {
+      "spells": [
+        459599
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227113": {
+      "spells": [
+        459599
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227114": {
+      "spells": [
+        459600
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227115": {
+      "spells": [
+        459600
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227116": {
+      "spells": [
+        459599
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227117": {
+      "spells": [
+        459599
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227126": {
+      "spells": [
+        459603
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227128": {
+      "spells": [
+        459603
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227133": {
+      "spells": [
+        459604
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227139": {
+      "spells": [
+        459604
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227147": {
+      "spells": [
+        459601
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227152": {
+      "spells": [
+        459602
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227180": {
+      "spells": [
+        459594
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227183": {
+      "spells": [
+        459594
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227187": {
+      "spells": [
+        459595
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227193": {
+      "spells": [
+        459595
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227198": {
+      "spells": [
+        459596
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227204": {
+      "spells": [
+        459596
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227279": {
+      "spells": [
+        27867
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227280": {
+      "spells": [
+        21975
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227282": {
+      "spells": [
+        27780
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227284": {
+      "spells": [
+        23560
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227444": {
+      "spells": [
+        461644,
+        461640
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "226697": {
+      "spells": [
+        460228
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227683": {
+      "spells": [
+        460339,
+        460335,
+        460340
+      ],
+      "stats": {
+        "ATTACK_POWER": 358.0
+      },
+      "complex": true
+    },
+    "227684": {
+      "spells": [
+        21142,
+        460342,
+        460343
+      ],
+      "stats": {
+        "ATTACK_POWER": 124.0
+      },
+      "complex": true
+    },
+    "227865": {
+      "spells": [
+        7721
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227870": {
+      "spells": [
+        16615
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227876": {
+      "spells": [
+        16620
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227885": {
+      "spells": [
+        7219
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227990": {
+      "spells": [
+        461164
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228110": {
+      "spells": [
+        21991
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228075": {
+      "spells": [
+        449668
+      ],
+      "stats": {
+        "ATTACK_POWER": 114.0
+      },
+      "complex": false
+    },
+    "228143": {
+      "spells": [
+        461253
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228172": {
+      "spells": [
+        461289
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228173": {
+      "spells": [
+        463146
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228174": {
+      "spells": [
+        461292
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228175": {
+      "spells": [
+        449980
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228176": {
+      "spells": [
+        461295
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228177": {
+      "spells": [
+        461298
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228178": {
+      "spells": [
+        461299
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228179": {
+      "spells": [
+        461301
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228180": {
+      "spells": [
+        447296
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228181": {
+      "spells": [
+        461304
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228182": {
+      "spells": [
+        461306
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228183": {
+      "spells": [
+        461308
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228230": {
+      "spells": [
+        461580,
+        461579
+      ],
+      "stats": {
+        "ATTACK_POWER": 172.0
+      },
+      "complex": true
+    },
+    "228248": {
+      "spells": [
+        461629,
+        461628
+      ],
+      "stats": {
+        "ATTACK_POWER": 109.0
+      },
+      "complex": true
+    },
+    "228257": {
+      "spells": [
+        461681
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228266": {
+      "spells": [
+        15438
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228272": {
+      "spells": [
+        461684,
+        461685
+      ],
+      "stats": {
+        "ATTACK_POWER": 189.0
+      },
+      "complex": true
+    },
+    "228273": {
+      "spells": [
+        461687,
+        461685
+      ],
+      "stats": {
+        "ATTACK_POWER": 189.0
+      },
+      "complex": true
+    },
+    "228293": {
+      "spells": [
+        461694
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228299": {
+      "spells": [
+        461700
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228122": {
+      "spells": [
+        461701
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228354": {
+      "spells": [
+        468168
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228432": {
+      "spells": [
+        27225,
+        27038,
+        27206,
+        27043
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228410": {
+      "spells": [
+        462229
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228460": {
+      "spells": [
+        461700
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228463": {
+      "spells": [
+        461629,
+        461628
+      ],
+      "stats": {
+        "ATTACK_POWER": 109.0
+      },
+      "complex": true
+    },
+    "228473": {
+      "spells": [
+        449668
+      ],
+      "stats": {
+        "ATTACK_POWER": 114.0
+      },
+      "complex": false
+    },
+    "228498": {
+      "spells": [
+        462229
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228543": {
+      "spells": [
+        17625
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228599": {
+      "spells": [
+        462385
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228666": {
+      "spells": [
+        462628,
+        460343
+      ],
+      "stats": {
+        "ATTACK_POWER": 124.0
+      },
+      "complex": true
+    },
+    "228702": {
+      "spells": [
+        15438
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228722": {
+      "spells": [
+        15600
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "208424": {
+      "spells": [
+        463001
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227164": {
+      "spells": [
+        459606
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227170": {
+      "spells": [
+        459606
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227158": {
+      "spells": [
+        459606
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227880": {
+      "spells": [
+        461629
+      ],
+      "stats": {
+        "ATTACK_POWER": 109.0
+      },
+      "complex": false
+    },
+    "227833": {
+      "spells": [
+        461580
+      ],
+      "stats": {
+        "ATTACK_POWER": 172.0
+      },
+      "complex": false
+    },
+    "228186": {
+      "spells": [
+        463529
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227886": {
+      "spells": [
+        463641
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227934": {
+      "spells": [
+        461154
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "229380": {
+      "spells": [
+        461684,
+        461685
+      ],
+      "stats": {
+        "ATTACK_POWER": 189.0
+      },
+      "complex": true
+    },
+    "229381": {
+      "spells": [
+        461687,
+        461685
+      ],
+      "stats": {
+        "ATTACK_POWER": 189.0
+      },
+      "complex": true
+    },
+    "229749": {
+      "spells": [
+        465412
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228679": {
+      "spells": [
+        465699
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "227867": {
+      "spells": [
+        465719
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "229906": {
+      "spells": [
+        465787
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "229966": {
+      "spells": [
+        465412
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "229909": {
+      "spells": [
+        469236
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "229971": {
+      "spells": [
+        469237
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "229972": {
+      "spells": [
+        469238
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "230003": {
+      "spells": [
+        465412
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "230005": {
+      "spells": [
+        466513
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "230009": {
+      "spells": [
+        466565
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "230022": {
+      "spells": [
+        466653
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "230010": {
+      "spells": [
+        466565
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "230098": {
+      "spells": [
+        466745
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "230105": {
+      "spells": [
+        466747
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "230253": {
+      "spells": [
+        467145
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "230738": {
+      "spells": [
+        453053
+      ],
+      "stats": {
+        "ATTACK_POWER": 260.0
+      },
+      "complex": false
+    },
+    "230749": {
+      "spells": [
+        467348
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "230794": {
+      "spells": [
+        467407
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "230844": {
+      "spells": [
+        453053
+      ],
+      "stats": {
+        "ATTACK_POWER": 260.0
+      },
+      "complex": false
+    },
+    "230238": {
+      "spells": [
+        467466
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "230249": {
+      "spells": [
+        467508
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "230250": {
+      "spells": [
+        467512
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "230280": {
+      "spells": [
+        467528
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "230920": {
+      "spells": [
+        467751
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "228955": {
+      "spells": [
+        467753
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "230911": {
+      "spells": [
+        467813,
+        26153
+      ],
+      "stats": {
+        "ATTACK_POWER": 140.0
+      },
+      "complex": true
+    },
+    "230991": {
+      "spells": [
+        467819,
+        26153
+      ],
+      "stats": {
+        "ATTACK_POWER": 140.0
+      },
+      "complex": true
+    },
+    "230993": {
+      "spells": [
+        469672
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231016": {
+      "spells": [
+        467837,
+        26153
+      ],
+      "stats": {
+        "ATTACK_POWER": 140.0
+      },
+      "complex": true
+    },
+    "231272": {
+      "spells": [
+        26153
+      ],
+      "stats": {
+        "ATTACK_POWER": 140.0
+      },
+      "complex": false
+    },
+    "231275": {
+      "spells": [
+        468170
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231277": {
+      "spells": [
+        26153
+      ],
+      "stats": {
+        "ATTACK_POWER": 140.0
+      },
+      "complex": false
+    },
+    "231316": {
+      "spells": [
+        468260
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231320": {
+      "spells": [
+        468310,
+        468270
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231321": {
+      "spells": [
+        468268
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231322": {
+      "spells": [
+        468270
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231323": {
+      "spells": [
+        468272
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231324": {
+      "spells": [
+        468273
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231328": {
+      "spells": [
+        436284
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231332": {
+      "spells": [
+        468278
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231336": {
+      "spells": [
+        468288
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231340": {
+      "spells": [
+        468289
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231346": {
+      "spells": [
+        468303
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231350": {
+      "spells": [
+        468309
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231287": {
+      "spells": [
+        468459
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231532": {
+      "spells": [
+        459608
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231541": {
+      "spells": [
+        459608
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231546": {
+      "spells": [
+        459605
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231552": {
+      "spells": [
+        459605
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231560": {
+      "spells": [
+        459598
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231569": {
+      "spells": [
+        459598
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231575": {
+      "spells": [
+        459593
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231578": {
+      "spells": [
+        459593
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231586": {
+      "spells": [
+        459607
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231589": {
+      "spells": [
+        459607
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231598": {
+      "spells": [
+        459599
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231599": {
+      "spells": [
+        459600
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231600": {
+      "spells": [
+        459599
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231509": {
+      "spells": [
+        468528,
+        469823
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231607": {
+      "spells": [
+        459599
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231608": {
+      "spells": [
+        459600
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231609": {
+      "spells": [
+        459599
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231613": {
+      "spells": [
+        459604
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231617": {
+      "spells": [
+        459604
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231623": {
+      "spells": [
+        459603
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231633": {
+      "spells": [
+        459603
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231643": {
+      "spells": [
+        459602
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231650": {
+      "spells": [
+        459601
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231656": {
+      "spells": [
+        459606
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231661": {
+      "spells": [
+        459606
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231667": {
+      "spells": [
+        459606
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231676": {
+      "spells": [
+        459596
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231677": {
+      "spells": [
+        459595
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231688": {
+      "spells": [
+        459594
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231694": {
+      "spells": [
+        459594
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231700": {
+      "spells": [
+        459595
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231706": {
+      "spells": [
+        459596
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231387": {
+      "spells": [
+        468671
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231784": {
+      "spells": [
+        468780
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231811": {
+      "spells": [
+        468913
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231823": {
+      "spells": [
+        468993
+      ],
+      "stats": {
+        "ATTACK_POWER": 298.0
+      },
+      "complex": false
+    },
+    "231848": {
+      "spells": [
+        467837,
+        26153
+      ],
+      "stats": {
+        "ATTACK_POWER": 140.0
+      },
+      "complex": true
+    },
+    "231849": {
+      "spells": [
+        26153
+      ],
+      "stats": {
+        "ATTACK_POWER": 140.0
+      },
+      "complex": false
+    },
+    "231861": {
+      "spells": [
+        467813,
+        26153
+      ],
+      "stats": {
+        "ATTACK_POWER": 140.0
+      },
+      "complex": true
+    },
+    "231862": {
+      "spells": [
+        468170
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231864": {
+      "spells": [
+        26153
+      ],
+      "stats": {
+        "ATTACK_POWER": 140.0
+      },
+      "complex": false
+    },
+    "231870": {
+      "spells": [
+        467819,
+        26153
+      ],
+      "stats": {
+        "ATTACK_POWER": 140.0
+      },
+      "complex": true
+    },
+    "231877": {
+      "spells": [
+        469141
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231885": {
+      "spells": [
+        17625
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231890": {
+      "spells": [
+        469183
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "229910": {
+      "spells": [
+        469211
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231042": {
+      "spells": [
+        469348
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231050": {
+      "spells": [
+        469348
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "232188": {
+      "spells": [
+        469348
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "232196": {
+      "spells": [
+        469348
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231868": {
+      "spells": [
+        469632,
+        469672
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231854": {
+      "spells": [
+        469674
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231385": {
+      "spells": [
+        469985
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "232389": {
+      "spells": [
+        470078
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "232390": {
+      "spells": [
+        470079
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "232391": {
+      "spells": [
+        470080
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "232392": {
+      "spells": [
+        470081
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "232409": {
+      "spells": [
+        470105
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "232416": {
+      "spells": [
+        470235
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "232419": {
+      "spells": [
+        470240
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "232420": {
+      "spells": [
+        470246
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "232421": {
+      "spells": [
+        470263
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "232423": {
+      "spells": [
+        470266
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "232424": {
+      "spells": [
+        470269
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "232551": {
+      "spells": [
+        453053
+      ],
+      "stats": {
+        "ATTACK_POWER": 260.0
+      },
+      "complex": false
+    },
+    "232557": {
+      "spells": [
+        467407
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "232559": {
+      "spells": [
+        453053
+      ],
+      "stats": {
+        "ATTACK_POWER": 260.0
+      },
+      "complex": false
+    },
+    "232607": {
+      "spells": [
+        467145,
+        471695
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "232608": {
+      "spells": [
+        471695
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "232606": {
+      "spells": [
+        471695
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231872": {
+      "spells": [
+        469632
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "231852": {
+      "spells": [
+        469632
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233420": {
+      "spells": [
+        468270
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233492": {
+      "spells": [
+        1213813
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233505": {
+      "spells": [
+        474127
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233507": {
+      "spells": [
+        474142
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233509": {
+      "spells": [
+        474196,
+        474232
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233575": {
+      "spells": [
+        1213238
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233596": {
+      "spells": [
+        1214158
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233597": {
+      "spells": [
+        1214292
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233602": {
+      "spells": [
+        1214289
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233793": {
+      "spells": [
+        1213816
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233795": {
+      "spells": [
+        1213813
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233796": {
+      "spells": [
+        453053,
+        461579,
+        1214125
+      ],
+      "stats": {
+        "ATTACK_POWER": 260.0
+      },
+      "complex": true
+    },
+    "233797": {
+      "spells": [
+        463641,
+        1214125
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233808": {
+      "spells": [
+        1213813
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233837": {
+      "spells": [
+        1213862
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233988": {
+      "spells": [
+        1213963
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234000": {
+      "spells": [
+        1214058
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234001": {
+      "spells": [
+        1214059
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234002": {
+      "spells": [
+        1214063
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234086": {
+      "spells": [
+        1214258
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234134": {
+      "spells": [
+        26208
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234135": {
+      "spells": [
+        11789
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234152": {
+      "spells": [
+        453053
+      ],
+      "stats": {
+        "ATTACK_POWER": 260.0
+      },
+      "complex": false
+    },
+    "234176": {
+      "spells": [
+        1213419
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234177": {
+      "spells": [
+        1213421
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234178": {
+      "spells": [
+        1213417
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234179": {
+      "spells": [
+        1213411
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233586": {
+      "spells": [
+        468700
+      ],
+      "stats": {
+        "ATTACK_POWER": 338.0
+      },
+      "complex": false
+    },
+    "234034": {
+      "spells": [
+        1213390,
+        1213395
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234030": {
+      "spells": [
+        1213390,
+        1213395
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234026": {
+      "spells": [
+        1213390,
+        1213395
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234021": {
+      "spells": [
+        1213390,
+        1213395
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234017": {
+      "spells": [
+        1213390,
+        1213395
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234198": {
+      "spells": [
+        1213390,
+        1213395
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234199": {
+      "spells": [
+        1213390,
+        1213395
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234200": {
+      "spells": [
+        1213390,
+        1213395
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234201": {
+      "spells": [
+        1213390,
+        1213395
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234202": {
+      "spells": [
+        1213390,
+        1213395
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234016": {
+      "spells": [
+        1213398
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234020": {
+      "spells": [
+        1213398
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234024": {
+      "spells": [
+        1213398
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234028": {
+      "spells": [
+        1213398
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234032": {
+      "spells": [
+        1213398
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234019": {
+      "spells": [
+        1213405
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234023": {
+      "spells": [
+        1213405
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234025": {
+      "spells": [
+        1213405
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234029": {
+      "spells": [
+        1213405
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234033": {
+      "spells": [
+        1213405
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234018": {
+      "spells": [
+        1213407
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234022": {
+      "spells": [
+        1213407
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234027": {
+      "spells": [
+        1213407
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234031": {
+      "spells": [
+        1213407
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234035": {
+      "spells": [
+        1213407
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233804": {
+      "spells": [
+        1213816
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233813": {
+      "spells": [
+        1213813
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233826": {
+      "spells": [
+        1213862
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233833": {
+      "spells": [
+        1213874
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233992": {
+      "spells": [
+        1213816
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233491": {
+      "spells": [
+        1214125
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233490": {
+      "spells": [
+        1214125
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233798": {
+      "spells": [
+        1214125
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233801": {
+      "spells": [
+        1214125
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234428": {
+      "spells": [
+        1214125
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234434": {
+      "spells": [
+        1214143
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234436": {
+      "spells": [
+        1214155
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234437": {
+      "spells": [
+        1214155
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234438": {
+      "spells": [
+        1214155
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234439": {
+      "spells": [
+        1214155
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234440": {
+      "spells": [
+        1214155
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234459": {
+      "spells": [
+        1214272
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234460": {
+      "spells": [
+        1214276
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234463": {
+      "spells": [
+        1214280
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234468": {
+      "spells": [
+        1214286
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234469": {
+      "spells": [
+        1214285
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234474": {
+      "spells": [
+        1214295
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234475": {
+      "spells": [
+        1214296
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234476": {
+      "spells": [
+        1214297
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234477": {
+      "spells": [
+        1214299
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234478": {
+      "spells": [
+        1214300
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234479": {
+      "spells": [
+        1214301
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234480": {
+      "spells": [
+        1214302
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234562": {
+      "spells": [
+        1216968,
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234588": {
+      "spells": [
+        1216968,
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234614": {
+      "spells": [
+        1214883
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234067": {
+      "spells": [
+        1214927
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234747": {
+      "spells": [
+        453053
+      ],
+      "stats": {
+        "ATTACK_POWER": 260.0
+      },
+      "complex": false
+    },
+    "234798": {
+      "spells": [
+        461580
+      ],
+      "stats": {
+        "ATTACK_POWER": 172.0
+      },
+      "complex": false
+    },
+    "234810": {
+      "spells": [
+        468700
+      ],
+      "stats": {
+        "ATTACK_POWER": 338.0
+      },
+      "complex": false
+    },
+    "234964": {
+      "spells": [
+        1215404
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234965": {
+      "spells": [
+        1215404
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234966": {
+      "spells": [
+        1215404
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234967": {
+      "spells": [
+        1215404
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234968": {
+      "spells": [
+        1215404
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233422": {
+      "spells": [
+        468270
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233421": {
+      "spells": [
+        468268
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "233417": {
+      "spells": [
+        468700
+      ],
+      "stats": {
+        "ATTACK_POWER": 338.0
+      },
+      "complex": false
+    },
+    "234974": {
+      "spells": [
+        474196,
+        474232
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234978": {
+      "spells": [
+        468700
+      ],
+      "stats": {
+        "ATTACK_POWER": 338.0
+      },
+      "complex": false
+    },
+    "234980": {
+      "spells": [
+        1215456
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234983": {
+      "spells": [
+        1215456
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234990": {
+      "spells": [
+        1214927
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234991": {
+      "spells": [
+        1215456
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234993": {
+      "spells": [
+        1215456
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234997": {
+      "spells": [
+        1215456
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234999": {
+      "spells": [
+        468700
+      ],
+      "stats": {
+        "ATTACK_POWER": 338.0
+      },
+      "complex": false
+    },
+    "235004": {
+      "spells": [
+        1215456
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "235007": {
+      "spells": [
+        468268
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "235012": {
+      "spells": [
+        468700
+      ],
+      "stats": {
+        "ATTACK_POWER": 338.0
+      },
+      "complex": false
+    },
+    "235040": {
+      "spells": [
+        1215508
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "213348": {
+      "spells": [
+        1216494
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234569": {
+      "spells": [
+        460339,
+        1216997
+      ],
+      "stats": {
+        "ATTACK_POWER": 358.0
+      },
+      "complex": true
+    },
+    "234570": {
+      "spells": [
+        460339,
+        1216997
+      ],
+      "stats": {
+        "ATTACK_POWER": 358.0
+      },
+      "complex": true
+    },
+    "234547": {
+      "spells": [
+        460339,
+        1216997
+      ],
+      "stats": {
+        "ATTACK_POWER": 358.0
+      },
+      "complex": true
+    },
+    "234548": {
+      "spells": [
+        460339,
+        1216997
+      ],
+      "stats": {
+        "ATTACK_POWER": 358.0
+      },
+      "complex": true
+    },
+    "234542": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234543": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234545": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234546": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234549": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234550": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234551": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234552": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234553": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234554": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234555": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234556": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234557": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234558": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234559": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234560": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234561": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234563": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234564": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234565": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234566": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234567": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234568": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234571": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234574": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234576": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234578": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234579": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234580": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234581": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234582": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234583": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234584": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234585": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234586": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234587": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234589": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234590": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "235473": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "235474": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "235476": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "235477": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "235478": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "235479": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "235480": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "235481": {
+      "spells": [
+        1216997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "234154": {
+      "spells": [
+        1217297
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "235894": {
+      "spells": [
+        1219019
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "235868": {
+      "spells": [
+        1219083
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "235879": {
+      "spells": [
+        1220770
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236130": {
+      "spells": [
+        1223010
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236176": {
+      "spells": [
+        1223010
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236221": {
+      "spells": [
+        1220536
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236224": {
+      "spells": [
+        1220521
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236271": {
+      "spells": [
+        1220645
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236276": {
+      "spells": [
+        1220642
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236308": {
+      "spells": [
+        1220702
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236335": {
+      "spells": [
+        7219
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236398": {
+      "spells": [
+        1219552
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236399": {
+      "spells": [
+        1219553
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236400": {
+      "spells": [
+        1219557
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236401": {
+      "spells": [
+        1219558,
+        1220651
+      ],
+      "stats": {
+        "ATTACK_POWER": 592.0
+      },
+      "complex": true
+    },
+    "235889": {
+      "spells": [
+        1220418
+      ],
+      "stats": {
+        "ATTACK_POWER": 423.0
+      },
+      "complex": false
+    },
+    "236314": {
+      "spells": [
+        1220707
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236784": {
+      "spells": [
+        1220874
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236855": {
+      "spells": [
+        1220987
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236860": {
+      "spells": [
+        29418
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236861": {
+      "spells": [
+        29418
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236862": {
+      "spells": [
+        29418
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236863": {
+      "spells": [
+        29418
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236864": {
+      "spells": [
+        29414
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236865": {
+      "spells": [
+        29418
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236866": {
+      "spells": [
+        29418
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236867": {
+      "spells": [
+        29418
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236868": {
+      "spells": [
+        29418
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236869": {
+      "spells": [
+        14829
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236871": {
+      "spells": [
+        1220980
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "237057": {
+      "spells": [
+        466513
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236022": {
+      "spells": [
+        1223010
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236067": {
+      "spells": [
+        1222974
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236112": {
+      "spells": [
+        1222994
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236285": {
+      "spells": [
+        461681,
+        1220650
+      ],
+      "stats": {
+        "ATTACK_POWER": 469.0
+      },
+      "complex": true
+    },
+    "236297": {
+      "spells": [
+        1220418
+      ],
+      "stats": {
+        "ATTACK_POWER": 423.0
+      },
+      "complex": false
+    },
+    "237512": {
+      "spells": [
+        1223341
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "238918": {
+      "spells": [
+        1226557
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236341": {
+      "spells": [
+        1223010
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "238925": {
+      "spells": [
+        29414
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "238926": {
+      "spells": [
+        14829
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "239103": {
+      "spells": [
+        1227397
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "239301": {
+      "spells": [
+        28282,
+        1230595
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "239565": {
+      "spells": [
+        1222994
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "239572": {
+      "spells": [
+        1222994
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "239575": {
+      "spells": [
+        1222994
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "239577": {
+      "spells": [
+        1222994
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "239581": {
+      "spells": [
+        1222997
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "239582": {
+      "spells": [
+        1222994
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "239583": {
+      "spells": [
+        1222994
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "241034": {
+      "spells": [
+        1234040
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "241081": {
+      "spells": [
+        28282
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "240936": {
+      "spells": [
+        28282
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "236317": {
+      "spells": [
+        1231507
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "240920": {
+      "spells": [
+        1231550,
+        1234299
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "240924": {
+      "spells": [
+        1231586,
+        1232150
+      ],
+      "stats": {
+        "ATTACK_POWER": 756.0
+      },
+      "complex": true
+    },
+    "240837": {
+      "spells": [
+        1232946
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "942": {
+      "spells": [
+        18799
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "3604": {
+      "spells": [
+        14825
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "2002": {
+      "spells": [
+        5102
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "2102": {
+      "spells": [
+        14824
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "2663": {
+      "spells": [
+        14828
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "4760": {
+      "spells": [
+        4977
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "3574": {
+      "spells": [
+        14824
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "5441": {
+      "spells": [
+        14824
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "7279": {
+      "spells": [
+        14824
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "5230": {
+      "spells": [
+        5718
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "5231": {
+      "spells": [
+        5719
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "5408": {
+      "spells": [
+        6260
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "5409": {
+      "spells": [
+        6261
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "8218": {
+      "spells": [
+        14827
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "6706": {
+      "spells": [
+        8299
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "6698": {
+      "spells": [
+        8299
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "7372": {
+      "spells": [
+        14826
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "6707": {
+      "spells": [
+        8315
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "6724": {
+      "spells": [
+        8357
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "6728": {
+      "spells": [
+        8360
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "6711": {
+      "spells": [
+        8324
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "11363": {
+      "spells": [
+        14824
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "6708": {
+      "spells": [
+        21751
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "11810": {
+      "spells": [
+        15594
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "11815": {
+      "spells": [
+        15600
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "11302": {
+      "spells": [
+        8397
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "11669": {
+      "spells": [
+        15438
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13544": {
+      "spells": [
+        17623
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "12846": {
+      "spells": [
+        17670
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "12805": {
+      "spells": [
+        16982
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13503": {
+      "spells": [
+        17619
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13215": {
+      "spells": [
+        17328
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "14557": {
+      "spells": [
+        20847
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13985": {
+      "spells": [
+        18287
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16009": {
+      "spells": [
+        19786
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17744": {
+      "spells": [
+        1294777
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17782": {
+      "spells": [
+        21991
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17774": {
+      "spells": [
+        21969
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17759": {
+      "spells": [
+        21958
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17783": {
+      "spells": [
+        21991
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18971": {
+      "spells": [
+        23435
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18355": {
+      "spells": [
+        22854
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18345": {
+      "spells": [
+        19786
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17111": {
+      "spells": [
+        7711
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18815": {
+      "spells": [
+        23266
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13347": {
+      "spells": [
+        19307
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18646": {
+      "spells": [
+        23101
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18354": {
+      "spells": [
+        22855
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19594": {
+      "spells": [
+        24191
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19613": {
+      "spells": [
+        24433
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19577": {
+      "spells": [
+        24428
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19621": {
+      "spells": [
+        24432
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19288": {
+      "spells": [
+        23688
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19289": {
+      "spells": [
+        23686
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19287": {
+      "spells": [
+        23689
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19290": {
+      "spells": [
+        23701
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20147": {
+      "spells": [
+        23689,
+        23686
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20422": {
+      "spells": [
+        24748
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19601": {
+      "spells": [
+        24429
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18951": {
+      "spells": [
+        23409
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "12344": {
+      "spells": [
+        16372
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19320": {
+      "spells": [
+        14829
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20421": {
+      "spells": [
+        24748
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19605": {
+      "spells": [
+        24430
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20451": {
+      "spells": [
+        24782
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20148": {
+      "spells": [
+        16611,
+        15599
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19609": {
+      "spells": [
+        24436
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19588": {
+      "spells": [
+        24188
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19617": {
+      "spells": [
+        24434
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "21326": {
+      "spells": [
+        1318470
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22397": {
+      "spells": [
+        27851
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22401": {
+      "spells": [
+        27848
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22400": {
+      "spells": [
+        27850
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22395": {
+      "spells": [
+        27859
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22321": {
+      "spells": [
+        27656
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22345": {
+      "spells": [
+        27797
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22396": {
+      "spells": [
+        27855
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23203": {
+      "spells": [
+        28852
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23204": {
+      "spells": [
+        28851
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23006": {
+      "spells": [
+        28851
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "21526": {
+      "spells": [
+        11789
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23004": {
+      "spells": [
+        28847
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22398": {
+      "spells": [
+        27853
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22399": {
+      "spells": [
+        27846
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23005": {
+      "spells": [
+        28849
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22402": {
+      "spells": [
+        27847
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23198": {
+      "spells": [
+        28855
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23199": {
+      "spells": [
+        28857
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23200": {
+      "spells": [
+        28856
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23201": {
+      "spells": [
+        28853
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23202": {
+      "spells": [
+        28853
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "23197": {
+      "spells": [
+        28854
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "167648": {
+      "spells": [],
+      "stats": {},
+      "complex": true
+    },
+    "242310": {
+      "spells": [
+        1232044,
+        1232047
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "242316": {
+      "spells": [
+        1232066
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "238945": {
+      "spells": [
+        1226810
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "241002": {
+      "spells": [
+        1231624
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "241008": {
+      "spells": [
+        1231694
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "240849": {
+      "spells": [
+        1231382,
+        1232896,
+        1235681,
+        1232150
+      ],
+      "stats": {
+        "ATTACK_POWER": 756.0
+      },
+      "complex": true
+    },
+    "240842": {
+      "spells": [
+        1231258,
+        1232150
+      ],
+      "stats": {
+        "ATTACK_POWER": 756.0
+      },
+      "complex": true
+    },
+    "240921": {
+      "spells": [
+        1234326
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "240843": {
+      "spells": [
+        1231267
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "240851": {
+      "spells": [
+        1231417
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "240853": {
+      "spells": [
+        1232181
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "240854": {
+      "spells": [
+        1235351
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "240852": {
+      "spells": [
+        1235320
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "240922": {
+      "spells": [
+        1231553
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "240923": {
+      "spells": [
+        1231554
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "241001": {
+      "spells": [
+        1231620
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "241003": {
+      "spells": [
+        1231628
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "241004": {
+      "spells": [
+        1231656
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "241011": {
+      "spells": [
+        1231698
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "241039": {
+      "spells": [
+        1232103
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "241069": {
+      "spells": [
+        1234805
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "239574": {
+      "spells": [
+        1222994
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "241172": {
+      "spells": [
+        7219
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "208484": {
+      "spells": [
+        1235777
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "240925": {
+      "spells": [
+        1236813
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "249396": {
+      "spells": [
+        1248751
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "249397": {
+      "spells": [
+        1302545
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "249398": {
+      "spells": [
+        1248756
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "249441": {
+      "spells": [
+        1248996
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "249442": {
+      "spells": [
+        1249005
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "249443": {
+      "spells": [
+        1249011
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "249473": {
+      "spells": [
+        1249118
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "260205": {
+      "spells": [
+        1318159
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "260308": {
+      "spells": [
+        1284734
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "263411": {
+      "spells": [
+        1270470
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "263412": {
+      "spells": [
+        1270478
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "263435": {
+      "spells": [
+        1270490
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "263436": {
+      "spells": [
+        1270492
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "270225": {
+      "spells": [
+        1287561,
+        1318002
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "270275": {
+      "spells": [
+        1318001,
+        1317999
+      ],
+      "stats": {
+        "ATTACK_POWER": 42.0,
+        "RANGED_ATTACK_POWER": 42.0
+      },
+      "complex": false
+    },
+    "270276": {
+      "spells": [
+        1318004,
+        1318003
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13965": {
+      "spells": [
+        1318954,
+        1318945
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13968": {
+      "spells": [
+        1318956,
+        1318846
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "271718": {
+      "spells": [
+        1289404
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272427": {
+      "spells": [
+        1291059
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272428": {
+      "spells": [
+        1291060
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272429": {
+      "spells": [
+        1291075
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272430": {
+      "spells": [
+        1291061
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272431": {
+      "spells": [
+        1291076
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272432": {
+      "spells": [
+        1291078
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272433": {
+      "spells": [
+        1291077
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272434": {
+      "spells": [
+        1291083
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272435": {
+      "spells": [
+        1291086
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272436": {
+      "spells": [
+        1291089
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272455": {
+      "spells": [
+        23037
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272464": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272466": {
+      "spells": [
+        23049
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272478": {
+      "spells": [
+        22778
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272484": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272495": {
+      "spells": [
+        28539
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272505": {
+      "spells": [
+        23037
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272513": {
+      "spells": [
+        22778
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272520": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272523": {
+      "spells": [
+        23049
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272536": {
+      "spells": [
+        28539
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272538": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272553": {
+      "spells": [
+        23046
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272556": {
+      "spells": [
+        23046
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272569": {
+      "spells": [
+        23043
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272572": {
+      "spells": [
+        23043
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272591": {
+      "spells": [
+        13959
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272608": {
+      "spells": [
+        23049
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272609": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272613": {
+      "spells": [
+        28539
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272614": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272616": {
+      "spells": [
+        23046
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272618": {
+      "spells": [
+        22778
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272619": {
+      "spells": [
+        1293542
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272620": {
+      "spells": [
+        23037
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272703": {
+      "spells": [
+        23037
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272704": {
+      "spells": [
+        23049
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272709": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272715": {
+      "spells": [
+        28539
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272717": {
+      "spells": [
+        22778
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272719": {
+      "spells": [
+        1316101
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272749": {
+      "spells": [
+        23037
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272755": {
+      "spells": [
+        23049
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272757": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272772": {
+      "spells": [
+        28539
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272780": {
+      "spells": [
+        1316101
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272793": {
+      "spells": [
+        22778
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272796": {
+      "spells": [
+        23046
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272808": {
+      "spells": [
+        23046
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272812": {
+      "spells": [
+        23043
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272824": {
+      "spells": [
+        23043
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272838": {
+      "spells": [
+        13959
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273003": {
+      "spells": [
+        1291568
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "5243": {
+      "spells": [
+        1291686
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "6629": {
+      "spells": [
+        1291698
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273084": {
+      "spells": [
+        1291748,
+        1291749
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "5443": {
+      "spells": [
+        1291906
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "5199": {
+      "spells": [
+        1291915
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "5192": {
+      "spells": [
+        1291987
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "2042": {
+      "spells": [
+        1292011
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273293": {
+      "spells": [
+        1292039
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "6321": {
+      "spells": [
+        1292121
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "6323": {
+      "spells": [
+        1292142
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "6319": {
+      "spells": [
+        1292149
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "3748": {
+      "spells": [
+        1292150
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "1489": {
+      "spells": [
+        1292160
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273329": {
+      "spells": [
+        1293544
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273336": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273344": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273355": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273363": {
+      "spells": [
+        1293544
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273368": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273377": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273382": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273391": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273399": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273411": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273419": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273427": {
+      "spells": [
+        1293542
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273431": {
+      "spells": [
+        1293542
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273445": {
+      "spells": [
+        1293542
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273457": {
+      "spells": [
+        1292222
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273645": {
+      "spells": [
+        1292268
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "2280": {
+      "spells": [
+        1292546
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273820": {
+      "spells": [
+        1292574,
+        1292575
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273824": {
+      "spells": [
+        1292581
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273827": {
+      "spells": [
+        1292594
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "1155": {
+      "spells": [
+        1292652
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273839": {
+      "spells": [
+        1292670
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273840": {
+      "spells": [
+        1292674
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273842": {
+      "spells": [
+        1292683
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "6907": {
+      "spells": [
+        1292692
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273041": {
+      "spells": [
+        1292706
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "3416": {
+      "spells": [
+        1292749
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273044": {
+      "spells": [
+        1292765
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "9509": {
+      "spells": [
+        1293003
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274042": {
+      "spells": [
+        1293068
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "6693": {
+      "spells": [
+        1293199
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274159": {
+      "spells": [
+        1293331
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273046": {
+      "spells": [
+        1293342
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "7682": {
+      "spells": [
+        1293433
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274176": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274183": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274192": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274198": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274206": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274217": {
+      "spells": [
+        22801
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274227": {
+      "spells": [
+        1316101
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274236": {
+      "spells": [
+        1316101
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274250": {
+      "spells": [
+        1293544
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274256": {
+      "spells": [
+        1293544
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "3456": {
+      "spells": [
+        1293501
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "7726": {
+      "spells": [
+        1293539
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "7720": {
+      "spells": [
+        1293540
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274290": {
+      "spells": [
+        1293701
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "10760": {
+      "spells": [
+        1293783
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "10776": {
+      "spells": [
+        1293819
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "9425": {
+      "spells": [
+        1293881
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274425": {
+      "spells": [
+        1294055
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274430": {
+      "spells": [
+        1294064
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18082": {
+      "spells": [
+        1294255
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "9483": {
+      "spells": [
+        1294530
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274647": {
+      "spells": [
+        1294644
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274648": {
+      "spells": [
+        1294646
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274651": {
+      "spells": [
+        1294668
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17739": {
+      "spells": [
+        1294786
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274603": {
+      "spells": [
+        1294939
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274608": {
+      "spells": [
+        1295064
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274747": {
+      "spells": [
+        1295267
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274926": {
+      "spells": [
+        29413
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "269741": {
+      "spells": [
+        1318323
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "275630": {
+      "spells": [
+        1297085
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "275647": {
+      "spells": [
+        1297370
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "275649": {
+      "spells": [
+        1297378
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "275671": {
+      "spells": [
+        1297455
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "269833": {
+      "spells": [
+        1295904
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "275833": {
+      "spells": [
+        1297910
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13955": {
+      "spells": [
+        1298230
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13952": {
+      "spells": [
+        1298413
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13982": {
+      "spells": [
+        1298500
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "14023": {
+      "spells": [
+        1298508
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "14022": {
+      "spells": [
+        1298508
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13385": {
+      "spells": [
+        1293068
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13353": {
+      "spells": [
+        1298517
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "10844": {
+      "spells": [
+        1299948
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "10837": {
+      "spells": [
+        1300001
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "276631": {
+      "spells": [
+        1300128
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "276632": {
+      "spells": [
+        1300141
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22458": {
+      "spells": [
+        1300435
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17142": {
+      "spells": [
+        21079
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22736": {
+      "spells": [
+        28347
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20503": {
+      "spells": [
+        1300667
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13382": {
+      "spells": [
+        1300668
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20517": {
+      "spells": [
+        1300680
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "276782": {
+      "spells": [
+        1300740
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "11726": {
+      "spells": [
+        1292574
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22257": {
+      "spells": [
+        1300755
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "11750": {
+      "spells": [
+        1300781
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "11923": {
+      "spells": [
+        1300890
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "12556": {
+      "spells": [
+        1300925
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22207": {
+      "spells": [
+        1294769
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "276877": {
+      "spells": [
+        23217
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13255": {
+      "spells": [
+        1301127
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "13959": {
+      "spells": [
+        1298501
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "12930": {
+      "spells": [
+        1318326,
+        1318327,
+        1301707
+      ],
+      "stats": {
+        "SPELL_DAMAGE_DONE": 30.0,
+        "SPELL_HEALING_DONE": 30.0
+      },
+      "complex": true
+    },
+    "22332": {
+      "spells": [
+        1302108
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18308": {
+      "spells": [
+        1298505
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18313": {
+      "spells": [
+        1292149
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18321": {
+      "spells": [
+        1302190
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18351": {
+      "spells": [
+        1292692
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18383": {
+      "spells": [
+        1302248
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18388": {
+      "spells": [
+        1294769
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18396": {
+      "spells": [
+        1302341
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18463": {
+      "spells": [
+        1302345
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18425": {
+      "spells": [
+        1302346
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18483": {
+      "spells": [
+        1302348
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18537": {
+      "spells": [
+        1318938
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18296": {
+      "spells": [
+        1294769
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18411": {
+      "spells": [
+        24090
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "226887": {
+      "spells": [
+        27038
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "226886": {
+      "spells": [
+        27225
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "226881": {
+      "spells": [
+        27206
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "226883": {
+      "spells": [
+        27043
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "277950": {
+      "spells": [
+        1302968
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17067": {
+      "spells": [
+        1305405
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17064": {
+      "spells": [
+        1305424
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278551": {
+      "spells": [
+        1305732
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278211": {
+      "spells": [
+        1306076
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278203": {
+      "spells": [
+        1306158
+      ],
+      "stats": {
+        "SPELL_HEALING_DONE": 22.0,
+        "SPELL_DAMAGE_DONE": 7.0
+      },
+      "complex": false
+    },
+    "278236": {
+      "spells": [
+        1306362
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "226829": {
+      "spells": [
+        27037
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "279248": {
+      "spells": [
+        1306429
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "279247": {
+      "spells": [
+        1306433
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "279249": {
+      "spells": [
+        1306448
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "279251": {
+      "spells": [
+        1306483
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "279250": {
+      "spells": [
+        1306488
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278237": {
+      "spells": [
+        1306607
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278253": {
+      "spells": [
+        1306632
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278238": {
+      "spells": [
+        1306650
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278250": {
+      "spells": [
+        1306672
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278216": {
+      "spells": [
+        1306676
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278259": {
+      "spells": [
+        1306680
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278264": {
+      "spells": [
+        1306681
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278218": {
+      "spells": [
+        1306682
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278258": {
+      "spells": [
+        1306686,
+        1306687
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278268": {
+      "spells": [
+        1306699
+      ],
+      "stats": {
+        "SPELL_HEALING_DONE": 18.0,
+        "SPELL_DAMAGE_DONE": 6.0
+      },
+      "complex": false
+    },
+    "278298": {
+      "spells": [
+        1306759
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278278": {
+      "spells": [
+        1306786
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278299": {
+      "spells": [
+        1298505
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278501": {
+      "spells": [
+        1306900
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278223": {
+      "spells": [
+        1306905
+      ],
+      "stats": {
+        "SPELL_HEALING_DONE": 18.0,
+        "SPELL_DAMAGE_DONE": 6.0
+      },
+      "complex": false
+    },
+    "278316": {
+      "spells": [
+        1306908
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278503": {
+      "spells": [
+        1293069
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278436": {
+      "spells": [
+        1294786
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278433": {
+      "spells": [
+        1307199,
+        1318328
+      ],
+      "stats": {
+        "ATTACK_POWER": 48.0,
+        "RANGED_ATTACK_POWER": 48.0
+      },
+      "complex": false
+    },
+    "278440": {
+      "spells": [
+        1307208
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278504": {
+      "spells": [
+        1300925
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278229": {
+      "spells": [
+        1307315
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278450": {
+      "spells": [
+        1307334
+      ],
+      "stats": {
+        "SPELL_HEALING_DONE": 18.0,
+        "SPELL_DAMAGE_DONE": 6.0
+      },
+      "complex": false
+    },
+    "278460": {
+      "spells": [
+        1307400
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278506": {
+      "spells": [
+        1307508,
+        1307509
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278452": {
+      "spells": [
+        1307760
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278476": {
+      "spells": [
+        1307792
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "280213": {
+      "spells": [
+        1306680
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "280209": {
+      "spells": [
+        1307943
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "279488": {
+      "spells": [
+        1308020
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278540": {
+      "spells": [
+        1292683
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278480": {
+      "spells": [
+        1308022
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278545": {
+      "spells": [
+        1308023
+      ],
+      "stats": {
+        "SPELL_HEALING_DONE": 18.0,
+        "SPELL_DAMAGE_DONE": 6.0
+      },
+      "complex": false
+    },
+    "278304": {
+      "spells": [
+        1308128
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278656": {
+      "spells": [
+        1308351,
+        1308352
+      ],
+      "stats": {
+        "SPELL_DAMAGE_DONE": 42.0,
+        "SPELL_HEALING_DONE": 42.0
+      },
+      "complex": false
+    },
+    "278611": {
+      "spells": [
+        1308516,
+        1308511
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "279493": {
+      "spells": [
+        1292684
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "279891": {
+      "spells": [
+        1308520
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "279892": {
+      "spells": [
+        1308531
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278915": {
+      "spells": [
+        1308764
+      ],
+      "stats": {
+        "STRENGTH": 6.0
+      },
+      "complex": false
+    },
+    "278920": {
+      "spells": [
+        1308769,
+        1308770
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "276742": {
+      "spells": [
+        1308777
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278930": {
+      "spells": [
+        1308816
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278929": {
+      "spells": [
+        1298502
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278938": {
+      "spells": [
+        1308911
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278936": {
+      "spells": [
+        1294777
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278963": {
+      "spells": [
+        1308939
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278965": {
+      "spells": [
+        1294786
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278969": {
+      "spells": [
+        1309062
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278944": {
+      "spells": [
+        1309230
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278970": {
+      "spells": [
+        1309241
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "278990": {
+      "spells": [
+        1309320
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "280573": {
+      "spells": [
+        1309322
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "251534": {
+      "spells": [
+        1309369
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "251533": {
+      "spells": [
+        1309369
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "280604": {
+      "spells": [
+        1309422
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "280607": {
+      "spells": [
+        1309442
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "280605": {
+      "spells": [
+        1309539
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "280081": {
+      "spells": [
+        1301126
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "280080": {
+      "spells": [
+        1309550
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "279851": {
+      "spells": [
+        1319427
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "279929": {
+      "spells": [
+        1319426
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "279861": {
+      "spells": [
+        1319423
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "279862": {
+      "spells": [
+        1310015
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "281060": {
+      "spells": [
+        1299095
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "17754": {
+      "spells": [
+        1294769
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "281332": {
+      "spells": [
+        1293539
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "280032": {
+      "spells": [
+        1311505
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "281598": {
+      "spells": [
+        1311895
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "5028": {
+      "spells": [
+        1326019
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "282080": {
+      "spells": [
+        1312955
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "282631": {
+      "spells": [
+        1314065
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "276743": {
+      "spells": [
+        1314784
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "284040": {
+      "spells": [
+        1292150
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "284193": {
+      "spells": [
+        1315339
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "284266": {
+      "spells": [
+        1315778
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "21566": {
+      "spells": [
+        1315969,
+        1315971
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "21568": {
+      "spells": [
+        1315989,
+        1315990
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "276895": {
+      "spells": [
+        1316049
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272062": {
+      "spells": [
+        1316051,
+        1316052
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "271905": {
+      "spells": [
+        1316053,
+        1316054
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272059": {
+      "spells": [
+        1316055,
+        1316056
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "271904": {
+      "spells": [
+        1316057,
+        1316058
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "4396": {
+      "spells": [
+        23076
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "284699": {
+      "spells": [
+        1316928
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "284703": {
+      "spells": [
+        1316319
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "277910": {
+      "spells": [
+        1317283
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18706": {
+      "spells": [
+        1317285
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "10716": {
+      "spells": [
+        1317286
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "21567": {
+      "spells": [
+        1317441,
+        1317442
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "21565": {
+      "spells": [
+        1317443,
+        1317444
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "285066": {
+      "spells": [
+        1317446
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "10725": {
+      "spells": [
+        1317479,
+        1317480
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "10587": {
+      "spells": [
+        1317483
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "285089": {
+      "spells": [
+        1317486
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "10576": {
+      "spells": [
+        1317985
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "285275": {
+      "spells": [
+        1318034
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "285276": {
+      "spells": [
+        1318062
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "285277": {
+      "spells": [
+        1318069
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "20130": {
+      "spells": [
+        1318073
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "271906": {
+      "spells": [
+        1318102,
+        1318103
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "10847": {
+      "spells": [
+        1318108
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "276744": {
+      "spells": [
+        1318104
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "285278": {
+      "spells": [
+        1318123
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272061": {
+      "spells": [
+        1318124,
+        1318125
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "272060": {
+      "spells": [
+        1318129,
+        1318130
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "271903": {
+      "spells": [
+        1318131,
+        1318132
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "274761": {
+      "spells": [
+        1318317
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "19024": {
+      "spells": [
+        1318318
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "16022": {
+      "spells": [
+        1318325
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18471": {
+      "spells": [
+        1318476
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18472": {
+      "spells": [
+        1318477
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18470": {
+      "spells": [
+        1318478
+      ],
+      "stats": {
+        "SPIRIT": 16.0
+      },
+      "complex": false
+    },
+    "18467": {
+      "spells": [
+        1318479
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "18469": {
+      "spells": [
+        1318480
+      ],
+      "stats": {
+        "SPIRIT": 16.0
+      },
+      "complex": false
+    },
+    "268873": {
+      "spells": [
+        1318514
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "22268": {
+      "spells": [
+        1318931
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "273817": {
+      "spells": [
+        1319047
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "279863": {
+      "spells": [
+        1320330,
+        1320332
+      ],
+      "stats": {
+        "SPELL_HEALING_DONE": 22.0,
+        "SPELL_DAMAGE_DONE": 8.0
+      },
+      "complex": false
+    },
+    "278477": {
+      "spells": [
+        1320726
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "286616": {
+      "spells": [
+        1320726
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "286646": {
+      "spells": [
+        11789
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "286734": {
+      "spells": [
+        29418
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "280016": {
+      "spells": [
+        1320726
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "9414": {
+      "spells": [
+        1320726
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "5198": {
+      "spells": [
+        1322312
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "287417": {
+      "spells": [
+        21185
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "6723": {
+      "spells": [
+        1324578
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "270095": {
+      "spells": [
+        1324578
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "286982": {
+      "spells": [
+        1324686
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "286998": {
+      "spells": [
+        1324752
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "287010": {
+      "spells": [
+        1314065
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "287025": {
+      "spells": [
+        1324981
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "287043": {
+      "spells": [
+        1308520
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "2801": {
+      "spells": [
+        1325535
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "288506": {
+      "spells": [
+        1293068
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "288901": {
+      "spells": [
+        21185
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "288916": {
+      "spells": [
+        15438
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "288998": {
+      "spells": [
+        1320726
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "289295": {
+      "spells": [
+        21142
+      ],
+      "stats": {},
+      "complex": true
+    },
+    "289296": {
+      "spells": [
+        23236
+      ],
+      "stats": {},
+      "complex": true
+    }
+  }
+}

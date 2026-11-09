@@ -1,0 +1,263 @@
+# 自有内容补充格式
+
+当前约定（2026-11-08）：地面移动一律按地图库直线距离÷当前跑速估时；nodes 仅表示任务、服务或交通目的地，edges／path／道路长度不再读取。道路数据和工具已归档至 archive/roads，不进入加载、安装和发布要求。下文旧道路格式仅为历史记录。参考服务与交通导航动作字段统一为 travelActions；资料不足的任务仍保留在列表。
+
+适用当前开发构建 0.1.21-dev。内容仍由 `Data/Content.lua` 中的 quests、nodes、edges、transit、dungeons、sources、items、gearSources、progression 提供，测试夹具独立保存。正式数据须有来源和目标构建验证，完整范围以 PLAN.md 为准。
+
+## 副本行程
+
+| 字段 | 含义 |
+| --- | --- |
+| id、title、source、verified | 稳定 ID、名称、sources 键、验证状态 |
+| instanceId | `GetInstanceInfo()` 第八返回值的实例世界地图 ID；与 uiMapID 分开使用 |
+| minLevel、maxLevel、roles、groupSize | 等级、职责和队伍条件 |
+| entryNode、exitNode、returnNode | 进入前节点、离开后的室外节点、最终返程节点 |
+| preQuests、items | 必须已经交付的前置 ID 列表，必需携带物品 ID → 数量 |
+| actions | 按 before → inside → after 顺序排列的行动数组，允许某阶段为空 |
+| runSeconds、xp | 完整副本内耗时参考及本轮基础经验；runSeconds 已含内部导航与任务执行，xp 排除单独记账的任务交付经验 |
+| questXP | 任务 ID → 经验；只在 actions 中安排交付、且本轮有望获得时计入，按 ID 去重 |
+| interruptibleQuestIds | 等队期间的候选任务，任务记录还须明确 `interruptible=true`；只选预计在等待时间内交付的一项 |
+| completionQuests | 可确认本轮完整执行的任务列表；全部实际完成且至少一项在本轮新完成时，允许记录副本比例样本 |
+| failureProbability、recoverySeconds | 有来源的失败恢复估计 |
+| rewardSources、version | 装备来源和内容版本；版本变化重建导航进度 |
+
+每个行动须指定 stage、kind、node。任务行动使用 questId；objective 使用 objectiveIndex；kind 支持 accept、objective、turnin、move。before 与 after 的任务行动须提供交互／执行 seconds；inside 行动耗时包含在 runSeconds 中。
+
+准备、返程及任务接交绕路均通过道路／交通图计价，时间、金币和炉石资源向后传递。进入、离开和本轮结束由运行时的门控行动生成：进入须实际实例 ID 匹配；死亡、暂离或解散保持本轮；本轮结束由玩家确认；只交付客户端实际就绪的任务。
+
+会话只保存选定副本、轮次、剩余预算所需的在线耗时、阶段和少量道路进度。任务完成事实继续由客户端重建；离线、挂机、中断和旧轮任务完成证据不会成为新的有效副本耗时样本。
+
+## 任务物品
+
+`quest.itemRules` 按物品 ID 索引。kind 使用 use、collect、key、start、source；count 表达明确数量，stage 可限定 accept、objective、turnin 等行动；target、condition、recovery 分别描述适用目标、使用条件与缺失恢复来源。
+
+- use 默认在 objective 阶段出现，start 默认在 accept 阶段出现。
+- sourceItemId 只证明来源关联；没有用途规则时保留文字提示。客户端特殊任务物品、明确 use 规则及开启任务物品提供安全按钮。
+- collect 与 key 显示数量／携带要求。未给出准确数量的上游列表显示当前携带量，不推定完整收集数量。
+- action.items 为作者明确标记的可使用物品 ID → 数量；action.requiredItems 仅表示必须携带。
+- 按钮超过四件时分页；快捷键始终对应当前四个安全按钮。战斗中保留原属性，退出后合并应用最新物品组。
+
+## 导入与验收
+
+修改内容后运行 `python3 tools/build.py`。已验证道路、任务、副本须关联 sources；副本工作流和物品规则纳入结构检查。内容候选在资格、位置、道路、经验、物品条件及许可证尚未核实前保持未验证，不进入完整首版推荐与发布覆盖计数。
+
+## 装备与来源
+
+`items[id]` 仅补充已验证的静态字段：source、verified、classes／roles、requiredSkill、weaponDPS、uniqueEquip／uniqueCategory／uniqueLimit、setId、effectText。客户端的物品链接、属性、等级、槽位、当前可用性和唯一类别优先；背包装备按实际链接与格位保留独立实例，附魔变化可区分。客户端未完成加载时保持 pending，不当作属性为零。物理武器缺少伤害数据时仅显示待核对比较，不自动作为装备收益推荐。
+
+`gearSources[id]` 字段：title、verified、source、itemId、kind。kind=quest 使用 questId，kind=dungeon 使用 dungeonId；来源必须指向同一内容包的记录。任务奖励按完成该行程一次可获得建模；有选择奖励时只记录作者确认可选的物品。副本使用 chance 或 chanceLow／chanceHigh 表示单轮掉落区间；shareChance 表示玩家取得该物品的条件概率。缺少分配概率时下界为零，连续未掉落不会提高下一轮概率。
+
+属性参考模型覆盖九职业与坦克／治疗职责；混合输出职业可在设置中切换参考方向。主副手按完整搭配替换，双手武器扣除占用两手的旧装备，双持须有已学能力，唯一类别冲突阻断。套装、触发与主动效果单列说明。快速模式仍以经验率排序；轻松／剧情模式只在相同优先级且经验率达到最高方案 95% 的候选中比较装备属性。手选装备目标保留其来源候选，副本仍须明确接受；实际获得额外实物后清除目标。
+
+## 共享执行与等级预测
+
+只有作者明确确认可同时推进的 objective 才填写 shareKey、shareType（kill／collect）、targetId、workUnits、secondsPerUnit；workUnits 和 secondsPerUnit 须为正数。同键、同类型、同目标、同道路节点且没有独立 action.items 的目标允许合并；客户端特殊任务物品必须一致。按实际 numFulfilled 计算剩余量，以最大剩余成本记一次执行，分别保留交付收益；校准须等待全部关联目标实际完成。
+
+`progression={verified=true,source=...,xpToLevel={[等级]=升至下级所需经验}}`。当前等级门槛由 UnitXPMax 提供，其后的门槛只读已验证曲线。预测按交付顺序更新等级，再取对应等级的任务经验；交付还会解锁 quest:ID 道路条件。未知曲线导致预测不确定时停止继续展开。当前预测仅累计明确建模的任务交付经验，尚未计入途中击杀经验；完整经验模型仍须补齐。
+
+## 交通实况映射
+
+flight 须提供 fromTaxi、toTaxi（原生飞行点 nodeID）及道路 from／to；taxiMap 可指定飞行点所属地图。只使用实际发现的本阵营端点，打开原生飞行图后采集当前起点的实际 TaxiNodeCost，优先于静态费用；未知费用且没有已验证静态参考时不推荐该段。记录只在内存使用，声望变化清除价格缓存。
+
+炉石节点使用 hearth=true、verified、source、bindName，提供 position／accessRadius 可通过实际绑定事件区分重名地点。炉石 transit.kind=hearth，to 必须与当前绑定节点相符，from 可省略以从当前道路节点使用；seconds、cooldown 仍需来源。背包无炉石、原生冷却未就绪或绑定点未知时不生成该交通方案。运行时只读取状态并提供导航建议。
+
+## 交通资源前沿与实例重置（0.1.4-dev）
+
+Travel.Routes 返回时间／金币／炉石的非劣方案；Travel.Itinerary 将这些方案沿整条动作链传递，逐次应用 quest:ID 解锁及到达时间。任务组合与副本准备／返程均使用整程评价。束宽按任务序列计算，保留被选序列的资源变体；路线稳定比较完整动作身份。已接受副本的实际入口导航使用与整程评价相同的资源方案，预算耗尽仍引导完成原轮返程。
+
+已验证副本须有 lockoutNames（GetLocale 键 → 客户端原生副本名）；difficultyId 必须为有效正整数，限定行程和保存进度的实际难度。进入／续接／本内步骤与校准必须同时匹配 instanceId 和 GetInstanceInfo 第三返回值 difficultyID；未知或不同难度保留选择但不推进。野外的难度设置不等同于实际进入难度。GetSavedInstanceInfo 的实例存档 ID 与世界地图 instanceId 分开，不作等值匹配。异步 UPDATE_INSTANCE_INFO 后读取 name／reset／difficulty／locked／extended，存在匹配保存进度时阻止建议新一轮，未就绪时显示待检查。
+
+角色 pendingResets 只记录已经实际进入的 instanceId 及原生名称，停止行程或重登不清除。暂离可继续原轮；新轮需要对应 INSTANCE_RESET_SUCCESS 成功消息，或离开且结束原轮后点击“确认已重置”。该按钮记录玩家提供的确认，不执行重置。客户端 TRANSFER_ABORT_TOO_MANY_INSTANCES 消息会阻止新一轮；条件改变后由玩家点击“重新检查锁定”请求更新。没有把未经目标构建确认的固定每小时／每日次数当作既定规则，完整服务端限额与队长重置消息分发继续实机验收。
+
+## 飞行可达性（0.1.5-dev）
+
+飞行点发现状态与当前起点可达性分别存储。GetAllTaxiNodes 返回的 Current=0 确定起点；Reachable=1 允许读取票价，Unreachable=2 阻止对应有向连接。isMapLayerTransition 节点排除实际交通，新飞行点与声望变化清除旧价格／可达缓存。这个运行时事实约束叠加在有来源的静态飞行连接上，不会自行把所有已知飞行点连成图。实际全图连接、耗时与开点长期收益仍需内容建设。
+
+## 容量与服务（0.1.6-dev）
+
+状态采集使用普通任务上限 GetMaxNumQuestsCanAccept、实际任务数、各包家族／空格、逐格堆叠、任务物品标记和装备最低耐久。itemMetadata 从客户端及有来源的 items.stackSize／family 补充层读取。物品资料未就绪时等待异步加载。通用空格与专用包分别处理，已存在堆叠可继续填充，符合物品家族的专用包优先使用。
+
+动作新增字段：requiredItems 为本步携带下限，items 为可使用物品需求，consumeItems 为明确消耗，gainItems 为明确获得，均以物品 ID → 正整数数量记录。minFreeSlots 为所需通用空格，reserveSlots 为未逐项建模掉落占用的通用空间。minDurability 为最低耐久比例；durabilityLoss 为有来源的预计比例消耗。任务 combat=true 时目标执行使用 20% 的内部耐久准备阈值，也可指定 minDurability。预测只修改副本快照，实际任务／物品继续读客户端。
+
+部分消耗不能确认客户端会先清哪一堆，因此只在该物品全量清空时预记释放空格；真实背包更新后按实际空格重算。已带库存和任务日志容量跨搜索步骤传递；满日志时优先让可完成的已有任务释放槽位。共享目标若有独立物品／容量效果则保留独立动作，避免丢失或重复记账。
+
+services[id] 使用 title、node、source、verified，并可限定 faction（Alliance／Horde／Neutral）、minLevel／maxLevel、unlock。支持以下已实现服务字段：
+
+| 字段 | 含义 |
+| --- | --- |
+| vendorSeconds | 玩家整理／出售物品的耗时参考 |
+| repair={seconds,costMax} | 维修耗时与有来源的费用上界；costMax 缺失时只提供到店确认导航 |
+| purchaseSeconds | 购买交互耗时参考 |
+| stock[id]={unitPrice,unlimited} | 有来源的单件价格或保守价格上界，以及是否已确认稳定足量供应；库存或价格未知时只提供到店核对步骤 |
+
+服务点须具有来源、道路及条件证据，费用与前后交通共同计价。仅把客户端确认无任务标记、未锁定、具有售价且没有当前及候选任务关联的灰色物品纳入出售预测。玩家实际决定整理／出售／购买／维修，插件不调用自动交易接口。出售收入在服务之后才可用于后续费用。现金不足时可比较先出售已知灰色物品的方案，任务物品始终保留。
+
+service 动作须提供 serviceGoal，可用 items（携带量）、absentItems（所列物品清空）、capacityItems（可容纳后续获得物品）、freeSlots（通用空格）、durability（耐久比例）组合。到达服务点不代表服务完成，导航与恢复样本均等待实际状态达标。界面列出物品、数量及预留费用；未知费用／库存的到店确认步骤不预记后续任务经验。
+
+副本 items／requiredItems 和 consumeItems 在入口前检查及补齐，lootSlots 预留未逐项列出的掉落空间，durabilityLoss 为整轮明确模型。inside 动作的物品／日志效果仍逐项预测，其基准时间包含在 runSeconds；自动增加的服务绕路和交互额外计价。preQuests 在准备行程完成之后、进入之前检查，副本内未来交付不能提前解除进入条件。
+
+服务与容量逻辑已回放；真实服务点／物价／库存、补给消耗、训练与旅店的完整自动安排及客户端操作仍需后续内容和实测补齐。
+
+## 飞行执行与耗时校准（0.1.7-dev）
+
+UnitOnTaxi("player") 的原生布尔值进入角色快照和决策指纹。飞行期间保留任务与手动目的地，暂停地面路线搜索、地面到达判定、箭头／地图点与任务物品提示；飞越目标附近不推进。起飞前箭头和地图点均指向出发飞行管理员，实际选航线由玩家完成。
+
+观察到起飞且前一地面位置在出发点 accessRadius 内时，关联当前飞行段；出发点附近尚未推进的移动动作可接续。落地后须有可用位置，实际到达目的地图与半径才推进关联动作；提前下机或其他落地点从当前位置刷新任务与路线。登录时已在飞行中只等待落地，不反推起点或完整耗时。
+
+本地样本键为 flight:内容版本:交通ID，以完整飞行耗时／来源参考 seconds 的比例记录。只接受已关联起降、连续采样、未暂停／关闭学习／手动改向／重载的完整航班；落地后等待读取坐标的时间不计入飞行。每条航线独立使用既有样本数加权校准，最低 3 个样本才影响估价；内容版本变化隔离旧记录，装备变化不衰减航线样本。样本不能创建未经验证的新航线；完整基础航线与耗时仍须作者补齐。
+
+## 整程选择与候选预览（0.1.8-dev）
+
+锁定范围为当前短程搜索产生的完整候选，最多三组、每组最多三个任务。组内使用共同接取／执行／交付阶段，组间按指定顺序执行。角色 itinerary 只保存 sequence、preferredKey、version 与各任务本轮 turnIns 基线，不保存旧动作或预测事实。当前原生状态始终重新通过 Eligibility、Supplies 与 Travel 计算全部步骤和资源；任务资格或未来步骤不满足时保留意图并展示具体阻断，必要服务可先处理。
+
+任务实际交付后移除对应 ID，完整选择完成后恢复自动接续；重复任务的历史完成标记不能代替本轮交付。内容版本或剩余任务变化清除旧路径偏好，任务组合／顺序继续保留。单任务锁定、整程选择、装备目标与副本接受按明确用户操作替换；暂缓当前任务会解除整程锁定。/ail resume 解除任务／整程锁定与手动导航，并继续现有副本或装备目标；行程页“恢复自动选择”恢复升级目标，活动副本须先在副本页结束。
+
+行程页浏览当前全部备选并展示完整行动，不受前八条文字限制。交通动作生成的 travelSeconds 仅用于预览分项，不另计执行成本；其他预留／未拆分项保留模型尚未细分的成本。点击执行须匹配当前候选对象、决策版本与起点，待处理状态更新或起点变化会阻止旧方案；从新位置重新估价后才能执行。
+
+## 图形关系与整链偏好（0.1.9-dev）
+
+Data 索引按角色修正后的完整任务记录及自有覆盖建立有向关系。preQuestGroup 的负号保留精确交付，正号额外保留其可替代互斥分支；preQuestSingle 显示任一前置。parentQuest、availableStartingWith、nextQuestInChain、breadcrumbForQuestId、exclusiveTo、availableUntilCompleted、disabledByQuest 分别标注。后续关联用于浏览，资格仍按各字段定义单独计算。
+
+角色 deferredChains 仅保存起点 ID → true。整链范围沿全部／任一／可替代前置、父任务进行、开放、后续及指引方向展开，包含分支汇合后的后续任务；互斥、关闭、禁接和待核对关系不向后传播暂缓。该范围是用户预览后保存的推荐偏好，不更改原生任务记录。单任务 skipped 继续独立保留，恢复一个起点不清除其他重叠链或单任务暂缓；设置页可清除全部暂缓与锁定。
+
+图形每个视口最多 40 节点／120 连接，可通过节点、关联列表、任务 ID 和历史切换探索完整索引。暂缓预览从完整索引计算并每页 12 项展示，不按视口截断；应用须匹配索引对象、角色决策版本与完整名单，任务状态变化后重新预览。暂停规划仍可浏览实时任务事实。
+
+自有新增任务 ID 可不在上游原始 ID 表中，GetQuest 合并覆盖后进入等级、资格与关系索引；上游缺失且无自有记录的 ID 保留缺失状态。自有验证、来源与完整内容发布检查继续生效。
+
+## 道路折线与无完整道路时的任务指引
+
+edge.path 可选，格式为从源节点至目标节点的稠密坐标数组 {{map=...,x=...,y=...},...}；至少两个点，首尾必须匹配节点位置。地图 ID 为正整数，坐标为 0—1 有限数。地图只绘制已有相邻同层点，跨层连接不画伪造线段；缺少折线保留目的地标记。
+
+运行时 taskChoices／taskOrder 由真实任务库与日志派生，不写入 Content.quests，不计入完整道路覆盖。任务参考位置可用于指引和几何距离排序；只有完整道路与执行成本有来源的候选进入经验率比较。
+
+## 外部参考道路
+
+Data/Roads.lua 保存固定发行包派生的源世界坐标（北、西、高度）与有向步行折线，独立于 Content.nodes 的自有数据。来源和许可随包提供；clientVerified=false 保留。运行时通过 HBD 的公开 API 交换北／西坐标并投影至实际地图，不用 Classic 的地图矩形覆盖 Forever。
+
+重建：将固定原包 QuestDB-QuestDB-v0.1.0.zip 及解压目录 QuestDB-0.1.0/QuestDB 放在 .dependencies 后执行 python3 tools/import_roads.py；工具先验证 SHA256，再读取唯一的 Forever Paths.lua，输出数据、审计和许可。未知交通耗时／楼层／远端接入不会生成假成本。
+
+## 参考任务事实与剩余步骤
+
+Data/TaskFacts.lua 由 tools/import_task_facts.py 调用固定原包的公开 API 导出。quests[id] 可含 level、group、hidden、objectives（kind／id／count）、rewards 以及 xp（等级分段表），未知字段保持 nil。源缺口见 TASK_FACTS_AUDIT.json；不覆写 QuestieDB 的资格、前置、实体和动态修正。
+
+任务候选 stages 是按当前事实生成的参考过程，expected 标记接取／完成后的未来阶段；位置资料齐全不等于执行成本已齐全。只有原生日志使用 objectiveIndex；未接任务的数据库目标仅记录 targetKind／targetId。stagesComplete 只表示当前用于路程比较的阶段位置齐全，事件／额外要求不明确时保持 false。未知执行耗时保留未知，避免把它作为零计算经验率。
+
+## 本地目标执行估计
+
+char.samples 中 taskwork:v1: 前缀为按原生任务 ID／目标索引／数量要求／类型／归一化文字隔离的绝对统计，unit 为 seconds/unit，n／mean／m2 使用现有在线均值方差，最多 128 条摘要。只保存已确认数量增量后的摘要，不保存未完成采样窗口。角色上下文改变清除绝对样本。
+
+运行时 stage 可含 workSeconds／workLow／workHigh／workSamples；candidate.work 为 seconds／low／high／known／missing。low／high 表示本地每段进度耗时的一倍标准差范围，非完成保证。未来无原生目标索引的阶段保持未知。此数据不等于完整行程耗时，不能独立作为 XP/h 的分母。
+
+## 任务剩余时间与接交统计
+
+参考 Route 保留 landLength／waterLength，并以当前快照 runSpeed／swimSpeed 估算可完整接入路程的时间；速度未知保留 nil。candidate.timing 为从当前起点估计的 geometric／roads／travel／work／workMissing／talk／talkMissing／seconds／low／high／turninRate。seconds 仅在全部关键成本齐全时提供；turninRate 只计当前等级来源交付经验，不冒充击杀经验。orderTiming 从建议前项的预计交付点计算，不覆写详情当前起点的 timing。
+
+char.samples 的 tasktalk:v1:accept|turnin:relaxed|fast|story 保存 unit=seconds 的均值方差，只有原生对话打开和匹配实际接交事件才结算，三样本起用、最多六类；持续窗口不存档。规划首次选择可使用 Core 快照中派生的 currentTask 做剩余成本的稳定比较，不写入角色任务事实。手动锁定优先，未知成本候选仍参与统一路程口径，不以零耗时提高未知任务收益。
+
+## 真实服务 NPC 参考
+
+Data.servicesByMap／serviceCount 从当前 QuestieDB composed Npc API 建立，不复制到 Content.services。按当前 Enum.npcFlags 判定商人／维修，坐标／楼层使用 EntityPoints 同一规则，运行时按 friendlyToFaction 和 Item.vendors 过滤。服务参考通过 fallback／roadActions 导航，serviceGoal 保持真实资源完成条件。未提供 seconds／moneyCost 不表示零成本，参考服务不得加入完整收益候选或伪造已验证节点。Audit.referenceServices 单独保存地图 NPC ID 和客户端未验收状态。
+
+## 运行时训练与旅店安排
+
+Services 使用角色存档 serviceStop 保存用户选择的 kind（train／bind）、npcId、title、position（map／x／y）和可选 learnKey；只保存意图，不保存训练窗口报价或已完成事实。learnKey 由原生名称／副标题／类别组成，重复身份不接受。有效 QuestieDB NPC 枚举形成 amenitiesByMap，与自有 services 和商人／维修索引独立。
+
+运行时 service 动作的 train／bind 由 Services 快照／绑定事件完成并触发重新规划；此类动作不作为自有 verified 服务成本模型。完整道路可分段导航，未覆盖段不构造行程耗时。绑定必须匹配所选 NPC 的原生确认与真实绑定；学习必须看到同 NPC 的唯一项目为 used。未知或非金币训练费用保持未知，不计入完整经验率。
+
+## 升级经验参考表
+
+Data/Experience.lua 独立于自有 progression，包含精确 version／build／interface、source、clientVerified=false 与 1—59 的 xpToLevel。仅在当前原生门槛匹配时启用，来源与逐级数值见 EXPERIENCE_DATA_AUDIT.json。Core 采集客户端版本，State 每次重建携带版本与当前 UnitXPMax；不保存为角色曲线。Progression 的 curveSource 随预测传到行程和任务预览，预测只累计交付经验，实际事实保持不变。
+
+重新生成：python3 tools/import_experience.py；核对固定原始 CSV 和现有生成资料：python3 tools/import_experience.py --check。原始资料保存在 .dependencies，发布包只带生成值与来源审计。客户端门槛、版本或接口不匹配时使用原生当前门槛并保留后续未知；自有 verified 曲线继续优先。
+
+## 起步估计来源
+
+Planner/Estimates.lua 的数值属于内置假设，完整参数与适用条件见 ESTIMATION_MODEL.md，不填入自有 verified 内容。TaskGuide.Work 可读取 data 和唯一目标身份，按阶段保留 workSource（initial／observed），总计保留 initial 数量与 shared 标志，Timing 使用 initial 标记任何初始目标／接交预算。重算先清除阶段旧值；有三段有效绝对样本时继续用原有统计。
+
+Data.ObjectiveIdentities 只关联当前原生目标与有效数据库条目，ObjectiveTargets 的位置保留目标类型／ID和来源实体类型／ID。原生事件类型可定位但不套用普通击杀估计。同位置同 NPC 的已确认目标可合并执行估计；预期数量、掉落率与时间均不更改角色完成事实。
+
+
+## 副本任务参考目录（0.1.44-dev）
+
+Data/Dungeons.lua 由 tools/build_dungeon_catalog.py 生成，独立于 Content.dungeons。仅在 1.60.1 / 70862 启用，34 个可读 party 地图保留实例 ID、中文名称与按阵营区分的关联任务。分类任务全保留；目标已知来源全部落在该副本的任务可补入候选；存在其他明确区域来源的分类任务标记 alternative，缺位置来源不冒充其他地点。任务资格和状态仍由当前有效库与原生快照判断，目录不声称准入或完整行程已经验证。UI 按状态展示，并复用任务链和单任务选择入口。
+
+
+### 0.1.45-dev 副本入口衔接
+
+参考目录新增 `areas`（区域 ID 别名）和 `entrances`（区域 ID、百分比 x/y），沿用目标构建核对。仅在实际任务目的地地图唯一对应副本时，用入口行动替代当前指引；保留原目标、任务身份及进度。实际实例 ID 匹配后恢复目标。入口坐标本身不证明已进入、任务完成或具备准入条件，完整副本自动行程仍需独立记录。
+
+
+### 0.1.46-dev 副本离开与交付接续
+
+当前行动目标属于已知室外区域、角色仍在副本内时，生成无坐标的 `dungeonLeave` 提示；实际出本重新规划后恢复原交付／目标行动。未提供内部出口坐标时不拿外部门口充当内部出口。当前实例内的有效任务优先于出本，包含位置存在但地图库暂时无距离的情况；手动锁定和暂缓继续生效。任务完成、交付与副本结算仍分别依赖原有真实状态及确认。
+
+
+### 0.1.47-dev 所选任务的前置准备
+
+`Chains.Preparation` 返回满足当前角色资格且有目标位置的前置分支入口；全部前置、任一前置、正号可替代／负号精确交付、父任务进行及开始后开放保持原资格语义，忽略后续关联／指引的非强制边。循环、未知关系、缺失任务和无法执行的必需分支不生成准备动作。遍历最多32层。
+
+角色原 `locked` 保存最终任务，规划只在本次状态副本上选择当前前置，正常重算会在真实前置满足后恢复原目标；不会预写完成记录。`Eligibility.Check` 第四参数只用于前置准备候选的非前置资格检查，实际行动仍必须通过普通资格检查。
+
+
+## 副本任务批量接续（0.1.48-dev）
+
+角色存档可选 `taskBatch={id=<目录ID>,baselines={[questID]=<选择时交付计数>}}`。仅保存用户选定时具备接续条件的根任务，后续每次刷新重新展开当前可执行前置，去重并保持资格、暂缓与低价值筛选。一次交付计数增加即移出本轮；非重复任务也接受原生已交付且不在日志的证据。日志移除、进出本和到点不结算。快照复制 baselines，不向异步规划暴露可变存档。
+
+任务组与单任务、手动完整顺序及完整副本会话互斥；恢复自动或选择其他模式清除任务组，暂缓单个成员保留其余任务。构建不匹配或任务条件受阻时保留选择并显示原因。已知日志容量满时不安排新的接取，仍可推进已接成员，空出名额后恢复。
+
+组内先处理当前可执行的室外准备／接取，进入实例后优先本内目标；同收件人的已接有效成员继续整组完成后交付。排序复用已有经验与移动估计，不新增任务执行耗时或道路数据。目录任务安排并不把参考目录写入已验证的 `Content.dungeons`，未覆盖的准入／整轮收益等仍需独立完成。
+
+
+## 统一任务日志容量（0.1.49-dev）
+
+`Supplies.AcceptIssue(state)` 使用快照的 questLimit 与 questCount；未提供 count 时按 quests／activeQuests 计数。任务上限未知或无效时不安排新的接取，已接目标和交付照常。接取候选保留 `acceptBlocked` 原因，在主列表／总览／预览显示，手动锁定保存意图且不能绕过满额检查；实际空位出现后重新生成接取导航。
+
+`Supplies.QuestLog` 创建独立任务栏位账本，`ApplyQuestLog` 按动作顺序更新接取与交付。Supplies 完整行程与 TaskQueue 交错排序共用该规则；目标完成不释放栏位，重复接取／交付不重复计数。任务组不再自行筛掉满额接取候选。前置准备可以继续当前已接分支，完成实际交付后再接取最终目标。当前已知容量来自目标客户端 C_QuestLog.GetMaxNumQuestsCanAccept，当前总任务数来自 GetNumQuestLogEntries 的第二返回值。
+
+### 装备效果比较（0.1.67）
+
+原生 `C_TooltipInfo.GetHyperlink` 在对应枚举存在时按完整物品链接读取 `ItemSpellTriggerOnUse`／`ItemSpellTriggerOnProc`，保留客户端说明为 `effects[{kind,text}]`。不按本地化文字猜测触发概率或强度。返回暂缺、空数据或读取异常标记 `effectsPending`；当前快照关联的 `TOOLTIP_DATA_UPDATE` 到来后合并刷新并重算。缺少接口时沿用 GetItemSpell 和已验证静态效果字段。
+
+整套比较同时列出被换下与换上的特殊效果，包含双手武器替换时卸下的副手；套装按更换前后实际件数比较，只提示改变的套装。效果未量化或资料待加载时，属性变化仍供装备页查看和手动选择，不作为自动装备偏好加分，也不据此判为低价值任务。原生 OnEquip 中的额外被动机制与原生套装归属尚未自动解析，继续需要已验证 effectText／setId；此项并未证明全部特殊效果覆盖。
+
+## 原生首领完成条件（0.1.87）
+
+完整副本内容可配置 `completionEncounters={encounterID,...}`；这些是原生首领事件ID，不是NPC ID。列表须为1—64个不重复正整数，须由内容作者以对应构建的完整行程证据定义；观察目录中的部分首领不能直接作为全通条件。若与completionQuests同时配置，两组条件全部满足才校准。每轮首领须由同实例／难度配对的ENCOUNTER_START和成功ENCOUNTER_END确认；新轮次重新收集。接受行程时已在本内、重载／再次进入世界、死亡／挂机等既有失效条件均不写整轮样本。本轮结束仍由玩家确认，不更新任务完成事实。
+
+副本页仅显示本次进入后真实观察到的已击败首领；重新载入世界时清空，未进入对应实例／难度时隐藏。这些运行时观察不写入SavedVariables或内容包，也不推定全部首领已完成。
+
+## 副本首领身份目录（0.1.89）
+
+DungeonCatalog.encounters 以原生 encounterID 为键保存 instanceId、difficultyId、title，来自当前构建 DungeonEncounter。仅在版本／构建匹配时参与运行时判断。completionEncounters 与该目录的明确副本或难度冲突会阻止完整行程；原生事件的相同冲突会排除观察与校准。difficultyId=0 仅表示表中未指定，不证明所有难度均可用。未收录的原生事件继续由实际实例与配对胜利校验。目录包含可选首领和不同分区，不能自动作为行程必须击败的集合；完成条件仍由具体行程单独定义并验证。原生事件名称缺失时使用目录中文名。
+
+## 当前训练条件（0.1.90）
+
+Services 快照从原生训练窗口读取每项专业熟练度与前置能力要求，保留已满足／未满足／未读取状态，随原生更新重建。学习目录优先可学习且支付得起的角色项目，其次费用不足或未知项目，再列条件不满足及已学项目；同档保持原生索引。明确条件不足不能新选为当前学习目标。已安排项目在同NPC的当前窗口内提示实际等级／技能缺项或金币缺口，保留玩家意图与取消入口。已学完成仍要求同NPC同项目唯一匹配used状态，不购买技能、不改原生筛选，不将列表消失当作完成。未打开训练窗口时不缓存或推测完整训练能力。
+
+## 开飞行点预览与安排（0.1.91）
+
+服务意图新增 kind=unlockFlight、taxiId、title、position，可带与旅店相同的 afterTask。候选限原生 unlocked["taxi:ID"] 明确为 false、同构建且友方、无额外节点条件／可见性条件的室外点；未知解锁不等于未发现。Services 的完整有效已接任务阶段提取由旅店与开点比较共用，低价值／受阻／阶段不齐或队列未展开完整时不做整程收益断言。
+
+开点预览独立复制交通上下文，先以真实可用交通到达飞行点，之后才允许同构建 TaxiPath 的有向直连参考航线，另一端必须已经解锁且双方无额外条件。时间复用现有参考表，费用使用该直连的基础票价；不推断声望／天赋折扣，不补零，不猜反向边。按所有可确认任务步骤的插入位置比较完整剩余行程，保留资金、任务交付收入、炉石冷却及原任务顺序。此结果是参考收益，不能证明原生航线可达或实时票价；不写入角色状态、不生成真实搭乘动作，不自动替玩家选择开点。
+
+用户选定后，实际导航仍只使用原生确认的交通到达服务点，原生解锁状态变为 true 才清除服务意图并恢复任务。参考库版本不符时停止此服务导航。预览目前限单点开通及其直连，不搜索同时开通多个点；新路线可达性、票价及真实开点事件仍需实机验收。
+
+## 炉石交接据点（0.1.94，覆盖此前换绑推演）
+
+Services.PlanBindings 按旅店200码内的有效任务交接点汇总：已接任务使用最后的turnin阶段，未接任务使用当前accept动作；同一任务只计一次，低价值、受限及待核对任务不计入。先比较已接任务交付数量，再比较可接数量及交付点直线距离。已知交付位置可独立参与，不要求完整目标队列或已知炉石冷却。移除换绑整程搜索、插入位置、节省门槛及预测绑定转换。
+
+仍有任务需要完成、玩家经过最合适旅店100码内且当前未绑定在该据点200码内时，显示绑定建议。正在交付任务、手动锁定／行程／装备目标／副本任务组、既有服务、维护、死亡、飞行与实例中不插入建议。plan.automaticService 是当前快照的派生建议，不写入serviceStop，不安排专程换绑。手选旅店仅导航到店，不计算绑定后的假设行程。
+
+实际绑定由玩家确认；CONFIRM_BINDER 匹配当前NPC与25码内位置后，60秒内同地区 HEARTHSTONE_BOUND 建立参考点，再恢复任务。完成后返回交付使用真实绑定点与当前炉石可用状态。取消保存有4096字节上限的char.declinedBinding（已接任务按ID排序的ID:交付次数组合），同批任务的走动和进度变化不重复建议。实际客户端交互仍待验证。
+
+## 手选服务的后续资源接续（0.1.93）
+
+Services.Build 对训练和开点服务，在明确延后步骤完成后，复用完整有效已接任务阶段，把当前服务作为首阶段一并求值；最终导航只采用完整行程的 firstRoute 和真实服务动作。炉石绑定自0.1.94起采用上节的简单处理。整段比较保留交通票价、任务支出／交付收入和炉石冷却。开点动作仍只使用当前已确认的航线，假定开点预览不进入实际路线。
+
+已选择学习项目时，仅以当前同NPC、同learnKey、无歧义、可学习且未被条件阻断的原生铜币报价作为服务支出；报价未取得或窗口关闭后不沿用旧价，不修改角色金币或存储报价。任务阶段不足、正在副本／维护或自有方案已有best时，保留原有单段服务处理；已有完整阶段但服务后无法接续时返回可取消的selectionBlocked，不回退到消耗资源的单段最快路线。当前实现未建立训练能力长期收益或完整副本服务模型。
+
+## 队伍职责与等待（0.1.95）
+
+State.Group 每次角色快照只读 UnitGroupRolesAssigned、UnitIsConnected、IsInRaid；团队用 raidN，小队用 player/partyN，避免重复统计本人。只在本人缺少原生职责时采用设置中的职责；他人 NONE、缺接口、调用失败或受限返回保留未知。仅统计已确认在线的职责，离线人数独立提示。人数、角色数与在线状态进入状态指纹；GROUP_ROSTER_UPDATE、PLAYER_ROLES_ASSIGNED、UNIT_CONNECTION 触发现有归并刷新。
+
+Dungeon.GroupStatus 给出人数和缺位提示，五人小队满员且在线、职责全部确认并至少有一名坦克和治疗才自动免除等队；其他明示人数的行程仅检查人数和在线职责，不擅自设定团队配比。未知职责或满员缺位仍使用已有等待估计；玩家明确就绪后沿用既有行程推进，不执行邀请、聊天、职责设置或就绪检查操作。副本参考目录和自有行程共用提示。该项不补造完整副本经验、完成集合或实机验收结果。

@@ -1,0 +1,220 @@
+{
+  "build": "1.60.1.70862",
+  "clientVerified": false,
+  "scope": "Readable party maps joined to native UiMapAssignment by MapID. Missing rows preclude native UI-map geometry; entrance coordinates alone do not provide inner endpoints or an internal distance. No terrain/pathfinding required.",
+  "inputs": {
+    "docs/DUNGEON_COVERAGE.json": "7f29a828316e925d9d853f571ded0b9dfd3f2adbcdda3c597ce122ab4d84ab95",
+    ".dependencies/UiMapAssignment-1.60.1.70862.csv": "79267e8be8034e47daab14350411b3acc0b1f64e86efc9d821a217497254ca0a"
+  },
+  "maps": [
+    {
+      "mapId": 33,
+      "name": "影牙城堡",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 34,
+      "name": "暴风城监狱",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 36,
+      "name": "死亡矿井",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 43,
+      "name": "哀嚎洞穴",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 47,
+      "name": "剃刀沼泽",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 48,
+      "name": "黑暗深渊",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 70,
+      "name": "奥达曼",
+      "entranceCount": 2,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 90,
+      "name": "诺莫瑞根",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 109,
+      "name": "沉没的神庙",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 129,
+      "name": "剃刀高地",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 189,
+      "name": "血色修道院",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 209,
+      "name": "祖尔法拉克",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 229,
+      "name": "黑石塔",
+      "entranceCount": 2,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 230,
+      "name": "黑石深渊",
+      "entranceCount": 2,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 269,
+      "name": "时光之穴",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 289,
+      "name": "通灵学院",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 329,
+      "name": "斯坦索姆",
+      "entranceCount": 2,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 349,
+      "name": "玛拉顿",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 389,
+      "name": "怒焰裂谷",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 429,
+      "name": "厄运之槌",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 2720,
+      "name": "灼热盆地",
+      "entranceCount": 0,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 2784,
+      "name": "屠魔峡谷",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 2806,
+      "name": "暗影堡",
+      "entranceCount": 0,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 2807,
+      "name": "燃烧的安多哈尔",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 2817,
+      "name": "星陨兽穴",
+      "entranceCount": 0,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 2853,
+      "name": "逆风小径",
+      "entranceCount": 0,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 2875,
+      "name": "卡拉赞墓穴",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 2902,
+      "name": "甲虫之台",
+      "entranceCount": 0,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 2921,
+      "name": "纳克萨玛斯",
+      "entranceCount": 0,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 2959,
+      "name": "达拉然城",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 2998,
+      "name": "挖掘场：湿地",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 2999,
+      "name": "洛丹伦废墟",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 3065,
+      "name": "领主大厅",
+      "entranceCount": 1,
+      "uiMapIds": []
+    },
+    {
+      "mapId": 3109,
+      "name": "密斯特曼托庄园",
+      "entranceCount": 0,
+      "uiMapIds": []
+    }
+  ],
+  "counts": {
+    "partyMaps": 34,
+    "withEntrances": 27,
+    "withNativeUiMap": 0
+  }
+}

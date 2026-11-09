@@ -1,0 +1,676 @@
+{
+  "research_date": "2026-11-08",
+  "target": {
+    "product": "Forever",
+    "interface": 16001,
+    "detected_local_build": "1.60.1.70862",
+    "client_verified": false
+  },
+  "dependencies": [
+    {
+      "name": "QuestieDB",
+      "version": "v1.0.12",
+      "contract": 4,
+      "url": "https://github.com/Questie/QuestieDB/releases/tag/v1.0.12",
+      "api_blob": "65316921a9a52100fa1eca861167a87c15a5f0f5",
+      "bundled": false,
+      "archive_sha256": "bc1e6894b64fc347e29758fa73e4ca9e4921844a16852c0c428f45f14ca2f8cf",
+      "effective_audit": "EFFECTIVE_DATA_AUDIT.json"
+    },
+    {
+      "name": "HereBeDragons",
+      "api": "2.0",
+      "url": "https://www.wowace.com/projects/herebedragons/files/9049435",
+      "coordinate_blob": "50fa313932922bfd1d421c6ec8d05c3701848c4e",
+      "pins_blob": "ab24a9e8c6cc31cf7b39f62be1a9a50ee0ed7e8f",
+      "bundled": false,
+      "version": "2.18-release",
+      "archive_sha256": "095609a13af365bd2565fb2ad304482fcee4d92763940e0b24e44b8d772980b9"
+    }
+  ],
+  "implementation_references": [
+    {
+      "name": "RestedXP",
+      "url": "https://github.com/RestedXP/RXPGuides",
+      "scope": "活动步骤事件与原生安全按钮机制；独立实现",
+      "code_copied": false
+    },
+    {
+      "name": "TomTom",
+      "url": "https://www.curseforge.com/wow/addons/tomtom/files/8560433",
+      "scope": "作者发布记录、距离回调和图标可见性解耦；未取得现版核心源码",
+      "code_copied": false
+    },
+    {
+      "name": "BtwQuests",
+      "url": "https://github.com/Breeni/BtWQuestsDragonflight/blob/mainline/TheWakingShores.lua",
+      "sample_blob": "ae52a6f2405fb98c6a21f7d79e1a11f1b829448a",
+      "scope": "作者公开扩展包的 chain/prerequisites/restrictions/variations/connections 数据结构；非 Forever 任务数据",
+      "code_copied": false
+    },
+    {
+      "name": "Questie prerequisite semantics",
+      "url": "https://github.com/Questie/Questie/blob/master/Database/QuestieDB.lua",
+      "retrieved": "2026-11-08",
+      "sha256": "167785e9ffb7358701a8d12bafd21fed43a63a9c6ec2f61bd342455bc0844c5f",
+      "scope": "IsPreQuestGroupFulfilled: negative exact turn-in, positive exclusive alternatives; independent implementation",
+      "code_copied": false
+    },
+    {
+      "name": "Native click bindings",
+      "url": "https://github.com/RestedXP/RXPGuides/blob/master/Bindings.xml",
+      "sha256": "23475df0eb2da5da4b2b295e219a35e6d7812e613061c9864b5f9cfc7041e280",
+      "scope": "Native CLICK binding declaration shape only; independent named secure item buttons",
+      "code_copied": false
+    },
+    {
+      "name": "RestedXP Waypoints (user visual reference)",
+      "url": "https://www.curseforge.com/wow/addons/restedxp-waypoints",
+      "scope": "Screenshot information hierarchy only; independent native tracker and vector arrow",
+      "code_copied": false
+    },
+    {
+      "name": "Lueur",
+      "version": "1.4.0",
+      "url": "https://www.curseforge.com/wow/addons/lueur/files/9281032",
+      "archive_sha256": "8a1ea340b88d7181096c95d4750c3b330c6aa684b92153fbb10823f5064c4362",
+      "scope": "原生 softinteract、游戏物件名条、光标分类、距离反馈和 CVar 恢复机制；独立实现单目标光圈，未复制源码或素材",
+      "code_copied": false,
+      "client_verified": false
+    },
+    {
+      "name": "DaylightUI Bags",
+      "version": "1.6.2",
+      "scope": "已安装真实背包窗口 DaylightUIBag、kind=bag、set.Slots/Sync 接口；独立高亮，不复制或修改第三方代码",
+      "code_copied": false,
+      "client_verified": false,
+      "local_source_files": [
+        {
+          "path": "/home/hap/Games/battlenet/drive_c/Program Files (x86)/World of Warcraft/_forever_/Interface/AddOns/DaylightUI_Bags/Bags.lua",
+          "sha256": "5e4a6f30b79bf63fcba610006bc6bb844db92b1690e34e71ce8a7a29c937148f"
+        },
+        {
+          "path": "/home/hap/Games/battlenet/drive_c/Program Files (x86)/World of Warcraft/_forever_/Interface/AddOns/DaylightUI_Bags/Window.lua",
+          "sha256": "474270e952795a5ed3efba10214e6479ca148f903b37cf604b7d887b46b0c015"
+        },
+        {
+          "path": "/home/hap/Games/battlenet/drive_c/Program Files (x86)/World of Warcraft/_forever_/Interface/AddOns/DaylightUI_Bags/Items.lua",
+          "sha256": "c0fb5b9903b252a6b26f61299d205fc51fcaa325a34deaabf77d22657f1ac529"
+        },
+        {
+          "path": "/home/hap/Games/battlenet/drive_c/Program Files (x86)/World of Warcraft/_forever_/Interface/AddOns/DaylightUI_Bags/Module.lua",
+          "sha256": "81c5a12e831988fdbade375669c8e6045ada40203a457aab37518562bdbe6fe7"
+        },
+        {
+          "path": "/home/hap/Games/battlenet/drive_c/Program Files (x86)/World of Warcraft/_forever_/Interface/AddOns/DaylightUI_Bags/DaylightUI_Bags.toc",
+          "sha256": "231825ae9ab45e9fb4d163848bef8cc030882041ddc86989040691b3d37be51c"
+        }
+      ]
+    }
+  ],
+  "api_references": [
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/SkillInfoDocumentation.lua",
+      "sha256": "5d7853c927bdf555c2b2679c31b8cfa0ef7f016ec88e1b0253bc86231bff4f7f",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/ReputationInfoDocumentation.lua",
+      "sha256": "f59ca871c2ce55d3cd8e5d9534b307bfc5c1e3537a00459da2bc2c0e586d830a",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/SpellBookDocumentation.lua",
+      "sha256": "509fabe6d33de10f7166dc71bfb853dc969803d86536acac0833d30b1d0f9179",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/InstanceDocumentation.lua",
+      "sha256": "136d6554c346ce090324ac905e086a149a7b7f6a23193c03262a17a0ee85719f",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/ItemDocumentation.lua",
+      "sha256": "59c5dd2f70757cdb9bc4511cb0fafe6287bbfb51d58a7389097dcbb485785af0",
+      "client_verified": false,
+      "usage": "；C_Item.GetItemSpell 实际炉石施法身份"
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/PlayerInfoDocumentation.lua",
+      "sha256": "1b48d47177ec5957d0f04160a1ab12aafbbe89da4f142437e0a83e05d4b54311",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/TaxiMapDocumentation.lua",
+      "sha256": "83815b83f1fca174d6b746407750b73cb3b353d0c8c45903524f13bbb86dae9d",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/ContainerDocumentation.lua",
+      "sha256": "dd3e4741d45720384f814d3f78ce975dab3951458ae894e728ed3aedc8ae56b3",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_RaidFrame/Mainline/RaidFrame.lua",
+      "sha256": "c08626a9c0916de2d7fcda10702f6971a69afbc3d934f7aacc89319f15c78cde",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/GameErrorDocumentation.lua",
+      "sha256": "a0b55773b091db911c0f992d4727ac47e62832a83154586931e18aabd1a4d2a2",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/QuestLogDocumentation.lua",
+      "sha256": "e637368f36d153f8b432455cfa247d0c67c84996dce8d591bc1eb4d1cd7bc098",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitDocumentation.lua",
+      "sha256": "93004ac1b260127741471b7861360cdf7536afcb18d4c1db73b7259faa43e61c",
+      "client_verified": false,
+      "usage": "；本人施法 GUID／spellID、成功／失败／中断与炉石绑定事件"
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleScrollFrameAPIDocumentation.lua",
+      "sha256": "19cf167464404e1bca37661fb5e41a9f6f0580fd8adcf8a6e2d1ad2de5d4a59a",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleEditBoxAPIDocumentation.lua",
+      "sha256": "aa932f643f66a880c6191043f7597b59d0c9f45df86f229c0322013d533a1aa8",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleLineAPIDocumentation.lua",
+      "sha256": "14aa5593e653b448122cff40ba14701a76d5e8940d93ab69db5cef7d808ab322",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleFrameAPIDocumentation.lua",
+      "sha256": "c00bc77ee27f8fd81ba8b8d1bfd85fbd0ad817b22457adbe5adca6876a1d604a",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/SoundDocumentation.lua",
+      "sha256": "0872bde4963b06134b9bdc923800f9788dd3e8bea4d7e30b99beb08fd1c93821",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/QuestInfo.lua",
+      "sha256": "2397fa46eeb872d751bb167502708ba6da7bf131be38152c9b2e5d386cc2774b",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_UIPanels_Game/Vanilla/QuestInfo.lua",
+      "sha256": "bbee6de74eca3b372066489f162e0753309e1cacd772c5e82a59b5360c297291",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/QuestFrame.lua",
+      "sha256": "cf85d4094400843892802e48e8545be648121a24a84187ba4fc304339ae83879",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/MerchantFrameDocumentation.lua",
+      "sha256": "c3d078c8b0667d63094a265f21480e270f9f2cdf75cdc4616f053b587b9847c1",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/MerchantFrame.lua",
+      "sha256": "2cee4e2ef28627b263e8e719264c3454267eee645c53c43ad7f1a871e9563e14",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_TrainerUI/Mainline/Blizzard_TrainerUI.lua",
+      "sha256": "f91d2033c51b98dd61f8325f36c98a5bd36b0e850a3400ef830f14a7cec1a238",
+      "usage": "原生训练项目状态、等级、每项费用及宠物点数语义；GetTrainerServiceSkillReq 的专业／熟练度／满足状态及 GetTrainerServiceNumAbilityReq / GetTrainerServiceAbilityReq 的前置技能条件。0.1.90 接入只读详情、排序与服务提示。",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/TrainerDocumentation.lua",
+      "sha256": "8428e3ce0247031621cf029041f00a605895e991e96479b949c0fe3d5082eee2",
+      "usage": "训练窗口事件与类型接口",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/TrainerConstantsDocumentation.lua",
+      "sha256": "c837c30251e33128e1ccf36a3219c8904b4dec5891fd8eba4c75bbe77db93061",
+      "usage": "General、Tradeskills、Pet 类型枚举",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/MapConstantsDocumentation.lua",
+      "sha256": "90b33376f977155e3f06f5a5e2431ed450c22236096de05b0cafe0a5bb31f859",
+      "usage": "UIMapType Zone / Continent 过滤飞行落地点的投影地图",
+      "client_verified": false
+    },
+    {
+      "name": "Forever carried-container API reference",
+      "url": "https://github.com/Gethe/wow-ui-source/tree/forever",
+      "retrieved": "2026-11-08",
+      "purpose": "Carried bag range, keyring capability and size; independent implementation only.",
+      "files": [
+        {
+          "url": "https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/ContainerFrame.lua",
+          "sha256": "9af2c76d16ebff607dd8b983722f36f98e819b35bc77395232bb2f960d15e3d3"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_FrameXMLBase/Constants.lua",
+          "sha256": "464da9fb28ed086d09f9f7c47a54888c7d47b039415d8475ac825f51f8506290"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/ContainerDocumentation.lua",
+          "sha256": "dd3e4741d45720384f814d3f78ce975dab3951458ae894e728ed3aedc8ae56b3"
+        }
+      ],
+      "clientVerified": false
+    },
+    {
+      "name": "Quest reward XP by quest ID",
+      "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_FrameXMLUtil/Mainline/QuestUtils.lua#L771",
+      "localFile": ".dependencies/Forever-Interface_AddOns_Blizzard_FrameXMLUtil_Mainline_QuestUtils.lua",
+      "sha256": "14b30f3c3447efb0b6feb63333aaaadb9a7d001b04d89590c2c90eec7b3fe634",
+      "scope": "Pinned exported UI call GetQuestLogRewardXP(questID), totalXp first return; Mainline call site, optional global on Forever. Positive values only until zero/cache contract is validated in game.",
+      "clientVerified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_APIDocumentationGenerated/TooltipInfoDocumentation.lua",
+      "sha256": "0c2184a4ba787a5fbd37646e0f297a6e79a3ac5f60ccbcd07dabcc8048e89718",
+      "client_verified": false,
+      "usage": "装备完整链接的 GetHyperlink、TooltipDataLineType 主动／命中触发分类、leftText 与 dataInstanceID／TOOLTIP_DATA_UPDATE；按能力探测启用，实际 Forever 返回待实机验证。"
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_APIDocumentationGenerated/TooltipInfoSharedDocumentation.lua",
+      "sha256": "08292af51fa78edbf2c2f8e1f8dc89812db3d4faa05e01528f3750b802ba3741",
+      "client_verified": false,
+      "usage": "装备完整链接的 GetHyperlink、TooltipDataLineType 主动／命中触发分类、leftText 与 dataInstanceID／TOOLTIP_DATA_UPDATE；按能力探测启用，实际 Forever 返回待实机验证。"
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_SharedXMLGame/Tooltip/TooltipDataHandler.lua",
+      "sha256": "05a86b963b518a589cfebf22dec825507a5b1f564f66eb64fd7caead919f0642",
+      "client_verified": false,
+      "usage": "装备完整链接的 GetHyperlink、TooltipDataLineType 主动／命中触发分类、leftText 与 dataInstanceID／TOOLTIP_DATA_UPDATE；按能力探测启用，实际 Forever 返回待实机验证。"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Gethe/wow-ui-source/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_APIDocumentationGenerated/SpellDocumentation.lua",
+      "sha256": "a7cbbfeef002efacac1a4dcc01b7d781fbfe305123a6ad97431ff010ef4de19a",
+      "client_verified": false,
+      "usage": "C_Spell.GetSpellDescription 读取被动与套装文本；缺文本保留效果身份，SPELL_TEXT_UPDATE 只刷新本轮待加载法术。实际客户端行为待验收。"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Gethe/wow-ui-source/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_APIDocumentationGenerated/SkillInfoDocumentation.lua",
+      "sha256": "5d7853c927bdf555c2b2679c31b8cfa0ef7f016ec88e1b0253bc86231bff4f7f",
+      "client_verified": false,
+      "usage": "C_SkillInfo.GetSkillLineInfoByID reads rank/maxRank/modifier/tempPoints; skill updates join the decision fingerprint. No skill-header expansion or mutation."
+    },
+    {
+      "name": "Forever native taxi hops",
+      "build": "1.60.1.70862",
+      "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_UIPanels_Game/Shared/TaxiFrame.lua",
+      "sha256": "c8614a1f13824ff304756bed4b6e8be2ded1f2e77b1a8e45d5461f5b1f9f1063",
+      "scope": "GetNumRoutes(slot), TaxiGetNodeSlot(slot,leg,isSource); independent slot-to-node mapping",
+      "client_verified": false
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_APIDocumentationGenerated/EncounterInfoDocumentation.lua",
+      "sha256": "4a92f2ad537b1811bc371750e3277bfa159029f750c69403bab1c63787cae8a9",
+      "client_verified": false,
+      "usage": "Forever原生ENCOUNTER_START／END事件参数，胜利success=1；不使用INSTANCE_LOCK弹窗作为通关事实"
+    }
+  ],
+  "native_symbol_checks": {
+    "build": "1.60.1.70862",
+    "symbols": [
+      "HEARTHSTONE_BOUND",
+      "CanDualWield",
+      "GetBindLocation",
+      "GetTaxiMapID",
+      "TaxiNodeCost",
+      "GetNumSavedInstances",
+      "GetSavedInstanceInfo",
+      "RequestRaidInfo",
+      "UPDATE_INSTANCE_INFO",
+      "INSTANCE_RESET_SUCCESS",
+      "TRANSFER_ABORT_TOO_MANY_INSTANCES",
+      "GetGameMessageInfo",
+      "GetMaxNumQuestsCanAccept",
+      "GetContainerItemQuestInfo",
+      "GetInventoryItemDurability",
+      "UPDATE_INVENTORY_DURABILITY",
+      "MERCHANT_SHOW",
+      "MERCHANT_UPDATE",
+      "MERCHANT_CLOSED",
+      "GetItemFamily",
+      "UnitOnTaxi",
+      "GetQuestID",
+      "GetNumQuestChoices",
+      "GetQuestItemLink",
+      "QUEST_COMPLETE",
+      "QUEST_FINISHED",
+      "PlaySound",
+      "CreateLine",
+      "SetStartPoint",
+      "SetEndPoint",
+      "GetNumRoutes",
+      "TaxiGetNodeSlot"
+    ],
+    "scope": "可执行文件静态符号匹配；不替代客户端调用验收",
+    "client_verified": false
+  },
+  "data_references": [
+    {
+      "name": "LibQuestDB walking graph",
+      "version": "v0.1.0 Forever",
+      "url": "https://www.curseforge.com/wow/addons/questdb/files/9014639",
+      "archive_sha256": "5da5f5b968521d60fc1f17ca6884118e2c41053a4d2aeb96440416662044e30b",
+      "data_sha256": "7c0b6a66140e0192858af19590aca7654db5de51a77f34e45ad4728c18e0c400",
+      "license": "MIT; Copyright (c) 2026 Pimptasty",
+      "license_file": "LICENSE.LibQuestDB.txt",
+      "scope": "1245 nodes, 4061 directed walk links, 40153 source points; no inferred approach bridges or unpriced transport links",
+      "client_verified": false
+    },
+    {
+      "name": "LibQuestDB quest reference facts",
+      "version": "v0.1.0 Forever",
+      "url": "https://www.curseforge.com/wow/addons/questdb/files/9014639",
+      "archive_sha256": "5da5f5b968521d60fc1f17ca6884118e2c41053a4d2aeb96440416662044e30b",
+      "license": "MIT; Copyright (c) 2026 Pimptasty",
+      "license_file": "LICENSE.LibQuestDB.txt",
+      "scope": "Classic server reference facts on Forever client XP tiers; QuestieDB qualifications remain authoritative.",
+      "source_files": {
+        "LibQuestDB-1.0.lua": "90673cb7e4b449dbb07326631b9694bf95101a3befb56e124a26a44a6cffe6b4",
+        "Data/Forever/_core/Quests.lua": "976246fae848dc2343f8dd7f0a80c7ab9473ead82def4fb4b6882c62aceb9077",
+        "Data/Forever/_core/Rewards.lua": "0d12a0e9ff2631a624c3f54b23959d5500512b9fa632895de3610825301f93b3",
+        "Data/Forever/_core/QuestXP.lua": "7b08a90c46a8ce9981d07fea6a08ed56f9f082e0684be51341519a60ddad395a",
+        "Data/Forever/_core/Drops.lua": "b7e7e807cb6a1913a3aa0fdca5ed17a18a4d3178cd39cfcfd2e079bc28c08eab"
+      },
+      "client_verified": false
+    },
+    {
+      "id": "Forever-LevelExperience-1.60.1.70862",
+      "url": "https://wago.tools/db2/LevelExperience/csv?build=1.60.1.70862",
+      "build": "1.60.1.70862",
+      "sha256": "09403ebb2fc7d752dfbb790d6d6973b07e8e7b67e3bf93d566cc5eee275cb35c",
+      "scope": "LevelExperience ContentSetID 0, Level 1-59; factual client table, 60+ excluded",
+      "clientVerified": false,
+      "activation": "Exact version/build/interface and current native UnitXPMax must match",
+      "audit": "docs/EXPERIENCE_DATA_AUDIT.json",
+      "definition": {
+        "url": "https://github.com/wowdev/WoWDBDefs/blob/master/definitions/LevelExperience.dbd",
+        "sha256": "a12fef34703288379f3dbb2021541a1f0ca4834be1755b2a93bc59bf36fa8199"
+      }
+    },
+    {
+      "id": "Forever-flight-reference-1.60.1.70862",
+      "build": "1.60.1.70862",
+      "scope": "71 reference taxi nodes; 292 directed client path records; 881 faction-specific Era/Forever duration references; 10 same-build EG Link routes with 17 observations; native availability and fares required",
+      "audit": "docs/FLIGHT_DATA_AUDIT.json",
+      "license": "docs/LICENSE.InFlight.txt",
+      "sources": [
+        {
+          "url": "https://wago.tools/db2/TaxiNodes/csv?build=1.60.1.70862&locale=enUS",
+          "sha256": "4360793e0edfbb8de62d12d87a69260b6a1bc6314b1e506b141c33e8802d8249"
+        },
+        {
+          "url": "https://wago.tools/db2/TaxiPath/csv?build=1.60.1.70862&locale=enUS",
+          "sha256": "3e5c18b53621ca7cd2618447e12498874e6aba7aa7f1f6bfda9a7977979da179"
+        },
+        {
+          "url": "https://wago.tools/db2/TaxiPathNode/csv?build=1.60.1.70862&locale=enUS",
+          "sha256": "f83f8d8e5bbeae889214f48af477dd51a4c1771ff3c3b53c3fa2cacf2cba7cdb"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/LudiusMaximus/InFlight/2efdd7ba6d0e094edf84a04eeb40c038f004ea52/Defaults.lua",
+          "sha256": "1cffe287a433e423a29d5b0442dc547da477dfc41a23f313108f33bd735b3a0a"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/LudiusMaximus/InFlight/2efdd7ba6d0e094edf84a04eeb40c038f004ea52/LICENSE",
+          "sha256": "e5f058cf153f069d5b93e3742b8b9ea1013e0ba4a5248bc60414b954699ed4e3"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862/flights.json",
+          "sha256": "5e79d3e676517a43d243cca9f1adbdfff495bd75abf2f012885bab14798f89aa",
+          "license": "CC BY 4.0"
+        }
+      ],
+      "clientVerified": false,
+      "observationLicense": "docs/LICENSE.EfficientGames.txt"
+    },
+    {
+      "name": "Forever dungeon task catalogue",
+      "build": "1.60.1.70862",
+      "file": "Data/Dungeons.lua",
+      "generator": "tools/build_dungeon_catalog.py",
+      "scope": "Readable party maps, area aliases, provider entrance coordinates and candidate quest associations; entrance direction only, no complete executable itinerary or admission claim",
+      "client_verified": false,
+      "inputs": {
+        "docs/DUNGEON_COVERAGE.json": "7f29a828316e925d9d853f571ded0b9dfd3f2adbcdda3c597ce122ab4d84ab95",
+        "docs/DUNGEON_QUEST_LOCATIONS.json": "9a8376675167acabe6e0e5c2b9c3191ca3c829d10330c73dcf741f63aa310203"
+      },
+      "provider": "QuestieDB v1.0.12",
+      "evidence_recipe": "docs/QUEST_LOCATION_RECIPE.json",
+      "sha256": "61c755c6cb4d5206beb1a59a47f0716c35a5e55c42e0b977b6feb2e468655e9b"
+    },
+    {
+      "id": "Forever-item-sets-1.60.1.70862",
+      "build": "1.60.1.70862",
+      "clientVerified": false,
+      "scope": "3143 unique item memberships, 545 sets, 1505 threshold/spell records; 1 ambiguous item and 1 set missing bonus rows remain unknown.",
+      "audit": "docs/ITEM_SET_AUDIT.json",
+      "activation": "Exact version/build/interface",
+      "sources": [
+        {
+          "table": "ItemSet",
+          "sha256": "c3cb162791b317fa323306f7cec8e04848bce6cf49f42039608c2b22560a99e2",
+          "rows": 545,
+          "url": "https://wago.tools/db2/ItemSet/csv?build=1.60.1.70862&locale=zhCN"
+        },
+        {
+          "table": "ItemSetSpell",
+          "sha256": "d41d30ca156592761819d80bea3bb66c7ea2bcc43ecc71639e01c3a3ef9637ea",
+          "rows": 1505,
+          "url": "https://wago.tools/db2/ItemSetSpell/csv?build=1.60.1.70862&locale=zhCN"
+        },
+        {
+          "table": "ItemSparse",
+          "sha256": "8a26623b48a94a14cdd32a6597350d3e0700698e2480aa1cec6ab0ab7f06def3",
+          "rows": 19324,
+          "url": "https://wago.tools/db2/ItemSparse/csv?build=1.60.1.70862&locale=zhCN"
+        }
+      ],
+      "definitions": [
+        {
+          "url": "https://raw.githubusercontent.com/wowdev/WoWDBDefs/master/definitions/ItemSet.dbd",
+          "sha256": "22458ff8d1d78342d2fed8264396bb24c8c1979bd86fc56d856d0d3bda860bc8"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/wowdev/WoWDBDefs/master/definitions/ItemSetSpell.dbd",
+          "sha256": "f852892bdb9d11603aca774877607df77374337c86a717c672c1e915f0465833"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/wowdev/WoWDBDefs/master/definitions/ItemSparse.dbd",
+          "sha256": "07dd040b45593c0bc7fc70c0ce65f941c9ccda54bf033e628c4e28df6df5d3f1"
+        }
+      ]
+    },
+    {
+      "id": "Forever-item-effects-1.60.1.70862",
+      "build": "1.60.1.70862",
+      "clientVerified": false,
+      "scope": "1243 item references including one missing effect link; 1193 qualitative/unknown, 50 constant self-stat candidates checked against live native item stats. No proc DPS estimation.",
+      "audit": "docs/ITEM_EFFECT_AUDIT.json",
+      "sources": [
+        {
+          "table": "ItemEffect",
+          "sha256": "df9f123861be4e180736e79dcee708151c6f79de9f5e6773ff8e2066430aa434",
+          "url": "https://wago.tools/db2/ItemEffect/csv?build=1.60.1.70862&locale=zhCN"
+        },
+        {
+          "table": "ItemXItemEffect",
+          "sha256": "15dc36eec90ca5768e00469cb8065aedf82efcf205ca03281daf6aac69ca1885",
+          "url": "https://wago.tools/db2/ItemXItemEffect/csv?build=1.60.1.70862&locale=zhCN"
+        },
+        {
+          "table": "SpellEffect",
+          "sha256": "cc8f167fe246b495294b560196f6c59439f703e8f937ddb6acd81157bd5f8b9c",
+          "url": "https://wago.tools/db2/SpellEffect/csv?build=1.60.1.70862&locale=zhCN"
+        }
+      ],
+      "definitions": [
+        {
+          "url": "https://raw.githubusercontent.com/wowdev/WoWDBDefs/master/definitions/ItemEffect.dbd",
+          "sha256": "0b2e8c493fb281e32a41fb2e0c22c1dbe9afe341fc387c22c361b5ac3bef728c"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/wowdev/WoWDBDefs/master/definitions/ItemXItemEffect.dbd",
+          "sha256": "c8623dccd71fe96ed4e3145718d3fa2c0841318c31f32d328dc4e5ad4da352dc"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/wowdev/WoWDBDefs/master/definitions/SpellEffect.dbd",
+          "sha256": "b4a737ace960cf557ed233cc237e8ccaca75d32cea88352e6d3d2de1c5f4f2ff"
+        }
+      ],
+      "enumReferences": [
+        {
+          "url": "https://raw.githubusercontent.com/TrinityCore/TrinityCore/master/src/server/game/Entities/Item/ItemTemplate.h",
+          "sha256": "c7258f902655762a7a9b4080872389411488a63788d680f0451db747399b9bbd",
+          "scope": "Enum numeric identities only; no server implementation code copied."
+        },
+        {
+          "url": "https://raw.githubusercontent.com/TrinityCore/TrinityCore/master/src/server/game/Spells/Auras/SpellAuraDefines.h",
+          "sha256": "acc33e618fcbe9928ee2b0d29d3d7320be3d8994f41c046d297a03bb20a87c3b",
+          "scope": "Enum numeric identities only; no server implementation code copied."
+        },
+        {
+          "url": "https://raw.githubusercontent.com/TrinityCore/TrinityCore/master/src/server/game/Miscellaneous/SharedDefines.h",
+          "sha256": "29ae09d55b03817fb6f823679679479cf5b61e690cc40f7c915e90af88b1877a",
+          "scope": "Enum numeric identities only; no server implementation code copied."
+        }
+      ]
+    },
+    {
+      "id": "Forever-weapon-skills-1.60.1.70862",
+      "build": "1.60.1.70862",
+      "clientVerified": false,
+      "audit": "docs/WEAPON_SKILL_AUDIT.json",
+      "scope": "15 weapon subclasses linked through proficiency spells and skill lines. Fist weapons use unarmed rank per the exact-build description. No class permissions or combat/time model inferred.",
+      "sources": [
+        {
+          "table": "SkillLine",
+          "sha256": "db0fe59fc385e1b3c25528f0504430631fc592de564840dc601a428c2ec646a4",
+          "url": "https://wago.tools/db2/SkillLine/csv?build=1.60.1.70862&locale=zhCN"
+        },
+        {
+          "table": "SkillLineAbility",
+          "sha256": "13ef58a08253125e3e9dca642a39bc480187987e90cfbe5c8be30e1ab3c8be0a",
+          "url": "https://wago.tools/db2/SkillLineAbility/csv?build=1.60.1.70862&locale=zhCN"
+        },
+        {
+          "table": "SpellEquippedItems",
+          "sha256": "5750d65b2e990f1cced1cd1e571d4ca7fbcb1db1d9412238f7a9b2608118d52d",
+          "url": "https://wago.tools/db2/SpellEquippedItems/csv?build=1.60.1.70862&locale=zhCN"
+        },
+        {
+          "table": "SpellEffect",
+          "sha256": "cc8f167fe246b495294b560196f6c59439f703e8f937ddb6acd81157bd5f8b9c",
+          "url": "https://wago.tools/db2/SpellEffect/csv?build=1.60.1.70862&locale=zhCN"
+        }
+      ],
+      "definitions": [
+        {
+          "url": "https://raw.githubusercontent.com/wowdev/WoWDBDefs/master/definitions/SkillLine.dbd",
+          "sha256": "2766822c5383f54dde2f0d20b027686746d246ab246b1ed96a2b76d68a47889f"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/wowdev/WoWDBDefs/master/definitions/SkillLineAbility.dbd",
+          "sha256": "f5e9ee052d459e3e5d41c78ece359c933758a19947da2bfc1d21686ce70fed09"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/wowdev/WoWDBDefs/master/definitions/SpellEquippedItems.dbd",
+          "sha256": "9d7f1ce29c677b8699bc379bc8057360e8c9d3dcf53a019d158163249e8d0258"
+        }
+      ],
+      "enumReference": {
+        "url": "https://raw.githubusercontent.com/TrinityCore/TrinityCore/master/src/server/game/Miscellaneous/SharedDefines.h",
+        "sha256": "29ae09d55b03817fb6f823679679479cf5b61e690cc40f7c915e90af88b1877a",
+        "scope": "SPELL_EFFECT_PROFICIENCY numeric identity 60 only; no implementation copied."
+      }
+    },
+    {
+      "name": "Efficient Games EG Link quest cache",
+      "url": "https://github.com/JIVESCORP/eg-link-output-wowf/tree/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862",
+      "license": "CC BY 4.0",
+      "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+      "scope": "Server XP difficulty/multiplier and fixed quest level transformed to XP curves; verified against 170 turn-in observations. Basic monster/object/item requirements fill empty Questie objectives for the matching build and level; unsupported objective kinds remain complex. No copied eligibility, text, item rewards or planner code.",
+      "audit": "TASK_XP_AUDIT.json",
+      "client_verified": false,
+      "deliveryOnly": "Explicit simple empty objectives may describe delivery-only reference steps; event, item, payment, source-item and native requirements are excluded. Native completion remains authoritative.",
+      "schemaSource": ".dependencies/eg-link-156f29c9/DATASETS.md"
+    },
+    {
+      "name": "Efficient Games EG Link transport object cache and matching client TaxiPathNode",
+      "url": "https://github.com/JIVESCORP/eg-link-output-wowf/tree/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862",
+      "license": "CC BY 4.0 (server cache)",
+      "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+      "scope": "Four observed type-15 templates mapped to client transport stop positions. Eight directed legs with initial cruise/wait estimates; no ground pathfinding.",
+      "audit": "PUBLIC_TRANSIT_AUDIT.json",
+      "client_verified": false
+    },
+    {
+      "id": "Forever-battleground-maps-1.60.1.70862",
+      "build": "1.60.1.70862",
+      "audit": "PVP_MAP_AUDIT.json",
+      "client_verified": false,
+      "scope": "Five readable current-build Map.InstanceType=3 maps and their UiMapAssignment IDs. Remaining eight undecoded map rows are unclassified. Used to exclude battleground entry from outdoor automatic task recommendations and guide explicit manual entry."
+    },
+    {
+      "id": "Forever-trainer-relevance-1.60.1.70862",
+      "build": "1.60.1.70862",
+      "clientVerified": false,
+      "audit": "docs/TRAINER_DATA_AUDIT.json",
+      "source": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862/trainers.json",
+      "license": "CC BY 4.0",
+      "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+      "scope": "Relevance ordering only. Partial offerings do not prove exclusive class access, available training, costs or training benefits.",
+      "inputs": {
+        "eg-link-156f29c9/1.60.1.70862/trainers.json": "549ff046e68fdcfea175313d3cfbdfaa5a60ac809608779c79e326d83eb189e7",
+        "SkillLine-1.60.1.70862-zhCN.csv": "db0fe59fc385e1b3c25528f0504430631fc592de564840dc601a428c2ec646a4",
+        "SkillLineAbility-1.60.1.70862-zhCN.csv": "13ef58a08253125e3e9dca642a39bc480187987e90cfbe5c8be30e1ab3c8be0a"
+      }
+    },
+    {
+      "id": "Forever-taxi-speed-1.60.1.70862",
+      "build": "1.60.1.70862",
+      "clientVerified": false,
+      "audit": "docs/FLIGHT_SPEED_REPLAY.json",
+      "scope": "Spell 1225490, SpellEffect 1303665 aura 388: +20% taxi speed. Native IsSpellKnown supplies learned state. No fare discount calculation.",
+      "sources": [
+        {
+          "url": "https://wago.tools/db2/SpellEffect/csv?build=1.60.1.70862&locale=zhCN",
+          "sha256": "cc8f167fe246b495294b560196f6c59439f703e8f937ddb6acd81157bd5f8b9c"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/Gethe/wow-ui-source/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_APIDocumentationGenerated/SpellBookDocumentation.lua",
+          "sha256": "509fabe6d33de10f7166dc71bfb853dc969803d86536acac0833d30b1d0f9179"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/TrinityCore/TrinityCore/master/src/server/game/Spells/Auras/SpellAuraDefines.h",
+          "sha256": "acc33e618fcbe9928ee2b0d29d3d7320be3d8994f41c046d297a03bb20a87c3b",
+          "scope": "Numeric aura identity only; no implementation copied."
+        }
+      ]
+    },
+    {
+      "name": "Forever DungeonEncounter identity catalog",
+      "url": "https://wago.tools/db2/DungeonEncounter/csv?build=1.60.1.70862&locale=zhCN",
+      "build": "1.60.1.70862",
+      "file": ".dependencies/DungeonEncounter-1.60.1.70862-zhCN.csv",
+      "sha256": "13c1a984836ccd90fc0adb56d7a52aeacab794b7276e836f30e18a80725e8677",
+      "use": "263 encounter identities in 27 maps from the 34 party-map census. Used for known map/difficulty conflicts and missing native names. Not a required boss list, route, or proof of a full clear. Difficulty zero remains unspecified.",
+      "generator": "tools/build_dungeon_catalog.py",
+      "verification": "tools/check_dungeon_encounters.py",
+      "clientVerified": false
+    }
+  ]
+}

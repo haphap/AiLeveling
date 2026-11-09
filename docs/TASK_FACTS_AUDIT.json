@@ -1,0 +1,40 @@
+{
+  "source": "LibQuestDB-0.1.0-Forever",
+  "archiveSHA256": "5da5f5b968521d60fc1f17ca6884118e2c41053a4d2aeb96440416662044e30b",
+  "url": "https://www.curseforge.com/wow/addons/questdb/files/9014639",
+  "clientVerified": false,
+  "scope": "Classic server reference facts on Forever client XP tiers; QuestieDB qualifications remain authoritative.",
+  "quests": 4245,
+  "matchedQuestieIds": 4245,
+  "rewardRows": 4140,
+  "xpRows": 3492,
+  "objectives": 4096,
+  "itemDropRows": 1906,
+  "sourceFiles": {
+    "LibQuestDB-1.0.lua": "90673cb7e4b449dbb07326631b9694bf95101a3befb56e124a26a44a6cffe6b4",
+    "Data/Forever/_core/Quests.lua": "976246fae848dc2343f8dd7f0a80c7ab9473ead82def4fb4b6882c62aceb9077",
+    "Data/Forever/_core/Rewards.lua": "0d12a0e9ff2631a624c3f54b23959d5500512b9fa632895de3610825301f93b3",
+    "Data/Forever/_core/QuestXP.lua": "7b08a90c46a8ce9981d07fea6a08ed56f9f082e0684be51341519a60ddad395a",
+    "Data/Forever/_core/Drops.lua": "b7e7e807cb6a1913a3aa0fdca5ed17a18a4d3178cd39cfcfd2e079bc28c08eab"
+  },
+  "missingQuestLevels": [
+    8193,
+    8194,
+    8221,
+    8224,
+    8225,
+    8856,
+    9154,
+    9318,
+    9334,
+    9335,
+    9336,
+    9337,
+    9341,
+    9343
+  ],
+  "cacheXP": {
+    "audit": "TASK_XP_AUDIT.json",
+    "rows": 3369
+  }
+}

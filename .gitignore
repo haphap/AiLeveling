@@ -1,0 +1,22 @@
+# Downloaded dependencies and local build artifacts
+/.dependencies/
+/dist/
+/generated_images/
+__pycache__/
+*.py[cod]
+*.log
+.env
+.env.*
+
+# Local agent sessions, machine paths and diagnostic histories
+/task_plan.md
+/findings.md
+/progress.md
+/docs/CODEX_HANDOFF.md
+/docs/INSTALLATION.json
+/docs/*REPLAY*.json
+/docs/CONTINUOUS_*.json
+/docs/DELIVERY_HINTS_CONTINUOUS.json
+
+# Retired road/terrain assets remain available locally
+/archive/

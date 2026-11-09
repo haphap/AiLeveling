@@ -1,0 +1,124 @@
+{
+  "build": "1.60.1.70862",
+  "inputs": {
+    ".dependencies/TaxiPathNode-1.60.1.70862.csv": "f83f8d8e5bbeae889214f48af477dd51a4c1771ff3c3b53c3fa2cacf2cba7cdb",
+    ".dependencies/UiMapAssignment-1.60.1.70862.csv": "79267e8be8034e47daab14350411b3acc0b1f64e86efc9d821a217497254ca0a",
+    ".dependencies/eg-link-156f29c9/1.60.1.70862/object_details.enUS.json": "63ea8fe2112516932c2633f7cb5507f99211390549c9d2a37d6b63214d906f19"
+  },
+  "source": "https://github.com/JIVESCORP/eg-link-output-wowf/tree/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862",
+  "attribution": "Efficient Games, CC BY 4.0; Blizzard client tables via Wago",
+  "clientVerified": false,
+  "scope": "Four server-observed transport templates, eight directed legs. Dock geography and faction access are curated. Not a complete transport census.",
+  "estimation": "Client polyline / server speed + speed / acceleration. Mean wait is half estimated cycle. No load-screen delay or live schedule. Ground travel remains straight distance / player speed.",
+  "excluded": "Other legacy client routes lack matching current-build server observations; newer Skycutters need access-condition evidence.",
+  "routes": [
+    {
+      "objectId": 20808,
+      "pathId": 241,
+      "serverName": "TEST Ship",
+      "sources": 3,
+      "speed": 30,
+      "acceleration": 1,
+      "ports": [
+        {
+          "map": 1413,
+          "x": 0.637950436,
+          "y": 0.387509836,
+          "name": "棘齿城码头"
+        },
+        {
+          "map": 1434,
+          "x": 0.256684374,
+          "y": 0.730811893,
+          "name": "藏宝海湾码头"
+        }
+      ],
+      "rideSeconds": [
+        123,
+        132
+      ],
+      "cycleSeconds": 375
+    },
+    {
+      "objectId": 175080,
+      "pathId": 285,
+      "serverName": "Zeppelin - Grom'Gol-Orgrimar",
+      "sources": 3,
+      "speed": 30,
+      "acceleration": 1,
+      "ports": [
+        {
+          "map": 1434,
+          "x": 0.311736502,
+          "y": 0.304468322,
+          "name": "格罗姆高飞艇塔"
+        },
+        {
+          "map": 1411,
+          "x": 0.504739826,
+          "y": 0.126944541,
+          "name": "奥格瑞玛南飞艇塔"
+        }
+      ],
+      "rideSeconds": [
+        111,
+        84
+      ],
+      "cycleSeconds": 315
+    },
+    {
+      "objectId": 176495,
+      "pathId": 301,
+      "serverName": "Zeppelin - Grom'Gol to Undercity",
+      "sources": 1,
+      "speed": 30,
+      "acceleration": 1,
+      "ports": [
+        {
+          "map": 1434,
+          "x": 0.314827918,
+          "y": 0.291041915,
+          "name": "格罗姆高飞艇塔"
+        },
+        {
+          "map": 1420,
+          "x": 0.619213033,
+          "y": 0.589178751,
+          "name": "幽暗城飞艇塔"
+        }
+      ],
+      "rideSeconds": [
+        121,
+        105
+      ],
+      "cycleSeconds": 346
+    },
+    {
+      "objectId": 164871,
+      "pathId": 302,
+      "serverName": "Zeppelin - Orgrimmar to Undercity",
+      "sources": 3,
+      "speed": 30,
+      "acceleration": 1,
+      "ports": [
+        {
+          "map": 1411,
+          "x": 0.509796158,
+          "y": 0.139071335,
+          "name": "奥格瑞玛南飞艇塔"
+        },
+        {
+          "map": 1420,
+          "x": 0.606436576,
+          "y": 0.589252743,
+          "name": "幽暗城飞艇塔"
+        }
+      ],
+      "rideSeconds": [
+        140,
+        110
+      ],
+      "cycleSeconds": 370
+    }
+  ]
+}

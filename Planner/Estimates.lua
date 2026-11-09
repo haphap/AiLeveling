@@ -1,0 +1,3 @@
+local _,A=...
+-- Transit overhead remains separate from the straight-line ground estimate.
+A.Estimates={version=2,flightBoardSeconds=10,hearthSeconds=20}

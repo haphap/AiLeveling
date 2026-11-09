@@ -1,0 +1,83 @@
+{
+  "build": "1.60.1.70862",
+  "clientVerified": false,
+  "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+  "inputs": {
+    "eg-link-156f29c9/1.60.1.70862/trainers.json": "549ff046e68fdcfea175313d3cfbdfaa5a60ac809608779c79e326d83eb189e7",
+    "SkillLine-1.60.1.70862-zhCN.csv": "db0fe59fc385e1b3c25528f0504430631fc592de564840dc601a428c2ec646a4",
+    "SkillLineAbility-1.60.1.70862-zhCN.csv": "13ef58a08253125e3e9dca642a39bc480187987e90cfbe5c8be30e1ab3c8be0a"
+  },
+  "source": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862/trainers.json",
+  "counts": {
+    "observedTrainers": 22,
+    "classProfiles": 9,
+    "professionProfiles": 11,
+    "skills": 7
+  },
+  "profiles": {
+    "2123": {
+      "classMask": 16
+    },
+    "2129": {
+      "classMask": 16
+    },
+    "2704": {},
+    "2798": {
+      "skill": 129
+    },
+    "3047": {
+      "classMask": 128
+    },
+    "3171": {
+      "classMask": 4
+    },
+    "3172": {
+      "classMask": 256
+    },
+    "3324": {
+      "classMask": 256
+    },
+    "3325": {
+      "classMask": 256
+    },
+    "3326": {
+      "classMask": 256
+    },
+    "3365": {
+      "skill": 165
+    },
+    "3373": {
+      "skill": 129
+    },
+    "3412": {
+      "skill": 202
+    },
+    "3523": {
+      "skill": 197
+    },
+    "5695": {
+      "skill": 333
+    },
+    "5811": {
+      "skill": 165
+    },
+    "6387": {
+      "skill": 393
+    },
+    "7088": {
+      "skill": 393
+    },
+    "8306": {
+      "skill": 185
+    },
+    "11084": {
+      "skill": 165
+    },
+    "11868": {},
+    "12042": {
+      "classMask": 1024
+    }
+  },
+  "missingSpellLinks": {},
+  "scope": "Relevance ordering only. Partial offerings do not prove exclusive class access, available training, costs or training benefits."
+}

@@ -1,0 +1,232 @@
+{
+  "build": "1.60.1.70862",
+  "sources": [
+    {
+      "url": "https://wago.tools/db2/TaxiNodes/csv?build=1.60.1.70862&locale=enUS",
+      "sha256": "4360793e0edfbb8de62d12d87a69260b6a1bc6314b1e506b141c33e8802d8249"
+    },
+    {
+      "url": "https://wago.tools/db2/TaxiPath/csv?build=1.60.1.70862&locale=enUS",
+      "sha256": "3e5c18b53621ca7cd2618447e12498874e6aba7aa7f1f6bfda9a7977979da179"
+    },
+    {
+      "url": "https://wago.tools/db2/TaxiPathNode/csv?build=1.60.1.70862&locale=enUS",
+      "sha256": "f83f8d8e5bbeae889214f48af477dd51a4c1771ff3c3b53c3fa2cacf2cba7cdb"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/LudiusMaximus/InFlight/2efdd7ba6d0e094edf84a04eeb40c038f004ea52/Defaults.lua",
+      "sha256": "1cffe287a433e423a29d5b0442dc547da477dfc41a23f313108f33bd735b3a0a"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/LudiusMaximus/InFlight/2efdd7ba6d0e094edf84a04eeb40c038f004ea52/LICENSE",
+      "sha256": "e5f058cf153f069d5b93e3742b8b9ea1013e0ba4a5248bc60414b954699ed4e3"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862/flights.json",
+      "sha256": "5e79d3e676517a43d243cca9f1adbdfff495bd75abf2f012885bab14798f89aa",
+      "license": "CC BY 4.0"
+    }
+  ],
+  "inputRows": {
+    "TaxiNodes": 101,
+    "TaxiPath": 328,
+    "TaxiPathNode": 10965
+  },
+  "referenceNodes": 71,
+  "referenceDirectedPaths": 292,
+  "factionDurationPairs": 881,
+  "excludedNodes": [
+    1,
+    3,
+    9,
+    15,
+    24,
+    34,
+    35,
+    36,
+    46,
+    47,
+    50,
+    51,
+    54,
+    57,
+    59,
+    60,
+    78,
+    2913,
+    2914,
+    2930,
+    3205,
+    3206,
+    3207,
+    3208,
+    3260,
+    3261,
+    3262,
+    3274,
+    3275,
+    3361
+  ],
+  "excludedPaths": [
+    241,
+    253,
+    285,
+    292,
+    293,
+    295,
+    301,
+    302,
+    303,
+    312,
+    313,
+    314,
+    383,
+    436,
+    439,
+    472,
+    9571,
+    9574,
+    9620,
+    9669,
+    10538,
+    10641,
+    11078,
+    11167,
+    11350,
+    11391,
+    11398,
+    11457,
+    11512,
+    11515,
+    11517,
+    11520,
+    11616,
+    11669,
+    12018,
+    12030
+  ],
+  "clientVerified": false,
+  "buildObservations": [
+    {
+      "key": "10:11",
+      "faction": "Horde",
+      "seconds": 112.0,
+      "samples": 1,
+      "sources": 1,
+      "hops": [
+        10,
+        11
+      ]
+    },
+    {
+      "key": "22:77",
+      "faction": "Horde",
+      "seconds": 87.0,
+      "samples": 1,
+      "sources": 1,
+      "hops": [
+        22,
+        77
+      ]
+    },
+    {
+      "key": "23:25",
+      "faction": "Horde",
+      "seconds": 110.0,
+      "samples": 4,
+      "sources": 2,
+      "hops": [
+        23,
+        25
+      ]
+    },
+    {
+      "key": "23:61",
+      "faction": "Horde",
+      "seconds": 89.0,
+      "samples": 1,
+      "sources": 2,
+      "hops": [
+        23,
+        61
+      ]
+    },
+    {
+      "key": "25:23",
+      "faction": "Horde",
+      "seconds": 142.0,
+      "samples": 2,
+      "sources": 2,
+      "hops": [
+        25,
+        23
+      ]
+    },
+    {
+      "key": "25:29",
+      "faction": "Horde",
+      "seconds": 150.0,
+      "samples": 1,
+      "sources": 2,
+      "hops": [
+        25,
+        29
+      ]
+    },
+    {
+      "key": "25:77",
+      "faction": "Horde",
+      "seconds": 90.0,
+      "samples": 2,
+      "sources": 2,
+      "hops": [
+        25,
+        77
+      ]
+    },
+    {
+      "key": "77:25",
+      "faction": "Horde",
+      "seconds": 80.0,
+      "samples": 1,
+      "sources": 1,
+      "hops": [
+        77,
+        25
+      ]
+    },
+    {
+      "key": "80:23",
+      "faction": "Horde",
+      "seconds": 210.0,
+      "samples": 1,
+      "sources": 1,
+      "hops": [
+        80,
+        25,
+        23
+      ]
+    },
+    {
+      "key": "80:25",
+      "faction": "Horde",
+      "seconds": 68.33333333333333,
+      "samples": 3,
+      "sources": 1,
+      "hops": [
+        80,
+        25
+      ]
+    }
+  ],
+  "excludedBuildObservations": {},
+  "notes": [
+    "Durations are directed and faction-specific; Classic Era plus Forever overrides only.",
+    "Same-build EG Link duration histograms override InFlight references; local valid samples retain priority.",
+    "Observed routes must match client topology and identify exactly one faction; speed-modified variants are excluded.",
+    "Observation counts are external evidence, not this character's learned samples; native fares and unlocks remain required.",
+    "A duration pair may contain intermediate stops; it is not an assertion of a direct flight edge.",
+    "Native discovered/available destinations and actual fares gate every suggested flight.",
+    "Client base costs are catalog metadata, never substituted for unknown native fares."
+  ]
+}

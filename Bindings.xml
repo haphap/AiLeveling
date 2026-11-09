@@ -1,0 +1,6 @@
+<Bindings>
+    <Binding name="CLICK AiLevelingItem1:LeftButton" category="BINDING_HEADER_AILEVELING"/>
+    <Binding name="CLICK AiLevelingItem2:LeftButton" category="BINDING_HEADER_AILEVELING"/>
+    <Binding name="CLICK AiLevelingItem3:LeftButton" category="BINDING_HEADER_AILEVELING"/>
+    <Binding name="CLICK AiLevelingItem4:LeftButton" category="BINDING_HEADER_AILEVELING"/>
+</Bindings>

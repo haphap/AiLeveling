@@ -1,0 +1,59 @@
+## Interface: 16001
+## Title: AiLeveling
+## Title-zhCN: AiLeveling 智能练级
+## Notes-zhCN: 根据角色状态衔接任务、导航与任务物品。开发构建。
+## Notes: Adaptive leveling assistant (development build).
+## Author: AiLeveling
+## Version: 0.1.106-dev
+## Dependencies: QuestieDB, HereBeDragons
+## SavedVariables: AiLevelingDB
+## SavedVariablesPerCharacter: AiLevelingCharDB
+
+Core.lua
+State.lua
+Items.lua
+Merchant.lua
+Services.lua
+Transport.lua
+Hearth.lua
+Instances.lua
+Observations.lua
+Data/Content.lua
+Data/TaskFacts.lua
+Data/ItemLimits.lua
+Data/Experience.lua
+Data/ItemSets.lua
+Data/ItemEffects.lua
+Data/WeaponSkills.lua
+Data/Trainers.lua
+Data/Dungeons.lua
+Data/Flights.lua
+Data/PublicTransit.lua
+Data/Questie.lua
+Data/Audit.lua
+Planner/Eligibility.lua
+Planner/Chains.lua
+Planner/Travel.lua
+Planner/Flights.lua
+Planner/TaskGuide.lua
+Planner/TaskQueue.lua
+Planner/Estimates.lua
+Planner/Gear.lua
+Planner/Progression.lua
+Planner/Supplies.lua
+Planner/Dungeon.lua
+Planner/DungeonTasks.lua
+Planner/Planner.lua
+Planner/Selection.lua
+Navigation.lua
+Routes.lua
+QuestAssist.lua
+WorldInteract.lua
+UI/Main.lua
+UI/Tracker.lua
+UI/Plan.lua
+UI/Services.lua
+UI/Chains.lua
+UI/Dungeon.lua
+UI/Gear.lua
+UI/Settings.lua

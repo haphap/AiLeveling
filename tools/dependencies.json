@@ -1,0 +1,17 @@
+{
+  "QuestieDB": {
+    "version": "1.0.12", "archive": "QuestieDB-1.0.12-Forever.zip",
+    "url": "https://github.com/Questie/QuestieDB/releases/download/v1.0.12/QuestieDB-1.0.12-Forever.zip",
+    "sha256": "bc1e6894b64fc347e29758fa73e4ca9e4921844a16852c0c428f45f14ca2f8cf"
+  },
+  "HereBeDragons": {
+    "version": "2.18-release", "archive": "HereBeDragons-2.18-release.zip",
+    "url": "https://www.wowace.com/projects/herebedragons/files/9049435/download",
+    "sha256": "095609a13af365bd2565fb2ad304482fcee4d92763940e0b24e44b8d772980b9"
+  },
+  "QuestieDB-source": {
+    "version": "1.0.12", "archive": "QuestieDB-1.0.12-source.tar.gz",
+    "url": "https://codeload.github.com/Questie/QuestieDB/tar.gz/refs/tags/v1.0.12",
+    "sha256": "4537abd54c11768ba9842c881db018946a9f05bdf66b757407ca5ab45334b7b4"
+  }
+}

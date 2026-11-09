@@ -1,0 +1,1408 @@
+{
+  "source": "EG Link server quest cache + Forever QuestXP client table",
+  "build": "1.60.1.70862",
+  "commit": "156f29c9af78b1586883e8eb94a13467eb89638c",
+  "license": "CC BY 4.0",
+  "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+  "url": "https://github.com/JIVESCORP/eg-link-output-wowf/tree/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862",
+  "tierURL": "https://wago.tools/db2/QuestXP/csv?build=1.60.1.70862",
+  "inputs": {
+    ".dependencies/eg-link-156f29c9/1.60.1.70862/quests.enUS.json": "0f8b890bbedc79f6c80b99511a88ff5f699048f4a34303bd6d0a0281cfde4b7a",
+    ".dependencies/eg-link-156f29c9/1.60.1.70862/turn_ins.json": "567debf36003b2c7010e449d3b6f40ce2d7f277e6ea179c60d909b04b2847f02",
+    ".dependencies/QuestXP-1.60.1.70862.csv": "1513f3f2646ae0b33b79de6219614792f0dbc050bb5bd76c1c4f0fce668a86fd"
+  },
+  "sourceQuests": 3392,
+  "xpRows": 3369,
+  "excluded": {
+    "259": "outside_fixed_level_1_60",
+    "946": "outside_fixed_level_1_60",
+    "1279": "outside_fixed_level_1_60",
+    "1280": "outside_fixed_level_1_60",
+    "1291": "outside_fixed_level_1_60",
+    "1293": "outside_fixed_level_1_60",
+    "1294": "outside_fixed_level_1_60",
+    "1295": "outside_fixed_level_1_60",
+    "1296": "outside_fixed_level_1_60",
+    "1297": "outside_fixed_level_1_60",
+    "1298": "outside_fixed_level_1_60",
+    "1299": "outside_fixed_level_1_60",
+    "1300": "outside_fixed_level_1_60",
+    "4541": "outside_fixed_level_1_60",
+    "4905": "outside_fixed_level_1_60",
+    "6843": "outside_fixed_level_1_60",
+    "7069": "outside_fixed_level_1_60",
+    "7870": "outside_fixed_level_1_60",
+    "8230": "outside_fixed_level_1_60",
+    "8248": "outside_fixed_level_1_60",
+    "63769": "outside_fixed_level_1_60",
+    "92521": "outside_fixed_level_1_60",
+    "96735": "outside_fixed_level_1_60"
+  },
+  "observationChecks": [
+    {
+      "id": 2,
+      "questLevel": 30,
+      "playerLevel": 28,
+      "xp": 2450,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 8,
+      "questLevel": 5,
+      "playerLevel": 6,
+      "xp": 110,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 23,
+      "questLevel": 24,
+      "playerLevel": 28,
+      "xp": 1950,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 24,
+      "questLevel": 27,
+      "playerLevel": 28,
+      "xp": 2200,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 25,
+      "questLevel": 25,
+      "playerLevel": 28,
+      "xp": 2000,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 216,
+      "questLevel": 24,
+      "playerLevel": 28,
+      "xp": 1950,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 247,
+      "questLevel": 30,
+      "playerLevel": 28,
+      "xp": 3050,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 356,
+      "questLevel": 11,
+      "playerLevel": 16,
+      "xp": 650,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 363,
+      "questLevel": 1,
+      "playerLevel": 1,
+      "xp": 40,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 364,
+      "questLevel": 2,
+      "playerLevel": 2,
+      "xp": 170,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 376,
+      "questLevel": 2,
+      "playerLevel": 3,
+      "xp": 170,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 380,
+      "questLevel": 4,
+      "playerLevel": 4,
+      "xp": 360,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 381,
+      "questLevel": 4,
+      "playerLevel": 5,
+      "xp": 360,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 382,
+      "questLevel": 5,
+      "playerLevel": 5,
+      "xp": 675,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 383,
+      "questLevel": 5,
+      "playerLevel": 6,
+      "xp": 340,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 421,
+      "questLevel": 11,
+      "playerLevel": 16,
+      "xp": 875,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 422,
+      "questLevel": 11,
+      "playerLevel": 17,
+      "xp": 700,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 423,
+      "questLevel": 14,
+      "playerLevel": 17,
+      "xp": 975,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 425,
+      "questLevel": 12,
+      "playerLevel": 17,
+      "xp": 675,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 429,
+      "questLevel": 11,
+      "playerLevel": 16,
+      "xp": 440,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 430,
+      "questLevel": 11,
+      "playerLevel": 16,
+      "xp": 650,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 437,
+      "questLevel": 14,
+      "playerLevel": 16,
+      "xp": 975,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 438,
+      "questLevel": 16,
+      "playerLevel": 16,
+      "xp": 875,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 439,
+      "questLevel": 16,
+      "playerLevel": 17,
+      "xp": 290,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 440,
+      "questLevel": 16,
+      "playerLevel": 17,
+      "xp": 575,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 768,
+      "questLevel": 8,
+      "playerLevel": 15,
+      "xp": 525,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 791,
+      "questLevel": 7,
+      "playerLevel": 10,
+      "xp": 625,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 806,
+      "questLevel": 12,
+      "playerLevel": 11,
+      "xp": 900,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 806,
+      "questLevel": 12,
+      "playerLevel": 12,
+      "xp": 900,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 809,
+      "questLevel": 13,
+      "playerLevel": 12,
+      "xp": 460,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 816,
+      "questLevel": 11,
+      "playerLevel": 11,
+      "xp": 875,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 816,
+      "questLevel": 11,
+      "playerLevel": 11,
+      "xp": 875,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 819,
+      "questLevel": 15,
+      "playerLevel": 13,
+      "xp": 1050,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 822,
+      "questLevel": 24,
+      "playerLevel": 26,
+      "xp": 975,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 824,
+      "questLevel": 27,
+      "playerLevel": 28,
+      "xp": 2200,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 825,
+      "questLevel": 8,
+      "playerLevel": 10,
+      "xp": 700,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 827,
+      "questLevel": 12,
+      "playerLevel": 11,
+      "xp": 900,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 827,
+      "questLevel": 12,
+      "playerLevel": 12,
+      "xp": 900,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 828,
+      "questLevel": 12,
+      "playerLevel": 11,
+      "xp": 90,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 828,
+      "questLevel": 12,
+      "playerLevel": 12,
+      "xp": 90,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 829,
+      "questLevel": 12,
+      "playerLevel": 12,
+      "xp": 460,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 829,
+      "questLevel": 12,
+      "playerLevel": 12,
+      "xp": 460,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 831,
+      "questLevel": 7,
+      "playerLevel": 10,
+      "xp": 625,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 834,
+      "questLevel": 9,
+      "playerLevel": 10,
+      "xp": 775,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 835,
+      "questLevel": 11,
+      "playerLevel": 11,
+      "xp": 875,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 837,
+      "questLevel": 10,
+      "playerLevel": 12,
+      "xp": 625,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 837,
+      "questLevel": 10,
+      "playerLevel": 9,
+      "xp": 625,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 840,
+      "questLevel": 12,
+      "playerLevel": 12,
+      "xp": 460,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 840,
+      "questLevel": 12,
+      "playerLevel": 12,
+      "xp": 460,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 842,
+      "questLevel": 12,
+      "playerLevel": 12,
+      "xp": 900,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 843,
+      "questLevel": 23,
+      "playerLevel": 25,
+      "xp": 1850,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 843,
+      "questLevel": 23,
+      "playerLevel": 26,
+      "xp": 1850,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 844,
+      "questLevel": 12,
+      "playerLevel": 13,
+      "xp": 900,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 845,
+      "questLevel": 13,
+      "playerLevel": 14,
+      "xp": 900,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 846,
+      "questLevel": 26,
+      "playerLevel": 27,
+      "xp": 2100,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 848,
+      "questLevel": 15,
+      "playerLevel": 18,
+      "xp": 1050,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 849,
+      "questLevel": 26,
+      "playerLevel": 27,
+      "xp": 2100,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 857,
+      "questLevel": 30,
+      "playerLevel": 27,
+      "xp": 2450,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 858,
+      "questLevel": 18,
+      "playerLevel": 17,
+      "xp": 1350,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 862,
+      "questLevel": 23,
+      "playerLevel": 26,
+      "xp": 1850,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 863,
+      "questLevel": 18,
+      "playerLevel": 18,
+      "xp": 1700,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 866,
+      "questLevel": 16,
+      "playerLevel": 13,
+      "xp": 1150,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 867,
+      "questLevel": 15,
+      "playerLevel": 18,
+      "xp": 1050,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 868,
+      "questLevel": 22,
+      "playerLevel": 27,
+      "xp": 1750,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 869,
+      "questLevel": 13,
+      "playerLevel": 18,
+      "xp": 900,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 870,
+      "questLevel": 13,
+      "playerLevel": 13,
+      "xp": 675,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 871,
+      "questLevel": 12,
+      "playerLevel": 12,
+      "xp": 900,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 872,
+      "questLevel": 15,
+      "playerLevel": 18,
+      "xp": 1050,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 879,
+      "questLevel": 25,
+      "playerLevel": 25,
+      "xp": 1500,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 879,
+      "questLevel": 25,
+      "playerLevel": 27,
+      "xp": 1500,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 881,
+      "questLevel": 16,
+      "playerLevel": 18,
+      "xp": 1450,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 883,
+      "questLevel": 22,
+      "playerLevel": 25,
+      "xp": 1300,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 885,
+      "questLevel": 25,
+      "playerLevel": 25,
+      "xp": 1500,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 885,
+      "questLevel": 25,
+      "playerLevel": 27,
+      "xp": 1500,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 887,
+      "questLevel": 14,
+      "playerLevel": 13,
+      "xp": 750,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 888,
+      "questLevel": 16,
+      "playerLevel": 23,
+      "xp": 700,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 889,
+      "questLevel": 20,
+      "playerLevel": 26,
+      "xp": 0,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 890,
+      "questLevel": 14,
+      "playerLevel": 13,
+      "xp": 100,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 891,
+      "questLevel": 20,
+      "playerLevel": 25,
+      "xp": 1550,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 892,
+      "questLevel": 14,
+      "playerLevel": 13,
+      "xp": 100,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 893,
+      "questLevel": 24,
+      "playerLevel": 25,
+      "xp": 1950,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 893,
+      "questLevel": 24,
+      "playerLevel": 27,
+      "xp": 1950,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 894,
+      "questLevel": 14,
+      "playerLevel": 17,
+      "xp": 750,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 895,
+      "questLevel": 16,
+      "playerLevel": 13,
+      "xp": 1150,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 896,
+      "questLevel": 18,
+      "playerLevel": 18,
+      "xp": 1700,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 900,
+      "questLevel": 14,
+      "playerLevel": 17,
+      "xp": 490,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 901,
+      "questLevel": 14,
+      "playerLevel": 17,
+      "xp": 750,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 902,
+      "questLevel": 16,
+      "playerLevel": 18,
+      "xp": 1150,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 903,
+      "questLevel": 15,
+      "playerLevel": 18,
+      "xp": 1050,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 906,
+      "questLevel": 25,
+      "playerLevel": 25,
+      "xp": 3050,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 906,
+      "questLevel": 25,
+      "playerLevel": 27,
+      "xp": 3050,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 924,
+      "questLevel": 14,
+      "playerLevel": 14,
+      "xp": 1250,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 926,
+      "questLevel": 14,
+      "playerLevel": 12,
+      "xp": 0,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 1061,
+      "questLevel": 17,
+      "playerLevel": 15,
+      "xp": 320,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 1195,
+      "questLevel": 25,
+      "playerLevel": 29,
+      "xp": 2550,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 1492,
+      "questLevel": 11,
+      "playerLevel": 13,
+      "xp": 440,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 1501,
+      "questLevel": 11,
+      "playerLevel": 10,
+      "xp": 875,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 1504,
+      "questLevel": 11,
+      "playerLevel": 10,
+      "xp": 650,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 1506,
+      "questLevel": 10,
+      "playerLevel": 10,
+      "xp": 210,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 1918,
+      "questLevel": 27,
+      "playerLevel": 28,
+      "xp": 550,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 1943,
+      "questLevel": 26,
+      "playerLevel": 27,
+      "xp": 210,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 1944,
+      "questLevel": 26,
+      "playerLevel": 29,
+      "xp": 2100,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 3097,
+      "questLevel": 1,
+      "playerLevel": 2,
+      "xp": 40,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 3281,
+      "questLevel": 18,
+      "playerLevel": 25,
+      "xp": 800,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 3901,
+      "questLevel": 3,
+      "playerLevel": 3,
+      "xp": 250,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 3902,
+      "questLevel": 3,
+      "playerLevel": 3,
+      "xp": 320,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 5041,
+      "questLevel": 14,
+      "playerLevel": 14,
+      "xp": 975,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 5045,
+      "questLevel": 20,
+      "playerLevel": 26,
+      "xp": 0,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 5651,
+      "questLevel": 4,
+      "playerLevel": 6,
+      "xp": 90,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 5722,
+      "questLevel": 16,
+      "playerLevel": 14,
+      "xp": 1800,
+      "multiplier": 2.025,
+      "sources": 1
+    },
+    {
+      "id": 5723,
+      "questLevel": 15,
+      "playerLevel": 15,
+      "xp": 2150,
+      "multiplier": 2.025,
+      "sources": 1
+    },
+    {
+      "id": 5724,
+      "questLevel": 16,
+      "playerLevel": 15,
+      "xp": 2950,
+      "multiplier": 2.025,
+      "sources": 1
+    },
+    {
+      "id": 5725,
+      "questLevel": 16,
+      "playerLevel": 16,
+      "xp": 2950,
+      "multiplier": 2.025,
+      "sources": 1
+    },
+    {
+      "id": 5726,
+      "questLevel": 12,
+      "playerLevel": 12,
+      "xp": 900,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 5726,
+      "questLevel": 12,
+      "playerLevel": 12,
+      "xp": 900,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 5727,
+      "questLevel": 12,
+      "playerLevel": 12,
+      "xp": 460,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 5727,
+      "questLevel": 12,
+      "playerLevel": 12,
+      "xp": 460,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 5728,
+      "questLevel": 16,
+      "playerLevel": 15,
+      "xp": 2350,
+      "multiplier": 2.025,
+      "sources": 1
+    },
+    {
+      "id": 5729,
+      "questLevel": 15,
+      "playerLevel": 15,
+      "xp": 110,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 5730,
+      "questLevel": 16,
+      "playerLevel": 15,
+      "xp": 1450,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 5761,
+      "questLevel": 16,
+      "playerLevel": 15,
+      "xp": 2350,
+      "multiplier": 2.025,
+      "sources": 1
+    },
+    {
+      "id": 6365,
+      "questLevel": 10,
+      "playerLevel": 12,
+      "xp": 210,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 6382,
+      "questLevel": 20,
+      "playerLevel": 27,
+      "xp": 230,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 6383,
+      "questLevel": 20,
+      "playerLevel": 27,
+      "xp": 0,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 6384,
+      "questLevel": 10,
+      "playerLevel": 13,
+      "xp": 420,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 6385,
+      "questLevel": 10,
+      "playerLevel": 14,
+      "xp": 210,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 6386,
+      "questLevel": 10,
+      "playerLevel": 14,
+      "xp": 1050,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 6395,
+      "questLevel": 5,
+      "playerLevel": 4,
+      "xp": 450,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 6441,
+      "questLevel": 26,
+      "playerLevel": 28,
+      "xp": 2100,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 6462,
+      "questLevel": 24,
+      "playerLevel": 28,
+      "xp": 1950,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 6482,
+      "questLevel": 24,
+      "playerLevel": 28,
+      "xp": 2400,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 6503,
+      "questLevel": 24,
+      "playerLevel": 28,
+      "xp": 1950,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 6504,
+      "questLevel": 30,
+      "playerLevel": 28,
+      "xp": 3650,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 6544,
+      "questLevel": 24,
+      "playerLevel": 28,
+      "xp": 2400,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 6561,
+      "questLevel": 27,
+      "playerLevel": 29,
+      "xp": 7850,
+      "multiplier": 2.375,
+      "sources": 1
+    },
+    {
+      "id": 6562,
+      "questLevel": 22,
+      "playerLevel": 27,
+      "xp": 440,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 6563,
+      "questLevel": 22,
+      "playerLevel": 29,
+      "xp": 1050,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 6564,
+      "questLevel": 22,
+      "playerLevel": 28,
+      "xp": 1050,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 6565,
+      "questLevel": 26,
+      "playerLevel": 29,
+      "xp": 6300,
+      "multiplier": 2.375,
+      "sources": 1
+    },
+    {
+      "id": 6921,
+      "questLevel": 27,
+      "playerLevel": 29,
+      "xp": 6550,
+      "multiplier": 2.375,
+      "sources": 1
+    },
+    {
+      "id": 6922,
+      "questLevel": 30,
+      "playerLevel": 29,
+      "xp": 7250,
+      "multiplier": 2.375,
+      "sources": 1
+    },
+    {
+      "id": 79192,
+      "questLevel": 24,
+      "playerLevel": 27,
+      "xp": 1950,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 79980,
+      "questLevel": 24,
+      "playerLevel": 27,
+      "xp": 200,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 91900,
+      "questLevel": 60,
+      "playerLevel": 29,
+      "xp": 0,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 91920,
+      "questLevel": 11,
+      "playerLevel": 17,
+      "xp": 350,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 91921,
+      "questLevel": 11,
+      "playerLevel": 17,
+      "xp": 525,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 95774,
+      "questLevel": 20,
+      "playerLevel": 25,
+      "xp": 1550,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 96607,
+      "questLevel": 6,
+      "playerLevel": 5,
+      "xp": 410,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 96656,
+      "questLevel": 6,
+      "playerLevel": 5,
+      "xp": 410,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 96825,
+      "questLevel": 6,
+      "playerLevel": 9,
+      "xp": 550,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 97242,
+      "questLevel": 15,
+      "playerLevel": 11,
+      "xp": 110,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 97250,
+      "questLevel": 23,
+      "playerLevel": 25,
+      "xp": 2300,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 97250,
+      "questLevel": 23,
+      "playerLevel": 27,
+      "xp": 2300,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 97253,
+      "questLevel": 15,
+      "playerLevel": 13,
+      "xp": 1050,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 97281,
+      "questLevel": 11,
+      "playerLevel": 11,
+      "xp": 875,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 97282,
+      "questLevel": 10,
+      "playerLevel": 11,
+      "xp": 850,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 97282,
+      "questLevel": 10,
+      "playerLevel": 12,
+      "xp": 850,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 97891,
+      "questLevel": 16,
+      "playerLevel": 16,
+      "xp": 1150,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 97905,
+      "questLevel": 6,
+      "playerLevel": 10,
+      "xp": 270,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 97908,
+      "questLevel": 6,
+      "playerLevel": 10,
+      "xp": 270,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 98093,
+      "questLevel": 23,
+      "playerLevel": 25,
+      "xp": 1850,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 98093,
+      "questLevel": 23,
+      "playerLevel": 26,
+      "xp": 1850,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 98248,
+      "questLevel": 60,
+      "playerLevel": 29,
+      "xp": 650,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 98251,
+      "questLevel": 23,
+      "playerLevel": 27,
+      "xp": 1400,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 98252,
+      "questLevel": 23,
+      "playerLevel": 27,
+      "xp": 925,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 98389,
+      "questLevel": 4,
+      "playerLevel": 4,
+      "xp": 360,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 99051,
+      "questLevel": 11,
+      "playerLevel": 12,
+      "xp": 875,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 99052,
+      "questLevel": 11,
+      "playerLevel": 12,
+      "xp": 1100,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 99052,
+      "questLevel": 11,
+      "playerLevel": 14,
+      "xp": 1100,
+      "multiplier": 1.0,
+      "sources": 1
+    },
+    {
+      "id": 99156,
+      "questLevel": 13,
+      "playerLevel": 16,
+      "xp": 900,
+      "multiplier": 1.0,
+      "sources": 1
+    }
+  ],
+  "skippedObservations": [],
+  "clientVerified": false,
+  "scope": "Base rewards only; native current-level rewards take priority. No character XP bonuses inferred.",
+  "flagReference": "https://master.trinitycore.net/d8/d60/structquestobjective",
+  "transformation": "IDs, fixed levels, XP curves and monster/object/item/area-trigger requirements. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; negative reward money retained as a payment exclusion. No text, eligibility or item rewards copied."
+}

@@ -1,0 +1,15 @@
+{
+  "build": "1.60.1.70862",
+  "source": ".dependencies/ItemSparse-1.60.1.70862-zhCN.csv",
+  "sha256": "8a26623b48a94a14cdd32a6597350d3e0700698e2480aa1cec6ab0ab7f06def3",
+  "clientVerified": false,
+  "url": "https://wago.tools/db2/ItemSparse/csv?build=1.60.1.70862&locale=zhCN",
+  "semantics": "https://trinitycore.info/database/335/world/item_template#maxcount",
+  "sourceRows": 19324,
+  "positiveLimits": 4433,
+  "scope": "Positive MaxCount only, distinct from per-slot Stackable and equipped-item category limits. Does not infer quest requirement counts. Exact client build required.",
+  "limits": [
+    "Bank-held copies and per-category possession limits are not modeled.",
+    "Quest-only drop eligibility may impose additional acquisition limits."
+  ]
+}

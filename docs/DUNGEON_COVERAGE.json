@@ -1,0 +1,3945 @@
+{
+  "schema": 1,
+  "build": "1.60.1.70862",
+  "clientVerified": false,
+  "coverageLocked": false,
+  "scope": "Readable client Map.db2 records plus all 18 effective faction/class correction contexts",
+  "mapRead": {
+    "headerRecords": 81,
+    "decodedRecords": 73,
+    "unreadableRecords": 8,
+    "copyRecords": 0
+  },
+  "sources": [
+    {
+      "path": ".dependencies/Map-1.60.1.70862.tsv",
+      "sha256": "b97991211484894f343381012af621f51a9417efbbc8fa32ea62694644b99af1"
+    },
+    {
+      "path": ".dependencies/dungeon-provider-1.0.12.tsv",
+      "sha256": "c71ba791164de9210e7c7911150e9ea11390cc82cf0889c3d20577a4337b39bc"
+    },
+    {
+      "path": "docs/EFFECTIVE_DATA_AUDIT.json",
+      "sha256": "af835504db2470b09b096dbb0b33665d4b945664051aad32334f642797a408cb"
+    },
+    {
+      "path": ".dependencies/terrain-crop-active-70862-zhCN/extract0-rdx8bxsz/dbc/zhCN/Map.db2",
+      "sha256": "e1c512fb47642216fc0e90a4bcf9bddf73a30d8cd1f7b39a22171dfdb6fff580"
+    }
+  ],
+  "counts": {
+    "battleground": 5,
+    "party": 34,
+    "raid": 13,
+    "test-or-unused": 6,
+    "world-or-transport": 15
+  },
+  "maps": [
+    {
+      "mapId": 0,
+      "name": "东部王国",
+      "directory": "Azeroth",
+      "instanceType": 0,
+      "classification": "world-or-transport",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 1,
+      "name": "卡利姆多",
+      "directory": "Kalimdor",
+      "instanceType": 0,
+      "classification": "world-or-transport",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 13,
+      "name": "Test Dungeon",
+      "directory": "test",
+      "instanceType": 1,
+      "classification": "test-or-unused",
+      "areaId": 13649,
+      "nativeAreaId": 13649,
+      "aliases": [
+        13649
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 25,
+      "name": "Scott Test",
+      "directory": "ScottTest",
+      "instanceType": 0,
+      "classification": "test-or-unused",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 29,
+      "name": "CashTest",
+      "directory": "TEST_01",
+      "instanceType": 1,
+      "classification": "test-or-unused",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 10,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 30,
+      "name": "奥特兰克山谷",
+      "directory": "PVPZone01",
+      "instanceType": 3,
+      "classification": "battleground",
+      "areaId": 2597,
+      "nativeAreaId": 0,
+      "aliases": [
+        2597
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": "Alterac Valley",
+      "entrances": [
+        [
+          36,
+          63.6,
+          58.8
+        ]
+      ],
+      "categoryQuestIds": [
+        5892,
+        5893,
+        6741,
+        6781,
+        6801,
+        6825,
+        6826,
+        6827,
+        6846,
+        6847,
+        6848,
+        6861,
+        6862,
+        6881,
+        6901,
+        6941,
+        6942,
+        6943,
+        6982,
+        6985,
+        7001,
+        7002,
+        7026,
+        7027,
+        7081,
+        7082,
+        7101,
+        7102,
+        7121,
+        7122,
+        7123,
+        7124,
+        7141,
+        7142,
+        7161,
+        7162,
+        7163,
+        7164,
+        7165,
+        7166,
+        7167,
+        7168,
+        7169,
+        7170,
+        7171,
+        7172,
+        7181,
+        7202,
+        7221,
+        7222,
+        7223,
+        7224,
+        7241,
+        7261,
+        7281,
+        7282,
+        7301,
+        7302,
+        7361,
+        7362,
+        7363,
+        7364,
+        7365,
+        7366,
+        7367,
+        7368,
+        7381,
+        7382,
+        7385,
+        7386,
+        7401,
+        7402,
+        7421,
+        7422,
+        7423,
+        7424,
+        7425,
+        7426,
+        7427,
+        7428,
+        8271,
+        8272,
+        8369,
+        8375,
+        8383,
+        8387
+      ],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        55,
+        60
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 33,
+      "name": "影牙城堡",
+      "directory": "Shadowfang",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 209,
+      "nativeAreaId": 0,
+      "aliases": [
+        209,
+        10014,
+        10015,
+        10016,
+        10017,
+        10018,
+        10019
+      ],
+      "clientMaxPlayers": 10,
+      "providerName": "Shadowfang Keep",
+      "entrances": [
+        [
+          130,
+          44.8,
+          67.8
+        ]
+      ],
+      "categoryQuestIds": [
+        1013,
+        1014,
+        1098
+      ],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        25,
+        26,
+        27
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 34,
+      "name": "暴风城监狱",
+      "directory": "StormwindJail",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 717,
+      "nativeAreaId": 717,
+      "aliases": [
+        717
+      ],
+      "clientMaxPlayers": 10,
+      "providerName": "The Stockade",
+      "entrances": [
+        [
+          1519,
+          52.41,
+          70.01
+        ]
+      ],
+      "categoryQuestIds": [
+        377,
+        378,
+        386,
+        387,
+        388,
+        391
+      ],
+      "possiblePrerequisiteIds": [
+        303,
+        373,
+        389
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        25,
+        26,
+        27,
+        29
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 35,
+      "name": "<unused>StormwindPrison",
+      "directory": "StormwindPrison",
+      "instanceType": 0,
+      "classification": "test-or-unused",
+      "areaId": 717,
+      "nativeAreaId": 717,
+      "aliases": [
+        717
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": "The Stockade",
+      "entrances": [
+        [
+          1519,
+          52.41,
+          70.01
+        ]
+      ],
+      "categoryQuestIds": [
+        377,
+        378,
+        386,
+        387,
+        388,
+        391
+      ],
+      "possiblePrerequisiteIds": [
+        303,
+        373,
+        389
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        25,
+        26,
+        27,
+        29
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 36,
+      "name": "死亡矿井",
+      "directory": "DeadminesInstance",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 1581,
+      "nativeAreaId": 0,
+      "aliases": [
+        1581,
+        10029
+      ],
+      "clientMaxPlayers": 10,
+      "providerName": "The Deadmines",
+      "entrances": [
+        [
+          40,
+          42.5,
+          71.7
+        ]
+      ],
+      "categoryQuestIds": [
+        166,
+        167,
+        168,
+        214,
+        2040,
+        92753
+      ],
+      "possiblePrerequisiteIds": [
+        65,
+        132,
+        135,
+        141,
+        142,
+        155,
+        92742,
+        92744,
+        92745,
+        92747,
+        92748,
+        92749,
+        92750,
+        92751,
+        92752
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        17,
+        18,
+        20,
+        22
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 37,
+      "name": "艾萨拉盆地",
+      "directory": "PVPZone02",
+      "instanceType": 0,
+      "classification": "world-or-transport",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 42,
+      "name": "Collin's Test",
+      "directory": "Collin",
+      "instanceType": 0,
+      "classification": "test-or-unused",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 43,
+      "name": "哀嚎洞穴",
+      "directory": "WailingCaverns",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 718,
+      "nativeAreaId": 718,
+      "aliases": [
+        718
+      ],
+      "clientMaxPlayers": 10,
+      "providerName": "Wailing Caverns",
+      "entrances": [
+        [
+          17,
+          46,
+          36.5
+        ]
+      ],
+      "categoryQuestIds": [
+        914,
+        959,
+        962,
+        1486,
+        1487,
+        1489,
+        1490,
+        1491,
+        6981
+      ],
+      "possiblePrerequisiteIds": [
+        865,
+        870,
+        877,
+        880
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        16,
+        17,
+        18,
+        21,
+        22,
+        26
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 44,
+      "name": "<unused> Monastery",
+      "directory": "Monastery",
+      "instanceType": 1,
+      "classification": "test-or-unused",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 10,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 47,
+      "name": "剃刀沼泽",
+      "directory": "RazorfenKraulInstance",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 491,
+      "nativeAreaId": 0,
+      "aliases": [
+        491,
+        1717
+      ],
+      "clientMaxPlayers": 10,
+      "providerName": "Razorfen Kraul",
+      "entrances": [
+        [
+          17,
+          42.9,
+          90.2
+        ]
+      ],
+      "categoryQuestIds": [
+        1101,
+        1102,
+        1109,
+        1142,
+        1144,
+        1221
+      ],
+      "possiblePrerequisiteIds": [
+        1100
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        26,
+        30,
+        33,
+        34
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 48,
+      "name": "黑暗深渊",
+      "directory": "Blackfathom",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 719,
+      "nativeAreaId": 719,
+      "aliases": [
+        719,
+        10020,
+        10021
+      ],
+      "clientMaxPlayers": 10,
+      "providerName": "Blackfathom Deeps",
+      "entrances": [
+        [
+          331,
+          14.5,
+          14.2
+        ]
+      ],
+      "categoryQuestIds": [
+        971,
+        1198,
+        1199,
+        1200,
+        1275,
+        6561,
+        6562,
+        6563,
+        6564,
+        6565,
+        6921,
+        6922
+      ],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        30
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 70,
+      "name": "奥达曼",
+      "directory": "Uldaman",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 1337,
+      "nativeAreaId": 1337,
+      "aliases": [
+        1337,
+        1517,
+        10033
+      ],
+      "clientMaxPlayers": 10,
+      "providerName": "Uldaman",
+      "entrances": [
+        [
+          3,
+          44.6,
+          12.1
+        ],
+        [
+          3,
+          65.2,
+          43.5
+        ]
+      ],
+      "categoryQuestIds": [
+        17,
+        704,
+        709,
+        721,
+        722,
+        1139,
+        1360,
+        2198,
+        2199,
+        2200,
+        2201,
+        2202,
+        2204,
+        2240,
+        2278,
+        2279,
+        2280,
+        2283,
+        2284,
+        2318,
+        2338,
+        2339,
+        2340,
+        2341,
+        2342,
+        2361,
+        2398,
+        2418,
+        3375
+      ],
+      "possiblePrerequisiteIds": [
+        720,
+        723,
+        724,
+        725,
+        726,
+        738,
+        739,
+        762,
+        2258,
+        2500
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        35,
+        36,
+        38,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        47
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 90,
+      "name": "诺莫瑞根",
+      "directory": "GnomeragonInstance",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 721,
+      "nativeAreaId": 721,
+      "aliases": [
+        133,
+        721,
+        10030,
+        10031,
+        10032
+      ],
+      "clientMaxPlayers": 10,
+      "providerName": "Gnomeregan",
+      "entrances": [
+        [
+          1,
+          24.3,
+          39.8
+        ]
+      ],
+      "categoryQuestIds": [
+        2841,
+        2842,
+        2843,
+        2904,
+        2922,
+        2923,
+        2924,
+        2925,
+        2926,
+        2927,
+        2928,
+        2929,
+        2930,
+        2931,
+        2945,
+        2947,
+        2949,
+        2951,
+        2952,
+        2953,
+        2962,
+        4601,
+        4602,
+        4603,
+        4604,
+        4605,
+        4606
+      ],
+      "possiblePrerequisiteIds": [
+        2955
+      ],
+      "missingPrerequisiteIds": [
+        2955
+      ],
+      "questLevelValues": [
+        26,
+        27,
+        28,
+        30,
+        34,
+        35
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 109,
+      "name": "沉没的神庙",
+      "directory": "SunkenTemple",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 1477,
+      "nativeAreaId": 1477,
+      "aliases": [
+        1417,
+        1477
+      ],
+      "clientMaxPlayers": 20,
+      "providerName": "The Temple of Atal'Hakkar",
+      "entrances": [
+        [
+          8,
+          69.9,
+          53.5
+        ]
+      ],
+      "categoryQuestIds": [
+        1445,
+        1446,
+        1475,
+        3373,
+        3380,
+        3446,
+        3447,
+        3528,
+        8733
+      ],
+      "possiblePrerequisiteIds": [
+        1424,
+        1429,
+        1444,
+        1448,
+        1449,
+        1450,
+        1451,
+        1452,
+        1469,
+        3444,
+        3445,
+        3520,
+        3527,
+        4787,
+        8286,
+        8288,
+        8301,
+        8303,
+        8305,
+        8519,
+        8555
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        50,
+        51,
+        53,
+        55,
+        60
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 129,
+      "name": "剃刀高地",
+      "directory": "RazorfenDowns",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 722,
+      "nativeAreaId": 0,
+      "aliases": [
+        722
+      ],
+      "clientMaxPlayers": 10,
+      "providerName": "Razorfen Downs",
+      "entrances": [
+        [
+          17,
+          49,
+          93.9
+        ]
+      ],
+      "categoryQuestIds": [
+        3341,
+        3523,
+        3525,
+        3636,
+        6521,
+        6522,
+        6626
+      ],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        35,
+        36,
+        37,
+        42
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 169,
+      "name": "翡翠梦境",
+      "directory": "EmeraldDream",
+      "instanceType": 2,
+      "classification": "raid",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 40,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 189,
+      "name": "血色修道院",
+      "directory": "MonasteryInstances",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 796,
+      "nativeAreaId": 0,
+      "aliases": [
+        796,
+        6109,
+        6386,
+        10008,
+        10009,
+        10010
+      ],
+      "clientMaxPlayers": 10,
+      "providerName": "Scarlet Monastery",
+      "entrances": [
+        [
+          85,
+          82.6,
+          33.8
+        ]
+      ],
+      "categoryQuestIds": [
+        1048,
+        1049,
+        1050,
+        1051,
+        1053,
+        1113,
+        1160,
+        96800
+      ],
+      "possiblePrerequisiteIds": [
+        261,
+        1052,
+        1109,
+        1149,
+        1150,
+        1151,
+        1152,
+        1154,
+        1159,
+        6627
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        33,
+        36,
+        38,
+        40,
+        42
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 209,
+      "name": "祖尔法拉克",
+      "directory": "TanarisInstance",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 1176,
+      "nativeAreaId": 0,
+      "aliases": [
+        978,
+        1176
+      ],
+      "clientMaxPlayers": 10,
+      "providerName": "Zul'Farrak",
+      "entrances": [
+        [
+          440,
+          38.7,
+          20.1
+        ]
+      ],
+      "categoryQuestIds": [
+        2768,
+        2770,
+        2846,
+        2861,
+        2864,
+        2865,
+        2936,
+        2991,
+        3042,
+        3527
+      ],
+      "possiblePrerequisiteIds": [
+        2933,
+        2934,
+        2935,
+        2988,
+        2989,
+        2990,
+        3520
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        45,
+        46,
+        47,
+        50
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 229,
+      "name": "黑石塔",
+      "directory": "BlackRockSpire",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 1583,
+      "nativeAreaId": 1583,
+      "aliases": [
+        1583,
+        10003,
+        10004,
+        10005,
+        10006,
+        10007
+      ],
+      "clientMaxPlayers": 10,
+      "providerName": "Blackrock Spire",
+      "entrances": [
+        [
+          51,
+          34.8,
+          85.3
+        ],
+        [
+          46,
+          29.4,
+          38.3
+        ]
+      ],
+      "categoryQuestIds": [
+        4701,
+        4724,
+        4729,
+        4734,
+        4735,
+        4742,
+        4743,
+        4764,
+        4765,
+        4766,
+        4768,
+        4769,
+        4788,
+        4862,
+        4866,
+        4867,
+        4903,
+        4907,
+        4974,
+        4981,
+        4982,
+        4983,
+        5001,
+        5002,
+        5047,
+        5081,
+        5089,
+        5102,
+        5127,
+        5160,
+        6502,
+        6569,
+        6602,
+        7761,
+        8966,
+        8989,
+        8995
+      ],
+      "possiblePrerequisiteIds": [
+        3520,
+        3527,
+        3528,
+        4182,
+        4183,
+        4184,
+        4185,
+        4186,
+        4223,
+        4224,
+        4241,
+        4242,
+        4264,
+        4282,
+        4322,
+        4726,
+        4787,
+        4808,
+        4809,
+        4810,
+        4941,
+        5065,
+        5126,
+        6402,
+        6403,
+        6501,
+        6566,
+        6567,
+        6568,
+        6570,
+        6582,
+        6583,
+        6584,
+        6585,
+        6601,
+        8905,
+        8906,
+        8907,
+        8908,
+        8909,
+        8910,
+        8911,
+        8912,
+        8913,
+        8914,
+        8915,
+        8916,
+        8917,
+        8918,
+        8919,
+        8920,
+        8921,
+        8922,
+        8923,
+        8924,
+        8925,
+        8926,
+        8927,
+        8928,
+        8929,
+        8930,
+        8931,
+        8932,
+        8933,
+        8934,
+        8935,
+        8936,
+        8937,
+        8938,
+        8939,
+        8940,
+        8941,
+        8942,
+        8943,
+        8944,
+        8945,
+        8946,
+        8947,
+        8948,
+        8949,
+        8950,
+        8951,
+        8952,
+        8953,
+        8954,
+        8955,
+        8956,
+        8957,
+        8958,
+        8959,
+        8960,
+        8961,
+        8962,
+        8963,
+        8964,
+        8965,
+        8967,
+        8968,
+        8969,
+        8970,
+        8977,
+        8978,
+        8985,
+        8986,
+        8987,
+        8988,
+        8990,
+        8991,
+        8992,
+        8994,
+        9015,
+        9016,
+        9017,
+        9018,
+        9019,
+        9020,
+        9021,
+        9022,
+        9032
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        58,
+        59,
+        60
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 230,
+      "name": "黑石深渊",
+      "directory": "BlackrockDepths",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 1584,
+      "nativeAreaId": 1584,
+      "aliases": [
+        1584,
+        1585
+      ],
+      "clientMaxPlayers": 5,
+      "providerName": "Blackrock Depths",
+      "entrances": [
+        [
+          51,
+          34.8,
+          85.3
+        ],
+        [
+          46,
+          29.4,
+          38.3
+        ]
+      ],
+      "categoryQuestIds": [
+        3801,
+        3802,
+        3907,
+        3981,
+        3982,
+        4001,
+        4002,
+        4003,
+        4004,
+        4024,
+        4063,
+        4081,
+        4082,
+        4083,
+        4121,
+        4122,
+        4123,
+        4126,
+        4128,
+        4132,
+        4133,
+        4134,
+        4136,
+        4201,
+        4241,
+        4242,
+        4263,
+        4264,
+        4282,
+        4286,
+        4295,
+        4322,
+        4324,
+        4341,
+        4342,
+        4361,
+        4362,
+        4363,
+        7201,
+        7604,
+        9015
+      ],
+      "possiblePrerequisiteIds": [
+        3441,
+        3442,
+        3443,
+        3452,
+        3453,
+        3454,
+        3462,
+        3463,
+        3481,
+        3701,
+        3702,
+        3906,
+        4022,
+        4023,
+        4061,
+        4062,
+        4182,
+        4183,
+        4184,
+        4185,
+        4186,
+        4223,
+        4224,
+        4262,
+        8905,
+        8906,
+        8907,
+        8908,
+        8909,
+        8910,
+        8911,
+        8912,
+        8913,
+        8914,
+        8915,
+        8916,
+        8917,
+        8918,
+        8919,
+        8920,
+        8921,
+        8922,
+        8923,
+        8924,
+        8925,
+        8926,
+        8927,
+        8928,
+        8929,
+        8930,
+        8931,
+        8932,
+        8933,
+        8934,
+        8935,
+        8936,
+        8937,
+        8938,
+        8939,
+        8940,
+        8941,
+        8942,
+        8943,
+        8944,
+        8945,
+        8946,
+        8947,
+        8948,
+        8949,
+        8950,
+        8977,
+        8978
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        1,
+        52,
+        53,
+        54,
+        55,
+        56,
+        58,
+        59,
+        60
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 249,
+      "name": "奥妮克希亚的巢穴",
+      "directory": "OnyxiaLairInstance",
+      "instanceType": 2,
+      "classification": "raid",
+      "areaId": 2159,
+      "nativeAreaId": 2159,
+      "aliases": [
+        2159
+      ],
+      "clientMaxPlayers": 40,
+      "providerName": "Onyxia's Lair",
+      "entrances": [
+        [
+          15,
+          52.6,
+          76.8
+        ]
+      ],
+      "categoryQuestIds": [
+        7509
+      ],
+      "possiblePrerequisiteIds": [
+        7507,
+        7508
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        60
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 269,
+      "name": "时光之穴",
+      "directory": "CavernsOfTime",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 2366,
+      "nativeAreaId": 0,
+      "aliases": [
+        2366
+      ],
+      "clientMaxPlayers": 10,
+      "providerName": "The Black Morass",
+      "entrances": [
+        [
+          440,
+          65.7,
+          49.8
+        ]
+      ],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 289,
+      "name": "通灵学院",
+      "directory": "SchoolofNecromancy",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 2057,
+      "nativeAreaId": 0,
+      "aliases": [
+        2057,
+        10011,
+        10012,
+        10013
+      ],
+      "clientMaxPlayers": 5,
+      "providerName": "Scholomance",
+      "entrances": [
+        [
+          28,
+          69.7,
+          73.2
+        ]
+      ],
+      "categoryQuestIds": [
+        4771,
+        5341,
+        5343,
+        5382,
+        5384,
+        5466,
+        5515,
+        5529,
+        5531,
+        5582,
+        8969,
+        8992
+      ],
+      "possiblePrerequisiteIds": [
+        4726,
+        4734,
+        4735,
+        4808,
+        4809,
+        4810,
+        5461,
+        5462,
+        5463,
+        5464,
+        5465,
+        5522,
+        8905,
+        8906,
+        8907,
+        8908,
+        8909,
+        8910,
+        8911,
+        8912,
+        8913,
+        8914,
+        8915,
+        8916,
+        8917,
+        8918,
+        8919,
+        8920,
+        8921,
+        8922,
+        8923,
+        8924,
+        8925,
+        8926,
+        8927,
+        8928,
+        8929,
+        8930,
+        8931,
+        8932,
+        8933,
+        8934,
+        8935,
+        8936,
+        8937,
+        8938,
+        8939,
+        8940,
+        8941,
+        8942,
+        8943,
+        8944,
+        8945,
+        8946,
+        8947,
+        8948,
+        8949,
+        8950,
+        8951,
+        8952,
+        8953,
+        8954,
+        8955,
+        8956,
+        8957,
+        8958,
+        8959,
+        8960,
+        8961,
+        8962,
+        8963,
+        8964,
+        8965,
+        8966,
+        8967,
+        8968,
+        8970,
+        8977,
+        8978,
+        8985,
+        8986,
+        8987,
+        8988,
+        9015,
+        9016,
+        9017,
+        9018,
+        9019,
+        9020,
+        9021,
+        9022,
+        9032
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        58,
+        60
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 309,
+      "name": "祖尔格拉布",
+      "directory": "Zul'gurub",
+      "instanceType": 2,
+      "classification": "raid",
+      "areaId": 1977,
+      "nativeAreaId": 1977,
+      "aliases": [
+        1977
+      ],
+      "clientMaxPlayers": 20,
+      "providerName": "Zul'Gurub",
+      "entrances": [
+        [
+          33,
+          53.89,
+          17.6
+        ]
+      ],
+      "categoryQuestIds": [
+        8041,
+        8042,
+        8043,
+        8044,
+        8045,
+        8046,
+        8047,
+        8048,
+        8049,
+        8050,
+        8051,
+        8052,
+        8053,
+        8054,
+        8055,
+        8056,
+        8057,
+        8058,
+        8059,
+        8060,
+        8061,
+        8062,
+        8063,
+        8064,
+        8065,
+        8066,
+        8067,
+        8068,
+        8069,
+        8070,
+        8071,
+        8072,
+        8073,
+        8074,
+        8075,
+        8076,
+        8077,
+        8078,
+        8079,
+        8101,
+        8102,
+        8103,
+        8104,
+        8106,
+        8107,
+        8108,
+        8109,
+        8110,
+        8111,
+        8112,
+        8113,
+        8116,
+        8117,
+        8118,
+        8119,
+        8141,
+        8142,
+        8143,
+        8144,
+        8145,
+        8146,
+        8147,
+        8148,
+        8181,
+        8183,
+        8184,
+        8185,
+        8186,
+        8187,
+        8188,
+        8189,
+        8190,
+        8191,
+        8192,
+        8195,
+        8196,
+        8201,
+        8227,
+        8238,
+        8239,
+        8240,
+        8243,
+        8246,
+        9208,
+        9209,
+        9210
+      ],
+      "possiblePrerequisiteIds": [
+        3520,
+        3527,
+        3528,
+        4787,
+        4788,
+        5065
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        58,
+        60,
+        61
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 329,
+      "name": "斯坦索姆",
+      "directory": "Stratholme",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 2017,
+      "nativeAreaId": 0,
+      "aliases": [
+        2017
+      ],
+      "clientMaxPlayers": 5,
+      "providerName": "Stratholme",
+      "entrances": [
+        [
+          139,
+          26.52,
+          10.36
+        ],
+        [
+          139,
+          41.45,
+          17.74
+        ]
+      ],
+      "categoryQuestIds": [
+        5122,
+        5125,
+        5212,
+        5213,
+        5214,
+        5243,
+        5251,
+        5262,
+        5263,
+        5282,
+        5463,
+        5848,
+        6163,
+        8945,
+        8968,
+        8991
+      ],
+      "possiblePrerequisiteIds": [
+        5281,
+        5382,
+        5384,
+        5461,
+        5462,
+        5515,
+        5542,
+        5543,
+        5544,
+        5742,
+        5781,
+        5845,
+        5846,
+        6022,
+        6042,
+        6133,
+        6135,
+        6136,
+        8905,
+        8906,
+        8907,
+        8908,
+        8909,
+        8910,
+        8911,
+        8912,
+        8913,
+        8914,
+        8915,
+        8916,
+        8917,
+        8918,
+        8919,
+        8920,
+        8921,
+        8922,
+        8923,
+        8924,
+        8925,
+        8926,
+        8927,
+        8928,
+        8929,
+        8930,
+        8931,
+        8932,
+        8933,
+        8934,
+        8935,
+        8936,
+        8937,
+        8938,
+        8939,
+        8940,
+        8941,
+        8942,
+        8943,
+        8944,
+        8946,
+        8947,
+        8948,
+        8949,
+        8950,
+        8951,
+        8952,
+        8953,
+        8954,
+        8955,
+        8956,
+        8957,
+        8958,
+        8959,
+        8960,
+        8961,
+        8962,
+        8963,
+        8964,
+        8965,
+        8966,
+        8967,
+        8969,
+        8970,
+        8977,
+        8978,
+        8985,
+        8986,
+        8987,
+        8988,
+        9015,
+        9016,
+        9017,
+        9018,
+        9019,
+        9020,
+        9021,
+        9022,
+        9032
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        60
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 349,
+      "name": "玛拉顿",
+      "directory": "Mauradon",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 2100,
+      "nativeAreaId": 2100,
+      "aliases": [
+        2100,
+        10000
+      ],
+      "clientMaxPlayers": 10,
+      "providerName": "Maraudon",
+      "entrances": [
+        [
+          405,
+          29.1,
+          62.5
+        ]
+      ],
+      "categoryQuestIds": [
+        7028,
+        7029,
+        7041,
+        7044,
+        7046,
+        7064,
+        7065,
+        7066,
+        7067,
+        7068,
+        7070
+      ],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        42,
+        47,
+        48,
+        49,
+        51
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 369,
+      "name": "矿道地铁",
+      "directory": "DeeprunTram",
+      "instanceType": 0,
+      "classification": "world-or-transport",
+      "areaId": 2257,
+      "nativeAreaId": 2257,
+      "aliases": [
+        2257
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": "Deeprun Tram",
+      "entrances": [
+        [
+          1519,
+          71.98,
+          27.61
+        ],
+        [
+          1537,
+          84.1,
+          53.1
+        ]
+      ],
+      "categoryQuestIds": [
+        6661,
+        6662
+      ],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        12
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 389,
+      "name": "怒焰裂谷",
+      "directory": "OrgrimmarInstance",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 2437,
+      "nativeAreaId": 2437,
+      "aliases": [
+        2437
+      ],
+      "clientMaxPlayers": 10,
+      "providerName": "Ragefire Chasm",
+      "entrances": [
+        [
+          1637,
+          52.6,
+          49
+        ]
+      ],
+      "categoryQuestIds": [
+        5722,
+        5723,
+        5724,
+        5725,
+        5728,
+        5761
+      ],
+      "possiblePrerequisiteIds": [
+        5726,
+        5727
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        15,
+        16
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 409,
+      "name": "熔火之心",
+      "directory": "MoltenCore",
+      "instanceType": 2,
+      "classification": "raid",
+      "areaId": 2717,
+      "nativeAreaId": 2717,
+      "aliases": [
+        2717
+      ],
+      "clientMaxPlayers": 40,
+      "providerName": "Molten Core",
+      "entrances": [
+        [
+          51,
+          34.8,
+          85.3
+        ],
+        [
+          46,
+          29.4,
+          38.3
+        ]
+      ],
+      "categoryQuestIds": [
+        6642,
+        6643,
+        6644,
+        6645,
+        6646,
+        7848,
+        8578
+      ],
+      "possiblePrerequisiteIds": [
+        8286,
+        8288,
+        8301,
+        8303,
+        8305,
+        8519,
+        8555,
+        8575,
+        8576,
+        8577
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        60
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 429,
+      "name": "厄运之槌",
+      "directory": "DireMaul",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 2557,
+      "nativeAreaId": 2557,
+      "aliases": [
+        2557
+      ],
+      "clientMaxPlayers": 5,
+      "providerName": "Dire Maul",
+      "entrances": [
+        [
+          357,
+          59.2,
+          45.1
+        ]
+      ],
+      "categoryQuestIds": [
+        1193,
+        1318,
+        5518,
+        5519,
+        5525,
+        5528,
+        7429,
+        7441,
+        7461,
+        7462,
+        7481,
+        7482,
+        7483,
+        7484,
+        7485,
+        7488,
+        7489,
+        7492,
+        7494,
+        7498,
+        7499,
+        7500,
+        7501,
+        7502,
+        7503,
+        7504,
+        7505,
+        7506,
+        7507,
+        7508,
+        7703,
+        7877,
+        8948,
+        8949,
+        8950,
+        8967,
+        8990
+      ],
+      "possiblePrerequisiteIds": [
+        8905,
+        8906,
+        8907,
+        8908,
+        8909,
+        8910,
+        8911,
+        8912,
+        8913,
+        8914,
+        8915,
+        8916,
+        8917,
+        8918,
+        8919,
+        8920,
+        8921,
+        8922,
+        8923,
+        8924,
+        8925,
+        8926,
+        8927,
+        8928,
+        8929,
+        8930,
+        8931,
+        8932,
+        8933,
+        8934,
+        8935,
+        8936,
+        8937,
+        8938,
+        8939,
+        8940,
+        8941,
+        8942,
+        8943,
+        8944,
+        8945,
+        8946,
+        8947,
+        8951,
+        8952,
+        8953,
+        8954,
+        8955,
+        8956,
+        8957,
+        8958,
+        8959,
+        8960,
+        8961,
+        8962,
+        8963,
+        8964,
+        8965,
+        8966,
+        8968,
+        8969,
+        8970,
+        8977,
+        8978,
+        8985,
+        8986,
+        8987,
+        8988,
+        9015,
+        9016,
+        9017,
+        9018,
+        9019,
+        9020,
+        9021,
+        9022,
+        9032
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        57,
+        58,
+        60
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 449,
+      "name": "联盟PvP兵营",
+      "directory": "AlliancePVPBarracks",
+      "instanceType": 0,
+      "classification": "world-or-transport",
+      "areaId": 2918,
+      "nativeAreaId": 2918,
+      "aliases": [
+        2918
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": "Champions' Hall",
+      "entrances": [
+        [
+          1519,
+          75.93,
+          66.22
+        ]
+      ],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 450,
+      "name": "部落PvP兵营",
+      "directory": "HordePVPBarracks",
+      "instanceType": 0,
+      "classification": "world-or-transport",
+      "areaId": 2917,
+      "nativeAreaId": 2917,
+      "aliases": [
+        2917
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": "Hall of Legends",
+      "entrances": [
+        [
+          1637,
+          40.4,
+          68.3
+        ]
+      ],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 469,
+      "name": "黑翼之巢",
+      "directory": "BlackwingLair",
+      "instanceType": 2,
+      "classification": "raid",
+      "areaId": 2677,
+      "nativeAreaId": 2677,
+      "aliases": [
+        2677
+      ],
+      "clientMaxPlayers": 40,
+      "providerName": "Blackwing Lair",
+      "entrances": [
+        [
+          51,
+          34.8,
+          85.3
+        ],
+        [
+          46,
+          29.4,
+          38.3
+        ]
+      ],
+      "categoryQuestIds": [
+        8288,
+        8730
+      ],
+      "possiblePrerequisiteIds": [
+        8286,
+        8301,
+        8303,
+        8305,
+        8519,
+        8555
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        60
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 489,
+      "name": "战歌峡谷",
+      "directory": "PVPZone03",
+      "instanceType": 3,
+      "classification": "battleground",
+      "areaId": 3277,
+      "nativeAreaId": 3277,
+      "aliases": [
+        3277
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": "Warsong Gulch",
+      "entrances": [
+        [
+          331,
+          61.66,
+          84.52
+        ]
+      ],
+      "categoryQuestIds": [
+        7788,
+        7789,
+        7863,
+        7864,
+        7865,
+        7866,
+        7867,
+        7868,
+        7871,
+        7872,
+        7873,
+        7874,
+        7875,
+        7876,
+        7886,
+        7887,
+        7888,
+        7921,
+        7922,
+        7923,
+        7924,
+        7925,
+        8266,
+        8267,
+        8268,
+        8269,
+        8289,
+        8290,
+        8291,
+        8292,
+        8293,
+        8294,
+        8295,
+        8296,
+        8368,
+        8372,
+        8386,
+        8389,
+        8399,
+        8400,
+        8401,
+        8402,
+        8403,
+        8404,
+        8405,
+        8406,
+        8407,
+        8408,
+        8426,
+        8427,
+        8428,
+        8429,
+        8430,
+        8431,
+        8432,
+        8433,
+        8434,
+        8435,
+        8567,
+        8568,
+        8569,
+        8570
+      ],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        1,
+        15,
+        19,
+        25,
+        29,
+        34,
+        35,
+        39,
+        44,
+        45,
+        49,
+        55,
+        59,
+        60
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 509,
+      "name": "安其拉废墟",
+      "directory": "AhnQiraj",
+      "instanceType": 2,
+      "classification": "raid",
+      "areaId": 3429,
+      "nativeAreaId": 3429,
+      "aliases": [
+        3429
+      ],
+      "clientMaxPlayers": 20,
+      "providerName": "Ruins of Ahn'Qiraj",
+      "entrances": [
+        [
+          1377,
+          28.6,
+          92.3
+        ]
+      ],
+      "categoryQuestIds": [
+        8791
+      ],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        60
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 529,
+      "name": "阿拉希盆地",
+      "directory": "PVPZone04",
+      "instanceType": 3,
+      "classification": "battleground",
+      "areaId": 3358,
+      "nativeAreaId": 3358,
+      "aliases": [
+        3358
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": "Arathi Basin",
+      "entrances": [
+        [
+          45,
+          45.4,
+          44.4
+        ]
+      ],
+      "categoryQuestIds": [
+        8080,
+        8081,
+        8105,
+        8114,
+        8115,
+        8120,
+        8121,
+        8122,
+        8123,
+        8124,
+        8154,
+        8155,
+        8156,
+        8157,
+        8158,
+        8159,
+        8160,
+        8161,
+        8162,
+        8163,
+        8164,
+        8165,
+        8166,
+        8167,
+        8168,
+        8169,
+        8170,
+        8171,
+        8260,
+        8261,
+        8262,
+        8263,
+        8264,
+        8265,
+        8297,
+        8298,
+        8299,
+        8300,
+        8370,
+        8374,
+        8384,
+        8390,
+        8391,
+        8392,
+        8393,
+        8394,
+        8395,
+        8396,
+        8397,
+        8398,
+        8436,
+        8437,
+        8438,
+        8439,
+        8440,
+        8441,
+        8442,
+        8443,
+        8565,
+        8566
+      ],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        1,
+        25,
+        29,
+        34,
+        35,
+        39,
+        44,
+        45,
+        49,
+        55,
+        59,
+        60
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 531,
+      "name": "安其拉神殿",
+      "directory": "AhnQirajTemple",
+      "instanceType": 2,
+      "classification": "raid",
+      "areaId": 3428,
+      "nativeAreaId": 3428,
+      "aliases": [
+        3428,
+        10040,
+        10041
+      ],
+      "clientMaxPlayers": 40,
+      "providerName": "Temple of Ahn'Qiraj",
+      "entrances": [
+        [
+          1377,
+          28.6,
+          92.3
+        ]
+      ],
+      "categoryQuestIds": [
+        8544,
+        8556,
+        8557,
+        8558,
+        8559,
+        8560,
+        8561,
+        8562,
+        8579,
+        8592,
+        8593,
+        8594,
+        8595,
+        8596,
+        8602,
+        8603,
+        8621,
+        8622,
+        8623,
+        8624,
+        8625,
+        8626,
+        8627,
+        8628,
+        8629,
+        8630,
+        8631,
+        8632,
+        8633,
+        8634,
+        8637,
+        8638,
+        8639,
+        8640,
+        8641,
+        8655,
+        8656,
+        8657,
+        8658,
+        8659,
+        8660,
+        8661,
+        8662,
+        8663,
+        8664,
+        8665,
+        8666,
+        8667,
+        8668,
+        8669,
+        8689,
+        8690,
+        8691,
+        8692,
+        8693,
+        8694,
+        8695,
+        8696,
+        8697,
+        8698,
+        8699,
+        8700,
+        8701,
+        8702,
+        8703,
+        8704,
+        8705,
+        8706,
+        8707,
+        8708,
+        8709,
+        8710,
+        8711,
+        8712,
+        8784,
+        8789,
+        8790,
+        8801,
+        8802
+      ],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        60
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 533,
+      "name": "纳克萨玛斯",
+      "directory": "Stratholme Raid",
+      "instanceType": 2,
+      "classification": "raid",
+      "areaId": 3456,
+      "nativeAreaId": 3456,
+      "aliases": [
+        3456,
+        10062,
+        10063,
+        10064,
+        10065,
+        10066
+      ],
+      "clientMaxPlayers": 40,
+      "providerName": "Naxxramas",
+      "entrances": [
+        [
+          139,
+          34.25,
+          19.45
+        ]
+      ],
+      "categoryQuestIds": [
+        9033,
+        9034,
+        9036,
+        9037,
+        9038,
+        9039,
+        9040,
+        9041,
+        9042,
+        9043,
+        9044,
+        9045,
+        9046,
+        9047,
+        9048,
+        9049,
+        9050,
+        9054,
+        9055,
+        9056,
+        9057,
+        9058,
+        9059,
+        9060,
+        9061,
+        9068,
+        9069,
+        9070,
+        9071,
+        9072,
+        9073,
+        9074,
+        9075,
+        9077,
+        9078,
+        9079,
+        9080,
+        9081,
+        9082,
+        9083,
+        9084,
+        9086,
+        9087,
+        9088,
+        9089,
+        9090,
+        9091,
+        9092,
+        9093,
+        9095,
+        9096,
+        9097,
+        9098,
+        9099,
+        9100,
+        9101,
+        9102,
+        9103,
+        9104,
+        9105,
+        9106,
+        9107,
+        9108,
+        9109,
+        9110,
+        9111,
+        9112,
+        9113,
+        9114,
+        9115,
+        9116,
+        9117,
+        9118,
+        9120,
+        9229,
+        9230,
+        9232,
+        9233,
+        9234,
+        9235,
+        9236,
+        9237,
+        9238,
+        9239,
+        9240,
+        9241,
+        9242,
+        9243,
+        9244,
+        9245,
+        9246
+      ],
+      "possiblePrerequisiteIds": [
+        9121,
+        9122,
+        9123
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        60
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2720,
+      "name": "灼热盆地",
+      "directory": "2720",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2784,
+      "name": "屠魔峡谷",
+      "directory": "2784",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 15475,
+      "nativeAreaId": 0,
+      "aliases": [
+        15475
+      ],
+      "clientMaxPlayers": 5,
+      "providerName": "Demon Fall Canyon",
+      "entrances": [
+        [
+          331,
+          84.7,
+          74.4
+        ]
+      ],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2789,
+      "name": "腐烂之痕",
+      "directory": "2789",
+      "instanceType": 2,
+      "classification": "raid",
+      "areaId": 15531,
+      "nativeAreaId": 0,
+      "aliases": [
+        15531
+      ],
+      "clientMaxPlayers": 40,
+      "providerName": "The Tainted Scar",
+      "entrances": [
+        [
+          4,
+          45.3,
+          55
+        ]
+      ],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2791,
+      "name": "风暴悬崖",
+      "directory": "2791",
+      "instanceType": 2,
+      "classification": "raid",
+      "areaId": 15532,
+      "nativeAreaId": 0,
+      "aliases": [
+        15532
+      ],
+      "clientMaxPlayers": 40,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2804,
+      "name": "水晶谷",
+      "directory": "2804",
+      "instanceType": 2,
+      "classification": "raid",
+      "areaId": 15825,
+      "nativeAreaId": 0,
+      "aliases": [
+        15825
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2806,
+      "name": "暗影堡",
+      "directory": "2806",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2807,
+      "name": "燃烧的安多哈尔",
+      "directory": "2807",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 15828,
+      "nativeAreaId": 0,
+      "aliases": [
+        15828
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": "The Burning of Andorhal",
+      "entrances": [
+        [
+          28,
+          69.6,
+          79.6
+        ]
+      ],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2817,
+      "name": "星陨兽穴",
+      "directory": "2817",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 15938,
+      "nativeAreaId": 0,
+      "aliases": [
+        15938
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2832,
+      "name": "梦魇林地",
+      "directory": "2832",
+      "instanceType": 2,
+      "classification": "raid",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2853,
+      "name": "逆风小径",
+      "directory": "2853",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2856,
+      "name": "血色领地",
+      "directory": "2856",
+      "instanceType": 2,
+      "classification": "raid",
+      "areaId": 16236,
+      "nativeAreaId": 0,
+      "aliases": [
+        16236
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": "Scarlet Enclave",
+      "entrances": [
+        [
+          139,
+          60.14,
+          75.32
+        ]
+      ],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2868,
+      "name": "东瘟疫之地（血色团队副本位面）",
+      "directory": "2868",
+      "instanceType": 0,
+      "classification": "world-or-transport",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2875,
+      "name": "卡拉赞墓穴",
+      "directory": "2875",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 16074,
+      "nativeAreaId": 16074,
+      "aliases": [
+        16074
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": "Karazhan Crypts",
+      "entrances": [
+        [
+          41,
+          39.99,
+          74.16
+        ]
+      ],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2902,
+      "name": "甲虫之台",
+      "directory": "2902",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 16295,
+      "nativeAreaId": 0,
+      "aliases": [
+        16295
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2921,
+      "name": "纳克萨玛斯",
+      "directory": "2921",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 16394,
+      "nativeAreaId": 0,
+      "aliases": [
+        16394
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2959,
+      "name": "达拉然城",
+      "directory": "2959",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 16544,
+      "nativeAreaId": 16544,
+      "aliases": [
+        16544
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": "City of Dalaran",
+      "entrances": [
+        [
+          36,
+          8.46,
+          59.21
+        ]
+      ],
+      "categoryQuestIds": [
+        92456,
+        92457,
+        92458,
+        92489,
+        96984,
+        96986,
+        96987,
+        96988
+      ],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        33
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2980,
+      "name": "达拉然城",
+      "directory": "2980",
+      "instanceType": 0,
+      "classification": "world-or-transport",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2991,
+      "name": "泽风岛",
+      "directory": "2991",
+      "instanceType": 0,
+      "classification": "world-or-transport",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2995,
+      "name": "海加尔火山口",
+      "directory": "2995",
+      "instanceType": 0,
+      "classification": "world-or-transport",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2996,
+      "name": "战歌峡谷（冬季）",
+      "directory": "2996",
+      "instanceType": 0,
+      "classification": "world-or-transport",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2997,
+      "name": "暗矛群岛",
+      "directory": "2997",
+      "instanceType": 3,
+      "classification": "battleground",
+      "areaId": 16606,
+      "nativeAreaId": 0,
+      "aliases": [
+        16606
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [
+        98887,
+        98888,
+        98889,
+        98891,
+        98893,
+        98895,
+        98896,
+        98897,
+        98899,
+        98901,
+        98903,
+        98904,
+        98905,
+        98906,
+        98907,
+        98908,
+        98910,
+        98913
+      ],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        39,
+        49,
+        59,
+        60
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2998,
+      "name": "挖掘场：湿地",
+      "directory": "2998",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 16732,
+      "nativeAreaId": 0,
+      "aliases": [
+        16732
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": "Excavation Site: Wetlands",
+      "entrances": [
+        [
+          11,
+          47.79,
+          56.16
+        ]
+      ],
+      "categoryQuestIds": [
+        95646,
+        95647,
+        95663,
+        95664,
+        95682,
+        95697,
+        95737,
+        95772,
+        95795,
+        95809,
+        95810,
+        98815,
+        98823,
+        98824
+      ],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        28,
+        31
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 2999,
+      "name": "洛丹伦废墟",
+      "directory": "2999",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 16611,
+      "nativeAreaId": 0,
+      "aliases": [
+        16611
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": "Ruins of Lordaeron",
+      "entrances": [
+        [
+          1497,
+          72.41,
+          11.37
+        ]
+      ],
+      "categoryQuestIds": [
+        92401,
+        92415,
+        92421,
+        92422,
+        95189,
+        95195,
+        95204,
+        95216,
+        95250,
+        97288,
+        97289,
+        97291,
+        97292
+      ],
+      "possiblePrerequisiteIds": [
+        356,
+        447,
+        450,
+        451,
+        97290,
+        99156
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        21,
+        22
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 3005,
+      "name": "吉尔尼斯之战",
+      "directory": "3005",
+      "instanceType": 3,
+      "classification": "battleground",
+      "areaId": 16653,
+      "nativeAreaId": 0,
+      "aliases": [
+        16653
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 3021,
+      "name": "保存的东部王国",
+      "directory": "3021",
+      "instanceType": 0,
+      "classification": "world-or-transport",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 3065,
+      "name": "领主大厅",
+      "directory": "3065",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 16919,
+      "nativeAreaId": 0,
+      "aliases": [
+        16919
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": "The Hall of Thanes",
+      "entrances": [
+        [
+          1537,
+          27.63,
+          47.83
+        ]
+      ],
+      "categoryQuestIds": [
+        96393,
+        96394,
+        96403
+      ],
+      "possiblePrerequisiteIds": [
+        96391
+      ],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [
+        15,
+        16
+      ],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 3104,
+      "name": "空无一物",
+      "directory": "3104",
+      "instanceType": 0,
+      "classification": "world-or-transport",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 3109,
+      "name": "密斯特曼托庄园",
+      "directory": "3109",
+      "instanceType": 1,
+      "classification": "party",
+      "areaId": 17191,
+      "nativeAreaId": 0,
+      "aliases": [
+        17191
+      ],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 3217,
+      "name": "达拉然破天号",
+      "directory": "3217",
+      "instanceType": 0,
+      "classification": "world-or-transport",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    },
+    {
+      "mapId": 3218,
+      "name": "莫高雷破天号",
+      "directory": "3218",
+      "instanceType": 0,
+      "classification": "world-or-transport",
+      "areaId": 0,
+      "nativeAreaId": 0,
+      "aliases": [],
+      "clientMaxPlayers": 0,
+      "providerName": null,
+      "entrances": [],
+      "categoryQuestIds": [],
+      "possiblePrerequisiteIds": [],
+      "missingPrerequisiteIds": [],
+      "questLevelValues": [],
+      "clientVerified": false,
+      "itineraryReady": false
+    }
+  ],
+  "identityConflicts": [],
+  "unmatchedProviderAreas": [
+    {
+      "areaId": 206,
+      "name": "Utgarde Keep",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 1196,
+      "name": "Utgarde Pinnacle",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 2367,
+      "name": "Old Hillsbrad Foothills",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3457,
+      "name": "Karazhan",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3562,
+      "name": "Hellfire Ramparts",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3606,
+      "name": "Hyjal Summit",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3607,
+      "name": "Serpentshire Cavern",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3713,
+      "name": "The Blood Furnace",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3714,
+      "name": "The Shattered Halls",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3715,
+      "name": "The Steamvault",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3716,
+      "name": "The Underbog",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3717,
+      "name": "The Slave Pens",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3789,
+      "name": "Shadow Labyrinth",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3790,
+      "name": "Auchenai Crypts",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3791,
+      "name": "Sethekk Halls",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3792,
+      "name": "Mana-Tombs",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3805,
+      "name": "Zul'Aman",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3836,
+      "name": "Magtheridon's Lair",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3845,
+      "name": "Tempest Keep",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3847,
+      "name": "The Botanica",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3848,
+      "name": "The Arcatraz",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3849,
+      "name": "The Mechanar",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3923,
+      "name": "Gruul's Lair",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 3959,
+      "name": "Black Temple",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4075,
+      "name": "Sunwell Plateau",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4100,
+      "name": "The Culling of Stratholme",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4131,
+      "name": "Magisters' Terrace",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4196,
+      "name": "Drak'Tharon Keep",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4228,
+      "name": "The Oculus",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4264,
+      "name": "Halls of Stone",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4265,
+      "name": "The Nexus",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4272,
+      "name": "Halls of Lightning",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4273,
+      "name": "Ulduar",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4277,
+      "name": "Azjol-Nerub",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4415,
+      "name": "The Violet Hold",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4416,
+      "name": "Gundrak",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4493,
+      "name": "The Obsidian Sanctum",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4494,
+      "name": "Ahn'kahet: The Old Kingdom",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4500,
+      "name": "The Eye of Eternity",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4603,
+      "name": "Vault of Archavon",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4722,
+      "name": "Trial of the Crusader",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4723,
+      "name": "Trial of the Champion",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4809,
+      "name": "The Forge of Souls",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4812,
+      "name": "Icecrown Citadel",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4813,
+      "name": "Pit of Saron",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4820,
+      "name": "Halls of Reflection",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4926,
+      "name": "Blackrock Caverns",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4945,
+      "name": "Halls of Origination",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4950,
+      "name": "Grim Batol",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 4987,
+      "name": "The Ruby Sanctum",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5004,
+      "name": "Throne of the Tides",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5035,
+      "name": "The Vortex Pinnacle",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5088,
+      "name": "The Stonecore",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5094,
+      "name": "Blackwing Descent",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5334,
+      "name": "The Bastion of Twilight",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5396,
+      "name": "Lost City of the Tol'vir",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5600,
+      "name": "Baradin Hold",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5638,
+      "name": "Throne of the Four Winds",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5723,
+      "name": "Firelands",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5733,
+      "name": "Molten Front",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5788,
+      "name": "Well of Eternity",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5789,
+      "name": "End Time",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5844,
+      "name": "Hour of Twilight",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5861,
+      "name": "Darkmoon Faire Island",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5892,
+      "name": "Dragon Soul",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5918,
+      "name": "Shado-Pan Monastery",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5956,
+      "name": "Temple of the Jade Serpent",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5963,
+      "name": "Stormstout Brewery",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 5976,
+      "name": "Gate of the Setting Sun",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 6052,
+      "name": "Scarlet Halls",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 6066,
+      "name": "Scholomance",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 6067,
+      "name": "Terrace of Endless Spring",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 6125,
+      "name": "Mogu'shan Vaults",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 6182,
+      "name": "Mogu'shan Palace",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 6214,
+      "name": "Siege of Niuzao Temple",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 6297,
+      "name": "Heart of Fear",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 6298,
+      "name": "Brawl'gar Arena",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 6618,
+      "name": "Bizmo's Brawlpub",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 6622,
+      "name": "Throne of Thunder",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 6738,
+      "name": "Siege of Orgrimmar",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 10001,
+      "name": "Stratholme",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 10022,
+      "name": "Dire Maul",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 10023,
+      "name": "Dire Maul",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 10024,
+      "name": "Dire Maul",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 10025,
+      "name": "Dire Maul",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 10026,
+      "name": "Dire Maul",
+      "reason": "not-linked-to-readable-client-map"
+    },
+    {
+      "areaId": 10027,
+      "name": "Dire Maul",
+      "reason": "not-linked-to-readable-client-map"
+    }
+  ],
+  "limits": [
+    "Eight client map records are inaccessible to this offline reader; their identities are unknown.",
+    "Party type does not prove enabled content, suitable level, entrance access, or a complete itinerary.",
+    "Category quest IDs are associations, not proof that every objective lies in this instance.",
+    "Prerequisite closure includes alternative and signed conditions; eligibility must still evaluate each branch.",
+    "Client MaxPlayers is a map cap, not a recommended party size."
+  ]
+}

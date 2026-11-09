@@ -1,0 +1,22 @@
+{
+  "build": "1.60.1.70862",
+  "areaId": 16611,
+  "map": {
+    "ID": "2999",
+    "InstanceType": "1",
+    "ExpansionID": "0",
+    "AreaTableID": "0",
+    "MaxPlayers": "0",
+    "WdtFileDataID": "7255103",
+    "MapName": "洛丹伦废墟",
+    "Directory": "2999"
+  },
+  "uiAssignments": [],
+  "clientVerified": false,
+  "status": "No direct UI map assignment in pinned table; existing reference catalogue has the instance identity and outdoor entrance, not an internal coordinate mapping.",
+  "sources": {
+    ".dependencies/Map-1.60.1.70862.tsv": "b97991211484894f343381012af621f51a9417efbbc8fa32ea62694644b99af1",
+    ".dependencies/UiMapAssignment-1.60.1.70862.csv": "79267e8be8034e47daab14350411b3acc0b1f64e86efc9d821a217497254ca0a",
+    "Data/Dungeons.lua": "61c755c6cb4d5206beb1a59a47f0716c35a5e55c42e0b977b6feb2e468655e9b"
+  }
+}

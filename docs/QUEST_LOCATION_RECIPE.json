@@ -1,0 +1,212 @@
+{
+  "cwd": ".dependencies/QuestieDB-1.0.12",
+  "command": [
+    "lua5.1",
+    "<workspace>/tools/export_quest_locations.lua",
+    "<workspace>",
+    "<workspace>/.dependencies/QuestieDB",
+    "<faction>",
+    "<class>"
+  ],
+  "output": ".dependencies/quest-locations-1.0.12/<faction>-<class>.tsv",
+  "exports": [
+    {
+      "persona": [
+        "Alliance",
+        "WARRIOR"
+      ],
+      "file": ".dependencies/quest-locations-1.0.12/Alliance-WARRIOR.tsv",
+      "sha256": "020a23a3b4623c6a3ae70cb174d8f8016705d31a41d0aaf0b70dda0a060dca91",
+      "rows": 57187
+    },
+    {
+      "persona": [
+        "Alliance",
+        "PALADIN"
+      ],
+      "file": ".dependencies/quest-locations-1.0.12/Alliance-PALADIN.tsv",
+      "sha256": "020a23a3b4623c6a3ae70cb174d8f8016705d31a41d0aaf0b70dda0a060dca91",
+      "rows": 57187
+    },
+    {
+      "persona": [
+        "Alliance",
+        "HUNTER"
+      ],
+      "file": ".dependencies/quest-locations-1.0.12/Alliance-HUNTER.tsv",
+      "sha256": "020a23a3b4623c6a3ae70cb174d8f8016705d31a41d0aaf0b70dda0a060dca91",
+      "rows": 57187
+    },
+    {
+      "persona": [
+        "Alliance",
+        "ROGUE"
+      ],
+      "file": ".dependencies/quest-locations-1.0.12/Alliance-ROGUE.tsv",
+      "sha256": "020a23a3b4623c6a3ae70cb174d8f8016705d31a41d0aaf0b70dda0a060dca91",
+      "rows": 57187
+    },
+    {
+      "persona": [
+        "Alliance",
+        "PRIEST"
+      ],
+      "file": ".dependencies/quest-locations-1.0.12/Alliance-PRIEST.tsv",
+      "sha256": "020a23a3b4623c6a3ae70cb174d8f8016705d31a41d0aaf0b70dda0a060dca91",
+      "rows": 57187
+    },
+    {
+      "persona": [
+        "Alliance",
+        "SHAMAN"
+      ],
+      "file": ".dependencies/quest-locations-1.0.12/Alliance-SHAMAN.tsv",
+      "sha256": "020a23a3b4623c6a3ae70cb174d8f8016705d31a41d0aaf0b70dda0a060dca91",
+      "rows": 57187
+    },
+    {
+      "persona": [
+        "Alliance",
+        "MAGE"
+      ],
+      "file": ".dependencies/quest-locations-1.0.12/Alliance-MAGE.tsv",
+      "sha256": "020a23a3b4623c6a3ae70cb174d8f8016705d31a41d0aaf0b70dda0a060dca91",
+      "rows": 57187
+    },
+    {
+      "persona": [
+        "Alliance",
+        "WARLOCK"
+      ],
+      "file": ".dependencies/quest-locations-1.0.12/Alliance-WARLOCK.tsv",
+      "sha256": "020a23a3b4623c6a3ae70cb174d8f8016705d31a41d0aaf0b70dda0a060dca91",
+      "rows": 57187
+    },
+    {
+      "persona": [
+        "Alliance",
+        "DRUID"
+      ],
+      "file": ".dependencies/quest-locations-1.0.12/Alliance-DRUID.tsv",
+      "sha256": "020a23a3b4623c6a3ae70cb174d8f8016705d31a41d0aaf0b70dda0a060dca91",
+      "rows": 57187
+    },
+    {
+      "persona": [
+        "Horde",
+        "WARRIOR"
+      ],
+      "file": ".dependencies/quest-locations-1.0.12/Horde-WARRIOR.tsv",
+      "sha256": "736f79713119b22b65ddf4d4e2a8956546351ccd07f34f5b0bbc49e28f8fac02",
+      "rows": 57194
+    },
+    {
+      "persona": [
+        "Horde",
+        "PALADIN"
+      ],
+      "file": ".dependencies/quest-locations-1.0.12/Horde-PALADIN.tsv",
+      "sha256": "736f79713119b22b65ddf4d4e2a8956546351ccd07f34f5b0bbc49e28f8fac02",
+      "rows": 57194
+    },
+    {
+      "persona": [
+        "Horde",
+        "HUNTER"
+      ],
+      "file": ".dependencies/quest-locations-1.0.12/Horde-HUNTER.tsv",
+      "sha256": "736f79713119b22b65ddf4d4e2a8956546351ccd07f34f5b0bbc49e28f8fac02",
+      "rows": 57194
+    },
+    {
+      "persona": [
+        "Horde",
+        "ROGUE"
+      ],
+      "file": ".dependencies/quest-locations-1.0.12/Horde-ROGUE.tsv",
+      "sha256": "736f79713119b22b65ddf4d4e2a8956546351ccd07f34f5b0bbc49e28f8fac02",
+      "rows": 57194
+    },
+    {
+      "persona": [
+        "Horde",
+        "PRIEST"
+      ],
+      "file": ".dependencies/quest-locations-1.0.12/Horde-PRIEST.tsv",
+      "sha256": "736f79713119b22b65ddf4d4e2a8956546351ccd07f34f5b0bbc49e28f8fac02",
+      "rows": 57194
+    },
+    {
+      "persona": [
+        "Horde",
+        "SHAMAN"
+      ],
+      "file": ".dependencies/quest-locations-1.0.12/Horde-SHAMAN.tsv",
+      "sha256": "736f79713119b22b65ddf4d4e2a8956546351ccd07f34f5b0bbc49e28f8fac02",
+      "rows": 57194
+    },
+    {
+      "persona": [
+        "Horde",
+        "MAGE"
+      ],
+      "file": ".dependencies/quest-locations-1.0.12/Horde-MAGE.tsv",
+      "sha256": "736f79713119b22b65ddf4d4e2a8956546351ccd07f34f5b0bbc49e28f8fac02",
+      "rows": 57194
+    },
+    {
+      "persona": [
+        "Horde",
+        "WARLOCK"
+      ],
+      "file": ".dependencies/quest-locations-1.0.12/Horde-WARLOCK.tsv",
+      "sha256": "736f79713119b22b65ddf4d4e2a8956546351ccd07f34f5b0bbc49e28f8fac02",
+      "rows": 57194
+    },
+    {
+      "persona": [
+        "Horde",
+        "DRUID"
+      ],
+      "file": ".dependencies/quest-locations-1.0.12/Horde-DRUID.tsv",
+      "sha256": "736f79713119b22b65ddf4d4e2a8956546351ccd07f34f5b0bbc49e28f8fac02",
+      "rows": 57194
+    }
+  ],
+  "join": [
+    "python3",
+    "tools/audit_quest_locations.py"
+  ],
+  "tests": [
+    [
+      "python3",
+      "tests/test_quest_locations.py"
+    ],
+    [
+      "python3",
+      "tools/audit_quest_locations.py",
+      "--check"
+    ]
+  ],
+  "runtimeChecks": {
+    "command": [
+      "lua5.1",
+      "<workspace>/tools/check_tasks.lua",
+      "<workspace>",
+      "<workspace>/.dependencies/QuestieDB",
+      "<faction>"
+    ],
+    "factions": [
+      "Alliance",
+      "Horde"
+    ],
+    "exitCodes": [
+      0,
+      0
+    ]
+  },
+  "sourceHashes": {
+    "tools/export_quest_locations.lua": "8714414ef01e95c188b69de5024771728fb21a1f791bcfe03aef3d618ba797f3",
+    "docs/DUNGEON_COVERAGE.json": "7f29a828316e925d9d853f571ded0b9dfd3f2adbcdda3c597ce122ab4d84ab95"
+  }
+}
