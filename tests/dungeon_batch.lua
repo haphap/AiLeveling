@@ -37,6 +37,29 @@ local function run(name,fn)
         fn();C_Map=old
     end)
 end
+run("多入口副本按当前可用交通选择更快入口",function()
+    local B,s,data,_,d=fixture()
+    d.entrances={{200,20,30},{200,90,30}}
+    s.interface,s.money,s.transportKnown=16001,100,true
+    s.unlocked={["taxi:1"]=true,["taxi:2"]=true}
+    s.taxiAvailability={["1:2"]=true};s.taxiCosts={["1:2"]=20}
+    s.taxiDepartures={[1]=s.position};s.taxiLandings={["1:2"]={map=1,x=0.9,y=0.3}}
+    B.Estimates={flightBoardSeconds=3,hearthSeconds=10}
+    B.FlightData={version="test",clientVersion="1.60.1",build=70862,interface=16001,
+        nodes={[1]={instance=0,factionMask=1},[2]={instance=0,factionMask=1}},durations={Alliance={["1:2"]=1}}}
+    assert(loadfile("Planner/Flights.lua"))("AiLeveling",B)
+    local action={kind="objective",questId=1,title="本内目标",position={map=2,x=0.1,y=0.3}}
+    local entry=B.Dungeon.TaskApproach(action,s,data)
+    assert(entry.position.x==0.9,"flight must select the faster entrance");eq(entry.questId,1)
+    s.money=0;eq(B.Dungeon.TaskApproach(action,s,data).position.x,0.2)
+    s.money=100;s.transportKnown=false;eq(B.Dungeon.TaskApproach(action,s,data).position.x,0.2)
+    s.transportKnown=true;s.taxiCosts={};eq(B.Dungeon.TaskApproach(action,s,data).position.x,0.2)
+    assert(loadfile("Hearth.lua"))("AiLeveling",B)
+    s.hearthPoint={map=1,x=0.9,y=0.3};s.hearthBindingKey="旅店";s.hearthReady=0;s.hearthCooldown=3600;s.bags[6948]=1
+    assert(B.Dungeon.TaskApproach(action,s,data).position.x==0.9,"hearth must select the faster entrance")
+    s.bags[6948]=nil;eq(B.Dungeon.TaskApproach(action,s,data).position.x,0.2)
+    eq(s.completed[1],nil);eq(s.money,100)
+end)
 run("关闭副本建议排除自动进本且不拖住同收件人的野外交付",function()
     local B,s,data=fixture();s.completed[3]=true;B.settings.dungeons=false
     s.quests[1]={objectives={{text="本内目标",numRequired=1,numFulfilled=0}}}

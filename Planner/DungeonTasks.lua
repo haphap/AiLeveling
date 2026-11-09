@@ -131,15 +131,21 @@ function D.TaskApproach(action,state,data)
         return {kind="dungeonBlocked",questId=action.questId,title=action.title,
             text=state.instanceEntryError.."；可在副本页重新检查。"}
     end
-    local nearest,best
+    local nearest,best,fastest,bestSeconds
     for _,entry in ipairs(instance.entrances or {}) do
         local entryMap=data.maps[entry[1]]
         if entryMap and entryMap>0 then
             local point={map=entryMap,x=entry[2]/100,y=entry[3]/100,label=instance.title.."入口"}
             local distance=A.Navigation and A.Navigation:Distance(state.position,point)
             if not nearest or distance and (not best or distance<best) then nearest,best=point,distance end
+            if #instance.entrances>1 and A.Flights and A.Flights.Routes then
+                for _,route in ipairs(A.Flights.Routes(state.position,point,state,A.Navigation) or {}) do
+                    if not bestSeconds or route.seconds<bestSeconds then fastest,bestSeconds=point,route.seconds end
+                end
+            end
         end
     end
+    nearest=fastest or nearest
     if not nearest then
         if action.position then return action end
         local guide={};for k,v in pairs(action) do guide[k]=v end
