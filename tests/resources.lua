@@ -27,7 +27,7 @@ test("同一任务的整程选择保留返程路费",function()
     local c,s,q=graph(),F.State(),F.Quest(1);s.money=40;s.now=100
     q.actions={{kind="accept",node="start",seconds=1},{kind="objective",node="goal",seconds=1},{kind="turnin",node="home",seconds=1}}
     local r=A.Planner.Evaluate(q,s,data({[1]=q},c),{minutes=60},"start")
-    eq(r.seconds,28);eq(r.resources.money,0)
+    eq(r.seconds,25);eq(r.resources.money,0)
     local flights=0;for _,a in ipairs(r.actions) do if a.kind=="transit" then flights=flights+1;eq(a.transitId,"back") end end
     eq(flights,1)
 end)
@@ -35,7 +35,7 @@ test("跨任务搜索保留较慢前段并继承剩余金币",function()
     local c,s,q1,q2=graph(),F.State(),F.Quest(1),F.Quest(2);s.money=40;s.now=100
     q1.setup=true;q1.xp=1;q1.actions={{kind="turnin",node="goal",seconds=1}}
     q2.preQuestGroup={1};q2.xp=20000;q2.actions={{kind="turnin",node="home",seconds=1}}
-    local p=plan(s,data({[1]=q1,[2]=q2},c));eq(p.best.xp,20001);eq(p.best.seconds,27);eq(p.best.resources.money,0)
+    local p=plan(s,data({[1]=q1,[2]=q2},c));eq(p.best.xp,20001);eq(p.best.seconds,25);eq(p.best.resources.money,0)
     eq(s.money,40);eq(s.completed[1],nil)
 end)
 test("直线往返更快时保留炉石而不受旧单向道路限制",function()
@@ -45,7 +45,7 @@ test("直线往返更快时保留炉石而不受旧单向道路限制",function(
     q1.setup=true;q1.xp=1;q1.actions={{kind="turnin",node="b",seconds=1}}
     q2.preQuestGroup={1};q2.xp=20000;q2.actions={{kind="objective",node="c",seconds=1},{kind="turnin",node="b",seconds=1}}
     local p=plan(s,data({[1]=q1,[2]=q2},c),{minutes=1,mode="fast",dungeons=false})
-    eq(p.best.xp,20001);assert(math.abs(p.best.seconds-6)<0.000001);eq(p.best.resources.hearthReady,3701)
+    eq(p.best.xp,20001);assert(math.abs(p.best.seconds-3)<0.000001);eq(p.best.resources.hearthReady,3701)
     eq(s.hearthReady,100)
 end)
 test("束宽按任务序列计算且路线稳定比较完整动作身份",function()

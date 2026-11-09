@@ -71,7 +71,7 @@ end)
 test("路线须含往返与交付才记奖励",function()
     local q,s=F.Quest(1),F.State();local d=F.Data({[1]=q})
     local r=A.Planner.Evaluate(q,s,d,{minutes=60},"start")
-    eq(r.seconds,150);eq(r.xp,1000)
+    eq(r.seconds,40);eq(r.xp,1000)
     q.actions[3]=nil
     eq(A.Planner.Evaluate(q,s,d,{minutes=60},"start"),nil)
 end)
@@ -79,13 +79,19 @@ test("已完成目标只规划交付余程",function()
     local q,s=F.Quest(1),F.State();local d=F.Data({[1]=q})
     s.quests[1]={ready=true,objectives={}};s.position.node="goal"
     local r=A.Planner.Evaluate(q,s,d,{minutes=60},"goal")
-    eq(r.seconds,25);eq(r.actions[#r.actions].kind,"turnin")
+    eq(r.seconds,20);eq(r.actions[#r.actions].kind,"turnin")
 end)
-test("换武器只通过明确校准模型改变耗时",function()
-    local q,s=F.Quest(1),F.State()
-    q.gearTimeModel={class="WARRIOR",byWeapon={[999]=50}}
-    s.equipment[16]={id=999};eq(A.Gear.ExecutionSeconds(q,s),50)
-    s.equipment[16]={id=998};eq(A.Gear.ExecutionSeconds(q,s),100)
+test("任务排序忽略旧耗时、武器计时模型与执行样本",function()
+    local q,s=F.Quest(1),F.State();local data=F.Data({[1]=q})
+    local baseline=A.Planner.Evaluate(q,s,data,{minutes=60},"start")
+    q.seconds=100000;q.failureProbability=1;q.recoverySeconds=100000;q.gearTimeModel={class="WARRIOR",byWeapon={[999]=1}}
+    q.actions[2].seconds=100000
+    s.equipment[16]={id=999};s.samples.quest={n=100,mean=4,m2=0,unit="ratio"}
+    local result=A.Planner.Evaluate(q,s,data,{minutes=60},"start")
+    assert(result);eq(result.seconds,baseline.seconds);eq(result.xp,baseline.xp)
+    q.seconds=nil;q.actions[2].seconds=nil
+    result=A.Planner.Evaluate(q,s,data,{minutes=60},"start")
+    assert(result);eq(result.seconds,baseline.seconds)
 end)
 test("短程搜索保留高价值后续的必要前置",function()
     local s,q1,q2,q3=F.State(),F.Quest(1),F.Quest(2),F.Quest(3)
@@ -244,7 +250,7 @@ test("同路任务簇合并接取与交付移动且逐任务保留收益",functi
     local s,q1,q2=F.State(),F.Quest(1),F.Quest(2)
     local data=F.Data({[1]=q1,[2]=q2})
     local r=A.Planner.EvaluateMany({q1,q2},s,data,{minutes=60},"start")
-    eq(r.kind,"cluster");eq(r.seconds,260);eq(r.xp,2000)
+    eq(r.kind,"cluster");eq(r.seconds,40);eq(r.xp,2000)
     eq(r.actions[1].kind,"accept");eq(r.actions[2].kind,"accept")
     local p=plan(s,data);eq(p.best.kind,"cluster");eq(p.best.xp,2000)
 end)
@@ -280,31 +286,31 @@ test("明确锁定优先于切换稳定阈值",function()
     local fresh={best={id=2,questId=2,rate=100},alternatives={{id=1,questId=1,rate=99}}}
     eq(A.Planner.Choose(old,fresh,2).best.id,2)
 end)
-test("耗时采样仅在确认后结算且排除挂机与中断",function()
+test("恢复采样仅在确认后结算且排除挂机与中断",function()
     local o=A.Observations
     A.char={samples={}};A.RequestRefresh=function() end
-    local action={kind="objective",questId=1,objectiveIndex=1,referenceSeconds=10}
+    local action={kind="service",serviceId="recovery",referenceSeconds=10}
     o:Reset();o:Tick(0,action,true,true)
     for i=1,10 do o:Tick(i,action,true,true) end
-    o:Finish(false);eq(A.char.samples.quest,nil)
+    o:Finish(false);eq(A.char.samples.recovery,nil)
     o:Tick(20,action,true,true)
     for i=21,30 do o:Tick(i,action,true,true) end
-    o:Finish(true);eq(A.char.samples.quest.n,1);eq(A.char.samples.quest.mean,1)
-    o:Finish(true);eq(A.char.samples.quest.n,1)
+    o:Finish(true);eq(A.char.samples.recovery.n,1);eq(A.char.samples.recovery.mean,1)
+    o:Finish(true);eq(A.char.samples.recovery.n,1)
     o:Tick(100,action,true,true)
     for i=101,140 do o:Tick(i,action,false,true) end
-    o:Finish(true);eq(A.char.samples.quest.n,1)
+    o:Finish(true);eq(A.char.samples.recovery.n,1)
     o:Tick(200,action,true,true);o:Tick(210,action,true,true)
-    o:Finish(true);eq(A.char.samples.quest.n,1)
+    o:Finish(true);eq(A.char.samples.recovery.n,1)
 end)
-test("不同长度任务共用比例校准且装备变化降权",function()
-    local s=F.State();s.samples.quest={n=10,mean=0.5,m2=1,unit="ratio"}
-    local q=F.Quest(1)
-    eq(A.Gear.ExecutionSeconds(q,s),75)
-    q.seconds=200;eq(A.Gear.ExecutionSeconds(q,s),150)
-    A.char={samples=s.samples,sampleContext="old"}
-    A.Observations:Context(s);eq(A.char.samples.quest.n,2)
-    eq(A.Gear.ExecutionSeconds(q,s),200)
+test("任务与步行不采样且清理旧执行样本",function()
+    A.char={samples={quest={n=10},move={n=10},["taskwork:1"]={n=10}}}
+    local o=A.Observations
+    for _,kind in ipairs({"objective","move"}) do
+        o:Tick(0,{kind=kind,questId=1,referenceSeconds=10},true,true)
+        eq(o.current,nil)
+    end
+    o:Context(F.State());eq(next(A.char.samples),nil)
 end)
 test("有效审计将空接取集合记为缺口并保留任务 ID",function()
     local q=F.Quest(1);q.startedBy={};q.finishedBy={};q.actions=nil;q.preQuestGroup={-2}

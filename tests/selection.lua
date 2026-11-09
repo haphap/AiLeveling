@@ -97,9 +97,9 @@ test("当前仍可行的手选交通变体优先且使用重新计算后的数�
     local walking
     for _,candidate in ipairs(result.alternatives) do if candidate.sequence=="1" and not hasTransit(candidate) then walking=candidate end end
     assert(walking);B.state.itinerary.preferredKey=walking.routeKey
-    B.Data:GetQuest(1).seconds=200
+    B.Data:GetQuest(1).seconds=200;B.state.runSpeed=14
     result=plan(B.state,B.Data)
-    eq(hasTransit(result.best),false);eq(result.best.seconds,250)
+    eq(hasTransit(result.best),false);eq(result.best.seconds,20)
     assert(result.best.gearSources);assert(result.best~=walking)
 end)
 test("原生交付推进整程且就绪任务保留至实际交付",function()

@@ -107,7 +107,7 @@ for id,q in pairs(c.quests) do
             if not valid then fail("任务资源模型无效："..id.."，"..why) end
             if a.node and not c.nodes[a.node] then fail("任务目的地缺失："..id) end
             if a.shareKey and (a.kind~="objective" or (a.shareType~="kill" and a.shareType~="collect") or
-                not positive(a.targetId) or not positive(a.workUnits) or not positive(a.secondsPerUnit)) then fail("共享目标模型无效："..id) end
+                not positive(a.targetId)) then fail("共享目标模型无效："..id) end
         end
     elseif release then fail("未验证任务："..id) end
 end

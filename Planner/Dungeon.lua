@@ -76,7 +76,7 @@ function D.Workflow(d, content, state)
         if not action.node or not content.nodes[action.node] then return false, "副本行动节点缺失" end
         if action.kind ~= "accept" and action.kind ~= "objective" and action.kind ~= "turnin" and action.kind ~= "move" and action.kind~="service" then return false, "副本行动类型无效" end
         if action.kind ~= "move" and action.kind~="service" and not action.questId then return false,"任务行动 ID 缺失" end
-        if action.stage ~= "inside" and action.kind ~= "move" and (type(action.seconds)~="number" or action.seconds<0) then return false,"副本准备或交付耗时缺失" end
+        if action.stage ~= "inside" and action.kind == "service" and (type(action.seconds)~="number" or action.seconds<0) then return false,"副本服务耗时缺失" end
     end
     return true
 end
@@ -297,6 +297,7 @@ function D.Evaluate(d,state,options,data)
                     if action.stage==name and not (ongoing and ongoing.done[index]) and not questDone(action,forecast) and
                         (name~="after" or action.kind~="turnin" or plannedTurnins[action.questId]) then
                         local step=copy(action)
+                        if step.kind~="service" then step.seconds=0 end
                         local q=step.questId and data:GetQuest(step.questId)
                         step.dungeonId,step.dungeonStep=d.id,index
                         step.title=step.title or (q and q.title) or d.title

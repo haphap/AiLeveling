@@ -416,21 +416,3 @@ function G.Prefer(candidates,base,state,options)
     end
     return best
 end
-
-function G.ExecutionReference(q, state)
-    if not q.seconds then return nil end
-    local base = q.seconds
-    -- A calibrated model is required before converting equipment to time saved.
-    local model = q.gearTimeModel
-    if model and model.class == state.class then
-        local weapon = state.equipment and state.equipment[16]
-        if weapon and model.byWeapon[weapon.id] then base = model.byWeapon[weapon.id] end
-    end
-    return base
-end
-
-function G.ExecutionSeconds(q, state)
-    local reference = G.ExecutionReference(q, state)
-    if not reference then return nil end
-    return A.State.Estimate(reference, state.samples and state.samples[q.sampleKind or "quest"])
-end

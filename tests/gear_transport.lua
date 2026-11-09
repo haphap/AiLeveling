@@ -91,28 +91,19 @@ test("装备目标在获得额外实物后清除",function()
     local s=F.State();s.equipment[11]=item(7,"INVTYPE_FINGER",1);B.Gear:SyncTarget(s);eq(s.gearTarget,"wanted")
     s.bags[7]=1;B.Gear:SyncTarget(s);eq(B.char.gearTarget,nil);eq(s.gearAcquired,7)
 end)
-test("共享目标按实际剩余数量取最大成本并保留两个交付",function()
+test("共享目标无需耗时和数量模型且保留两个交付",function()
     local s,q1,q2=F.State(),F.Quest(1),F.Quest(2)
     for _,q in ipairs({q1,q2}) do
-        local a=q.actions[2];a.shareKey="wolves";a.shareType="kill";a.targetId=99;a.workUnits=10;a.secondsPerUnit=10
+        local a=q.actions[2];a.shareKey="wolves";a.shareType="kill";a.targetId=99;a.workUnits=nil;a.secondsPerUnit=nil
     end
     s.quests[1]={objectives={{numFulfilled=6}}};s.quests[2]={objectives={{numFulfilled=2}}}
     local r=A.Planner.EvaluateMany({q1,q2},s,F.Data({[1]=q1,[2]=q2}),{minutes=60},"start")
-    eq(r.seconds,130);eq(r.xp,2000)
+    eq(r.seconds,40);eq(r.xp,2000)
     local shared;for _,a in ipairs(r.actions) do if a.sharedObjectives then shared=a end end
-    eq(#shared.sharedObjectives,2);eq(shared.seconds,80)
+    eq(#shared.sharedObjectives,2);eq(shared.seconds,0)
     q2.actions[2].targetId=100
-    r=A.Planner.EvaluateMany({q1,q2},s,F.Data({[1]=q1,[2]=q2}),{minutes=60},"start");eq(r.seconds,170)
-    q2.actions[2].workUnits=-1;eq(A.Planner.EvaluateMany({q1,q2},s,F.Data({}),{minutes=60},"start"),nil)
-end)
-test("共享目标采样等待全部目标确认",function()
-    local B={settings={learn=true},char={samples={}},Navigation={},State=A.State,RequestRefresh=function() end}
-    assert(loadfile("Observations.lua"))("AiLeveling",B)
-    local o=B.Observations
-    local a={kind="objective",questId=1,referenceSeconds=10,sharedObjectives={{questId=1,objectiveIndex=1},{questId=2,objectiveIndex=1}}}
-    o:Tick(0,a,true,true);for i=1,10 do o:Tick(i,a,true,true) end
-    local s=F.State();s.quests[1]={ready=true,objectives={}};s.quests[2]={objectives={}}
-    o:Refresh(s);eq(B.char.samples.quest,nil);s.quests[2].ready=true;o:Refresh(s);eq(B.char.samples.quest.n,1)
+    r=A.Planner.EvaluateMany({q1,q2},s,F.Data({[1]=q1,[2]=q2}),{minutes=60},"start");eq(r.seconds,40)
+    q2.actions[2].targetId=-1;eq(A.Planner.EvaluateMany({q1,q2},s,F.Data({}),{minutes=60},"start"),nil)
 end)
 test("交付经验按交付时预测等级计算且升级解锁后续",function()
     local s,q1,q2=F.State(),F.Quest(1),F.Quest(2)

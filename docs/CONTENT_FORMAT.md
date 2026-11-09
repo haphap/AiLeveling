@@ -2,7 +2,7 @@
 
 当前约定（2026-11-08）：地面移动一律按地图库直线距离÷当前跑速估时；nodes 仅表示任务、服务或交通目的地，edges／path／道路长度不再读取。道路数据和工具已归档至 archive/roads，不进入加载、安装和发布要求。下文旧道路格式仅为历史记录。参考服务与交通导航动作字段统一为 travelActions；资料不足的任务仍保留在列表。
 
-适用当前开发构建 0.1.21-dev。内容仍由 `Data/Content.lua` 中的 quests、nodes、edges、transit、dungeons、sources、items、gearSources、progression 提供，测试夹具独立保存。正式数据须有来源和目标构建验证，完整范围以 PLAN.md 为准。
+适用当前开发构建。内容仍由 `Data/Content.lua` 中的 quests、nodes、edges、transit、dungeons、sources、items、gearSources、progression 提供，测试夹具独立保存。正式数据须有来源和目标构建验证，完整范围以 PLAN.md 为准。
 
 ## 副本行程
 
@@ -21,7 +21,7 @@
 | failureProbability、recoverySeconds | 有来源的失败恢复估计 |
 | rewardSources、version | 装备来源和内容版本；版本变化重建导航进度 |
 
-每个行动须指定 stage、kind、node。任务行动使用 questId；objective 使用 objectiveIndex；kind 支持 accept、objective、turnin、move。before 与 after 的任务行动须提供交互／执行 seconds；inside 行动耗时包含在 runSeconds 中。
+每个行动须指定 stage、kind、node。任务行动使用 questId；objective 使用 objectiveIndex；kind 支持 accept、objective、turnin、move。before 与 after 的任务行动按等耗时规则仅比较移动，不要求执行 seconds；service 保留实际服务 seconds，inside 行动耗时包含在 runSeconds 中。
 
 准备、返程及任务接交绕路均通过道路／交通图计价，时间、金币和炉石资源向后传递。进入、离开和本轮结束由运行时的门控行动生成：进入须实际实例 ID 匹配；死亡、暂离或解散保持本轮；本轮结束由玩家确认；只交付客户端实际就绪的任务。
 
@@ -51,7 +51,7 @@
 
 ## 共享执行与等级预测
 
-只有作者明确确认可同时推进的 objective 才填写 shareKey、shareType（kill／collect）、targetId、workUnits、secondsPerUnit；workUnits 和 secondsPerUnit 须为正数。同键、同类型、同目标、同道路节点且没有独立 action.items 的目标允许合并；客户端特殊任务物品必须一致。按实际 numFulfilled 计算剩余量，以最大剩余成本记一次执行，分别保留交付收益；校准须等待全部关联目标实际完成。
+只有作者明确确认可同时推进的 objective 才填写 shareKey、shareType（kill／collect）、targetId。同键、同类型、同目标、同目的地且没有独立物品获得／消耗、背包空间或耐久消耗约束的目标允许合并；客户端特殊任务物品必须一致。分别保留任务身份、真实完成条件和交付收益，不要求工作量或每单位耗时，不采集任务执行时间。
 
 `progression={verified=true,source=...,xpToLevel={[等级]=升至下级所需经验}}`。当前等级门槛由 UnitXPMax 提供，其后的门槛只读已验证曲线。预测按交付顺序更新等级，再取对应等级的任务经验；交付还会解锁 quest:ID 道路条件。未知曲线导致预测不确定时停止继续展开。当前预测仅累计明确建模的任务交付经验，尚未计入途中击杀经验；完整经验模型仍须补齐。
 

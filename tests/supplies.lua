@@ -40,7 +40,7 @@ end)
 test("低耐久插入有来源维修并传播费用与耗时",function()
     local s,q=state(16),F.Quest(1);s.durability=0.1;q.combat=true
     local r=A.Planner.Evaluate(q,s,services({[1]=q}),{minutes=60},"start")
-    eq(r.seconds,160);eq(r.resources.money,50);eq(r.resources.supplies.durability,1);eq(s.durability,0.1)
+    eq(r.seconds,50);eq(r.resources.money,50);eq(r.resources.supplies.durability,1);eq(s.durability,0.1)
     local found=false
     for _,a in ipairs(r.actions) do if a.kind=="service" then found=true;eq(a.serviceKind,"repair");eq(a.serviceGoal.durability,0.2) end end
     eq(found,true)
@@ -48,7 +48,7 @@ end)
 test("补给只购买有来源的足量库存并在使用后扣除",function()
     local s,q=state(16),F.Quest(1);q.actions[2].requiredItems={[100]=5};q.actions[2].consumeItems={[100]=5}
     local d=services({[1]=q});local r=A.Planner.Evaluate(q,s,d,{minutes=60},"start")
-    eq(r.seconds,158);eq(r.resources.money,90);eq(r.resources.supplies.bags[100],0)
+    eq(r.seconds,48);eq(r.resources.money,90);eq(r.resources.supplies.bags[100],0)
     d.content.services.smith.stock[100].unlimited=false
     local candidate,reason=A.Planner.Evaluate(q,s,d,{minutes=60},"start");eq(candidate,nil);assert(reason:find("必需物品"))
 end)
@@ -67,7 +67,7 @@ test("整理所得金币只能用于出售之后的交通",function()
     q.actions[2].gainItems={[100]=1}
     local d=services({[1]=q});d.content.transit={back={kind="flight",verified=true,from="goal",to="start",seconds=5,cost=20}}
     local r=A.Planner.Evaluate(q,s,d,{minutes=60},"start")
-    eq(r.resources.money,0);eq(r.seconds,141)
+    eq(r.resources.money,0);eq(r.seconds,31)
     d.content.edges.start={};d.content.nodes.near.position.map=2;d.content.transit.go={kind="flight",verified=true,from="start",to="near",seconds=1,cost=1}
     eq(A.Planner.Evaluate(q,s,d,{minutes=60},"start"),nil)
 end)

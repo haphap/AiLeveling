@@ -19,7 +19,7 @@ function P.MergeObjectives(actions,state)
     local result,groups={},{}
     for _,action in ipairs(actions) do
         local active=state.quests[action.questId]
-        local key=action.kind=="objective" and action.shareKey and action.workUnits and action.secondsPerUnit and
+        local key=action.kind=="objective" and action.shareKey and
             not next(action.items or {}) and not next(action.requiredItems or {}) and not next(action.gainItems or {}) and
             not next(action.consumeItems or {}) and not action.reserveSlots and not action.minFreeSlots and not action.durabilityLoss and
             (action.shareType=="kill" or action.shareType=="collect") and action.targetId and
@@ -27,8 +27,6 @@ function P.MergeObjectives(actions,state)
         local shared=key and groups[key]
         if shared and (shared.clientItem~=(active and active.itemId)) then shared=nil;key=nil end
         if shared then
-            shared.seconds=math.max(shared.seconds,action.seconds)
-            shared.referenceSeconds=math.max(shared.referenceSeconds,action.referenceSeconds)
             if shared.minDurability or action.minDurability then shared.minDurability=math.max(shared.minDurability or 0,action.minDurability or 0) end
             shared.sharedObjectives[#shared.sharedObjectives+1]={questId=action.questId,objectiveIndex=action.objectiveIndex or 1}
         else
@@ -79,9 +77,6 @@ function P.EvaluateMany(quests, state, data, options, from)
         if options.mode == "story" and q.story then priority = 1 end
         local actions = P.Actions(q, state)
         if #actions == 0 or actions[#actions].kind ~= "turnin" then return nil, "行动链未包含交付" end
-        local count = 0
-        for _, action in ipairs(actions) do if action.kind == "objective" then count = count + 1 end end
-        local execution = A.Gear.ExecutionSeconds(q, state)
         local previousPhase = 0
         for _, action in ipairs(actions) do
             if #quests > 1 then
@@ -89,23 +84,14 @@ function P.EvaluateMany(quests, state, data, options, from)
                 if not phase or phase < previousPhase then return nil, "复杂任务保留独立行动顺序" end
                 previousPhase = phase
             end
-            if action.shareKey and action.workUnits and action.secondsPerUnit then
-                if type(action.workUnits)~="number" or action.workUnits<=0 or action.workUnits>=math.huge or
-                    type(action.secondsPerUnit)~="number" or action.secondsPerUnit<=0 or action.secondsPerUnit>=math.huge then
-                    return nil,"共享目标工作量无效"
-                end
-                local active=state.quests[q.id]
-                local objective=active and active.objectives[action.objectiveIndex or 1]
-                local remaining=math.max(0,action.workUnits-(objective and objective.numFulfilled or 0))
-                local reference=remaining*action.secondsPerUnit
-                if q.seconds and q.seconds>0 and execution then
-                    action.referenceSeconds=reference*A.Gear.ExecutionReference(q,state)/q.seconds
-                    action.seconds=reference*execution/q.seconds
-                else action.referenceSeconds=reference;action.seconds=A.State.Estimate(reference,state.samples and state.samples[q.sampleKind or "quest"]) end
+            if action.shareKey and (action.kind~="objective" or
+                (action.shareType~="kill" and action.shareType~="collect") or
+                type(action.targetId)~="number" or action.targetId<=0 or action.targetId>=math.huge or action.targetId~=action.targetId) then
+                return nil,"共享目标身份无效"
             end
-            if action.seconds == nil and action.kind == "objective" and execution then
-                action.seconds = execution / count
-                action.referenceSeconds = A.Gear.ExecutionReference(q, state) / count
+            if phases[action.kind] then
+                action.seconds=0
+                action.referenceSeconds,action.sampleKind=nil,nil
             end
             if action.kind=="objective" then
                 action.minDurability=action.minDurability or q.minDurability or (q.combat and 0.2 or nil)
@@ -114,7 +100,6 @@ function P.EvaluateMany(quests, state, data, options, from)
                 local valid,why=A.Supplies.ValidAction(action)
                 if not valid then return nil,why end
             end
-            action.sampleKind = q.sampleKind
             if action.seconds == nil then return nil, "行动耗时尚未建立" end
             raw[#raw + 1] = action
         end
@@ -127,7 +112,7 @@ function P.EvaluateMany(quests, state, data, options, from)
         end)
         raw=P.MergeObjectives(raw,state)
     end
-    local context,recovery=copy(state),0
+    local context=copy(state)
     for _,action in ipairs(raw) do
         action.position=action.position or (action.node and data.content.nodes[action.node].position)
         if action.kind=="turnin" then
@@ -143,16 +128,15 @@ function P.EvaluateMany(quests, state, data, options, from)
             action.levelAfter=forecast.level
         end
     end
-    for _,q in ipairs(quests) do recovery=recovery+(q.failureProbability or 0)*(q.recoverySeconds or 0) end
     local travelState=copy(state)
-    travelState.maxSeconds=options.minutes*60-recovery
+    travelState.maxSeconds=options.minutes*60
     local paths,reason
     if A.Supplies then paths,reason=A.Supplies.Itinerary(data.content,from,raw,travelState)
     else paths,reason=A.Travel.Itinerary(data.content,from,raw,travelState) end
     if not paths then return nil,reason end
     local variants={}
     for _,path in ipairs(paths) do
-        local seconds=path.seconds+recovery
+        local seconds=path.seconds
         path.resources.now=(state.now or 0)+seconds
         local candidate={id=#ids==1 and ids[1] or ("cluster:"..table.concat(ids,":")),
             title=table.concat(titles,"＋"),questId=ids[1],questIds=ids,

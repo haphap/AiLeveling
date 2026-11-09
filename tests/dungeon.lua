@@ -253,11 +253,11 @@ return function(test,eq,F,plan)
     end)
     test("副本按当前位置计入准备与交付绕路且奖励仅计已安排的交付",function()
         local B,d,s,data = context({[1]=F.Quest(1)})
-        d.actions={{stage="before",kind="accept",node="goal",questId=1,seconds=5},
-            {stage="after",kind="turnin",node="start",questId=1,seconds=5}}
+        d.actions={{stage="before",kind="accept",node="goal",questId=1},
+            {stage="after",kind="turnin",node="start",questId=1,seconds=100000}}
         d.questXP={[1]=200,[2]=999}
         local result=B.Dungeon.Evaluate(d,s,B.settings,data)
-        eq(result.seconds,950);eq(result.xp,1200)
+        eq(result.seconds,940);eq(result.xp,1200)
         s.completed[1]=true
         result=B.Dungeon.Evaluate(d,s,B.settings,data)
         eq(result.seconds,940);eq(result.xp,1000)
