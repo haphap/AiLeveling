@@ -111,6 +111,7 @@ end
 function UI.TrackerModel(state,plan,action,paused)
     state,plan=state or {},plan or {}
     local quests=state.quests or {}
+    if action and action.questId and UI.QuestStatus(state,action.questId,plan)=="已交付" then action=nil end
     local model={rows={},objectives={},acceptedCount=0,unacceptedCount=0,title=action and action.title or "正在寻找下一步",kind=action and action.kind,
         instruction=action and UI.ActionText(action,A.settings or {}) or "",questId=action and action.questId}
     local active=action and quests[action.questId]
@@ -169,6 +170,8 @@ function UI.TrackerModel(state,plan,action,paused)
         if not id or seen[id] then return end
         seen[id]=true
         local q=quests[id]
+        local status=UI.QuestStatus(state,id,plan)
+        if status=="已交付" then return end
         local candidate=choices[id]
         local step=source or (candidate and candidate.actions[1]) or {}
         local deferred=(state.skipped or {})[id] or (state.chainDeferred or {})[id]
@@ -182,7 +185,7 @@ function UI.TrackerModel(state,plan,action,paused)
         end
         model.rows[#model.rows+1]={questId=id,title=q and q.title or step.title or ("任务 #"..id),
             kind=q and (q.ready and "turnin" or "objective") or "accept",
-            accepted=q~=nil,status=UI.QuestStatus(state,id),metrics=metrics(candidate),
+            accepted=q~=nil,status=status,metrics=metrics(candidate),
             progress=q and (q.ready and "目标已完成，前往交付" or (#counts>0 and table.concat(counts," · ") or "查看任务日志中的目标")) or
                 (candidate and candidate.acceptBlocked or candidate and candidate.requireCheck and "先确认任务当前是否开放" or
                     step.position and step.position.startItemId and step.text or "先接取，再推进任务目标"),deferred=deferred,candidate=candidate}
@@ -241,6 +244,7 @@ function UI.TrackerModel(state,plan,action,paused)
     for _,row in ipairs(model.rows) do row.delivery=deliveries[row.questId] end
     if not action then
         if plan.complete then model.title="已达到 60 级";model.instruction="本次升级目标已完成。"
+        elseif plan.revision and plan.revision~=state.revision then model.title="正在更新行程";model.instruction="正在安排下一步。"
         elseif plan.selectionBlocked then model.title="所选行程等待处理";model.instruction=plan.selectionBlocked
         elseif not A.indexReady then model.title="正在整理任务";model.instruction="任务数据加载后显示当前步骤。"
         else model.title="选择下一项任务";model.instruction="点击下方任务开始，或打开详情查看行程。" end

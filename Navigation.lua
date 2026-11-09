@@ -2,6 +2,12 @@ local _, A = ...
 A.Navigation = { pins = {}, index = 1 }
 local N = A.Navigation
 
+local function staleQuest(action)
+    local plan,state=N.plan,A.state
+    return action and action.questId and plan and plan.revision and state and plan.revision~=state.revision
+        and (state.completed or {})[action.questId] and not (state.quests or {})[action.questId]
+end
+
 function N:Initialize()
     self.hbd = LibStub and LibStub("HereBeDragons-2.0", true)
     self.hbdPins = LibStub and LibStub("HereBeDragons-Pins-2.0", true)
@@ -85,7 +91,8 @@ function N:Current()
     local hearth=A.Hearth and A.Hearth:Gate()
     if hearth then return hearth end
     if self.manual then return {kind = "manual", title = "手动目的地", position = self.manual} end
-    return self.actions and self.actions[self.index]
+    local action=self.actions and self.actions[self.index]
+    if not staleQuest(action) then return action end
 end
 
 function N:Near(position,target,radius)
@@ -132,6 +139,7 @@ end
 function N:MapPoints()
     local points,seen={},{}
     local function add(action)
+        if staleQuest(action) then return end
         local pos=N.Target(action)
         if not pos then return end
         local key=table.concat({pos.map,pos.x,pos.y},":")
@@ -147,7 +155,8 @@ function N:MapPoints()
         end
     end
     add(self:Current())
-    if #points==0 or self.manual then return points end
+    if self.manual then return points end
+    if #points==0 and not staleQuest(self.actions and self.actions[self.index]) then return points end
     for i=self.index+1,#(self.actions or {}) do add(self.actions[i]) end
     local queue=self.plan and self.plan.taskQueue
     for _,step in ipairs(queue and queue.steps or {}) do

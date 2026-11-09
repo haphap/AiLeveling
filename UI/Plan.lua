@@ -9,6 +9,7 @@ end
 function UI.Rows(plan)
     local rows,seen={},{}
     local function add(candidate)
+        if candidate and candidate.questId and A.UI.QuestStatus(A.state or {},candidate.questId,plan)=="已交付" then return end
         local key=UI.Key(candidate)
         if key and not seen[key] then rows[#rows+1]=candidate;seen[key]=true end
     end
@@ -98,16 +99,17 @@ end
 
 function UI:Lines()
     local plan,candidate=A.plan or {},self.preview
+    if candidate and candidate.questId and A.UI.QuestStatus(A.state or {},candidate.questId,plan)=="已交付" then candidate=nil end
     local lines={}
     local groups=A.TaskGuide and A.TaskGuide.DeliveryGroups(plan.taskChoices,A.state or {},plan.taskOrder) or {}
     for _,group in ipairs(groups) do
         lines[#lines+1]=string.format("%s · %s · 已完成 %d/%d",group.splitDelivery and "分批交付" or "集中交付",group.title,group.ready,#group.choices)
         lines[#lines+1]=group.splitDelivery and "物品持有上限限制，先交付已备齐任务，再继续收集。" or group.ready==#group.choices and "整组已完成，一次交付。" or "先完成同组剩余目标，再一起返回交付。"
         for _,choice in ipairs(group.choices) do
-            lines[#lines+1]="  ["..A.UI.QuestStatus(A.state,choice.questId).."] "..(choice.title or ("任务 #"..choice.questId))
+            lines[#lines+1]="  ["..A.UI.QuestStatus(A.state,choice.questId,plan).."] "..(choice.title or ("任务 #"..choice.questId))
         end
     end
-    if plan.taskQueue then
+    if plan.taskQueue and (not plan.revision or plan.revision==(A.state or {}).revision) then
         local queue=plan.taskQueue
         lines[#lines+1]=string.format("本次行程 · %d 项任务",queue.taskCount or #queue.steps)
         if queue.stagePlan then
@@ -134,13 +136,14 @@ function UI:Lines()
     if self.blocked and not plan.complete then lines[#lines+1]=self.blocked end
     if not candidate then
         if plan.complete then lines[#lines+1]="已达到 60 级，本次升级规划目标已完成。"
+        elseif plan.revision and plan.revision~=(A.state or {}).revision then lines[#lines+1]="正在更新行程。"
         elseif plan.sessionActive then lines[#lines+1]=plan.fallback and plan.fallback.text or "当前副本行程等待处理，可在副本页查看。"
         else lines[#lines+1]="当前暂无推荐任务。" end
         return lines
     end
     lines[#lines+1]=candidate.title
     if candidate.kind=="task" then
-        local status=A.UI.QuestStatus(A.state,candidate.questId)
+        local status=A.UI.QuestStatus(A.state,candidate.questId,plan)
         lines[#lines+1]="["..status.."] "..(status=="未接取" and (candidate.acceptBlocked or "先向任务发布者接取，再推进目标。") or
             (status=="可交付" and "目标已完成，前往交付。" or "继续任务日志中的目标。"))
         if candidate.level then lines[#lines+1]="任务等级："..candidate.level end

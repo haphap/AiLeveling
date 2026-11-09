@@ -369,6 +369,14 @@ test("世界地图点与小地图点独立且关闭方没有游离图标",functi
     eq(B.Navigation.index,1);eq(next(B.state.completed),nil);eq(current.kind,"objective")
     B.char.paused=false;B.Navigation:SetPlan({fallback={kind="accept",questId=1,position={map=1,x=0.5,y=0.5,startItemId=500}}})
     eq(B.Navigation.Target(B.Navigation:Current()),nil);eq(#B.Navigation:MapPoints(),0);eq(B.Navigation.index,1)
+    B.Navigation:SetPlan({revision=B.state.revision,fallback=current,taskQueue={steps=steps}})
+    B.state.completed[1]=true;B.state.quests[1]=nil;B.state.revision=B.state.revision+1
+    eq(B.Navigation:Current(),nil);eq(#B.Navigation:MapPoints(),2);eq(B.Navigation.index,1)
+    for _,point in ipairs(B.Navigation:MapPoints()) do
+        for _,action in ipairs(point.actions) do assert(action.questId~=1) end
+    end
+    B.Navigation:SetPlan({revision=B.state.revision,fallback=nextGoal})
+    eq(B.Navigation:Current(),nextGoal);eq(#B.Navigation:MapPoints(),1)
     B.finish()
 end)
 test("真实交付界面比较奖励且开关不触发自动领奖",function()

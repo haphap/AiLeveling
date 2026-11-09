@@ -498,8 +498,33 @@ test("同一NPC五项任务全部目标完成后才连续集中交付",function(
     eq(result.taskQueue,nil)
     s.quests[5].objectives[2]=nil;d.ObjectiveTargets=located
     for id=3,5 do s.quests[id].ready=true;s.quests[id].objectives[1].finished=true end
-    check(0)
+    result=check(0)
+    local previous=result
+    s.quests[2]=nil;s.completed[2]=true;s.revision=s.revision+1
+    local model=B.UI.TrackerModel(s,previous,previous.fallback,false)
+    eq(model.unacceptedCount,0);eq(#model.rows,4)
+    for _,row in ipairs(model.rows) do assert(row.questId~=2) end
+    B.state=s;B.plan=previous;nav.Current=function() return previous.fallback end
+    assert(not table.concat(B.UI:TaskLines(false),"\n"):find("任务 2",1,true))
+    assert(loadfile("UI/Plan.lua"))("AiLeveling",B);eq(#B.UI.Plan.Rows(previous),4)
+    B.char={};B.UI.Plan.preview=previous.taskChoices[2]
+    assert(not table.concat(B.UI.Plan:Lines(),"\n"):find("任务 2",1,true))
+    model=B.UI.TrackerModel(s,previous,{kind="turnin",questId=2},false)
+    eq(model.questId,nil);eq(#model.rows,4);eq(model.title,"正在更新行程")
+    local renewed={revision=s.revision,taskChoices={{id="task:2",questId=2,kind="task",status="accept",actions={{kind="accept",questId=2}}}}}
+    model=B.UI.TrackerModel(s,renewed,nil,false);eq(model.unacceptedCount,1)
+    result=plan(s,d,nil,B);eq(result.taskQueue.taskCount,4);eq(#result.taskQueue.steps,4)
+    eq(result.fallback.kind,"turnin")
     s.locked=1;result=plan(s,d,nil,B);eq(result.fallback.questId,1)
+    s.locked=nil
+    for index,id in ipairs({1,3,4,5}) do
+        previous=result;s.quests[id]=nil;s.completed[id]=true;s.revision=s.revision+1
+        model=B.UI.TrackerModel(s,previous,previous.fallback,false)
+        eq(model.unacceptedCount,0);eq(#model.rows,4-index)
+        result=plan(s,d,nil,B);eq(#result.taskChoices,4-index)
+        if index<4 then eq(result.fallback.kind,"turnin")
+        else eq(result.fallback,nil);eq(result.taskQueue,nil) end
+    end
 end)
 test("集中交付只合并实际接取且同一收件人的有效任务",function()
     local B,s,nav,O,a,b=stagedFixture()

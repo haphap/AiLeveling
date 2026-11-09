@@ -222,9 +222,11 @@ function UI.ActionText(action,settings)
     return action.text or ({move="前往下一目的地",accept="接取任务",objective="完成任务目标",turnin="交付任务"})[action.kind] or "继续当前行动"
 end
 
-function UI.QuestStatus(state,id)
+function UI.QuestStatus(state,id,plan)
     local q=(state.quests or {})[id]
-    return q and (q.ready and "可交付" or "已接取") or "未接取"
+    if q then return q.ready and "可交付" or "已接取" end
+    if plan and plan.revision and plan.revision~=state.revision and (state.completed or {})[id] then return "已交付" end
+    return "未接取"
 end
 
 function UI:TaskLines(compact)
@@ -239,7 +241,7 @@ function UI:TaskLines(compact)
     table.sort(rest);for _,id in ipairs(rest) do add(id) end
     local pending,pendingSeen={},{}
     for _,choice in ipairs(plan.taskChoices or {}) do
-        if choice.questId and not quests[choice.questId] and not pendingSeen[choice.questId] then
+        if choice.questId and not quests[choice.questId] and not pendingSeen[choice.questId] and UI.QuestStatus(state,choice.questId,plan)~="已交付" then
             pending[#pending+1]=choice;pendingSeen[choice.questId]=true
         end
     end
@@ -267,9 +269,10 @@ function UI:TaskLines(compact)
     if not suspended and plan.taskOrder and #plan.taskOrder>1 then
         local titles={}
         for _,choice in ipairs(plan.taskOrder) do
-            titles[#titles+1]="["..UI.QuestStatus(state,choice.questId).."] "..(choice.title or ("任务 #"..choice.questId))
+            local status=UI.QuestStatus(state,choice.questId,plan)
+            if status~="已交付" then titles[#titles+1]="["..status.."] "..(choice.title or ("任务 #"..choice.questId)) end
         end
-        lines[#lines+1]="建议顺序："..table.concat(titles," → ").."。"
+        if #titles>0 then lines[#lines+1]="建议顺序："..table.concat(titles," → ").."。" end
     end
     if not suspended and action and action.sharedObjectives and #action.sharedObjectives>1 then
         local titles={}
