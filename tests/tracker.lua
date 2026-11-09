@@ -138,6 +138,14 @@ test("原生更新后清除旧目标和旧任务行且拒绝过期任务点击",
     B.state.quests[2]=nil;B.state.quests[3]=nil;B.plan.taskChoices={};B.plan.taskOrder={}
     B.state.quests[1].objectives={};B.UI:RenderTracker()
     eq(T.objectives[1].shown,false);eq(T.rows[1].shown,false);eq(T.queueScroll.shown,false)
+    B.state.quests[1].objectives={{text="旧目标",finished=true}};B.action.objectiveIndex=1
+    B.UI:RenderTracker();eq(T.model.questId,nil);eq(B.UI.title.value,"正在更新行程")
+    eq(T.model.rows[1].questId,1);eq(T.model.rows[1].status,"已接取")
+    B.state.quests[1].ready=true;B.UI:RenderTracker();eq(T.model.rows[1].status,"可交付")
+    B.action.itemGain=2;B.action.targetId=500;B.UI:RenderTracker();eq(T.model.questId,1)
+    B.action.itemGain=nil;B.action.kind="accept";B.UI:RenderTracker();eq(T.model.questId,nil)
+    B.action.kind="turnin";B.UI:RenderTracker();eq(T.model.questId,1)
+    B.state.quests[1].ready=false;B.UI:RenderTracker();eq(T.model.questId,nil)
     B.finish()
 end)
 test("经验条使用真实角色比例且长文可滚动而不盖住后续列表",function()

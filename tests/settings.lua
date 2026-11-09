@@ -61,7 +61,7 @@ local function setup(fullUI)
     B.Data=F.Data({[1]=q});B.Data.count=1;B.Content=B.Data.content
     B.action={kind="objective",questId=1,objectiveIndex=1}
     local nav={};assert(loadfile("Navigation.lua"))("AiLeveling",nav)
-    B.Navigation={Current=function() return B.action end,RefreshPins=function() end,Target=nav.Navigation.Target}
+    B.Navigation={Current=function() return B.action end,RefreshPins=function() end,Target=nav.Navigation.Target,StaleAction=nav.Navigation.StaleAction}
     B.Dungeon={};B.Transport={InvalidateSample=function() end,InFlight=function() return false end}
     B.State={Refresh=function() B.refreshes=(B.refreshes or 0)+1;B.state.revision=B.state.revision+1 end}
     B.Gear=A.Gear;B.ready=true
@@ -378,6 +378,30 @@ test("世界地图点与小地图点独立且关闭方没有游离图标",functi
     end
     B.Navigation:SetPlan({revision=B.state.revision,fallback=nextGoal})
     eq(B.Navigation:Current(),nextGoal);eq(#B.Navigation:MapPoints(),1)
+    B.state.completed[1]=nil;B.state.quests[1]=nil
+    local accept={kind="accept",questId=1,position={map=1,x=0,y=0}}
+    current.objectiveIndex=1
+    local other={kind="objective",questId=1,objectiveIndex=2,position={map=1,x=0.4,y=0.2}}
+    local delivery={kind="turnin",questId=1,expected=true,position={map=1,x=0.7,y=0.2}}
+    local stages={{stage=accept},{stage=current},{stage=other},{stage=delivery},{stage=nextGoal}}
+    B.Navigation:SetPlan({revision=B.state.revision,fallback=accept,taskQueue={steps=stages}})
+    B.state.quests[1]={objectives={{finished=false},{finished=false}}};B.state.revision=B.state.revision+1
+    eq(B.Navigation:Current(),nil);eq(#B.Navigation:MapPoints(),4)
+    B.Navigation:SetPlan({revision=B.state.revision,fallback=current,taskQueue={steps=stages}})
+    B.state.quests[1].objectives[1].finished=true;B.state.revision=B.state.revision+1
+    eq(B.Navigation:Current(),nil);eq(#B.Navigation:MapPoints(),3)
+    B.Navigation:RefreshPins();eq(pins[1].point.action,other)
+    B.state.quests[1].ready=true;B.state.quests[1].objectives[2].finished=true
+    eq(#B.Navigation:MapPoints(),2);eq(B.Navigation.index,1)
+    local transit={kind="transit",mode="flight",questId=1,position={map=2,x=0.1,y=0.1}}
+    B.Navigation.plan.travelActions={transit,current};B.Navigation.actions={transit,current}
+    eq(B.Navigation:Current(),nil);eq(#B.Navigation:MapPoints(),2)
+    current.itemGain=2;eq(B.Navigation:Current(),transit);current.itemGain=nil
+    delivery.expected=nil;B.Navigation:SetPlan({revision=B.state.revision,fallback=delivery})
+    B.state.quests[1].ready=false;B.state.revision=B.state.revision+1
+    eq(B.Navigation:Current(),nil);eq(#B.Navigation:MapPoints(),0)
+    B.Navigation.manual={map=4,x=0.5,y=0.5};eq(B.Navigation:Current().kind,"manual")
+    eq(B.state.quests[1].objectives[1].finished,true);eq(B.state.completed[1],nil)
     B.finish()
 end)
 test("真实交付界面比较奖励且开关不触发自动领奖",function()

@@ -2,10 +2,23 @@ local _, A = ...
 A.Navigation = { pins = {}, index = 1 }
 local N = A.Navigation
 
-local function staleQuest(action)
-    local plan,state=N.plan,A.state
-    return action and action.questId and plan and plan.revision and state and plan.revision~=state.revision
-        and (state.completed or {})[action.questId] and not (state.quests or {})[action.questId]
+function N.StaleAction(action,state,plan)
+    state,plan=state or A.state,plan or N.plan
+    if not (action and action.questId and plan and plan.revision and state and plan.revision~=state.revision) then return end
+    local active=(state.quests or {})[action.questId]
+    if not active then return (state.completed or {})[action.questId] end
+    if action.kind=="transit" or action.kind=="move" or action.kind=="approach" then
+        local actions=plan.best and plan.best.actions or plan.travelActions
+        local goal=actions and actions[#actions]
+        if goal and goal.questId==action.questId then action=goal end
+    end
+    if action.kind=="accept" then return true end
+    if action.kind=="turnin" and not action.expected then return not active.ready end
+    -- Extra collection may still be needed for other quests using the same stock.
+    if action.kind=="objective" and not (action.itemGain and action.itemGain>0) then
+        local objective=action.objectiveIndex and (active.objectives or {})[action.objectiveIndex]
+        return active.ready or objective and objective.finished
+    end
 end
 
 function N:Initialize()
@@ -92,7 +105,7 @@ function N:Current()
     if hearth then return hearth end
     if self.manual then return {kind = "manual", title = "手动目的地", position = self.manual} end
     local action=self.actions and self.actions[self.index]
-    if not staleQuest(action) then return action end
+    if not N.StaleAction(action) then return action end
 end
 
 function N:Near(position,target,radius)
@@ -139,7 +152,7 @@ end
 function N:MapPoints()
     local points,seen={},{}
     local function add(action)
-        if staleQuest(action) then return end
+        if N.StaleAction(action) then return end
         local pos=N.Target(action)
         if not pos then return end
         local key=table.concat({pos.map,pos.x,pos.y},":")
@@ -156,7 +169,7 @@ function N:MapPoints()
     end
     add(self:Current())
     if self.manual then return points end
-    if #points==0 and not staleQuest(self.actions and self.actions[self.index]) then return points end
+    if #points==0 and not N.StaleAction(self.actions and self.actions[self.index]) then return points end
     for i=self.index+1,#(self.actions or {}) do add(self.actions[i]) end
     local queue=self.plan and self.plan.taskQueue
     for _,step in ipairs(queue and queue.steps or {}) do

@@ -250,6 +250,7 @@ function UI:TaskLines(compact)
     for _,id in ipairs(ids) do if quests[id].ready then ready=ready+1 end end
     local lines={string.format("任务总览 · 已接取 %d 项 · 可交付 %d 项 · 未接取 %d 项",#ids,ready,#pending)}
     local action=A.Navigation and A.Navigation:Current()
+    if A.Navigation and A.Navigation.StaleAction and A.Navigation.StaleAction(action,state,plan) then action=nil end
     local suspended=(A.char and A.char.paused) or (A.Navigation and A.Navigation.manual) or
         (A.Transport and A.Transport.InFlight and A.Transport:InFlight())
     local recommended=not suspended and action and quests[action.questId] and action.questId

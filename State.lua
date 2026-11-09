@@ -323,6 +323,7 @@ function State:Refresh(force)
         s.revision = s.revision + 1
         self.fingerprint = key
         if A.indexReady then A:Replan() end
+        A.Navigation:RefreshPins()
     end
     A.QuestAssist:Update()
     A.dirty = true

@@ -48,7 +48,8 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     A.char={skipped={},samples={},turnIns={}}
     A.settings={role="DAMAGER",gearPreference="xp",minutes=60,dungeons=true}
     A.indexReady=true;A.requestedItems={};A.State.confirmed={}
-    A.Navigation={AttachNode=function() end}
+    local pins=0
+    A.Navigation={AttachNode=function() end,RefreshPins=function() pins=pins+1;assert(A.state.quests[42]) end}
     A.QuestAssist.Update=function() end
     A.Replan=function() end
     local x=0.1
@@ -70,6 +71,7 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     local dual=false
     C_SpellBook={IsSpellKnown=function(id) return id==674 and dual end}
     A.State:Refresh(true)
+    eq(pins,1)
     eq(captured.quests[42],nil);eq(captured.revision,1);eq(A.state.quests[42].ready,false);eq(A.state.questCount,1);eq(A.state.questLimit,20)
     local revision=A.state.revision
     x=0.2;A.State:Position();eq(A.state.revision,revision);eq(A.state.position.x,0.2)
@@ -79,6 +81,7 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     eq(A.state.revision,before.revision+1);eq(before.quests[42].objectives[1].text,"目标待加载")
     before=A.state;objectiveType="event";A.State:Refresh();eq(A.state.revision,before.revision+1)
     before=A.state;A.State:Refresh();eq(A.state.revision,before.revision)
+    eq(pins,4)
     local oldInfo,oldInside=GetInstanceInfo,IsInInstance
     local difficulty,calls=1,0
     IsInInstance=function() return true end

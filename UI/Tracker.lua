@@ -111,7 +111,8 @@ end
 function UI.TrackerModel(state,plan,action,paused)
     state,plan=state or {},plan or {}
     local quests=state.quests or {}
-    if action and action.questId and UI.QuestStatus(state,action.questId,plan)=="已交付" then action=nil end
+    if A.Navigation and A.Navigation.StaleAction and A.Navigation.StaleAction(action,state,plan) or
+        action and action.questId and UI.QuestStatus(state,action.questId,plan)=="已交付" then action=nil end
     local model={rows={},objectives={},acceptedCount=0,unacceptedCount=0,title=action and action.title or "正在寻找下一步",kind=action and action.kind,
         instruction=action and UI.ActionText(action,A.settings or {}) or "",questId=action and action.questId}
     local active=action and quests[action.questId]
