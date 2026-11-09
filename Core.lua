@@ -36,6 +36,7 @@ function A:NormalizeSettings(settings)
 end
 
 function A:NormalizeCharacter(char)
+    char.ignoreRepair=char.ignoreRepair==true or nil
     for _,key in ipairs({"skipped","deferredChains","samples","turnIns","pendingResets"}) do if type(char[key])~="table" then char[key]={} end end
     for _,key in ipairs({"skipped","deferredChains"}) do
         for id,value in pairs(char[key]) do

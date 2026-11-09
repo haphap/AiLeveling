@@ -1,6 +1,11 @@
 local _,A=...
 A.Supplies={}
 local S=A.Supplies
+function S:IgnoreRepair()
+    if not A.ready then return end
+    A.char.ignoreRepair=true
+    A:RequestRefresh()
+end
 local function clone(value)
     if type(value)~="table" then return value end
     local result={}
@@ -61,6 +66,7 @@ function S.Cursor(state)
     cursor.bags=clone(state.bags or {})
     cursor.inventory=clone(state.inventory or {bags={{family=0,free=state.freeSlots or 0}},slots={}})
     cursor.durability,cursor.unlocked,cursor.level=state.durability,clone(state.unlocked or {}),state.level
+    cursor.ignoreRepair=state.ignoreRepair
     return cursor
 end
 local function remove(cursor,id,count)
@@ -121,7 +127,7 @@ function S.Apply(action,cursor,metadata)
     local projected=clone(cursor)
     local logOK,logIssue=S.ApplyQuestLog(action,projected)
     if not logOK then return nil,{kind="log",text=logIssue} end
-    if action.minDurability and (not projected.durability or projected.durability<action.minDurability) then
+    if not projected.ignoreRepair and action.minDurability and (not projected.durability or projected.durability<action.minDurability) then
         return nil,{kind="repair",text=projected.durability and "装备耐久低于本段要求" or "装备耐久尚未确认",durability=action.minDurability}
     end
     local required={}
@@ -162,7 +168,7 @@ function S.Done(action,state)
     return true
 end
 function S.Key(cursor)
-    local parts={tostring(cursor.questCount),tostring(cursor.durability)}
+    local parts={tostring(cursor.questCount),tostring(cursor.durability),tostring(cursor.ignoreRepair)}
     for _,id in ipairs(ids(cursor.bags)) do parts[#parts+1]=id..":"..cursor.bags[id] end
     for index,bag in pairs(cursor.inventory.bags) do parts[#parts+1]="bag"..index..":"..bag.free end
     for _,id in ipairs(ids(cursor.activeQuests)) do parts[#parts+1]="quest"..id end
@@ -239,7 +245,8 @@ function S.Compile(actions,state,content)
     end
     local reason
     local function fulfill(action,cursor,seen)
-        if action.kind=="service" and S.Done(action,{bags=cursor.bags,inventory=cursor.inventory,durability=cursor.durability,itemMetadata=metadata}) then
+        if action.kind=="service" and (action.serviceKind=="repair" and cursor.ignoreRepair or
+            S.Done(action,{bags=cursor.bags,inventory=cursor.inventory,durability=cursor.durability,itemMetadata=metadata})) then
             return {{cursor=cursor,actions={}}}
         end
         local after,issue=S.Apply(action,cursor,metadata)
@@ -350,14 +357,19 @@ function S:Snapshot(state)
         state.inventory.slots[#state.inventory.slots+1]={id=entry.id,count=entry.count,bag=entry.bag,
             questKnown=info~=nil,questItem=info and (info.isQuestItem or info.questID~=nil),locked=entry.locked}
     end
+    local durabilityKnown
     if GetInventoryItemDurability then
         state.durability=1
         for slot=1,19 do
             local current,maximum=GetInventoryItemDurability(slot)
-            if current and maximum and maximum>0 then state.durability=math.min(state.durability,current/maximum) end
+            if current and maximum and maximum>0 then
+                durabilityKnown=true;state.durability=math.min(state.durability,current/maximum)
+            end
         end
     end
-    local key={tostring(state.questCount),tostring(state.questLimit),tostring(state.durability)}
+    if A.char and durabilityKnown and state.durability>=0.2 then A.char.ignoreRepair=nil end
+    state.ignoreRepair=A.char and A.char.ignoreRepair==true or false
+    local key={tostring(state.questCount),tostring(state.questLimit),tostring(state.durability),tostring(state.ignoreRepair)}
     for bag,space in pairs(state.inventory.bags) do key[#key+1]="bag"..bag..":"..tostring(space.family)..":"..space.free end
     for _,id in ipairs(ids(state.itemMetadata)) do
         local item=state.itemMetadata[id]
@@ -394,7 +406,7 @@ function S.Itinerary(content,from,actions,state)
 end
 
 function S.Fallback(state,data,blocked)
-    local need=state.durability and state.durability<0.2 and "repair" or (state.freeSlots==0 and "vendor")
+    local need=not state.ignoreRepair and state.durability and state.durability<0.2 and "repair" or (state.freeSlots==0 and "vendor")
     local missing
     if not need then
         for _,id in ipairs(ids(blocked)) do
@@ -432,7 +444,7 @@ function S.Fallback(state,data,blocked)
                 local actions={}
                 for _,action in ipairs(route.actions) do actions[#actions+1]=action end
                 actions[#actions+1]={kind="service",serviceKind=need,serviceId=id,node=point.node,
-                    position=data.content.nodes[point.node].position,title=point.title,text=text.."；费用或整理方式到店确认",
+                    position=data.content.nodes[point.node].position,title=point.title,text=text.."。",
                     serviceGoal=need=="repair" and {durability=0.2} or need=="supply" and {items=targets} or {freeSlots=1},referenceSeconds=seconds,sampleKind="recovery"}
                 local total=route.seconds+seconds
                 if not best or total<best.seconds then best={id="service:"..id,title=point.title,kind="service",actions=actions,seconds=total,xp=0,rate=0} end

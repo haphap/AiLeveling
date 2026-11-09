@@ -653,6 +653,10 @@ function P.Build(state, data, options)
         result.fallback={kind="selectionBlocked",title="所选行程暂不可执行",
             text=(result.selectionBlocked or "等待可用任务与位置").."；可在行程页恢复自动选择。"}
     end
+    if result.maintenance then
+        local choices=batch and A.Dungeon.TaskBatchStage(result.taskChoices,state,data) or result.taskChoices
+        result.taskOrder,result.taskQueue=P.TaskOrder(state,choices,data)
+    end
     if not result.best and not result.sessionActive and not result.maintenance and not result.serviceStop and not result.selectionActive then
         -- Reference quests use straight-line travel estimates.
         result.unverified = true

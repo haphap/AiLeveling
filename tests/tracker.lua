@@ -189,9 +189,15 @@ test("重排普通步骤和队列不触碰战斗中安全物品属性",function(
 end)
 test("商店事件触发刷新且主服务卡片显示实时全修费用与金币缺口",function()
     local B=ready();assert(loadfile("Merchant.lua"))("AiLeveling",B)
+    assert(loadfile("Planner/Supplies.lua"))("AiLeveling",B)
     B.action={kind="service",serviceKind="repair",npcId=78,title="铁匠",serviceGoal={durability=0.2}}
     B.state.merchant={npcId=78,canRepair=true,repairCost=123,items={}};B.state.money=100
     B.UI:RenderTracker();assert(B.UI.body.value:find("自费全修：123 铜",1,true));assert(B.UI.body.value:find("还差 23 铜",1,true))
+    local T=B.UI.tracker;eq(T.skip.text.value,"忽略维修");eq(T.queuePanel.shown,true);eq(#T.model.rows,3)
+    B.action.questId=1
+    T.skip.scripts.OnClick();eq(B.char.ignoreRepair,true);assert(B.refreshAt)
+    eq(B.char.skipped[1],nil);eq(B.state.quests[1].objectives[1].finished,nil)
+    B.action={kind="objective",questId=1,title="当前任务"};B.UI:RenderTracker();eq(T.skip.text.value,"暂缓")
     local event=B.frame.scripts.OnEvent
     event(nil,"MERCHANT_SHOW");eq(B.Merchant.open,true);assert(B.refreshAt)
     for _,name in ipairs({"MERCHANT_UPDATE","MERCHANT_FILTER_ITEM_UPDATE"}) do B.refreshAt=nil;event(nil,name);assert(B.refreshAt) end

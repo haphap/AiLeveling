@@ -111,8 +111,16 @@ end)
 test("未知维修费用先提供到店确认卡片且不预记任务经验",function()
     local s,q=state(16),F.Quest(1);s.durability=0.1;q.combat=true
     local d=services({[1]=q});d.content.services.smith.repair.costMax=nil
+    d.Target=function() return d.content.nodes.goal.position end
     local p=plan(s,d);eq(p.best.kind,"service");eq(p.best.xp,0);eq(p.maintenance,true)
     local last=p.best.actions[#p.best.actions];eq(last.serviceKind,"repair");eq(S.Done(last,s),false)
+    eq(p.taskOrder[1].questId,1)
+    s.ignoreRepair=true;p=plan(s,d);assert(p.best.xp>0);eq(p.maintenance,nil)
+    for _,action in ipairs(p.best.actions) do assert(action.serviceKind~="repair") end
+    eq(p.best.resources.supplies.durability,0.1);eq(s.durability,0.1);eq(S.Done(last,s),false)
+    local scripts=S.Compile({last},s,d.content);eq(#scripts[1].actions,0);eq(scripts[1].cursor.durability,0.1)
+    s.freeSlots=0;local service=S.Fallback(s,d,{})
+    eq(service.actions[#service.actions].serviceKind,"vendor")
 end)
 test("副本出发补齐物品与耐久并保留内部消耗和返程资源",function()
     local s=state(16);s.durability=0.1;F.Party(s)
@@ -176,9 +184,15 @@ test("原生库存元数据保护任务物品并读取实际耐久",function()
     C_Container={GetContainerItemQuestInfo=function() return {isQuestItem=true} end}
     GetInventoryItemDurability=function(slot) if slot==16 then return 5,100 end end
     local s=state(0);s.bags[900]=2;s.bagEntries={{id=900,count=2,bag=0,slot=1}}
-    local B={Navigation=F.Navigation,Content={items={},sources={},dungeons={}},requestedItems={},Data={GetQuest=function() return nil end}}
+    local B={Navigation=F.Navigation,Content={items={},sources={},dungeons={}},char={ignoreRepair=true},requestedItems={},Data={GetQuest=function() return nil end}}
     assert(loadfile("Planner/Supplies.lua"))("AiLeveling",B)
     B.Supplies:Snapshot(s);eq(s.durability,0.05);eq(s.itemMetadata[900].stackSize,10);eq(s.inventory.slots[1].questItem,true)
+    eq(s.ignoreRepair,true);eq(B.char.ignoreRepair,true)
+    local nextState=state(0);local before=B.Supplies:Snapshot(nextState);eq(nextState.ignoreRepair,true)
+    GetInventoryItemDurability=function() end
+    B.Supplies:Snapshot(nextState);eq(nextState.ignoreRepair,true);eq(B.char.ignoreRepair,true)
+    GetInventoryItemDurability=function(slot) if slot==16 then return 100,100 end end
+    local after=B.Supplies:Snapshot(nextState);assert(before~=after);eq(B.char.ignoreRepair,nil);eq(nextState.ignoreRepair,false)
     for _,name in ipairs(names) do _G[name]=saved[name] end
 end)
 

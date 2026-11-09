@@ -177,14 +177,18 @@ function UI:CreateTracker()
     local actions={
         {"暂停",function() A:TogglePause() end},
         {"锁定",function() local action=A.Navigation:Current();local ok,why=A.Selection:LockQuest(action and action.questId);if not ok then A:Message(why) end end},
-        {"暂缓",function() local action=A.Navigation:Current();if action and action.questId then A.Selection:Skip(action.questId) end end},
+        {"暂缓",function()
+            local action=A.Navigation:Current()
+            if action and action.kind=="service" and action.serviceKind=="repair" then A.Supplies:IgnoreRepair()
+            elseif action and action.questId then A.Selection:Skip(action.questId) end
+        end},
         {"详情",function() self:ToggleDetails() end},
         {"收起",function() self.folded=not self.folded;self:LayoutCard() end},
     }
     for i,spec in ipairs(actions) do
         local b=self:Button(T.tools,spec[1],60,spec[2]);b:SetPoint("TOPLEFT",(i-1)*72,0)
         b:SetBackdropColor(0,0,0,0);b.text:SetTextColor(unpack(palette.muted))
-        if i==1 then T.pause=b elseif i==5 then self.fold=b end
+        if i==1 then T.pause=b elseif i==3 then T.skip=b elseif i==5 then self.fold=b end
     end
     local nav=CreateFrame("Frame","AiLevelingNavigation",UIParent)
     self.navFrame=nav;nav:SetSize(420,90);nav:SetPoint("CENTER",UIParent,"CENTER",0,-110)
@@ -237,9 +241,10 @@ function UI:RenderTracker()
     T.experience:SetText(string.format("%d 级  ·  %.0f%%",state.level or 1,ratio*100))
     T.xpFill:SetWidth(math.max(1,360*ratio));T.xpFill:SetShown(ratio>0)
     local r,g,b=self:Accent();T.xpFill:SetColorTexture(r,g,b,0.70);T.rail:SetColorTexture(r,g,b,0.90)
-    local serviceLabel=action and action.kind=="service" and ({train="训练",bind="设置炉石"})[action.serviceKind]
+    local serviceLabel=action and action.kind=="service" and ({train="训练",bind="设置炉石",repair="维修"})[action.serviceKind]
     T.step:SetText(A.char.paused and "已暂停" or serviceLabel or (verbs[model.kind] or "当前步骤"))
     T.pause.text:SetText(A.char.paused and "继续" or "暂停")
+    T.skip.text:SetText(action and action.kind=="service" and action.serviceKind=="repair" and "忽略维修" or "暂缓")
     self.title:SetText(model.title)
     local lines={model.instruction}
     if model.destination then lines[#lines+1]=model.destination end
