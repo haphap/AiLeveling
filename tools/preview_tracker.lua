@@ -12,7 +12,7 @@ local function widget(kind,parent)
     if parent then parent.children[#parent.children+1]=w end
     function w:SetSize(x,y) self.width,self.height=x,y end
     function w:SetWidth(x) self.width=x end;function w:SetHeight(y) self.height=y end
-    function w:GetWidth() return self.width or width(self.value,self.size) end
+    function w:GetWidth() return self.width or math.ceil(width(self.value,self.size))+2 end
     function w:GetHeight() return self.height or self:GetStringHeight() end
     function w:SetPoint(point,a,b,c,d)
         local relative,relativePoint,x,y
@@ -50,7 +50,8 @@ local function widget(kind,parent)
 end
 local dungeonPreview=arg[1]=="dungeon"
 local canvasWidth=dungeonPreview and 700 or 560
-UIParent=widget("Root");UIParent:SetSize(canvasWidth,760)
+local canvasHeight=dungeonPreview and 760 or 1100
+UIParent=widget("Root");UIParent:SetSize(canvasWidth,canvasHeight)
 CreateFrame=function(kind,_,parent) return widget(kind,parent) end
 STANDARD_TEXT_FONT="preview"
 C_Map={GetMapInfo=function() return {name="艾尔文森林"} end}
@@ -61,13 +62,17 @@ local A={settings={fontScale=1,accent="teal",density="normal",arrow=true,distanc
         [18]={title="矿工归来",ready=true,objectives={}},
         [47]={title="把收集的金砂交给治安官",objectives={{numFulfilled=5,numRequired=10}}},
     }},Selection={CanChoose=function() return true end}}
+if not dungeonPreview and arg[2]=="large" then A.settings.fontScale=1.2 end
 local action={kind="objective",questId=7,title="狗头人的威胁",text="清理矿洞外的狗头人，完成后返回北郡修道院。",position={map=1429,x=0.5,y=0.5}}
-A.Navigation={Current=function() return action end}
+assert(loadfile("Navigation.lua"))("AiLeveling",A)
+A.Navigation.Current=function() return action end
 A.plan={revision=1,unverified=true,taskChoices={},taskOrder={}}
 for _,id in ipairs({7,18,33,47}) do
     local q=A.state.quests[id]
     local c={questId=id,title=q.title,kind="task",actions={{kind=q.ready and "turnin" or "objective",title=q.title}}}
-    if id==7 then c.orderBasis="movement-xp";c.timing={seconds=48,low=48,high=48,initial=true,coarse=true,movementOnly=true} end
+    c.remainingXP=({[7]=480,[18]=760,[33]=625,[47]=900})[id]
+    c.timing={seconds=({[7]=135,[18]=48,[33]=265,[47]=380})[id]}
+    if id==7 then c.orderBasis="movement-xp" end
     A.plan.taskChoices[#A.plan.taskChoices+1]=c;A.plan.taskOrder[#A.plan.taskOrder+1]=c
 end
 for _,choice in ipairs(A.plan.taskChoices) do
@@ -136,7 +141,7 @@ local anchors={TOPLEFT={0,0},TOP={0.5,0},TOPRIGHT={1,0},LEFT={0,0.5},CENTER={0.5
 local boxes={}
 local function box(w)
     if boxes[w] then return boxes[w] end
-    if w==UIParent then return {x=0,y=0,w=canvasWidth,h=760} end
+    if w==UIParent then return {x=0,y=0,w=canvasWidth,h=canvasHeight} end
     if w.all then local value=box(w.all);boxes[w]=value;return value end
     local ww,hh=w:GetWidth(),w:GetHeight()
     local x,y=0,0

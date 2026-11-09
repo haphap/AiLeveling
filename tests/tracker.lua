@@ -74,6 +74,9 @@ test("受持有上限限制时仍按NPC归组并提示先交付已备齐任务",
 end)
 test("步骤界面突出当前任务真实进度且后续列表去重可点击",function()
     local B=ready();local T=B.UI.tracker
+    B.plan.taskChoices[1].remainingXP=1250;B.plan.taskChoices[1].timing={seconds=135}
+    B.plan.taskChoices[2].remainingXP=0;B.plan.taskChoices[2].timing={seconds=0}
+    B.plan.taskChoices[3].remainingXP=900;B.plan.taskChoices[3].timing={seconds=3665}
     assert(loadfile("Planner/Flights.lua"))("AiLeveling",B)
     local action=B.action
     action.text="消灭狗头人，3/10";action.objectiveIndex=1;action.position.entityName="狗头人营地"
@@ -89,7 +92,14 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     eq(T.rows[1].number.fontSize,T.rows[1].title.fontSize)
     eq(T.rows[1].number.point[3],T.rows[1].title.point[3])
     assert(T.queueScroll.width+16+24<=T.queuePanel.width)
-    eq(T.rows[2].progress.value,"2/4");eq(T.rows[1].enabled,true)
+    assert(B.UI.body.value:find("经验 1250",1,true));assert(B.UI.body.value:find("路程 2分15秒",1,true))
+    assert(T.rows[1].metrics.value:find("经验 0",1,true));assert(T.rows[1].metrics.value:find("路程 0秒",1,true))
+    assert(T.rows[2].metrics.value:find("路程 1小时01分",1,true))
+    assert(T.rows[1].title.fontSize>=15);assert(T.rows[1].progress.fontSize>=13)
+    assert(T.rows[1].progress.color[1]>=0.75);assert(T.queuePanel.color[4]>=0.9)
+    eq(T.rows[2].progress.value,"物品 2/4");eq(T.rows[1].enabled,true)
+    B.state.quests[3].objectives[1].text="收集物品";B.UI:RenderTracker()
+    eq(T.rows[2].progress.value,"收集物品 · 2/4")
     T.rows[1].scripts.OnClick();eq(B.char.locked,2)
     B.finish()
 end)
@@ -104,7 +114,7 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     assert(T.queueLabel.value:find("未接取 1",1,true))
     B.state.quests[4]={title="真实接取的任务",objectives={{text="收集 1/5",numFulfilled=1,numRequired=5}}}
     B.UI:RenderTracker()
-    eq(T.rows[3].status.value,"已接取");eq(T.rows[3].progress.value,"1/5")
+    eq(T.rows[3].status.value,"已接取");eq(T.rows[3].progress.value,"收集 1/5")
     eq(T.model.acceptedCount,3);eq(T.model.unacceptedCount,0)
     B.state.quests[4].ready=true;B.UI:RenderTracker();eq(T.rows[3].status.value,"可交付")
     B.finish()
@@ -117,8 +127,15 @@ test("接取状态标签随放弃和暂缓更新且大字号仍留出标题空�
     eq(T.rows[2].progress.value,"先接取，再推进任务目标")
     B.state.skipped={[3]=true};B.UI:RenderTracker()
     eq(T.rows[2].status.value,"未接·暂缓");eq(T.rows[2].enabled,false)
+    T.rows[2].title.measuredHeight=90;T.rows[2].progress.measuredHeight=50
     B:SetOption("fontScale",1.2)
-    assert(32+T.rows[2].title.width+T.rows[2].statusBack.width<=T.rows[2].width)
+    local row=T.rows[2]
+    eq(row.title.width,row.width-32)
+    assert(32+row.progress.width+row.statusBack.width+8<=row.width)
+    assert(-row.status.point[3]>-row.title.point[3]+row.title:GetStringHeight())
+    assert(-row.metrics.point[3]>=-row.progress.point[3]+row.progress:GetStringHeight())
+    assert(row.height>=-row.metrics.point[3]+row.metrics:GetStringHeight())
+    assert(row.metrics.value:find("经验 —",1,true));assert(row.metrics.value:find("路程 —",1,true))
     B.finish()
 end)
 test("未来行动中的交付预期不能把未接任务显示成已接或可交付",function()

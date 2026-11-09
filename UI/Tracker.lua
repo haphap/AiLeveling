@@ -1,8 +1,21 @@
 local _,A=...
 local UI=A.UI
-local palette={white={0.92,0.95,0.97},muted={0.57,0.65,0.70},gold={0.95,0.76,0.37},green={0.42,0.84,0.63}}
+local palette={white={0.97,0.98,1},muted={0.78,0.84,0.89},gold={1,0.83,0.45},green={0.55,0.95,0.72}}
 local verbs={taskReview="任务建议",accept="接取",objective="进行中",turnin="交付",move="前往目的地",transit="交通",service="补给",
     flight="飞行中",hearthCast="炉石返回",manual="手动目的地",pvpEnter="进入战场",pvpLeave="离开战场",dungeonBlocked="进入受限",dungeonWait="等待队伍",dungeonEnter="进入副本",dungeonLeave="离开副本",dungeonRun="副本进行中",dungeonEnd="结束本轮"}
+
+local function metrics(choice)
+    local xp=choice and choice.remainingXP
+    local seconds=choice and choice.timing and choice.timing.seconds
+    local time="—"
+    if seconds then
+        seconds=math.ceil(seconds)
+        if seconds>=3600 then time=string.format("%d小时%02d分",math.floor(seconds/3600),math.floor(seconds/60)%60)
+        elseif seconds>=60 then time=string.format("%d分%02d秒",math.floor(seconds/60),seconds%60)
+        else time=string.format("%d秒",seconds) end
+    end
+    return "经验 "..(xp and string.format("%.0f",xp) or "—").."  ·  路程 "..time
+end
 
 function UI.TrackerModel(state,plan,action,paused)
     state,plan=state or {},plan or {}
@@ -47,6 +60,7 @@ function UI.TrackerModel(state,plan,action,paused)
     for _,choice in ipairs(plan.taskChoices or {}) do
         choices[choice.questId]=choices[choice.questId] or choice
     end
+    if action and choices[action.questId] then model.metrics=metrics(choices[action.questId]) end
     if A.TaskGuide then groups,byQuest=A.TaskGuide.DeliveryGroups(plan.taskChoices,state,plan.taskOrder) end
     local currentGroup=action and byQuest[action.questId]
     model.includesCurrent=currentGroup~=nil
@@ -67,12 +81,14 @@ function UI.TrackerModel(state,plan,action,paused)
         local counts={}
         for _,objective in ipairs(q and q.objectives or {}) do
             if objective.numRequired and objective.numRequired>0 then
-                counts[#counts+1]=string.format("%d/%d",objective.numFulfilled or 0,objective.numRequired)
+                local count=string.format("%d/%d",objective.numFulfilled or 0,objective.numRequired)
+                local label=objective.text
+                counts[#counts+1]=label and label~="" and (label:find("%d+%s*/%s*%d+") and label or label.." · "..count) or count
             end
         end
         model.rows[#model.rows+1]={questId=id,title=q and q.title or step.title or ("任务 #"..id),
             kind=q and (q.ready and "turnin" or "objective") or "accept",
-            accepted=q~=nil,status=UI.QuestStatus(state,id),
+            accepted=q~=nil,status=UI.QuestStatus(state,id),metrics=metrics(candidate),
             progress=q and (q.ready and "目标已完成，前往交付" or (#counts>0 and table.concat(counts," · ") or "查看任务日志中的目标")) or
                 (candidate and candidate.acceptBlocked or candidate and candidate.requireCheck and "先确认任务当前是否开放" or "先接取，再推进任务目标"),deferred=deferred,candidate=candidate}
         if candidate and candidate.lowValue then
@@ -150,27 +166,27 @@ function UI:CreateTracker()
     if p then f:ClearAllPoints();f:SetPoint(p[1],UIParent,p[2],p[3],p[4]) end
     self:Movable(f,"position")
     local T=self.tracker
-    T.zone=text(f,15);T.zone:SetPoint("TOPLEFT",2,-2);T.zone:SetWidth(226);T.zone:SetMaxLines(1)
-    T.experience=text(f,11,palette.muted);T.experience:SetPoint("TOPRIGHT",-2,-5);T.experience:SetJustifyH("RIGHT")
+    T.zone=text(f,16);T.zone:SetPoint("TOPLEFT",2,-2);T.zone:SetWidth(226);T.zone:SetMaxLines(1)
+    T.experience=text(f,13,palette.muted);T.experience:SetPoint("TOPRIGHT",-2,-5);T.experience:SetJustifyH("RIGHT")
     T.xpBack=f:CreateTexture(nil,"BACKGROUND");T.xpBack:SetColorTexture(1,1,1,0.10)
     T.xpBack:SetPoint("TOPLEFT",0,-28);T.xpBack:SetSize(360,2)
     T.xpFill=f:CreateTexture(nil,"ARTWORK");T.xpFill:SetPoint("TOPLEFT",0,-28);T.xpFill:SetSize(1,2)
     T.card=CreateFrame("Frame",nil,f,"BackdropTemplate")
     T.card:SetPoint("TOPLEFT",0,-42);T.card:SetSize(360,150)
     T.card:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1})
-    T.card:SetBackdropColor(0.035,0.047,0.057,0.90);T.card:SetBackdropBorderColor(0.30,0.38,0.42,0.30)
+    T.card:SetBackdropColor(0.025,0.035,0.05,0.96);T.card:SetBackdropBorderColor(0.30,0.38,0.42,0.50)
     T.rail=T.card:CreateTexture(nil,"ARTWORK");T.rail:SetPoint("TOPLEFT",0,-1);T.rail:SetPoint("BOTTOMLEFT",0,1);T.rail:SetWidth(2)
-    T.step=text(T.card,10,"accent");T.step:SetPoint("TOPLEFT",16,-13)
-    self.title=text(T.card,17);self.title:SetPoint("TOPLEFT",16,-34);self.title:SetWidth(326)
+    T.step=text(T.card,12,"accent");T.step:SetPoint("TOPLEFT",16,-13)
+    self.title=text(T.card,19);self.title:SetPoint("TOPLEFT",16,-36);self.title:SetWidth(326)
     T.currentScroll=CreateFrame("ScrollFrame",nil,T.card,"UIPanelScrollFrameTemplate")
     T.currentScroll:SetSize(308,80)
     T.currentChild=CreateFrame("Frame",nil,T.currentScroll);T.currentChild:SetSize(302,80);T.currentScroll:SetScrollChild(T.currentChild)
-    self.body=text(T.currentChild,12,palette.white);self.body:SetPoint("TOPLEFT");self.body:SetWidth(302)
+    self.body=text(T.currentChild,14,palette.white);self.body:SetPoint("TOPLEFT");self.body:SetWidth(302)
     T.objectives={}
-    T.queueLabel=text(f,10,palette.muted)
+    T.queueLabel=text(f,12,palette.white)
     T.queuePanel=CreateFrame("Frame",nil,f,"BackdropTemplate");T.queuePanel:SetSize(360,144)
     T.queuePanel:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1})
-    T.queuePanel:SetBackdropColor(0.025,0.04,0.05,0.40);T.queuePanel:SetBackdropBorderColor(0.30,0.38,0.42,0.20)
+    T.queuePanel:SetBackdropColor(0.025,0.035,0.05,0.94);T.queuePanel:SetBackdropBorderColor(0.30,0.38,0.42,0.50)
     T.queueScroll=CreateFrame("ScrollFrame",nil,T.queuePanel,"UIPanelScrollFrameTemplate");T.queueScroll:SetSize(308,120)
     T.queueScroll:SetPoint("TOPLEFT",16,-12)
     T.queueChild=CreateFrame("Frame",nil,T.queueScroll);T.queueChild:SetSize(302,120);T.queueScroll:SetScrollChild(T.queueChild)
@@ -212,14 +228,17 @@ function UI:TrackerRow(index)
     if T.rows[index] then return T.rows[index] end
     local row=CreateFrame("Button",nil,T.queueChild,"BackdropTemplate")
     row:SetWidth(302);row:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8"});row:SetBackdropColor(0,0,0,0)
-    row.group=text(row,11,palette.gold);row.group:SetPoint("TOPLEFT",0,-6);row.group:SetWidth(302)
-    row.number=text(row,12,palette.muted);row.number:SetPoint("TOPLEFT",0,-8);row.number:SetWidth(24)
+    row.group=text(row,13,palette.gold);row.group:SetPoint("TOPLEFT",0,-6);row.group:SetWidth(302)
+    row.number=text(row,15,palette.muted);row.number:SetPoint("TOPLEFT",0,-8);row.number:SetWidth(24)
     row.number:SetJustifyH("RIGHT");row.number:SetMaxLines(1)
-    row.title=text(row,12);row.title:SetPoint("TOPLEFT",32,-8);row.title:SetWidth(196)
+    row.title=text(row,15);row.title:SetPoint("TOPLEFT",32,-8);row.title:SetWidth(270)
     row.statusBack=row:CreateTexture(nil,"BACKGROUND");row.statusBack:SetPoint("TOPRIGHT",0,-5)
-    row.status=text(row,10,palette.muted);row.status:SetPoint("TOPRIGHT",-2,-8)
-    row.status:SetJustifyH("CENTER");row.status:SetWidth(64);row.status:SetMaxLines(1)
-    row.progress=text(row,10,palette.muted);row.progress:SetPoint("TOPLEFT",32,-27);row.progress:SetWidth(270)
+    row.status=text(row,12,palette.muted);row.status:SetPoint("TOPRIGHT",-2,-8)
+    row.status:SetJustifyH("CENTER");row.status:SetMaxLines(1)
+    row.progress=text(row,13,palette.muted)
+    row.metrics=text(row,13,palette.gold);row.metrics:SetWidth(270)
+    row.separator=row:CreateTexture(nil,"BACKGROUND");row.separator:SetColorTexture(0.6,0.7,0.8,0.15)
+    row.separator:SetPoint("BOTTOMLEFT",0,0);row.separator:SetSize(302,1)
     row:SetScript("OnEnter",function() row:SetBackdropColor(0.15,0.23,0.27,0.35) end)
     row:SetScript("OnLeave",function() row:SetBackdropColor(0,0,0,0) end)
     row:SetScript("OnClick",function()
@@ -250,7 +269,8 @@ function UI:RenderTracker()
     self.title:SetText(model.title)
     local lines={model.instruction}
     if model.destination then lines[#lines+1]=model.destination end
-    if model.hint and not A.char.paused then lines[#lines+1]="|cff84969f"..model.hint.."|r" end
+    if model.metrics then lines[#lines+1]="|cffffd474"..model.metrics.."|r" end
+    if model.hint and not A.char.paused then lines[#lines+1]="|cffc7d6e3"..model.hint.."|r" end
     if plan.selectionBlocked then lines[#lines+1]=plan.selectionBlocked end
     if plan.lockedBlocked and not plan.unverified then lines[#lines+1]=plan.lockedBlocked end
     if plan.gearTargetBlocked then lines[#lines+1]=plan.gearTargetBlocked end
@@ -275,8 +295,8 @@ function UI:RenderTracker()
         local row=T.objectives[i]
         if not row then
             row=CreateFrame("Frame",nil,T.currentChild);row:SetWidth(302)
-            row.text=text(row,12);row.text:SetPoint("TOPLEFT");row.text:SetWidth(250)
-            row.count=text(row,11,palette.muted);row.count:SetPoint("TOPRIGHT");row.count:SetJustifyH("RIGHT")
+            row.text=text(row,14);row.text:SetPoint("TOPLEFT");row.text:SetWidth(250)
+            row.count=text(row,13,palette.muted);row.count:SetPoint("TOPRIGHT");row.count:SetJustifyH("RIGHT")
             row.back=row:CreateTexture(nil,"BACKGROUND");row.back:SetColorTexture(1,1,1,0.09)
             row.fill=row:CreateTexture(nil,"ARTWORK");T.objectives[i]=row
         end
@@ -296,6 +316,7 @@ function UI:RenderTracker()
         local color=item.deferred and palette.muted or (item.accepted and palette.green or palette.gold)
         row.status:SetTextColor(unpack(color));row.statusBack:SetColorTexture(color[1],color[2],color[3],0.16)
         row.progress:SetText(item.progress)
+        row.metrics:SetText(item.metrics)
         row.candidate,row.revision=item.candidate,plan.revision
         local can=A.Selection.CanChoose(item.candidate,plan.revision)
         row:SetEnabled(not item.deferred and can==true);row:Show()
@@ -311,7 +332,7 @@ function UI:LayoutTracker()
     if not T then return end
     local scale=A.settings.fontScale or 1
     local titleHeight=math.max(22*scale,self.title:GetStringHeight())
-    local top=36+titleHeight+10
+    local top=38+titleHeight+10
     local textHeight=math.max(1,self.body:GetStringHeight())
     local childHeight=textHeight+12
     for i,objective in ipairs(T.model and T.model.objectives or {}) do
@@ -338,21 +359,26 @@ function UI:LayoutTracker()
     local queueHeight=0
     for i=1,#(T.model and T.model.rows or {}) do
         local row=T.rows[i]
-        row.statusBack:SetSize(68,18*scale)
-        local groupHeight=row.group:GetText()~="" and math.max(16*scale,row.group:GetStringHeight())+12 or 0
+        local statusWidth=88*scale
+        row.statusBack:SetSize(statusWidth,22*scale);row.status:SetWidth(statusWidth-4)
+        row.number:SetWidth(24*scale);row.progress:SetWidth(270-statusWidth-8)
+        local groupHeight=row.group:GetText()~="" and math.max(18*scale,row.group:GetStringHeight())+12 or 0
         row.number:ClearAllPoints();row.number:SetPoint("TOPLEFT",0,-8-groupHeight)
         row.title:ClearAllPoints();row.title:SetPoint("TOPLEFT",32,-8-groupHeight)
-        row.status:ClearAllPoints();row.status:SetPoint("TOPRIGHT",-2,-8-groupHeight)
-        row.statusBack:ClearAllPoints();row.statusBack:SetPoint("TOPRIGHT",0,-5-groupHeight)
-        local title=math.max(16*scale,row.title:GetStringHeight())
-        local progress=row.progress:GetText()~="" and math.max(15*scale,row.progress:GetStringHeight()) or 0
-        row.progress:ClearAllPoints();row.progress:SetPoint("TOPLEFT",32,-title-10-groupHeight)
-        local rowHeight=groupHeight+title+progress+18
+        local title=math.max(20*scale,row.title:GetStringHeight())
+        local progress=math.max(22*scale,row.progress:GetStringHeight(),row.status:GetStringHeight())
+        local progressTop=groupHeight+title+14
+        row.status:ClearAllPoints();row.status:SetPoint("TOPRIGHT",-2,-progressTop)
+        row.statusBack:ClearAllPoints();row.statusBack:SetPoint("TOPRIGHT",0,-progressTop+2)
+        row.progress:ClearAllPoints();row.progress:SetPoint("TOPLEFT",32,-progressTop)
+        local metricsTop=progressTop+progress+6
+        row.metrics:ClearAllPoints();row.metrics:SetPoint("TOPLEFT",32,-metricsTop)
+        local rowHeight=metricsTop+math.max(18*scale,row.metrics:GetStringHeight())+12
         row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-queueHeight);row:SetHeight(rowHeight)
         queueHeight=queueHeight+rowHeight
     end
     T.queueChild:SetHeight(math.max(1,queueHeight))
-    local visible=math.min(queueHeight,({compact=88,normal=220,expanded=330})[density]*scale)
+    local visible=math.min(queueHeight,({compact=132,normal=320,expanded=400})[density]*scale)
     T.queueScroll:SetHeight(math.max(1,visible));T.queueScroll:SetShown(not collapsed and queueHeight>0)
     T.queuePanel:SetHeight(visible+24);T.queuePanel:SetShown(not collapsed and queueHeight>0)
     T.queueLabel:SetShown(not collapsed and queueHeight>0)
