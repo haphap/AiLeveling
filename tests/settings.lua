@@ -21,6 +21,7 @@ local function widget()
         self.fontSize,self.fontFlags=size,flags
         return true
     end
+    w.SetAtlas=function(self,atlas) self.atlas=atlas end
     w.SetTextColor=function(self,...) self.color={...} end;w.SetColorTexture=w.SetTextColor
     w.SetBackdropColor=w.SetTextColor
     w.SetScale=function(self,v) self.scale=v end;w.SetAlpha=function(self,v) self.alpha=v end
@@ -218,6 +219,14 @@ test("世界地图点与小地图点独立且关闭方没有游离图标",functi
     eq(world,0);eq(mini,1);eq(B.Navigation.pins[1].shown,false);eq(B.Navigation.pins[2].shown,true)
     B.settings.pins=true;B.settings.minimapPins=false;B.Navigation:RefreshPins()
     eq(world,1);eq(mini,1);eq(B.Navigation.pins[2].shown,false)
+    eq(B.Navigation.pins[1].texture.atlas,"Waypoint-MapPin-Tracked")
+    B.Navigation.manual=nil
+    for _,row in ipairs({{"accept","QuestNormal"},{"turnin","UI-QuestPoi-QuestBangTurnIn"},
+        {"objective","Waypoint-MapPin-Tracked"},{"transit","FlightPath"},{"dungeonEnter","Dungeon"}}) do
+        B.Navigation.actions={{kind=row[1],mode="flight",position={map=1,x=0.5,y=0.5}}}
+        B.Navigation:RefreshPins()
+        eq(B.Navigation.pins[1].texture.atlas,row[2]);eq(B.Navigation.pins[2].texture.atlas,row[2])
+    end
     B.finish()
 end)
 test("真实交付界面比较奖励且开关不触发自动领奖",function()

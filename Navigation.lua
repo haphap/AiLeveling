@@ -131,10 +131,9 @@ function N:RefreshPins()
     local pin = self.pins[1]
     if not pin then
         pin = CreateFrame("Frame", nil, UIParent)
-        pin:SetSize(18, 18)
+        pin:SetSize(24, 24)
         pin.texture = pin:CreateTexture(nil, "OVERLAY")
         pin.texture:SetAllPoints()
-        pin.texture:SetColorTexture(0.3, 0.9, 0.8, 1)
         pin:Hide();pin:EnableMouse(true)
         pin:SetScript("OnEnter", function(f)
             GameTooltip:SetOwner(f, "ANCHOR_RIGHT")
@@ -150,10 +149,9 @@ function N:RefreshPins()
     local mini = self.pins[2]
     if not mini then
         mini = CreateFrame("Frame", nil, UIParent)
-        mini:SetSize(12, 12)
+        mini:SetSize(18, 18)
         mini.texture = mini:CreateTexture(nil, "OVERLAY")
         mini.texture:SetAllPoints()
-        mini.texture:SetColorTexture(0.3, 0.9, 0.8, 1)
         mini:Hide();mini:EnableMouse(true)
         mini:SetScript("OnEnter",function(f)
             GameTooltip:SetOwner(f,"ANCHOR_RIGHT")
@@ -163,9 +161,9 @@ function N:RefreshPins()
         mini:SetScript("OnLeave",function() GameTooltip:Hide() end)
         self.pins[2] = mini
     end
-    local r,g,b=0.3,0.9,0.8
-    if A.UI.Accent then r,g,b=A.UI:Accent() end
-    pin.texture:SetColorTexture(r,g,b,1);mini.texture:SetColorTexture(r,g,b,1)
+    local atlas=({accept="QuestNormal",turnin="UI-QuestPoi-QuestBangTurnIn",dungeonEnter="Dungeon"})[action.kind]
+        or (action.kind=="transit" and action.mode=="flight" and "FlightPath") or "Waypoint-MapPin-Tracked"
+    pin.texture:SetAtlas(atlas,false);mini.texture:SetAtlas(atlas,false)
     if A.settings.pins then self.hbdPins:AddWorldMapIconMap(self, pin, pos.map, pos.x, pos.y, 1) end
     if A.settings.minimapPins then self.hbdPins:AddMinimapIconMap(self, mini, pos.map, pos.x, pos.y, false, true) end
 end
