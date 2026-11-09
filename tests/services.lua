@@ -2,7 +2,7 @@ return function(test,eq,F,A,plan)
 local names={"UnitGUID","UnitName","GetTime","GetBindLocation","C_Trainer","Enum","GetNumTrainerServices","GetTrainerServiceInfo","GetTrainerServiceCost","canaccessvalue",
     "BuyTrainerService","SetTrainerServiceTypeFilter","ExpandTrainerSkillLine","ConfirmBinder",
     "GetTrainerServiceSkillReq","GetTrainerServiceNumAbilityReq","GetTrainerServiceAbilityReq","C_TooltipInfo","C_SpellBook",
-    "InCombatLockdown","IsShiftKeyDown","C_PlayerInteractionManager"}
+    "InCombatLockdown","IsShiftKeyDown","C_PlayerInteractionManager","C_GossipInfo","HOME"}
 local function setup()
     local saved={};for _,name in ipairs(names) do saved[name]=_G[name] end
     local B={};for k,v in pairs(A) do B[k]=v end
@@ -38,7 +38,7 @@ local function chooseTraining(B)
     B.Services:Event("TRAINER_SHOW");B.Services:Snapshot(B.state)
     local rows=B.Services:Choices("learn");assert(B.Services:Pick(rows[1],B.state.revision));return B.char.serviceStop
 end
-test("训练快照读取原生状态与训练类型且关闭后清除列表",function()
+test("原生服务窗口与菜单匹配实际NPC、可用选项和当前安排",function()
     local B,e,finish=setup();local S=B.Services
     S:Event("TRAINER_SHOW");local first=S:Snapshot(B.state);local t=B.state.trainer
     eq(t.npcId,78);eq(t.rows[1].status,"available");eq(t.rows[1].cost,nil)
@@ -47,6 +47,51 @@ test("训练快照读取原生状态与训练类型且关闭后清除列表",fun
     local rows=S:Choices("learn");eq(S:CanPick(rows[1],B.state.revision),false)
     canaccessvalue=function(value) return type(value)~="string" end;S:Snapshot(B.state);eq(B.state.trainer,nil)
     canaccessvalue=nil;S:Event("TRAINER_CLOSED");S:Snapshot(B.state);eq(B.state.trainer,nil)
+    B.settings.autoTrain=true;B.settings.autoBind=true;B.settings.autoTaxi=true
+    B.char.serviceStop={kind="train",npcId=78,title="训练师",position=B.state.position}
+    Enum.GossipOptionStatus={Available=0}
+    local options={{icon=132060,name="训练",status=0,gossipOptionID=8,orderIndex=1},
+        {icon=132058,name="服务",overrideIconID=132060,status=0,gossipOptionID=42,orderIndex=9}}
+    local byID,byIndex=function() end,function() end
+    C_GossipInfo={GetOptions=function() return options end,SelectOption=byID,SelectOptionByIndex=byIndex}
+    local dialogs=0;B.QuestAssist={DialogEvent=function(_,event) eq(event,"GOSSIP_SHOW");dialogs=dialogs+1 end}
+    S:Event("GOSSIP_SHOW");local selected=S:GossipOption();eq(selected.value,42);eq(selected.select,byID)
+    local row=options[2];row.status=1;eq(S:GossipOption(),nil);row.status=0
+    options[3]={icon=132058,status=0,gossipOptionID=43,orderIndex=10};eq(S:GossipOption(),nil);options[3]=nil
+    row.gossipOptionID=nil;row.orderIndex=0;selected=S:GossipOption();eq(selected.value,0);eq(selected.select,byIndex)
+    row.orderIndex=nil;eq(S:GossipOption(),nil);row.orderIndex=9;row.gossipOptionID=42
+    e.npc=79;eq(S:GossipOption(),nil);B.jobs["service:gossip"]();eq(dialogs,0);e.npc=78
+    e.shift=true;S:Event("GOSSIP_SHOW");e.shift=false;eq(S:GossipOption(),nil);S:Event("GOSSIP_SHOW")
+    for _,mode in ipairs({"shift","combat","paused","manual","disabled","far","flying"}) do
+        if mode=="shift" then e.shift=true elseif mode=="combat" then e.combat=true
+        elseif mode=="paused" then B.char.paused=true elseif mode=="manual" then B.Navigation.manual={}
+        elseif mode=="disabled" then B.settings.autoTrain=false elseif mode=="flying" then B.flying=true
+        else B.state.position={map=1,x=0.9,y=0.5} end
+        eq(S:GossipOption(),nil)
+        e.shift,e.combat,B.char.paused,B.Navigation.manual,B.flying=nil,nil,nil,nil,nil
+        B.settings.autoTrain=true;B.state.position={map=1,x=0.5,y=0.5}
+    end
+    B.refreshAt=1;S:Event("GOSSIP_SHOW");eq(S:GossipOption(),nil)
+    local job=coroutine.create(B.jobs["service:gossip"]);assert(coroutine.resume(job));eq(coroutine.status(job),"suspended")
+    B.refreshAt=nil;B.jobs.plan={};assert(coroutine.resume(job));eq(coroutine.status(job),"suspended")
+    B.jobs.plan=nil;assert(coroutine.resume(job));eq(coroutine.status(job),"dead");eq(dialogs,1)
+    B.refreshAt=1;S:Event("GOSSIP_SHOW");job=coroutine.create(B.jobs["service:gossip"])
+    assert(coroutine.resume(job));S:Event("GOSSIP_CLOSED");assert(coroutine.resume(job));eq(dialogs,1);B.refreshAt=nil
+    B.plan={revision=B.state.revision,automaticService={kind="bind",npcId=78,title="旅店",position=B.state.position}}
+    B.char.serviceStop=nil;row.icon=132052;S:Event("GOSSIP_SHOW");eq(S:GossipOption().value,42)
+    local secret={};row.icon=secret;canaccessvalue=function(v) return v~=secret end;eq(S:GossipOption(),nil)
+    canaccessvalue=nil;row.icon=136458;HOME="家";row.name="设为新的家";eq(S:GossipOption().value,42)
+    row.name="传送到战场";eq(S:GossipOption(),nil)
+    B.plan=nil;row.icon=132057
+    local transport=B.Transport;assert(loadfile("Transport.lua"))("AiLeveling",B)
+    transport.PlannedFlight=B.Transport.PlannedFlight;B.Transport=transport
+    B.Navigation.actions={{kind="move",position=B.state.position},{kind="transit",mode="flight",
+        fromTaxi=1,toTaxi=2,departure=B.state.position,departureRadius=12}}
+    B.Navigation.index=1;eq(S:GossipOption().value,42);eq(B.Navigation.index,1)
+    table.insert(B.Navigation.actions,1,{kind="objective",questId=1});eq(S:GossipOption(),nil)
+    B.Navigation.actions={};B.char.serviceStop={kind="unlockFlight",taxiId=1,title="飞行点",position=B.state.position}
+    eq(S:GossipOption().value,42);eq((B.state.unlocked or {})["taxi:1"],nil)
+    S:Event("GOSSIP_CLOSED");eq(S:GossipOption(),nil)
     finish()
 end)
 test("训练专业与前置技能条件影响状态指纹并区分未满足和未知",function()

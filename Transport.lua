@@ -64,18 +64,24 @@ local function taxiHops(from,node,slots,total)
     if path[#path]==node.nodeID then return table.concat(path,":") end
 end
 
+function T:PlannedFlight()
+    local nav=A.Navigation
+    if not nav or nav.manual then return end
+    for index=nav.index or 1,#(nav.actions or {}) do
+        local action=nav.actions[index]
+        if action.kind~="move" then
+            if action.kind=="transit" and action.mode=="flight" then return action end
+            return
+        end
+    end
+end
+
 function T:SelectTaxi(nodes,from)
     if not A.ready or not A.settings or not A.settings.autoTaxi or not A.char or A.char.paused or
         not A.state or A.state.dead or self.taxiSelected or self:InFlight() or type(TakeTaxiNode)~="function" or
         InCombatLockdown and InCombatLockdown() or IsShiftKeyDown and IsShiftKeyDown() then return end
-    local nav=A.Navigation
-    if not nav or nav.manual then return end
-    local action
-    for index=nav.index or 1,#(nav.actions or {}) do
-        local nextAction=nav.actions[index]
-        if nextAction.kind~="move" then action=nextAction;break end
-    end
-    if not action or action.kind~="transit" or action.mode~="flight" or action.fromTaxi~=from then return end
+    local action=self:PlannedFlight()
+    if not action or action.fromTaxi~=from then return end
     for _,node in ipairs(nodes) do
         if node.nodeID==action.toTaxi and node.state==1 and not node.isMapLayerTransition and
             type(node.slotIndex)=="number" and node.slotIndex>0 and node.slotIndex%1==0 then

@@ -287,7 +287,7 @@ function F.Actions(route,action,navigation)
             local node=A.FlightData.nodes[leg.toTaxi]
             local name=(A.state and A.state.taxiNames or {})[leg.toTaxi] or node.name
             actions[#actions+1]={kind="transit",mode="flight",questId=action.questId,title="飞往 "..name,
-                text=string.format("与出发点飞行管理员交谈，手动选择「%s」，落地后继续任务。",name),
+                text=string.format("与出发点飞行管理员交谈，飞往「%s」，落地后继续任务。",name),
                 departure=leg.from,departureRadius=12,position=leg.to,arrival=leg.arrival or 12,fromTaxi=leg.fromTaxi,toTaxi=leg.toTaxi,
                 travelSeconds=leg.seconds,timeSampleKey=F.TimeKey(leg.fromTaxi,leg.toTaxi,leg.faction,leg.hops,leg.taxiSpeed),referenceFlight=true}
         end
@@ -332,7 +332,7 @@ function F.Guide(action,state,navigation)
     if not best then return end
     local seconds,sourceLabel=F.Seconds(anchor.id,best.id,state)
     local name=(state.taxiNames or {})[best.id] or best.node.name
-    local text="与当前飞行管理员交谈，手动选择「"..name.."」，落地后继续任务。"
+    local text="与当前飞行管理员交谈，飞往「"..name.."」，落地后继续任务。"
     local transit={kind="transit",mode="flight",questId=action.questId,title="飞往 "..name,text=text,
         departure=anchor.position,departureRadius=12,position=best.landing,arrival=25,
         fromTaxi=anchor.id,toTaxi=best.id,travelSeconds=seconds,

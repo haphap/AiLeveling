@@ -135,7 +135,8 @@
         "SettingsPanel.lua": "f6a35a1c3fb9eefd4aabd757dc331d6a03191b18d2371bc9839021f242e7037a",
         "readme.md": "89df8c0757ff49fa9c4ae390a02194a3020a37987488dd1bc8fbb697901c7bd4",
         "Help.lua": "2659f8872461df65d9fd067a01ee8560bbaa4eb42a81556ec1ae0581b921a6ef",
-        "Targeting.lua": "296e7f56da9d3ac6c7757d1f84e91ee2d6bc235d6c2b0ddbd3035dfcd5cfb645"
+        "Targeting.lua": "296e7f56da9d3ac6c7757d1f84e91ee2d6bc235d6c2b0ddbd3035dfcd5cfb645",
+        "functions.lua": "55534ba82c283cea5f2d2383ac703a955ec1e6c403c9c913dc5b731a771ff476"
       },
       "scope": "Feature inventory only. Independent automation based on native quest and gossip API; no program, guide, art or configuration copied into the addon. Complete parity remains unverified.",
       "audit": "docs/RESTEDXP_PARITY.md"
@@ -424,6 +425,24 @@
         }
       ],
       "scope": "BuyTrainerService uses the matching available native service index for the selected training intent after resolving its actual tooltip spell identity; late tooltip data reuses native refresh events. Binding confirmation is deferred until after CONFIRM_BINDER and rechecks the planned inn, NPC, location and native Binder interaction before ConfirmationInteraction/ClearInteraction. Native used/spell-book or HEARTHSTONE_BOUND facts still acknowledge completion. No balances or fees are checked.",
+      "clientVerified": false
+    },
+    {
+      "name": "Forever planned service gossip",
+      "build": "1.60.1.70862",
+      "sources": [
+        {
+          "file": "Interface/AddOns/Blizzard_APIDocumentationGenerated/GossipInfoDocumentation.lua",
+          "url": "https://raw.githubusercontent.com/Gethe/wow-ui-source/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_APIDocumentationGenerated/GossipInfoDocumentation.lua",
+          "sha256": "22cd6a48eded91316753af2e40624e542a91c728c713636549b7d3a6ef7916a5"
+        },
+        {
+          "file": "Interface/AddOns/Blizzard_UIPanels_Game/Shared/GossipFrameShared.lua",
+          "url": "https://raw.githubusercontent.com/Gethe/wow-ui-source/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_UIPanels_Game/Shared/GossipFrameShared.lua",
+          "sha256": "89073a44f81864990cdaa1e6914bdaf64dd3942738ada5132d1e7abafe9e20a3"
+        }
+      ],
+      "scope": "Native GetOptions status and base icon, SelectOption(gossipOptionID) and SelectOptionByIndex(orderIndex). Service icons follow the independently verified RestedXP behavior: trainer 132058, taxi 132057, binder 132052; shared icon 136458 also requires the native localized HOME token. Planned NPC or flight departure, live gossip context, quest priority, fresh plan, manual overrides and repeated-event suppression are checked before selection. No completion or flight departure is inferred from opening a service window.",
       "clientVerified": false
     }
   ],

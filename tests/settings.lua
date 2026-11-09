@@ -3,7 +3,7 @@ local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","
     "geterrorhandler","C_Item","C_PlayerInfo","C_Container","GetQuestID","GetNumQuestChoices","GetQuestItemLink","GetQuestReward",
     "AcceptQuest","CompleteQuest","GetQuestMoneyToGet","IsQuestCompletable","IsShiftKeyDown","C_GossipInfo","UnitGUID","UnitLevel","UnitXP","UnitXPMax","UnitIsAFK",
     "PlaySound","SOUNDKIT","NUM_CONTAINER_FRAMES","ContainerFrameCombinedBags","AiLeveling",
-    "UnitClassification","UnitName","UnitCanAttack","UnitIsDeadOrGhost","UnitOnTaxi","C_NamePlate","UIErrorsFrame","issecretvalue","canaccessvalue"}
+    "UnitClassification","UnitName","UnitCanAttack","UnitIsDeadOrGhost","UnitOnTaxi","C_NamePlate","UIErrorsFrame","issecretvalue","canaccessvalue","Enum"}
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
     for _,key in ipairs({"SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","RegisterForDrag",
@@ -199,6 +199,28 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     event("QUEST_FINISHED");count=0;event("QUEST_COMPLETE");eq(calls[6],"reward:0")
     event("GOSSIP_CLOSED");B.settings.autoTurnIn=false;event("QUEST_COMPLETE");eq(#calls,6)
     B.Transport.taxiSelected=true;event("TAXIMAP_CLOSED");eq(B.Transport.taxiSelected,nil)
+    calls={};local menus=0
+    B.Merchant={NpcId=A.Merchant.NpcId,Event=function() end};B.State.Position=function() end
+    B.state.position={map=1,x=0.5,y=0.5}
+    B.Navigation.Near=function(_,a,b) return a.map==b.map and math.abs(a.x-b.x)<0.01 end
+    B.char.serviceStop={kind="train",npcId=9,title="训练师",position=B.state.position}
+    UnitGUID=function() return "Creature-0-1-2-3-9-0000" end
+    Enum={GossipOptionStatus={Available=0}}
+    C_GossipInfo.GetOptions=function() menus=menus+1;return {{icon=132058,status=0,gossipOptionID=44,orderIndex=2}} end
+    C_GossipInfo.SelectOption=function(value) calls[#calls+1]="service:"..value end
+    assert(loadfile("Services.lua"))("AiLeveling",B)
+    local function dialog()
+        event("GOSSIP_SHOW");B.refreshAt=nil
+        local job=B.jobs["service:gossip"];B.jobs["service:gossip"]=nil
+        if job then assert(coroutine.resume(job)) end
+    end
+    dialog();eq(menus,0);eq(#calls,0) -- Manual turn-in takes priority over service automation.
+    C_GossipInfo.GetActiveQuests=function() return {} end
+    B.settings.autoAccept=false;dialog();eq(menus,0);eq(#calls,0)
+    C_GossipInfo.GetAvailableQuests=function() return {{questID=99}} end
+    dialog();dialog();eq(#calls,1);eq(calls[1],"service:44")
+    event("GOSSIP_CLOSED");dialog();eq(#calls,2)
+    shift=true;dialog();eq(#calls,2);shift=false
     B.finish()
 end)
 test("字号与密度改变普通卡片并保留完整滚动说明",function()

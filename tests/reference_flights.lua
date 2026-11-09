@@ -59,7 +59,7 @@ end)
 test("新航线未知耗时可保留指引且有效绝对样本优先",function()
     local B,s,a,nav=fixture();B.FlightData.durations.Alliance={}
     local route=B.Flights.Guide(a,s,nav);eq(route.flightSeconds,nil)
-    assert(route.actions[1].text:find("手动选择",1,true));assert(not route.actions[1].text:find("采样",1,true))
+    assert(route.actions[1].text:find("飞行管理员",1,true));assert(not route.actions[1].text:find("采样",1,true))
     local key=B.Flights.TimeKey(1,2,s.faction,nil,s.taxiSpeed)
     s.samples[key]={n=2,unit="seconds",mean=80};eq(B.Flights.Seconds(1,2,s),nil)
     s.samples[key].n=3;eq(B.Flights.Seconds(1,2,s),80)

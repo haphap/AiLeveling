@@ -85,6 +85,54 @@ function S.CanAutomate(key,state)
         not (A.Navigation and A.Navigation.manual) and not (A.Transport and A.Transport:InFlight())
 end
 
+function S:GossipOption()
+    if not self.gossip or A.refreshAt or A.jobs and A.jobs.plan or not C_GossipInfo or
+        type(C_GossipInfo.GetOptions)~="function" then return end
+    local guid=text(UnitGUID and UnitGUID("npc"))
+    if not guid or guid~=self.gossip.guid then return end
+    local npc=A.Merchant.NpcId(guid)
+    if not npc then return end
+    A.State:Position()
+    local stop=A.char.serviceStop or S.CurrentAutomatic()
+    local icon
+    if stop and A.Navigation:Near(A.state.position,stop.position,25) then
+        if stop.npcId==npc and stop.kind=="train" and S.CanAutomate("autoTrain") then icon=132058
+        elseif stop.npcId==npc and stop.kind=="bind" and S.CanAutomate("autoBind") then icon=132052
+        elseif stop.kind=="unlockFlight" and S.CanAutomate("autoTaxi") then icon=132057 end
+    end
+    if not icon and S.CanAutomate("autoTaxi") and A.Transport.PlannedFlight then
+        local flight=A.Transport:PlannedFlight()
+        if flight and A.Navigation:Near(A.state.position,flight.departure,flight.departureRadius or 12) then icon=132057 end
+    end
+    local available=Enum and Enum.GossipOptionStatus and Enum.GossipOptionStatus.Available
+    if not icon or not number(available,0,2147483647) then return end
+    local ok,options=pcall(C_GossipInfo.GetOptions)
+    if not ok or not accessible(options) or type(options)~="table" then return end
+    local chosen
+    for _,option in ipairs(options) do
+        if accessible(option) and type(option)=="table" and accessible(option.icon) and accessible(option.status) and option.status==available then
+            local matches=option.icon==icon
+            if icon==132052 and option.icon==136458 then
+                local name,home=text(option.name),text(HOME)
+                local upper=strupper or string.upper
+                matches=name and home and home~="" and upper(name):find(upper(home),1,true)~=nil
+            end
+            if matches then
+                if chosen then return end
+                chosen=option
+            end
+        end
+    end
+    if not chosen then return end
+    local method,value
+    if number(chosen.gossipOptionID,1,2147483647) and type(C_GossipInfo.SelectOption)=="function" then
+        method,value="SelectOption",chosen.gossipOptionID
+    elseif number(chosen.orderIndex,0,2147483647) and type(C_GossipInfo.SelectOptionByIndex)=="function" then
+        method,value="SelectOptionByIndex",chosen.orderIndex
+    else return end
+    return {key=table.concat({"service",guid,icon,method,value},":"),select=C_GossipInfo[method],value=value}
+end
+
 function S:AutoTrain(state)
     local stop,trainer=A.char.serviceStop,state.trainer
     if not S.CanAutomate("autoTrain",state) or not self.trainerOpen or not stop or stop.kind~="train" or not stop.learnKey or
@@ -127,7 +175,20 @@ function S:Event(event,...)
         if not self.trainerOpen then self.trainingAttempt=nil end
         self.trainerOpen=true
     elseif event=="TRAINER_CLOSED" then self.trainerOpen=false;self.trainingAttempt=nil
-    elseif event=="PLAYER_ENTERING_WORLD" then self.trainerOpen=false;self.trainingAttempt=nil;self.binding=nil
+    elseif event=="PLAYER_ENTERING_WORLD" then self.trainerOpen=false;self.trainingAttempt=nil;self.binding=nil;self.gossip=nil
+    elseif event=="GOSSIP_CLOSED" then self.gossip=nil
+    elseif event=="GOSSIP_SHOW" then
+        local guid=text(UnitGUID and UnitGUID("npc"))
+        local enabled=S.CanAutomate("autoTrain") or S.CanAutomate("autoBind") or S.CanAutomate("autoTaxi")
+        self.gossip=enabled and guid and {guid=guid} or nil
+        local seen=self.gossip
+        if seen and A.QuestAssist and A.QuestAssist.DialogEvent then
+            A:Queue("service:gossip",function()
+                -- Observed quest offers can change the plan during this same event.
+                while self.gossip==seen and (A.refreshAt or A.jobs.plan) do coroutine.yield() end
+                if self.gossip==seen and text(UnitGUID and UnitGUID("npc"))==seen.guid then A.QuestAssist:DialogEvent("GOSSIP_SHOW") end
+            end)
+        end
     elseif event=="TOOLTIP_DATA_UPDATE" and self.trainerOpen and S.CanAutomate("autoTrain") then
         local stop=A.char.serviceStop
         if stop and stop.kind=="train" and stop.learnKey and self.trainingAttempt~=stop then A:RequestRefresh() end

@@ -111,19 +111,23 @@ function Q:DialogEvent(event)
         for _,kind in ipairs({"turnin","accept"}) do
             local enabled=kind=="accept" and A.settings.autoAccept or kind=="turnin" and A.settings.autoTurnIn
             local getter=kind=="accept" and C_GossipInfo.GetAvailableQuests or C_GossipInfo.GetActiveQuests
-            if enabled and getter then
+            if getter then
                 local ok,list=pcall(getter)
                 if ok and type(list)=="table" then
                     for _,row in ipairs(list) do
                         if type(row)=="table" and valid(row.questID) and (kind=="accept" or row.isComplete==true) and Q.DialogChoice(row.questID,kind) then
-                            local selectQuest=kind=="accept" and C_GossipInfo.SelectAvailableQuest or C_GossipInfo.SelectActiveQuest
-                            once("select:"..row.questID,selectQuest,row.questID)
+                            if enabled then
+                                local selectQuest=kind=="accept" and C_GossipInfo.SelectAvailableQuest or C_GossipInfo.SelectActiveQuest
+                                once("select:"..row.questID,selectQuest,row.questID)
+                            end
                             return
                         end
                     end
                 end
             end
         end
+        local option=A.Services and A.Services.GossipOption and A.Services:GossipOption()
+        if option then once(option.key,option.select,option.value) end
         return
     end
     local id=GetQuestID and GetQuestID()

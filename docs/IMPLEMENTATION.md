@@ -1102,3 +1102,14 @@ CONFIRM_BINDER 匹配已选或当前自动安排的旅店后，通过既有队�
 最终 537 回归通过，50 个 TOC 文件语法通过；后续仅改动的三个运行文件再次通过语法，开发内容及 diff 检查通过。日志 dist/service-automation-final-regression.log、service-automation-content.log。固定 Forever 原生训练 UI、通用 GameDialogDefs 与 PlayerInteractionManagerDocumentation 的 URL／SHA256 已记入 SOURCES，未操作游戏、依赖或真实存档。任务数据未改，无额外全角色／两阵营回放。
 
 完整目标 active：RX06 服务闲聊选项、全程任务接续、其他适用功能与实机仍待补；装备继续暂缓、指南导入不恢复，不升版、发布或安装，客户端仍129。下一步核对固定 GossipOptionUIInfo.icon 对应的原生服务标识；该构建没有 gossipOptionType，不按名字猜选项。
+
+
+## 2026-11-09 计划服务菜单接续（未发布）
+
+上一轮 ec31042 为 progress。本轮补服务对话入口：根据当前已选／自动旅店安排的真实 NPC、位置，或下一航班出发点，识别训练132058、飞行132057、绑定132052基础图标；共享图标136458须同时包含游戏本地化 HOME 词。使用原生可用状态及 gossipOptionID 选择；隐藏 ID 时使用原生 orderIndex，重复／不可用／不明确选项保留手动。该构建虽有 GossipNpcOption 枚举，但公开选项结构没有 gossipOptionType，未假设存在该字段。固定原生 GossipInfoDocumentation／GossipFrameShared 与 RestedXP functions.lua 行为及 SHA256 已记入 SOURCES；独立实现，未导入其代码或指南。
+
+服务菜单等待现有状态／规划刷新结束，仍由原生 GOSSIP_SHOW 触发；关闭、更换 NPC 或新一轮对话使旧回调失效。按住 Shift 打开对话时整次保留手动。QuestAssist 先处理有效任务；关闭自动接交时，把对应任务窗口留给玩家，再处理服务。沿用现有 once 去重，不提前推进任务、导航或交通状态。Transport.PlannedFlight 复用原来的下一非移动行动判断，菜单与飞行地图使用同一航班；飞行提示去掉过时的手动选择要求。
+
+复用服务窗口与自动接交场景，覆盖真实 Core→Services→QuestAssist 事件和队列，仍537回归；50个TOC语法、开发内容与diff通过。日志 dist/service-gossip-final-regression.log、service-gossip-content.log。最初两次失败分别为测试夹具遗漏空unlocked表／Merchant.Event，另有旧手动选择文案断言，均已按实际边界修正。未改任务数据，不重跑全角色或两阵营任务数据；未操作客户端、依赖或存档。
+
+完整目标 active。RX06 常规服务菜单已有，任务专用闲聊和完整实机仍待补；全程任务接续、其余适用功能继续。装备暂缓、指南导入不恢复，未升版发布安装，客户端仍129。
