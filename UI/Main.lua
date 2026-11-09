@@ -55,6 +55,29 @@ function UI:Movable(frame,key)
     end)
 end
 
+function UI:ShowStartupError(message)
+    if self.frame then self.frame:Hide() end
+    if self.details then self.details:Hide() end
+    if self.navFrame then self.navFrame:Hide() end
+    local f=self.startupPanel
+    if not f then
+        f=self:Panel("AiLevelingStartupError",UIParent,560,240)
+        self.startupPanel=f
+        f:SetPoint("CENTER");f:SetFrameStrata("DIALOG")
+        -- Use native fonts directly, even if custom text creation caused the failure.
+        local title=f:CreateFontString(nil,"OVERLAY","GameFontNormalLarge")
+        title:SetPoint("TOPLEFT",16,-16);title:SetText("AiLeveling 加载失败")
+        local close=CreateFrame("Button",nil,f,"UIPanelCloseButton")
+        close:SetPoint("TOPRIGHT");close:SetScript("OnClick",function() f:Hide() end)
+        f.copy=CreateFrame("EditBox",nil,f)
+        f.copy:SetPoint("TOPLEFT",16,-52);f.copy:SetPoint("BOTTOMRIGHT",-16,16)
+        f.copy:SetMultiLine(true);f.copy:SetAutoFocus(false);f.copy:SetFontObject(GameFontHighlight)
+        f.copy:SetScript("OnEscapePressed",function(box) box:ClearFocus() end)
+    end
+    f.copy:SetText("版本："..A.version.."\n\n"..message.."\n\n请点击文字，Ctrl+A、Ctrl+C 复制报错反馈。\n关闭后可用 /ail 再次打开。")
+    f:Show()
+end
+
 function UI:Create()
     self:CreateTracker()
     self.details = self:Panel("AiLevelingDetails", UIParent, 620, 520)

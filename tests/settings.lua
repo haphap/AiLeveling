@@ -1,12 +1,12 @@
 return function(test,eq,F,A,plan)
 local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","SlashCmdList","InCombatLockdown","GetTime",
-    "C_Item","C_PlayerInfo","C_Container","GetQuestID","GetNumQuestChoices","GetQuestItemLink","GetQuestReward",
+    "geterrorhandler","C_Item","C_PlayerInfo","C_Container","GetQuestID","GetNumQuestChoices","GetQuestItemLink","GetQuestReward",
     "PlaySound","SOUNDKIT","NUM_CONTAINER_FRAMES","ContainerFrameCombinedBags","AiLeveling"}
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
     for _,key in ipairs({"SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","RegisterForDrag",
         "RegisterForClicks","SetAllPoints","SetTexture","SetBlendMode","SetVertexColor","SetMaxLines","SetFontObject","SetMultiLine",
-        "SetShadowColor","SetShadowOffset","SetAutoFocus","ClearFocus","SetFocus","HighlightText","SetFrameStrata","SetCooldown","Clear"}) do w[key]=function() end end
+        "SetMaxLetters","SetShadowColor","SetShadowOffset","SetAutoFocus","ClearFocus","SetFocus","HighlightText","SetFrameStrata","SetCooldown","Clear"}) do w[key]=function() end end
     w.SetPoint=function(self,...) self.point={...} end
     w.GetPoint=function(self) return "CENTER",UIParent,"CENTER",25,-30 end
     w.ClearAllPoints=function(self) self.point=nil end
@@ -35,7 +35,7 @@ local function widget()
     w.CreateLine=function() local line=widget();line.SetThickness=function() end;line.SetStartPoint=function() end;line.SetEndPoint=function() end;return line end
     return w
 end
-local function setup()
+local function setup(fullUI)
     local saved={};for _,name in ipairs(names) do saved[name]=_G[name] end
     local clock,combat=10,false
     UIParent=widget();STANDARD_TEXT_FONT="font";GameFontHighlight={};SlashCmdList={};NUM_CONTAINER_FRAMES=0;ContainerFrameCombinedBags=nil
@@ -57,6 +57,7 @@ local function setup()
     B.Dungeon={};B.Transport={InvalidateSample=function() end,InFlight=function() return false end}
     B.State={Refresh=function() B.refreshes=(B.refreshes or 0)+1;B.state.revision=B.state.revision+1 end}
     B.Gear=A.Gear;B.ready=true
+    B.Selection={CanChoose=function() return false,"没有候选行程" end}
     local items={[500]={name="道具",loc="",stats=nil},[100]={name="奖励甲",loc="INVTYPE_HEAD",stats={ITEM_MOD_STRENGTH_SHORT=1}},
         [101]={name="奖励乙",loc="INVTYPE_HEAD",stats={ITEM_MOD_STRENGTH_SHORT=10}},[102]={name="药水",loc="",stats=nil}}
     local function idOf(value) return type(value)=="number" and value or tonumber(value:match("item:(%d+)")) end
@@ -81,9 +82,14 @@ local function setup()
     assert(loadfile("UI/Tracker.lua"))("AiLeveling",B)
     assert(loadfile("UI/Settings.lua"))("AiLeveling",B)
     local U=B.UI
-    U:CreateTracker();U.details=widget()
+    if fullUI then
+        for _,name in ipairs({"Dungeon","Gear","Plan","Chains","Services"}) do
+            assert(loadfile("UI/"..name..".lua"))("AiLeveling",B)
+        end
+        U:Create()
+    else U:CreateTracker();U.details=widget() end
     U.title.measuredHeight=40;U.body.measuredHeight=300
-    U.Settings:Create(U.details);U.Settings:Refresh()
+    if not fullUI then U.Settings:Create(U.details) end;U.Settings:Refresh()
     assert(loadfile("QuestAssist.lua"))("AiLeveling",B)
     B.QuestAssist:Create();B.QuestAssist:Update()
     B.items=items
@@ -96,6 +102,37 @@ local function control(B,key)
     error("设置缺少入口："..key)
 end
 
+test("完整界面显示任务和详情，初始化失败显示可复制错误",function()
+    local B=setup(true)
+    B.Initialize=function(self) self.UI:Render() end
+    eq(B:Start(),true)
+    assert(B.UI.title:GetText()~="")
+    B.UI:ToggleDetails()
+    assert(B.UI.details:IsShown())
+    assert(B.UI.detailText:GetText()~="")
+    local nativeError,message
+    geterrorhandler=function() return function(err) nativeError=err end end
+    B.Message=function(_,value) message=value end
+    B.Initialize=function(self)
+        self.ready=true
+        self.jobs.plan=coroutine.create(function() end)
+        self.UI.Settings.Create=function() error("模拟界面初始化失败") end
+        self.UI:Create()
+    end
+    eq(B:Start(),false)
+    assert(B.startupError:find("模拟界面初始化失败",1,true))
+    eq(nativeError,B.startupError);assert(message:find(B.startupError,1,true))
+    eq(B.ready,false);eq(next(B.jobs),nil)
+    eq(B.UI.frame:IsShown(),false);eq(B.UI.details:IsShown(),false)
+    assert(B.UI.startupPanel:IsShown())
+    assert(B.UI.startupPanel.copy:GetText():find(B.startupError,1,true))
+    B.UI.startupPanel:Hide();SlashCmdList.AILEVELING("status")
+    assert(B.UI.startupPanel:IsShown())
+    B.UI.Text=function() error("模拟文字创建失败") end
+    eq(B:Start(),false)
+    assert(B.UI.startupPanel.copy:GetText():find("模拟文字创建失败",1,true))
+    B.finish()
+end)
 test("全部设置有原生控件且有效关闭值跨归一化保留",function()
     local B=setup()
     for key in pairs(B.defaults) do assert(control(B,key)) end

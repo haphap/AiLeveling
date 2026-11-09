@@ -255,6 +255,21 @@ function A:Initialize()
     self:Message("开发构建已加载。/ail 打开详情，/ail status 查看状态。")
 end
 
+function A:Start()
+    local ok,message=xpcall(function() self:Initialize() end,function(err)
+        geterrorhandler()(err)
+        return tostring(err)
+    end)
+    if not ok then
+        self.ready=false
+        self.jobs={}
+        self.startupError=message
+        self:Message("加载失败："..message)
+        if self.UI then self.UI:ShowStartupError(message) end
+    end
+    return ok
+end
+
 local frame = CreateFrame("Frame")
 A.frame = frame
 frame:RegisterEvent("ADDON_LOADED")
@@ -265,7 +280,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
     if A.ready and A.Dungeon and A.Dungeon.EncounterEvent then A.Dungeon:EncounterEvent(event,...) end
     if event == "ADDON_LOADED" then
         if ... ~= addonName then return end
-        A:Initialize()
+        A:Start()
         if not A.ready then return end
         for _, name in ipairs({"PLAYER_ENTERING_WORLD", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED",
             "QUEST_DATA_LOAD_RESULT", "QUEST_REMOVED", "QUEST_TURNED_IN", "QUEST_COMPLETE", "QUEST_FINISHED", "PLAYER_LEVEL_UP", "PLAYER_XP_UPDATE",
@@ -392,6 +407,7 @@ end)
 
 SLASH_AILEVELING1, SLASH_AILEVELING2 = "/ail", "/aileveling"
 SlashCmdList.AILEVELING = function(command)
+    if A.startupError then A.UI:ShowStartupError(A.startupError);return end
     if not A.UI.frame then return end
     if command == "status" then A.UI:ShowText(A:Diagnostics())
     elseif command == "pause" then A:TogglePause()
