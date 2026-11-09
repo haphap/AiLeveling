@@ -209,8 +209,10 @@ do
     assert(context.position and not A.Data:Target(q,context))
     context.locked=q.id;local manual=assert(A.Data:Target(q,context));context.locked=nil
     context.questOffers={[manual.entityId]={[q.id]=true}}
-    local offered=run(function() return A.Planner.TaskChoices(context,A.Data,{q.id},true,options) end)
-    assert(#offered==1 and offered[1].actions[1].position.entityId==manual.entityId)
+    local offered=run(function() return A.Planner.TaskChoices(context,A.Data,A.Data:Candidates(context),true,options) end)
+    local found
+    for _,choice in ipairs(offered) do if choice.questId==q.id then found=choice end end
+    assert(found and found.actions[1].position.entityId==manual.entityId)
     context.questOffers={[manual.entityId]={}}
     assert(#run(function() return A.Planner.TaskChoices(context,A.Data,{q.id},true,options) end)==0)
     context.quests[q.id]={ready=true,objectives={}}

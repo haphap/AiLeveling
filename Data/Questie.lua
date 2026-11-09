@@ -204,6 +204,9 @@ function D:Candidates(snapshot)
     local ids, seen = {}, {}
     local function add(id) if not seen[id] then ids[#ids + 1], seen[id] = id, true end end
     for id in pairs(snapshot.quests) do add(id) end
+    for _,offers in pairs(snapshot.questOffers or {}) do
+        for id,available in pairs(offers) do if available then add(id) end end
+    end
     for _,id in ipairs(self.byLevel[-1] or {}) do add(id) end
     for level = math.max(0, snapshot.level - 8), snapshot.level + 2 do
         for _, id in ipairs(self.byLevel[level] or {}) do add(id) end
