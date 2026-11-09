@@ -1082,3 +1082,12 @@ TaskGuide.Stages现在将本轮已取得的未接目标描述、位置与区域�
 新增默认开启的“自动乘坐计划航线”，在任务辅助设置中可关闭，按住Shift临时手动。仅在玩家打开飞行地图时，用原生当前起点与当前计划下一段飞行的起终点ID匹配可达节点，按原生slotIndex调用TakeTaxiNode。前方还有任务、手动航点、暂停、战斗、已在飞行或不匹配时保留手动；同窗口只尝试一次，关闭／进入世界后复位。调用不改变导航步骤或飞行状态，起降仍由原生状态处理；忽略费用。
 
 接口依据为固定构建的[TaxiFrame.xml](https://raw.githubusercontent.com/Gethe/wow-ui-source/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_UIPanels_Game/Shared/TaxiFrame.xml)与已有TaxiMapDocumentation；来源及SHA256记入SOURCES。独立实现，未复制RestedXP代码。扩展既有原生交通／交互回归，先复现未乘坐，再验证ID与slot匹配、移动后飞行、未完成任务阻断、不可达／切层排除、关闭复位、开关与手动覆盖；仍537场景。默认控件与设置持久化检查通过，49个TOC语法及开发内容检查通过。日志dist/automatic-taxi-{before,final-regression,final-content}.log。客户端调用和起降联动待实机；RX06其他服务交互、全程及其余交付条件继续，未发布安装，装备暂缓。
+
+
+## 2026-11-09 原生稀有发现与提醒（未发布）
+
+用户最终确认“RestedXP 有就做”。已核对固定提交 Targeting.lua 的稀有列表、姓名板／目标／鼠标指向检测和发现提醒，以及 SettingsPanel 的扫描／通知开关，恢复 RX16；原生接口按 Forever 固定 UnitDocumentation 与既有 SecureTemplates 处理。来源与 Targeting.lua SHA256 已记入 SOURCES。
+
+新增 RareScanner.lua：从客户端公开单位事件发现活着且可攻击的 rare／rareelite，按 GUID 在本次区域加载期间去重。独立提醒卡显示名称和等级，左键安全选中、右键关闭，10 秒后收起；默认启用，可在任务辅助关闭，声音复用战斗外提示音。战斗中显示文字提醒，仅在脱战且单位仍存在、提醒未过期时更新安全按钮。暂停／飞行／死亡时停用发现；过滤受限值、错误身份及宏命令字符。任务顺序、当前目标按钮及原生任务进度保持原值。
+
+复用并扩展既有目标按钮场景，537 回归通过；50 个 TOC 文件 luac5.1 语法检查及开发内容检查通过，日志 dist/rare-scanner-final-regression.log 与 rare-scanner-content.log。未改任务数据，无额外全角色或两阵营回放。地图追踪、危险怪、死亡风险、紧急操作及本批实机验收仍待补，完整目标 active；装备暂缓、指南导入不恢复，不升版、发布或安装，客户端仍129。

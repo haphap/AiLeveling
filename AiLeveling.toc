@@ -50,6 +50,7 @@ Navigation.lua
 Routes.lua
 QuestAssist.lua
 WorldInteract.lua
+RareScanner.lua
 UI/Main.lua
 UI/Tracker.lua
 UI/Plan.lua

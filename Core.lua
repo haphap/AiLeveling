@@ -3,7 +3,7 @@ _G.AiLeveling = A
 A.name = addonName
 A.version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addonName,"Version") or "dev"
 A.defaults = { mode = "relaxed", minutes = 60, dungeons = true, role = "DAMAGER",
-    scale = 1, alpha = 0.94, arrow = true, pins = true, items = true, highlight = true, worldHighlight = true,
+    scale = 1, alpha = 0.94, arrow = true, pins = true, items = true, highlight = true, worldHighlight = true, scanRares = true,
     combatFold = true, learn = true, waitMinutes = 10, damageStyle = "auto",
     fontScale=1,density="normal",lockWindow=false,routes=true,minimapPins=true,
     distanceUnits="yards",transportHints=true,quantity=true,missingChecks=true,rewardAdvice=true,sound=false,gearPreference="nearby",autoAccept=true,autoTurnIn=true,autoTaxi=true,targets=true,levelingStats=true }
@@ -139,6 +139,7 @@ function A:SetOption(key, value)
     end
     self.UI:ApplyStyle()
     if self.WorldInteract then self.WorldInteract:Refresh() end
+    if self.RareScanner then self.RareScanner:Refresh() end
     self.Navigation:RefreshPins()
     if self.QuestAssist then self.QuestAssist:Update(true) end
     if self.Routes then self.Routes:Update(true) end
@@ -161,6 +162,7 @@ function A:RestoreSettings()
     if self.Hearth then self.Hearth:InvalidateSample() end
     if self.ready then self.State:Refresh(true) end
     if self.WorldInteract then self.WorldInteract:Refresh() end
+    if self.RareScanner then self.RareScanner:Refresh() end
     self.Navigation:RefreshPins()
     if self.QuestAssist then self.QuestAssist:Update() end
     if self.Routes then self.Routes:Update(true) end
@@ -174,6 +176,7 @@ function A:TogglePause()
     self.Transport:InvalidateSample()
     if self.Hearth then self.Hearth:InvalidateSample() end
     if self.WorldInteract then self.WorldInteract:Refresh() end
+    if self.RareScanner then self.RareScanner:Refresh() end
     self.Navigation:RefreshPins()
     if self.QuestAssist then self.QuestAssist:Update(true) end
     self.dirty = true
@@ -246,6 +249,7 @@ function A:Initialize()
     if self.error then self.UI:Render(); return end
     if self.WorldInteract then self.WorldInteract:Initialize() end
     self.ready = true
+    if self.RareScanner then self.RareScanner:Initialize() end
     self.State:Refresh(true)
     self:Queue("index", function()
         self.Data:BuildIndex()

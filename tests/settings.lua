@@ -2,7 +2,8 @@ return function(test,eq,F,A,plan)
 local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","SlashCmdList","InCombatLockdown","GetTime","UnitClass","RAID_CLASS_COLORS",
     "geterrorhandler","C_Item","C_PlayerInfo","C_Container","GetQuestID","GetNumQuestChoices","GetQuestItemLink","GetQuestReward",
     "AcceptQuest","CompleteQuest","GetQuestMoneyToGet","IsQuestCompletable","IsShiftKeyDown","C_GossipInfo","UnitGUID","UnitLevel","UnitXP","UnitXPMax","UnitIsAFK",
-    "PlaySound","SOUNDKIT","NUM_CONTAINER_FRAMES","ContainerFrameCombinedBags","AiLeveling"}
+    "PlaySound","SOUNDKIT","NUM_CONTAINER_FRAMES","ContainerFrameCombinedBags","AiLeveling",
+    "UnitClassification","UnitName","UnitCanAttack","UnitIsDeadOrGhost","UnitOnTaxi","C_NamePlate","UIErrorsFrame","issecretvalue","canaccessvalue"}
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
     for _,key in ipairs({"SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","RegisterForDrag",
@@ -391,6 +392,50 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     for _,name in ipairs({"NPC\n/run bad()","NPC;bad","NPC[foo]","NPC/bar","NPC\\bar"," NPC","NPC "}) do
         entities[30]=name;Q:Update();eq(Q.targetButton.shown,false);eq(Q.targetButton.macrotext1,nil)
     end
+    -- Native rare discoveries have their own button and never replace the task.
+    local rare={guid="Creature-0-1-2-3-100-0000",name="觅食的灰熊",kind="rare"}
+    local units={nameplate1=rare};local messages,errors,sounds={},{},0
+    UnitClassification=function(unit) return units[unit] and units[unit].kind end
+    UnitGUID=function(unit) return units[unit] and units[unit].guid end
+    UnitName=function(unit) return units[unit] and units[unit].name end
+    UnitLevel=function() return 12 end
+    UnitCanAttack=function(_,unit) return units[unit] and not units[unit].friendly end
+    UnitIsDeadOrGhost=function(unit) return units[unit] and units[unit].dead end
+    UnitOnTaxi=function() return false end
+    C_NamePlate={GetNamePlates=function() return {{namePlateUnitToken="nameplate1"}} end}
+    local secret={};issecretvalue=function(value) return value==secret end
+    canaccessvalue=function(value) return value~=secret end
+    B.Message=function(_,text) messages[#messages+1]=text end
+    UIErrorsFrame={AddMessage=function(_,text) errors[#errors+1]=text end}
+    PlaySound=function(id,channel) eq(id,3175);eq(channel,"Master");sounds=sounds+1 end
+    assert(loadfile("RareScanner.lua"))("AiLeveling",B)
+    local actionBefore=B.action
+    local R=B.RareScanner;R:Initialize();eq(#messages,1);eq(R.button.shown,true)
+    eq(R.button.macrotext1,"/targetexact 觅食的灰熊");eq(Q.targetButton.shown,false)
+    units.target=rare;R.events.scripts.OnEvent(nil,"PLAYER_TARGET_CHANGED");eq(#messages,1)
+    R.events.scripts.OnEvent(nil,"NAME_PLATE_UNIT_ADDED","nameplate1");eq(#messages,1)
+    local writes=R.button.attributeWrites;B.combat(true)
+    rare.guid="Creature-0-1-2-3-101-0001";rare.name="霜鬃猎手";rare.kind="rareelite"
+    R.events.scripts.OnEvent(nil,"UNIT_CLASSIFICATION_CHANGED","nameplate1")
+    eq(#messages,2);eq(#errors,1);eq(sounds,0);eq(R.button.attributeWrites,writes)
+    eq(R.button.macrotext1,"/targetexact 觅食的灰熊")
+    B.combat(false);R.events.scripts.OnEvent(nil,"PLAYER_REGEN_ENABLED")
+    eq(R.button.macrotext1,"/targetexact 霜鬃猎手");assert(R.button.heading.value:find("稀有精英",1,true))
+    B:SetOption("scanRares",false);eq(R.button.shown,false)
+    rare.guid="Creature-0-1-2-3-101-0002";R:Check("nameplate1");eq(#messages,2)
+    B.settings.sound=true;B:SetOption("scanRares",true);eq(#messages,3);eq(sounds,1)
+    R.button.scripts.PostClick(nil,"RightButton",false);eq(R.button.shown,false)
+    R:Check("nameplate1");eq(#messages,3)
+    for _,change in ipairs({{guid=secret},{name="NPC\n/run bad()"},{friendly=true},{dead=true},{kind="elite"},{guid="Player-0-1"}}) do
+        local row={guid="Creature-0-1-2-3-102-0003",name="稀有",kind="rare"}
+        for k,v in pairs(change) do row[k]=v end;units.nameplate1=row
+        R:Check("nameplate1");eq(#messages,3)
+    end
+    units.nameplate1=rare;rare.guid="Creature-0-1-2-3-103-0004"
+    B:TogglePause();R:Check("nameplate1");eq(#messages,3)
+    B:TogglePause();eq(#messages,4);eq(R.button.shown,true)
+    B.time(21);R.button.scripts.OnUpdate();eq(R.button.shown,false);eq(R.button.macrotext1,nil)
+    eq(B.action,actionBefore)
     eq(B.state.quests[1].ready,nil);eq(next(B.state.completed),nil)
     B.finish()
 end)
