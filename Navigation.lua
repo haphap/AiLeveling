@@ -211,7 +211,43 @@ local function mapPin()
     return pin
 end
 
+local function actionAtlas(action)
+    return ({accept="QuestNormal",turnin="UI-QuestPoi-QuestBangTurnIn",dungeonEnter="Dungeon"})[action.kind]
+        or (action.kind=="transit" and action.mode=="flight" and "FlightPath") or "Waypoint-MapPin-Tracked"
+end
+
+function N:SyncWaypointUI()
+    self.externalWaypoint=nil
+    local api=WaypointUIAPI and WaypointUIAPI.Navigation
+    if not (api and api.GetUserNavigation and api.NewUserNavigation and api.ClearUserNavigation) then return end
+    local nav=api.GetUserNavigation()
+    local owned=nav and nav.flags=="AiLeveling"
+    local enabled=A.settings.waypointUI~=false
+    local tracked=api.IsUserNavigationTracked() or api.IsPathStepWaypointTracked()
+    local rawPin=not tracked and C_SuperTrack and C_SuperTrack.GetHighestPrioritySuperTrackingType and Enum and Enum.SuperTrackingType and
+        C_SuperTrack.GetHighestPrioritySuperTrackingType()==Enum.SuperTrackingType.UserWaypoint
+    if nav and not owned and tracked or rawPin then
+        self.externalWaypoint=enabled
+        return
+    end
+    local action=self:Current()
+    local target=action and N.Target(action)
+    if not enabled or A.char.paused or action and (action.kind=="flight" or action.kind=="hearth" or action.publicTransit and action.atDeparture) then target=nil end
+    if not target then
+        if owned and tracked then api.ClearUserNavigation(false,true) end
+        return
+    end
+    local q=action.questId and ((A.state.quests or {})[action.questId] or A.Data and A.Data:GetQuest(action.questId))
+    local label=action.title or q and q.title or target.entityName or action.text or "任务目的地"
+    local atlas=actionAtlas(action)
+    if owned and nav.mapID==target.map and math.abs(nav.x-target.x)<0.000001 and math.abs(nav.y-target.y)<0.000001 and
+        nav.name==label and nav.iconTexture==atlas then return end
+    api.NewUserNavigation({mapID=target.map,x=target.x*100,y=target.y*100,name=label,flags="AiLeveling",
+        iconTexture=atlas,iconType="ATLAS",stripCoordinates=true,suppressAudio=true})
+end
+
 function N:RefreshPins()
+    self:SyncWaypointUI()
     if not self.hbdPins then return end
     self.hbdPins:RemoveAllWorldMapIcons(self)
     self.hbdPins:RemoveAllMinimapIcons(self)
@@ -219,8 +255,7 @@ function N:RefreshPins()
     if (not A.settings.pins and not A.settings.minimapPins) or A.char.paused then return end
     for order,point in ipairs(self:MapPoints()) do
         local action,pos=point.action,point.position
-        local atlas=({accept="QuestNormal",turnin="UI-QuestPoi-QuestBangTurnIn",dungeonEnter="Dungeon"})[action.kind]
-            or (action.kind=="transit" and action.mode=="flight" and "FlightPath") or "Waypoint-MapPin-Tracked"
+        local atlas=actionAtlas(action)
         -- HBD-Pins requires separate frames for minimap/world map ownership.
         for surface=1,2 do
             local index=(order-1)*2+surface
@@ -236,6 +271,8 @@ function N:RefreshPins()
 end
 
 function N:Update()
+    self:SyncWaypointUI()
+    if self.externalWaypoint then A.UI:SetNavigation(nil);return end
     if not self.hbd then return end
     if A.Transport and A.Transport:InFlight() then A.UI:SetNavigation(nil);return end
     if A.Hearth and A.Hearth:InTransit() then A.UI:SetNavigation(nil);return end
