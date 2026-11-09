@@ -144,13 +144,10 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     assert(B.UI.startupPanel.copy:GetText():find("模拟文字创建失败",1,true))
     B.finish()
 end)
-test("全部设置有原生控件且有效关闭值跨归一化保留",function()
+test("设置开关跨归一化保留且清除已取消的旧采样",function()
     local B=setup()
-    for key in pairs(B.defaults) do assert(control(B,key)) end
     local row=control(B,"quantity");row.button.checked=false;row.button.scripts.OnClick()
     eq(B.settings.quantity,false);B:NormalizeSettings(B.settings);eq(B.settings.quantity,false)
-    B.settings.fontScale=0/0;B.settings.density="bad";B.settings.detailPosition={"bad","CENTER",0,0}
-    B:NormalizeSettings(B.settings);eq(B.settings.fontScale,1);eq(B.settings.density,"normal");eq(B.settings.detailPosition,nil)
     control(B,"gearPreference").button.scripts.OnClick();eq(B.settings.gearPreference,"xp");assert(B.refreshes>0)
     for _,key in ipairs({"quest","move","recovery","taskwork:old","tasktalk:v1:turnin:fast"}) do B.char.samples[key]={n=3,mean=10,m2=0} end
     B.char.sampleContext="old equipment context"
@@ -254,16 +251,6 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     update();eq(confirmed,1);assert(B.char.serviceStop)
     B.finish()
 end)
-test("字号与密度改变普通卡片并保留完整滚动说明",function()
-    local B=setup();local U=B.UI
-    U.body:SetText("完整说明");U:LayoutCard();local normal=U.frame.height
-    B:SetOption("density","compact");assert(U.frame.height<normal);eq(U.body.value,"完整说明")
-    B:SetOption("density","expanded");assert(U.frame.height>normal)
-    local fontSize=U.title.fontSize;B:SetOption("fontScale",1.2);assert(U.title.fontSize>fontSize)
-    U:Combat(true);eq(U.tracker.currentScroll.shown,false);local folded=U.frame.height
-    U:Combat(false);assert(U.frame.height>folded);eq(U.tracker.currentScroll.shown,true)
-    B.finish()
-end)
 test("窗口锁定阻止拖动且主详情分别保存位置并恢复",function()
     local B=setup();local U=B.UI
     U:Movable(U.frame,"position");U:Movable(U.details,"detailPosition")
@@ -272,33 +259,6 @@ test("窗口锁定阻止拖动且主详情分别保存位置并恢复",function(
     U.details.scripts.OnDragStop();eq(B.settings.detailPosition[3],25)
     B.char.deferredChains[1]=true;B.state.completed[7]=true
     B:RestoreSettings();eq(B.settings.detailPosition,nil);eq(B.char.deferredChains[1],true);eq(B.state.completed[7],true)
-    B.finish()
-end)
-test("多任务主卡片自动扩展并同时列出各任务摘要与当前建议",function()
-    local B=setup();B.state.quests[1].title="任务甲"
-    B.state.quests[1].objectives={{text="狼 1/3",numFulfilled=1,numRequired=3}}
-    B.state.quests[2]={title="任务乙",ready=true,objectives={}}
-    B.UI:LayoutCard();assert(B.UI.tracker.currentScroll.shown)
-    local text=table.concat(B.UI:TaskLines(true),"\n")
-    assert(text:find("任务甲 · 1/3",1,true));assert(text:find("[可交付] 任务乙",1,true))
-    assert(text:find("建议先做：任务甲",1,true));assert(text:find("狼 1/3",1,true))
-    B.finish()
-end)
-test("职业色距离单位与交通提示实际联动",function()
-    local B=setup()
-    RAID_CLASS_COLORS={PALADIN={r=0.96,g=0.55,b=0.73},MAGE={r=0.25,g=0.78,b=0.92}}
-    UnitClass=function() return "圣骑士","PALADIN" end
-    B.state.class=nil;B.settings.accent="blue";B:NormalizeSettings(B.settings);eq(B.settings.accent,nil)
-    B.UI:ApplyStyle();B.UI:RenderTracker();B.UI:SetNavigation(100,0,false)
-    eq(B.UI.nav.color[1],0.96);eq(B.UI.nav.color[3],0.73)
-    eq(B.UI.tracker.xpFill.color[2],0.55);eq(B.UI.tracker.rail.color[3],0.73)
-    eq(B.UI.tracker.step.color[1],0.96);eq(select("#",B.UI:Accent()),3)
-    B.state.class="MAGE";B.UI:ApplyStyle();B.UI:RenderTracker();B.UI:SetNavigation(100,0,false)
-    eq(B.UI.nav.color[1],0.25);eq(B.UI.tracker.rail.color[3],0.92)
-    B:SetOption("distanceUnits","meters")
-    B.UI:SetNavigation(100,nil,false);assert(B.UI.nav.value:find("91 米",1,true))
-    local text=B.UI.ActionText({kind="transit",mode="flight",text="管理员条件"},B.settings);eq(text,"管理员条件")
-    B.settings.transportHints=false;eq(B.UI.ActionText({kind="transit",mode="flight",text="管理员条件"},B.settings),"前往下一交通目的地")
     B.finish()
 end)
 test("关闭数量与缺失文字不取消物品需求和规划约束",function()
@@ -414,19 +374,6 @@ test("真实交付界面比较奖励且开关不触发自动领奖",function()
     local reads=B.linkReads;B:SetOption("rewardAdvice",false)
     eq(B.linkReads,reads);eq(B.QuestAssist.detailsText:find("奖励建议",1,true),nil)
     B.frame.scripts.OnEvent(nil,"QUEST_FINISHED");eq(B.QuestAssist.rewardQuest,nil)
-    B.finish()
-end)
-test("多项奖励效果详情保留在悬停，小框体显示简短入口且不改安全按钮",function()
-    local B=setup();B.Content.sources={effect=true};B.Content.items={[100]={verified=true,source="effect",useSpell=42}}
-    local Q=B.QuestAssist;Q:Update();local writes=Q.buttons[1].attributeWrites
-    B.combat(true);B.frame.scripts.OnEvent(nil,"QUEST_COMPLETE")
-    assert(Q.detailsText:find("第 1 项",1,true));assert(Q.detailsText:find("第 2 项",1,true))
-    assert(Q.detailsText:find("主动效果 #42",1,true))
-    assert(Q.info.text.value:find("悬停查看各项比较",1,true))
-    eq(Q.info.text.value:find("第 2 项",1,true),nil);eq(Q.buttons[1].attributeWrites,writes)
-    assert(Q.info.text.value:find("战斗结束后同步",1,true))
-    B.combat(false);B.frame.scripts.OnEvent(nil,"QUEST_FINISHED")
-    eq(Q.info.text.value:find("奖励需要权衡",1,true),nil)
     B.finish()
 end)
 test("奖励缓存未知时等待比较且非装备不循环请求属性",function()

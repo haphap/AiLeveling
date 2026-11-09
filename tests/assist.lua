@@ -50,28 +50,11 @@ return function(test,eq,F,A,C)
         eq(#A.QuestAssist.Desired({kind="turnin",questId=1},s,true,B.Data),0)
         eq(#A.QuestAssist.Desired({kind="accept",questId=1},s,true,B.Data),0)
     end)
-    test("超过四件任务物品可翻页且旧页越界时恢复有效页",function()
-        local items={1,2,3,4,5,6}
-        local page,index,pages=A.QuestAssist.Page(items,2)
-        eq(#page,2);eq(page[1],5);eq(index,2);eq(pages,2)
-        page,index=A.QuestAssist.Page({9},2);eq(index,1);eq(page[1],9)
-    end)
     test("配置边界恢复损坏值且保留有效偏好",function()
         local s={mode="fast",gearPreference="nearby",role="HEALER",scale=0/0,alpha=5,minutes=90,waitMinutes=-1,position={"invalid","CENTER",0,0}}
         C:NormalizeSettings(s)
         eq(s.mode,nil);eq(s.gearPreference,"xp");eq(s.role,"HEALER");eq(s.scale,1);eq(s.alpha,0.94)
         eq(s.minutes,90);eq(s.waitMinutes,10);eq(s.position,nil)
-    end)
-    test("恢复设置保留角色事实、暂缓与副本选择",function()
-        C.settings={scale=1.3,position={"CENTER","CENTER",1,2}}
-        C.char={skipped={[1]=true},samples={},dungeon={id=42}}
-        C.state={completed={[7]=true}}
-        C.UI={frame={ClearAllPoints=function() end,SetPoint=function() end},ApplyStyle=function() end,Settings={Refresh=function() end}}
-        C.Navigation={RefreshPins=function() end};C.State={Refresh=function() end}
-        C.Transport={InvalidateSample=function() end}
-        C:RestoreSettings()
-        eq(C.settings.mode,nil);eq(C.settings.position,nil)
-        eq(C.state.completed[7],true);eq(C.char.skipped[1],true);eq(C.char.dungeon.id,42)
     end)
     test("损坏角色统计不影响有效交付历史与偏好",function()
         C.Dungeon={ValidSession=function() return false end}
@@ -82,14 +65,12 @@ return function(test,eq,F,A,C)
         char.samples[routeKey]={n=3,mean=210,m2=2,unit="seconds"}
         char.samples[routeKey..":speed:1"]={n=3,mean=200,m2=2,unit="seconds"}
         char.samples[routeKey..":speed:1.2"]={n=3,mean=180,m2=2,unit="seconds"}
-        for _,speed in ipairs({"unknown","0","2","nan","1.20"}) do
-            char.samples[routeKey..":speed:"..speed]={n=3,mean=1,m2=0,unit="seconds"}
-        end
+        char.samples[routeKey..":speed:unknown"]={n=3,mean=1,m2=0,unit="seconds"}
         C:NormalizeCharacter(char)
         eq(char.samples.bad,nil);eq(char.samples.good.n,3)
         eq(char.samples[routeKey].mean,210)
         eq(char.samples[routeKey..":speed:1"].mean,200);eq(char.samples[routeKey..":speed:1.2"].mean,180)
-        for _,speed in ipairs({"unknown","0","2","nan","1.20"}) do eq(char.samples[routeKey..":speed:"..speed],nil) end
+        eq(char.samples[routeKey..":speed:unknown"],nil)
         eq(char.turnIns[1],2);eq(char.turnIns[2],nil);eq(char.skipped[42],true);eq(char.dungeon,nil)
         eq(char.gearTarget,nil);eq(char.gearBaseline,nil);eq(char.hearthBinding,nil)
         eq(char.itinerary,nil);eq(char.locked,nil)

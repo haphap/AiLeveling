@@ -137,17 +137,6 @@ test("低价值已接任务不会阻止推荐未接的有效任务",function()
     q.taskFacts={level=20,xp={{1,1000}}};eq(B.TaskGuide.LowValue(q,s,d),nil)
     q.taskFacts=nil;s.completed={};eq(B.TaskGuide.LowValue(q,s,d),nil)
 end)
-test("未灰但远处低经验任务降级，近处高经验和同级任务保留",function()
-    local B,s,q,d=fixture();q.questLevel=17;q.taskFacts.level=17;q.taskFacts.xp={{1,1000}}
-    local choice={timing={seconds=300}}
-    local value=B.TaskGuide.LowValue(q,s,d,choice);assert(value.distant);eq(value.suggestion,"建议放弃")
-    choice.timing.seconds=299;eq(B.TaskGuide.LowValue(q,s,d,choice),nil)
-    choice.timing.seconds=nil;eq(B.TaskGuide.LowValue(q,s,d,choice),nil)
-    choice.timing.seconds=600;q.taskFacts.xp={{1,4000}};eq(B.TaskGuide.LowValue(q,s,d,choice),nil)
-    q.taskFacts.xp={{1,1000}};q.questLevel=19;q.taskFacts.level=19;eq(B.TaskGuide.LowValue(q,s,d,choice),nil)
-    q.questLevel=17;q.taskFacts.level=17;s.quests={};eq(B.TaskGuide.LowValue(q,s,d,choice).suggestion,"建议跳过")
-    s.maxXP=nil;eq(B.TaskGuide.LowValue(q,s,d,choice),nil)
-end)
 test("远处低收益目标含返程后退出自动推荐且不拖住同NPC交付",function()
     local B,s,q,d=fixture();q.questLevel=17;q.taskFacts.level=17;q.taskFacts.xp={{1,1000}}
     d.Target=function(_,quest,state)

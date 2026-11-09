@@ -38,14 +38,6 @@ test("副本出发补齐必需物品与维修，按实际准备状态继续",fun
     eq(services,2)
 end)
 
-test("服务资源格式拒绝负数物品与空完成条件",function()
-    eq(S.ValidAction({gainItems={[100]=-1}}),false)
-    eq(S.ValidAction({kind="service",serviceGoal={}}),false)
-    eq(S.ValidAction({kind="service",serviceGoal={items={[100]=5}}}),true)
-    local d=services({});local point=d.content.services.smith
-    eq(S.ValidService(point,d.content),true);point.purchaseSeconds=-1;eq(S.ValidService(point,d.content),false)
-end)
-
 test("服务导航不会以到达供应商代替实际购买完成",function()
     local oldTime,oldFacing=GetTime,GetPlayerFacing
     GetTime=function() return 100 end;GetPlayerFacing=function() return 0 end

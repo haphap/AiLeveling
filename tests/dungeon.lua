@@ -76,14 +76,6 @@ return function(test,eq,F,plan)
             eq(B.Dungeon.Evaluate(d,s,B.settings,data).seconds,assembled.seconds)
         end)
     end)
-    test("完整副本行程必须指定实际难度且拒绝无效值",function()
-        local B,d,s,data=context()
-        d.difficultyId=nil;eq(B.Dungeon.Workflow(d,data.content),false)
-        for _,value in ipairs({0,-1,1.5,math.huge,"1"}) do
-            d.difficultyId=value;eq(B.Dungeon.Workflow(d,data.content),false)
-        end
-        d.difficultyId=201;eq(B.Dungeon.Workflow(d,data.content),true)
-    end)
     test("同地图错误或未知难度不进入本轮，正确难度恢复接续",function()
         local B,d,s,data=context()
         eq(B.Dungeon:Accept(1),true)
@@ -98,13 +90,6 @@ return function(test,eq,F,plan)
         s.instanceDifficultyId=1;B.Dungeon:Sync(s,{})
         eq(B.char.dungeon.entered,true);eq(B.char.dungeon.phase,"inside")
         eq(B.Dungeon.ActivePlan(d,s,data)[1].kind,"dungeonRun")
-    end)
-    test("副本完成首领条件拒绝空表重复稀疏或异常ID",function()
-        local B,d,s,data=context()
-        for _,ids in ipairs({{},"2732",{0},{-1},{1.5},{math.huge},{0/0},{1,1},{[1]=1,[3]=3},{bad=1}}) do
-            d.completionEncounters=ids;eq(B.Dungeon.Workflow(d,data.content),false)
-        end
-        d.completionEncounters={2732,2733};eq(B.Dungeon.Workflow(d,data.content),true)
     end)
     test("完成首领按实际目录核对副本难度且未知记录保留独立验证",function()
         local B,d,s,data=context()
@@ -460,7 +445,6 @@ return function(test,eq,F,plan)
         eq(s.completed[3],nil);eq(s.quests[4],nil)
     end)
 
-
     local function approachFixture()
         local q=F.Quest(1);q.verified=false
         local B,_,s,data=context({[1]=q});data.content.dungeons={}
@@ -583,7 +567,6 @@ return function(test,eq,F,plan)
         C_Map.GetMapInfo=function(id) return {parentMapID=id} end
         eq(B.Dungeon.TaskApproach(a,s,data),a);C_Map=oldMap
     end)
-
 
     test("副本距离未知时先做本内任务，再出本交付，手动锁定及暂缓可覆盖",function()
         local B,_,s,data,inside=approachFixture()

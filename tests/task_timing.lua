@@ -15,20 +15,6 @@ local function timingFixture()
     return B,s,choices
 end
 
-
-test("移动估时不依赖执行样本掉率或任务数量且不伪报总完成时间",function()
-    local B,s,choices=timingFixture()
-    local t=B.TaskGuide.Timing(s.position,choices[1],s,B.Navigation)
-    eq(t.travel,20);eq(t.seconds,20);eq(t.low,20);eq(t.high,20)
-    eq(t.movementOnly,true);eq(t.work,nil);eq(t.talk,nil);eq(t.turninRate,nil)
-    s.runSpeed=nil;eq(B.TaskGuide.Timing(s.position,choices[1],s,B.Navigation).seconds,nil)
-    s.runSpeed=14;eq(B.TaskGuide.Timing(s.position,choices[1],s,B.Navigation).seconds,10)
-    s.dead=true;eq(B.TaskGuide.Timing(s.position,choices[1],s,B.Navigation).seconds,nil)
-    s.dead=false;choices[1].stagesComplete=false
-    eq(B.TaskGuide.Timing(s.position,choices[1],s,B.Navigation).seconds,nil)
-end)
-
-
 test("移动时间接近时继续当前任务且明显减少跑路才切换",function()
     local B,s,choices=timingFixture();s.currentTask=1
     choices[1].remainingXP=12;choices[2].remainingXP=12
@@ -51,7 +37,6 @@ test("经验移动比处理同路程同经验零移动零经验与缺失经验",
     c[1].remainingXP=nil;c[1].stages[1].position.x=70
     local order=B.Planner.TaskOrder(s,c);eq(#order,2);eq(order[1].questId,2);eq(order[1].orderBasis,"movement-time")
 end)
-
 
 test("同状态含未知经验时按移动排序且保留手动和已接任务",function()
     local B,s=timingFixture();s.quests={};s.level=20

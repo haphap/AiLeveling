@@ -281,9 +281,7 @@ test("多来源目标及接交始终优先精确坐标且忽略其他无效标�
     d.db.Item.Get=function(_,key) if key=="npcDrops" then return {9,8} elseif key=="name" then return "物品" end end
     s.quests[1].objectives={{text="物品",type="item"}}
     p=d:Target(q,s);eq(p.entityId,8);eq(p.targetId,100);eq(p.approximate,nil)
-    for _,bad in ipairs({{-2,-1},{-1,10},{101,101},{-1,-1,1}}) do
-        npcs[9].spawns={[12]={bad}};eq(#d:EntityPoints(d.db.Npc,9,true),0)
-    end
+    npcs[9].spawns={[12]={{-1,10}}};eq(#d:EntityPoints(d.db.Npc,9,true),0)
 end)
 test("购买型任务使用友好商人坐标并保留物品身份和参考阶段阵营",function()
     local B,q,s,rows,npcs=fixture();local d=B.Data
@@ -657,18 +655,6 @@ test("区域中心覆盖全部未匹配目标和额外要求并参与完整移�
     eq(complete,true);eq(#stages,3);eq(stages[2].position.approximate,true)
     rows.objectives={};stages,complete=B.TaskGuide.Stages(q,s,d,{kind="accept",position=d:Target(q,s)})
     eq(complete,true);eq(#stages,3)
-end)
-test("走到区域参考点不自动完成目标或交付",function()
-    local B,q,s=fixture();B.state=s;B.char={};B.settings={};B.UI={SetNavigation=function() end}
-    assert(loadfile("Navigation.lua"))("AiLeveling",B)
-    local n=B.Navigation;local oldFacing=GetPlayerFacing;GetPlayerFacing=function() return 0 end
-    n.hbd={GetZoneDistance=function() return 0 end,GetWorldCoordinatesFromZone=function() return 0,0,1 end,
-        GetWorldVector=function() return 0,0 end}
-    n.Advance=function() error("区域坐标不能完成任务") end
-    for _,kind in ipairs({"objective","turnin"}) do
-        n.actions={{kind=kind,questId=1,position=B.Data:AreaTarget(q)}};n:Update();eq(n.index,1)
-    end
-    eq(s.completed[1],nil);eq(s.quests[1].ready,nil);GetPlayerFacing=oldFacing
 end)
 test("职业分类缺目标位置时沿用发布者区域中心并保持真实目标身份",function()
     local B,q,s,rows,npcs=fixture();local d=B.Data

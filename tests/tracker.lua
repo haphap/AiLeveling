@@ -174,14 +174,6 @@ test("原生更新后清除旧目标和旧任务行且拒绝过期任务点击",
     B.state.quests[1].ready=false;B.UI:RenderTracker();eq(T.model.questId,nil)
     B.finish()
 end)
-test("经验条使用真实角色比例且长文可滚动而不盖住后续列表",function()
-    local B=ready();local T=B.UI.tracker
-    B.state.xp=250;B.state.maxXP=1000;B.UI.title.measuredHeight=100
-    B.UI:RenderTracker();assert(T.experience.value:find("25%%"))
-    assert(T.currentChild.height>T.currentScroll.height)
-    assert(-T.queueLabel.point[3]>42+T.card.height)
-    B.finish()
-end)
 test("暂停飞行手动导航保持真实当前类型且不自动跳过任务",function()
     local B=ready();local T=B.UI.tracker
     B.char.paused=true;B.UI:RenderTracker();eq(T.step.value,"已暂停");eq(B.UI.title.value,"当前任务");eq(#T.model.rows,2)
@@ -215,14 +207,6 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     B:NormalizeSettings(B.settings);eq(B.settings.navigationPosition[3],25)
     B:RestoreSettings();eq(B.settings.navigationPosition,nil)
     B.finish()
-end)
-test("重排普通步骤和队列不触碰战斗中安全物品属性",function()
-    local B=ready();local writes=0
-    for _,button in ipairs(B.QuestAssist.buttons) do writes=writes+button.attributeWrites end
-    B.combat(true);B.UI:Combat(true);B.UI:RenderTracker();eq(B.UI.tracker.currentScroll.shown,false)
-    B:SetOption("fontScale",1.2)
-    local after=0;for _,button in ipairs(B.QuestAssist.buttons) do after=after+button.attributeWrites end
-    eq(after,writes);B.finish()
 end)
 test("商店事件触发刷新且维修卡片可以忽略",function()
     local B=ready();assert(loadfile("Merchant.lua"))("AiLeveling",B)

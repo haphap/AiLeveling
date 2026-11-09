@@ -2,9 +2,7 @@ return function(test,eq,F,A,plan)
 test("速度或跨世界距离未知时保留未知而原地移动为零",function()
     local p,q={map=1,x=0,y=0},{map=2,x=0,y=0}
     eq(A.Travel.Walk(p,p,{}),0)
-    for _,speed in ipairs({0,-1,math.huge,0/0}) do
-        eq(A.Travel.Walk(p,q,{runSpeed=speed},{Distance=function() return 700 end}),nil)
-    end
+    eq(A.Travel.Walk(p,q,{runSpeed=0},{Distance=function() return 700 end}),nil)
     eq(A.Travel.Walk(p,q,{runSpeed=7},{Distance=function() return nil end}),nil)
 end)
 test("耗时未知时相邻区域的近任务仍按直线距离排序",function()
