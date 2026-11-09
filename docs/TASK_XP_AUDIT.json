@@ -161,6 +161,21 @@
       "captureBuild": null
     },
     {
+      "id": 79096,
+      "level": 20,
+      "sourceItemId": 0,
+      "objectives": [
+        {
+          "kind": "item",
+          "id": 210177,
+          "count": 1
+        }
+      ],
+      "url": "https://www.wowhead.com/forever/quest=79096/ataeric-on-arcane-curiosities",
+      "checked": "2026-11-09",
+      "captureBuild": null
+    },
+    {
       "id": 490,
       "level": 8,
       "sourceItemId": 0,
@@ -2558,5 +2573,5 @@
   },
   "scope": "Base rewards only; native current-level rewards take priority. No character XP bonuses inferred.",
   "flagReference": "https://master.trinitycore.net/d8/d60/structquestobjective",
-  "transformation": "IDs, fixed levels, XP curves and monster/object/item/area-trigger requirements. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; payment quests remain complex objectives. Checked companion reward IDs classify optional repeats without inferring XP. No text, eligibility or other item rewards copied."
+  "transformation": "IDs, fixed levels, XP curves and monster/object/item/area-trigger/criteria-tree requirements. Criteria trees retain independent event IDs and counts, never entity identities or inferred completion. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; payment quests remain complex objectives. Checked companion reward IDs classify optional repeats without inferring XP. No text, eligibility or other item rewards copied."
 }

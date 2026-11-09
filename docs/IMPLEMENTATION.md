@@ -1241,3 +1241,14 @@ Core.OnUpdate 原来仅恢复 index 和 plan，已排队的 quest:dialog 和 ser
 删除轻松／快速／剧情三种升级风格及状态指纹，统一任务规划规则；装备比较直接使用既有gearPreference。旧快速模式在归一化时迁移为xp偏好，旧mode清除，现有配置场景验证迁移。去掉副本战利品占格预留、预计耐久损失、失败概率×恢复时间惩罚和任意levelAfter投影；实际物品、任务日志容量、维修与忽略仍保留。未恢复装备暂存分支。
 
 407回归、改动Lua语法、开发内容结构及diff检查通过。日志dist/test-compression-further-{regression,content}.log。未改任务资料，不重复全角色回放或双阵营盘点；本批界面与客户端事件待实机核对。未升版、发布或安装，已安装仍0.1.129-dev。95885资料接续和完整首版继续待办。
+
+
+## 2026-11-09 条件事件与书籍数量接续（未发布）
+
+固定服务器缓存中的criteriaTree原先被丢弃并标complex，使95885“鲜血供奉”只剩击杀要求、连续诊断停止。导入器现保留独立条件ID与计数，ReferenceObjectiveTargets复用事件／区域兜底，参考阶段保留criteriaTreeId。108任务117项条件事件进入现有规划，仍由原生日志确认实际进度；不载入条件树、不读取Buff、不按到达或NPC身份推定完成。95885献血、释放和击杀三项分别保留，原XP1850曲线不变。
+
+同批核对79096《阿塔瑞克：论奥术奇迹》：任务正文明确书籍210177×1，原Questie目标缺数量、服务器缓存无记录；现加已核对的独立数量补充，经验保持未知、资格不变。来源为[任务页](https://www.wowhead.com/forever/quest=79096/ataeric-on-arcane-curiosities)及[书籍页](https://www.wowhead.com/forever/item=210177/ataeric-on-arcane-curiosities)，核对2026-11-09；95885目标另由[任务原文](https://www.wowhead.com/forever/quest=95885/the-offering-of-blood)核对。
+
+扩展既有区域事件与批量数量检查，未新增独立场景，仍407。区域事件修复前复现1~=3，最终407回归通过。双阵营各140事件、556缓存目标任务检查，以及79096数量／原生日志优先／收集消费通过。生成语义比较确认3381旧缓存任务所有XP及既有目标保持，仅108任务补117事件及相应complex标记；唯一新增79096记录无XP。生成--check、Lua/Python语法、开发内容及diff通过。日志dist/criteria-events-{before,final-regression,final-generated-check,final-content,semantic,final-horde,final-alliance}.log，事件／缓存目标检查见criteria-events-{horde,alliance}-{area_triggers,cache_objectives}.log。
+
+最终单兽人连续诊断22级289交付，95885和79096均已交，79096记UNKNOWN／OMITTED_XP；parse_trace核验通过，停79948 unknown-item-count。该诊断仍省略击杀探索经验和真实交互，未重跑56角色旧报告；完整1—60与其余适用功能、客户端验收继续。未操作客户端、依赖或实际SavedVariables，未升版、发布、安装，客户端仍0.1.129-dev。

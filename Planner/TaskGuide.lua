@@ -156,6 +156,7 @@ function G.Stages(q,state,data,first)
                 local stage=add("objective",positions[index],o.text,nil,true,areas and areas[index])
                 stage.targetKind,stage.targetId=o.targetKind,o.targetId
                 stage.areaTriggerId=o.areaTriggerId
+                stage.criteriaTreeId=o.criteriaTreeId
                 stage.have,stage.need=o.numFulfilled,o.numRequired
                 for _,fact in ipairs(q.taskFacts and q.taskFacts.objectives or {}) do
                     if not stage.need and fact.kind==o.targetKind and fact.id==o.targetId and (fact.count or 0)>0 then stage.need=fact.count;break end

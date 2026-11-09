@@ -43,7 +43,7 @@ for _,id in ipairs(A.Data.ids) do
             if o.targetId then
                 assert(o.numRequired and o.numRequired>0,"count missing "..id)
                 targets=targets+1
-            else assert(o.type=="event" and (o.areaTriggerId or db.Quest.Get(id,"triggerEnd")),"unexplained target "..id) end
+            else assert(o.type=="event" and (o.areaTriggerId or o.criteriaTreeId or db.Quest.Get(id,"triggerEnd")),"unexplained target "..id) end
         end
         s.quests[id]={objectives=descriptions}
         local identities=A.Data:ObjectiveIdentities(q,s)

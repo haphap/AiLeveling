@@ -40,6 +40,22 @@ test("零数量进入区域仍需实际完成且多个触发目标分别保留",
     s.quests={};facts.objectives={{kind="areaTrigger",id=223,count=0}}
     descriptions=B.Data:ReferenceObjectiveTargets(q,s)
     eq(#descriptions,1);eq(descriptions[1].numRequired,nil);eq(descriptions[1].finished,false)
+    rows.triggerEnd=nil
+    facts.objectives={{kind="criteriaTree",id=224929,count=1},{kind="criteriaTree",id=224931,count=1},{kind="npc",id=6,count=1}}
+    descriptions,positions,complex=B.Data:ReferenceObjectiveTargets(q,s)
+    eq(#descriptions,3);eq(complex,false);eq(B.Data:DeliveryOnly(q,s),false)
+    local events={}
+    for index,o in ipairs(descriptions) do if o.criteriaTreeId then
+        events[o.criteriaTreeId]=index;eq(o.type,"event");eq(o.numRequired,1);eq(o.finished,false);eq(o.targetId,nil)
+    end end
+    assert(events[224929] and events[224931])
+    stages=B.TaskGuide.Stages(q,s,B.Data,{kind="accept",position={map=1,x=0,y=0}})
+    eq(#stages,5);eq(stages[events[224929]+1].criteriaTreeId,224929)
+    s.quests[1]={objectives=descriptions};s.position=positions[events[224929]]
+    eq(B.Data:ObjectiveIdentities(q,s)[events[224929]],nil)
+    B.Data:ObjectiveTargets(q,s);eq(descriptions[events[224929]].finished,false);eq(s.quests[1].ready,nil)
+    descriptions[events[224929]].finished=true;B.Data:ObjectiveTargets(q,s)
+    eq(descriptions[events[224931]].finished,false);eq(s.completed[1],nil)
 end)
 test("同构建确认仅交付时未绑定日志目标的辅助提示不拦住收件人导航",function()
     local B,q,s,rows,npcs=fixture();q.questLevel=10;rows.objectives={};s.quests={}

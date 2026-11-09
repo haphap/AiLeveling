@@ -64,7 +64,8 @@ def load():
         objectives, complex_objectives = [], False
         for objective in q.get('objectives', []):
             kind = {'monster': 'npc', 'gameObject': 'object', 'item': 'item',
-                    'areaTrigger': 'areaTrigger', 'areaTriggerEnter': 'areaTriggerEnter'}.get(objective.get('type'))
+                    'areaTrigger': 'areaTrigger', 'areaTriggerEnter': 'areaTriggerEnter',
+                    'criteriaTree': 'criteriaTree'}.get(objective.get('type'))
             target, count = objective.get('objectId'), objective.get('amount')
             # Area triggers store completion flags; zero amount is not an empty requirement.
             flag = kind in ('areaTrigger', 'areaTriggerEnter')
@@ -101,6 +102,9 @@ def load():
         {'id': 95884, 'level': 23, 'sourceItemId': 0,
          'objectives': [{'kind': 'item', 'id': 271343, 'count': 1}],
          'url': 'https://www.wowhead.com/forever/quest=95884/the-offering-stone'},
+        {'id': 79096, 'level': 20, 'sourceItemId': 0,
+         'objectives': [{'kind': 'item', 'id': 210177, 'count': 1}],
+         'url': 'https://www.wowhead.com/forever/quest=79096/ataeric-on-arcane-curiosities'},
         {'id': 490, 'level': 8, 'sourceItemId': 0,
          'objectives': [{'kind': 'item', 'id': 5220, 'count': 15}],
          'url': 'https://www.wowhead.com/forever/quest=490/bounty-gnarlpine-furbolg'},
@@ -197,5 +201,5 @@ def load():
                                 rejected=rejected_uses, scope='Successful item spells followed by quest progress. Use purpose and observed targets only; no required quantities, consumption or recovery inferred.'),
                   scope='Base rewards only; native current-level rewards take priority. No character XP bonuses inferred.',
                   flagReference='https://master.trinitycore.net/d8/d60/structquestobjective',
-                  transformation='IDs, fixed levels, XP curves and monster/object/item/area-trigger requirements. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; payment quests remain complex objectives. Checked companion reward IDs classify optional repeats without inferring XP. No text, eligibility or other item rewards copied.')
+                  transformation='IDs, fixed levels, XP curves and monster/object/item/area-trigger/criteria-tree requirements. Criteria trees retain independent event IDs and counts, never entity identities or inferred completion. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; payment quests remain complex objectives. Checked companion reward IDs classify optional repeats without inferring XP. No text, eligibility or other item rewards copied.')
     return data, report

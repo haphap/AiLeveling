@@ -252,7 +252,7 @@ do
 end
 
 do
-    local ids=faction=="Alliance" and {91733,490,99143} or {97225,79093,97583}
+    local ids=faction=="Alliance" and {91733,490,99143,79096} or {97225,79093,97583,79096}
     local inventory=dofile(root.."/tools/continuous_inventory.lua")
     for _,id in ipairs(ids) do
         local q=assert(A.Data:GetQuest(id))

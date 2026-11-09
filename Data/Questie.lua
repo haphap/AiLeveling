@@ -787,18 +787,20 @@ function D:ReferenceObjectiveTargets(q,state)
         else complex=true end
     end
     local trigger=self.db.Quest.Get(q.id,"triggerEnd")
-    local explorations={}
+    local events={}
     for _,fact in ipairs(cache and cache.objectives or {}) do
-        if fact.kind=="areaTrigger" or fact.kind=="areaTriggerEnter" then explorations[#explorations+1]=fact end
+        if fact.kind=="areaTrigger" or fact.kind=="areaTriggerEnter" or fact.kind=="criteriaTree" then events[#events+1]=fact end
     end
-    for _,fact in ipairs(explorations) do
-        local description={text="探索任务指定区域，按日志完成探索要求。",type="event",finished=false,
-            areaTriggerId=fact.id,numRequired=fact.count>0 and fact.count or nil}
+    for _,fact in ipairs(events) do
+        local criteria=fact.kind=="criteriaTree"
+        local description={text=criteria and "按任务日志完成事件" or "探索任务指定区域，按日志完成探索要求。",
+            type="event",finished=false,numRequired=fact.count>0 and fact.count or nil}
+        description[criteria and "criteriaTreeId" or "areaTriggerId"]=fact.id
         if order.eventObjectiveFirst and order.eventObjectiveFirst[q.id] then table.insert(descriptions,1,description)
         else descriptions[#descriptions+1]=description end
     end
-    -- The provider's single event point locates the cached exploration; do not add it twice.
-    if trigger and #explorations==0 then
+    -- The provider's single event point locates the cached event; do not add it twice.
+    if trigger and #events==0 then
         local description={text="按任务日志完成事件",type="event",finished=false}
         if order.eventObjectiveFirst and order.eventObjectiveFirst[q.id] then table.insert(descriptions,1,description)
         else descriptions[#descriptions+1]=description end
