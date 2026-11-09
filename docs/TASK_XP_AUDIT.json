@@ -55,6 +55,100 @@
       "url": "https://www.wowhead.com/forever/quest=99101/our-ancient-enemy",
       "checked": "2026-11-09",
       "captureBuild": null
+    },
+    {
+      "id": 97225,
+      "level": 9,
+      "sourceItemId": 0,
+      "objectives": [
+        {
+          "kind": "item",
+          "id": 277135,
+          "count": 8
+        }
+      ],
+      "url": "https://www.wowhead.com/forever/quest=97225/forgotten-loa-idols",
+      "checked": "2026-11-09",
+      "captureBuild": null
+    },
+    {
+      "id": 79093,
+      "level": 20,
+      "sourceItemId": 0,
+      "objectives": [
+        {
+          "kind": "item",
+          "id": 208860,
+          "count": 1
+        }
+      ],
+      "url": "https://www.wowhead.com/forever/quest=79093/rumi-of-gnomeregan-the-collected-works",
+      "checked": "2026-11-09",
+      "captureBuild": null
+    },
+    {
+      "id": 91733,
+      "level": 10,
+      "sourceItemId": 0,
+      "objectives": [
+        {
+          "kind": "item",
+          "id": 247817,
+          "count": 1
+        },
+        {
+          "kind": "item",
+          "id": 247813,
+          "count": 1
+        },
+        {
+          "kind": "item",
+          "id": 247818,
+          "count": 1
+        }
+      ],
+      "url": "https://www.wowhead.com/forever/quest=91733/downstream",
+      "checked": "2026-11-09",
+      "captureBuild": null
+    },
+    {
+      "id": 97583,
+      "level": 1,
+      "sourceItemId": 0,
+      "objectives": [
+        {
+          "kind": "item",
+          "id": 278265,
+          "count": 1
+        }
+      ],
+      "url": "https://www.wowhead.com/forever/quest=97583/wriggle",
+      "checked": "2026-11-09",
+      "captureBuild": null
+    },
+    {
+      "id": 490,
+      "level": 8,
+      "sourceItemId": 0,
+      "objectives": [
+        {
+          "kind": "item",
+          "id": 5220,
+          "count": 15
+        }
+      ],
+      "url": "https://www.wowhead.com/forever/quest=490/bounty-gnarlpine-furbolg",
+      "checked": "2026-11-09",
+      "captureBuild": null
+    },
+    {
+      "id": 97246,
+      "level": 15,
+      "sourceItemId": 0,
+      "objectives": [],
+      "url": "https://www.wowhead.com/forever/quest=97246/meal-appeal",
+      "checked": "2026-11-09",
+      "captureBuild": null
     }
   ],
   "observationChecks": [

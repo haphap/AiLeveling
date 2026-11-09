@@ -75,13 +75,32 @@ def load():
         curves[id] = dict(level=level, xp=curve, objectives=objectives, complex=complex_objectives)
         if rewards.get('money', 0) < 0:
             curves[id]['complex'] = True
-    # A supplied courier item is absent from the pinned server cache for this quest.
-    # Match the live database's item and level; this supplies no XP or other rewards.
-    supplements = [{'id': 99101, 'level': 9, 'sourceItemId': 286104,
-                    'objectives': [{'kind': 'item', 'id': 286104, 'count': 1}],
-                    'url': 'https://www.wowhead.com/forever/quest=99101/our-ancient-enemy',
-                    'checked': '2026-11-09', 'captureBuild': None}]
+    # Independently checked requirements missing from the pinned server cache.
+    # These add no XP/rewards; item IDs and counts remain separate from quest eligibility.
+    supplements = [
+        {'id': 99101, 'level': 9, 'sourceItemId': 286104,
+         'objectives': [{'kind': 'item', 'id': 286104, 'count': 1}],
+         'url': 'https://www.wowhead.com/forever/quest=99101/our-ancient-enemy'},
+        {'id': 97225, 'level': 9, 'sourceItemId': 0,
+         'objectives': [{'kind': 'item', 'id': 277135, 'count': 8}],
+         'url': 'https://www.wowhead.com/forever/quest=97225/forgotten-loa-idols'},
+        {'id': 79093, 'level': 20, 'sourceItemId': 0,
+         'objectives': [{'kind': 'item', 'id': 208860, 'count': 1}],
+         'url': 'https://www.wowhead.com/forever/quest=79093/rumi-of-gnomeregan-the-collected-works'},
+        {'id': 91733, 'level': 10, 'sourceItemId': 0,
+         'objectives': [{'kind': 'item', 'id': item, 'count': 1} for item in (247817, 247813, 247818)],
+         'url': 'https://www.wowhead.com/forever/quest=91733/downstream'},
+        {'id': 97583, 'level': 1, 'sourceItemId': 0,
+         'objectives': [{'kind': 'item', 'id': 278265, 'count': 1}],
+         'url': 'https://www.wowhead.com/forever/quest=97583/wriggle'},
+        {'id': 490, 'level': 8, 'sourceItemId': 0,
+         'objectives': [{'kind': 'item', 'id': 5220, 'count': 15}],
+         'url': 'https://www.wowhead.com/forever/quest=490/bounty-gnarlpine-furbolg'},
+        {'id': 97246, 'level': 15, 'sourceItemId': 0, 'objectives': [],
+         'url': 'https://www.wowhead.com/forever/quest=97246/meal-appeal'},
+    ]
     for fact in supplements:
+        fact.update(checked='2026-11-09', captureBuild=None)
         assert str(fact['id']) not in curves
         curves[str(fact['id'])] = dict(level=fact['level'], sourceItemId=fact['sourceItemId'],
                                       objectives=fact['objectives'], complex=False)

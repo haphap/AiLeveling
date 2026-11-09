@@ -242,3 +242,61 @@ if faction=="Horde" then
     assert(context.completed[q.id] and context.bags[286104]==0 and not context.quests[q.id])
     print("Horde: real #99101 previews accept + delivery; supplied report count is one; no XP invented; simulated turn-in consumes it")
 end
+
+do
+    local ids=faction=="Alliance" and {91733,490} or {97225,79093,97583}
+    local inventory=dofile(root.."/tools/continuous_inventory.lua")
+    for _,id in ipairs(ids) do
+        local q=assert(A.Data:GetQuest(id))
+        local context=dofile(root.."/tests/fixtures.lua").State()
+        context.faction,context.classMask,context.raceMask=faction,s.classMask,s.raceMask
+        context.clientVersion,context.clientBuild,context.interface="1.60.1","70862",16001
+        context.position=s.position
+        local facts=assert(A.Data:CacheQuest(q,context))
+        local descriptions,_,complex=A.Data:ReferenceObjectiveTargets(q,context)
+        assert(not complex and #descriptions==#facts.objectives and not A.TaskGuide.XP(q,context.level,context))
+        for _,o in ipairs(descriptions) do
+            local matched=false
+            for _,fact in ipairs(facts.objectives) do
+                if fact.id==o.targetId then assert(o.numRequired==fact.count);matched=true end
+            end
+            assert(matched)
+        end
+        local active=assert(inventory.Accept(q,context,A.Data))
+        assert(not active.ready and not context.completed[id])
+        local count=active.objectives[1].numRequired
+        active.objectives[1].numRequired=count+1
+        local requirements=A.TaskGuide.ItemRequirements(q,context,A.Data)
+        local native=false
+        for _,need in ipairs(requirements) do
+            if need.targetId==active.objectives[1].targetId then assert(need.need==count+1);native=true end
+        end
+        assert(native);active.objectives[1].numRequired=count
+        for index,o in ipairs(active.objectives) do
+            assert(o.numRequired>0 and o.numRequired%1==0 and not o.providedOnAccept)
+            context.bags[o.targetId]=o.numRequired-1
+            inventory.Refresh(context);assert(not active.ready)
+            inventory.Objective(id,index,context)
+        end
+        assert(active.ready and not context.completed[id])
+        inventory.TurnIn(id,context)
+        for _,o in ipairs(active.objectives) do assert(context.bags[o.targetId]==0) end
+        print(faction..": real #"..id.." item counts complete collection and consumption; native quantities take priority")
+    end
+end
+
+if faction=="Horde" then
+    local q=assert(A.Data:GetQuest(97246))
+    local context=dofile(root.."/tests/fixtures.lua").State()
+    context.faction,context.classMask,context.raceMask=faction,s.classMask,s.raceMask
+    context.clientVersion,context.clientBuild,context.interface="1.60.1","70862",16001
+    context.position=s.position
+    assert(A.Data:DeliveryOnly(q,context) and not A.TaskGuide.XP(q,context.level,context))
+    local stages,complete=A.TaskGuide.Stages(q,context,A.Data,
+        {kind="accept",questId=q.id,title=q.title,position=assert(A.Data:Target(q,context))})
+    assert(complete and #stages==2 and stages[2].kind=="turnin" and stages[2].position.entityId==3368)
+    context.quests[q.id]={objectives={}}
+    local target=assert(A.Data:Target(q,context))
+    assert(target.entityId==3368 and not context.quests[q.id].ready and not context.completed[q.id])
+    print("Horde: real #97246 continues to Borstan for conversation and waits for native completion")
+end

@@ -1020,3 +1020,13 @@ TaskGuide.Stages现在将本轮已取得的未接目标描述、位置与区域�
 复用原有导入器生成一条无XP的需求记录，审计增加objectiveSupplements；经验模型计数只计实际含XP的记录。现有真实API工具覆盖2阶段预览、发放1份、原生快照不变、发放物品不匹配不启用，以及诊断交付消耗。扩展既有数据回归，没有新增测试场景。537回归、49个TOC Lua语法、开发内容、生成文件一致性与diff检查通过；部落实库联跑通过。日志dist/courier-regression.log、courier-content.log、courier-generated.log、courier-horde.log。
 
 同一牛头人德鲁伊连续诊断推进到8级／49次交付／18415已知交付XP，其中3条未知XP未加入经验累计。99101作为第30次实际模拟交付通过，随后自动选取其他区域任务并进入杜隆塔尔，未据此宣称后续11级任务链已全部完成；下一停点97225物品数量缺口（dist/continuous-courier-tauren-druid.log）。没有在诊断里新增跳过任务ID或虚构奖励。下一目标回合核对97225等实际目标数量，并继续自动区域／任务链接续及其余适用功能。完整R01—R13／W01—W10目标active。未发布安装，客户端仍129；装备暂缓、指南导入不恢复，不操作游戏、依赖或实际存档。
+
+## 2026-11-09 补齐任务数量与交谈接续（未发布）
+
+上一目标回合为progress：102d6e3／bac8795已提交推送，修复实际提供列表并补99101。当前从干净bac8795接续，依据实际停点扩充原有需求数据，未改变规划规则或添加脚本系统。新增6条参考需求：97225神像8个（277135），79093书籍1本（208860），91733三种工具各1件（247817／247813／247818），97583淤泥1份（278265），490熊怪牙齿15颗（5220），97246前往博斯坦3368交谈／交付，无额外收集。任务ID、等级、发放物品与目标实体核对固定QuestieDB实际API，数量／交谈要求核对Wowhead Forever原始任务页；各来源URL与采集构建未公开的范围记入TASK_XP_AUDIT.objectiveSupplements。仅作为当前构建、任务等级及发放物品匹配的参考要求，已接数量采用原生日志。未采用搜索摘要中的XP，也未补资格、奖励、NPC或坐标。
+
+复用原有import_cache_xp／import_task_facts生成数据，现有记录逐字段比较完全不变，只新增490、79093、91733、97225、97246、97583六个ID；仍3369条缓存XP曲线。97246使用既有DeliveryOnly路径，预览接取→博斯坦交付，实际未完成日志保持未完成。既有check_task_guide增加一个批量收集／消耗循环和交谈检查，验证数目恰少1时未就绪、收集齐后可交、交付消耗、原生日志数量优先。没有新增单元测试场景，仍537。首次checker误写need.id而非targetId导致检查失败，已修正工具后两阵营全部通过；不是插件运行时失败。曾检索不存在的测试路径，已按实际tools/continuous_inventory.lua使用。
+
+最终验证：537回归、两阵营实际Questie API联跑、49个TOC Lua与修改checker语法、开发内容、生成一致性和diff检查通过。日志dist/requirements-regression.log、requirements-generated.log、requirements-content.log、requirements-final-check-alliance.log、requirements-final-check-horde.log；数据差异诊断dist/compare-requirements.lua确认只新增六记录。未操作游戏、依赖或实际SavedVariables。
+
+同一牛头人德鲁伊从1级起连续诊断由8级49交付／18415已知任务XP推进至13级108交付／56785已知任务XP，5条未知XP未累计；97225、97246之后的真实任务接续通过，下一停点97275缺结构目标。另一个暗夜精灵德鲁伊连续诊断在本批中由7级36交付推进至37交付，490通过后停99047缺结构目标，已知任务XP13285，1条未知XP未累计。两个角色独立，数量不能合并为全角色或1—60覆盖。诊断仅模拟任务事件与交付XP，不模拟击杀／探索经验，实机与全程覆盖继续。终态日志dist/requirements-final-continuous-horde.log、requirements-final-continuous-alliance.log。下一步核对97275／99047的实际任务要求，并继续自动行程接续与其余适用功能。完整R01—R13／W01—W10目标active。装备继续暂缓、指南导入不恢复；未升版、发布或安装，客户端仍0.1.129-dev。
