@@ -27,7 +27,13 @@ local function widget(kind,parent)
     function w:GetStringHeight()
         local count=0
         for line in (clean(self.value).."\n"):gmatch("(.-)\n") do
-            count=count+math.max(1,math.ceil(width(line,self.size)/(self.width or math.huge)))
+            local used=0
+            count=count+1
+            for char in line:gmatch("[%z\1-\127\194-\244][\128-\191]*") do
+                local length=width(char,self.size)
+                if used>0 and used+length>(self.width or math.huge) then count=count+1;used=0 end
+                used=used+length
+            end
         end
         return count*(self.size+4)
     end
