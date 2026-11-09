@@ -153,3 +153,42 @@ for _,id in ipairs(A.Data.ids) do
 end
 assert(lowCount>0 and chainCount>0)
 print(string.format("real-data low-value checks: %d isolated low-XP quests without item-cache dependency; %d chain quests protected",lowCount,chainCount))
+
+do
+    local pickupState=dofile(root.."/tests/fixtures.lua").State()
+    pickupState.clientVersion,pickupState.clientBuild,pickupState.interface="1.60.1","70862",16001
+    pickupState.level,pickupState.maxXP,pickupState.faction=3,A.Experience.xpToLevel[3],faction
+    pickupState.classMask,pickupState.raceMask=s.classMask,s.raceMask
+    pickupState.completionKnown=true
+    local extraId=faction=="Alliance" and 33 or 790
+    pickupState.completed[faction=="Alliance" and 783 or 4641]=true
+    pickupState.quests[id]={title=A.Data:GetQuest(id).title,
+        objectives={{text=db.Npc.Get(objective[1],"name").." 0/10",numFulfilled=0,numRequired=10}}}
+    pickupState.currentTask=id
+    -- Full-zone rectangle widths/heights from fixed 1.60.1.70862 UiMapAssignment.csv.
+    local size=faction=="Alliance" and {3470.8332519532,2314.5830078125} or {5287.4996337891,3524.9998779297}
+    local distance=A.Navigation.Distance
+    A.Navigation.Distance=function(_,a,b)
+        if a and b and a.map==b.map then return math.sqrt(((a.x-b.x)*size[1])^2+((a.y-b.y)*size[2])^2) end
+    end
+    pickupState.position=assert(A.Data:Target(A.Data:GetQuest(extraId),pickupState))
+    local candidates=A.Data.Candidates
+    A.Data.Candidates=function() return {id,extraId} end
+    local pickup=A.TaskQueue.Pickup
+    A.TaskQueue.Pickup=function() end
+    local before=run(function() return A.Planner.Build(pickupState,A.Data,options) end)
+    local baseline=assert(A.TaskQueue.Evaluate(before.taskOrder,pickupState,A.Navigation,A.Data))
+    A.TaskQueue.Pickup=pickup
+    local after=run(function() return A.Planner.Build(pickupState,A.Data,options) end,"native-zone pickup plan")
+    assert(before.fallback.questId==id and after.fallback.kind=="accept" and after.fallback.questId==extraId)
+    local queue=assert(after.taskQueue)
+    assert(queue.xpKnown and queue.xp/queue.seconds>baseline.xp/baseline.seconds)
+    assert(after.fallback.pickupResume and not pickupState.quests[extraId] and not pickupState.completed[id])
+    print(string.format("%s real pickup #%d + #%d: %.1f seconds / %.0f XP -> %.1f seconds / %.0f XP (straight-line model)",
+        faction,id,extraId,baseline.seconds,baseline.xp,queue.seconds,queue.xp))
+    A.Data.Candidates=candidates
+    local full=run(function() return A.Planner.Build(pickupState,A.Data,options) end,"full candidate pickup plan")
+    assert(full.fallback and #full.taskChoices>1 and not pickupState.quests[extraId])
+    print(string.format("%s full candidate pool: %d choices, next #%d %s",faction,#full.taskChoices,full.fallback.questId,full.fallback.kind))
+    A.Navigation.Distance=distance
+end

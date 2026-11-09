@@ -194,7 +194,7 @@ function G.ItemGainBlocked(action,state,bags)
     return false
 end
 
-function G.DeliveryGroups(choices,state,planned)
+function G.DeliveryGroups(choices,state,planned,includeAccepts)
     local groups,byKey,byQuest={},{},{}
     local shortages={}
     for _,choice in ipairs(planned or choices or {}) do shortages[choice.questId]=choice.itemShortage end
@@ -203,7 +203,8 @@ function G.DeliveryGroups(choices,state,planned)
         local active=(state.quests or {})[id]
         local last=choice.stages and choice.stages[#choice.stages]
         local p=last and last.kind=="turnin" and (last.recipient or last.position)
-        if active and not choice.lowValue and not choice.entryBlocked and not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] and
+        local accepting=includeAccepts and choice.stages and choice.stages[1] and choice.stages[1].kind=="accept"
+        if (active or accepting) and not choice.lowValue and not choice.entryBlocked and not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] and
             p and p.entityKind and p.entityId then
             local key=p.entityKind..":"..p.entityId
             local group=byKey[key]
@@ -218,7 +219,7 @@ function G.DeliveryGroups(choices,state,planned)
                 local limit=G.ItemLimit(item,state)
                 if limit and group.items[item]>limit then group.splitDelivery=true end
             end
-            if active.ready and not shortages[id] then group.ready=group.ready+1 end
+            if active and active.ready and not shortages[id] then group.ready=group.ready+1 end
             byQuest[id]=group
         end
     end

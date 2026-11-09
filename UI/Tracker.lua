@@ -138,6 +138,7 @@ function UI.TrackerModel(state,plan,action,paused)
         model.objectives[#model.objectives+1]={text="这批任务所需物品",done=false,have=have,need=have+action.itemGain}
     end
     if plan.preparingQuest then model.hint="先完成「"..plan.preparingQuest.title.."」的前置准备"
+    elseif action and action.pickupResume then model.hint="顺路接取，与「"..action.pickupResume.."」一并安排"
     elseif action and action.referenceFlight then model.hint="从当前飞行点前往任务区域，落地后继续目标指引"
     elseif action and action.sharedObjectives and #action.sharedObjectives>1 then
         model.hint="此目标可同时推进 "..#action.sharedObjectives.." 个任务"

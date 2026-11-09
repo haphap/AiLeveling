@@ -43,6 +43,58 @@ test("跨区未接任务按完整移动收益比较并从接取衔接到交付�
     q[1].preQuestGroup={4};p=plan(s,d,nil,B);eq(p.fallback,nil)
 end)
 
+test("自动行程顺路接取合算任务并按原生进度继续整组交付",function()
+    local B,s,d,q=fixture();assert(loadfile("Planner/TaskQueue.lua"))("AiLeveling",B)
+    s.position={map=1,x=0,y=0};s.currentTask=1
+    s.quests[1]={objectives={{text="共同目标",numFulfilled=0,numRequired=1}}}
+    local target,third=0.5,false
+    d.Target=function(_,quest,context)
+        if quest.id==3 and not third then return {map=3,x=0.5,y=0} end
+        local active=context.quests[quest.id]
+        if active and active.ready then return {map=1,x=0,y=0,entityKind="npc",entityId=100,entityName="交付者"} end
+        return {map=1,x=active and 0.5 or 0.1,y=0,objectiveIndex=active and 1 or nil}
+    end
+    d.ReferenceObjectiveTargets=function()
+        return {{text="共同目标",targetKind="npc",targetId=200,numRequired=1}},{{map=1,x=target,y=0}},false
+    end
+    d.ObjectiveTargets=function() return {{map=1,x=0.5,y=0,objectiveIndex=1}} end
+    local p=plan(s,d,nil,B)
+    eq(p.fallback.questId,2);eq(p.fallback.kind,"accept");assert(p.taskQueue)
+    assert(p.fallback.pickupResume);eq(s.quests[2],nil);eq(s.completed[1],nil)
+    eq(choice(p,2).status,"accept")
+    assert(loadfile("UI/Main.lua"))("AiLeveling",B);assert(loadfile("UI/Tracker.lua"))("AiLeveling",B)
+    local model=B.UI.TrackerModel(s,p,p.fallback,false)
+    eq(model.questId,2);eq(model.kind,"accept");assert(model.hint)
+    eq(model.rows[1].questId,1);eq(model.rows[1].accepted,true)
+    local objective,delivery=0,math.huge
+    for index,step in ipairs(p.taskQueue.steps) do
+        local stage=step.stage or step.choice.stages[1]
+        if stage.kind=="objective" then objective=index elseif stage.kind=="turnin" then delivery=math.min(delivery,index) end
+    end
+    assert(objective<delivery)
+    third=true;s.currentTask=2;q[3].taskFacts.xp={{1,1050}}
+    eq(plan(s,d,nil,B).fallback.questId,2)
+    q[3].taskFacts.xp={{1,2000}};eq(plan(s,d,nil,B).fallback.questId,3)
+    third=false;s.currentTask=1
+    s.locked=1;eq(plan(s,d,nil,B).fallback.questId,1);s.locked=nil
+    s.questCount=20;eq(plan(s,d,nil,B).fallback.questId,1);s.questCount=nil
+    q[2].taskFacts.hidden=true;eq(plan(s,d,nil,B).fallback.questId,1);q[2].taskFacts.hidden=nil
+    target=0.95;q[2].taskFacts.xp={{1,100}}
+    eq(plan(s,d,nil,B).fallback.questId,1)
+    q[2].taskFacts.xp=nil;eq(plan(s,d,nil,B).fallback.questId,1)
+    target=0.5;q[2].taskFacts.xp={{1,1000}}
+    q[2].requiredLevel=21;eq(plan(s,d,nil,B).fallback.questId,1)
+    s.level=21;eq(plan(s,d,nil,B).fallback.questId,2)
+    s.position={map=1,x=0.1,y=0};s.quests[2]={objectives={{text="共同目标",numFulfilled=0,numRequired=1}}}
+    p=plan(s,d,nil,B);eq(p.fallback.kind,"objective")
+    s.position=p.fallback.position;p=plan(s,d,nil,B);eq(p.fallback.kind,"objective")
+    eq(s.quests[1].ready,nil);eq(s.quests[2].ready,nil)
+    s.quests[1].ready=true;p=plan(s,d,nil,B);eq(p.fallback.questId,2);eq(p.fallback.kind,"objective")
+    s.quests[2].ready=true;p=plan(s,d,nil,B);eq(p.fallback.kind,"turnin")
+    local first=p.fallback.questId;s.quests[first]=nil;s.completed[first]=true
+    p=plan(s,d,nil,B);eq(p.fallback.kind,"turnin");assert(p.fallback.questId~=first)
+end)
+
 test("跨区低价值任务退出推荐且已接任务和手动选择继续优先",function()
     local B,s,d,q=fixture()
     s.position={map=1,x=0,y=0};s.runSpeed=3;q[2].questLevel=17;q[2].taskFacts.level=17

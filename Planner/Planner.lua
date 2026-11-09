@@ -416,6 +416,8 @@ function P.TaskOrder(state,choices,data)
     end
     if A.TaskQueue then
         local joint,queue=A.TaskQueue.Solve(order,state,A.Navigation,data)
+        local pickup,pickupQueue=A.TaskQueue.Pickup(joint or order,choices,state,A.Navigation,data,queue)
+        joint,queue=pickup or joint,pickupQueue or queue
         if joint then
             for _,choice in ipairs(optional) do joint[#joint+1]=choice end
             queue.optional=#optional
