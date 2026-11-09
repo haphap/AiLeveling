@@ -107,4 +107,3 @@ python3 tools/audit_data.py
 `python3 tools/build.py --release` 只用于完整首版验收后发布。代码语法、纯逻辑场景与实机结果分别记录。
 
 第三方代码与数据通过独立依赖接入；没有复制 RestedXP、TomTom、BtwQuests 程序代码或商业路线。危险位置及急救参考数据改编自固定 RestedXP Forever 数据，按 CC BY-NC-SA 4.0 单独分发；其非商业及相同方式共享条件、原作者和改动见 `docs/LICENSE.RestedXP.txt` 与 `docs/DANGER_DATA_AUDIT.json`。自有程序代码采用 MIT；其他来源和版本见 `docs/SOURCES.json`。
-
