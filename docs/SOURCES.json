@@ -444,6 +444,14 @@
       ],
       "scope": "Native GetOptions status and base icon, SelectOption(gossipOptionID) and SelectOptionByIndex(orderIndex). Service icons follow the independently verified RestedXP behavior: trainer 132058, taxi 132057, binder 132052; shared icon 136458 also requires the native localized HOME token. Planned NPC or flight departure, live gossip context, quest priority, fresh plan, manual overrides and repeated-event suppression are checked before selection. No completion or flight departure is inferred from opening a service window.",
       "clientVerified": false
+    },
+    {
+      "name": "Forever repeat reward aura state",
+      "build": "1.60.1.70862",
+      "url": "https://raw.githubusercontent.com/Gethe/wow-ui-source/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitAuraDocumentation.lua",
+      "sha256": "4d58b2e5a7033c96b58aff395b6e49197acb2a1b110a648552e69e9cf8380358",
+      "scope": "Public C_UnitAuras.GetPlayerAuraBySpellID for indexed repeatable quest reward casts only. Accessible matching spellId records active reward auras in immutable character snapshots. UNIT_AURA refreshes only for the player; fingerprint changes drive replanning. No aura durations or future speed gains are estimated; unknown or restricted results do not downgrade a task.",
+      "clientVerified": false
     }
   ],
   "native_symbol_checks": {

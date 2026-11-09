@@ -387,6 +387,8 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     assert(Q.targetButton.status.value:find("已选中",1,true));eq(B.refreshAt,nil)
     B.frame.scripts.OnEvent(nil,"UNIT_SPEED","target");eq(B.refreshAt,nil)
     B.frame.scripts.OnEvent(nil,"UNIT_SPEED","player");assert(B.refreshAt)
+    B.refreshAt=nil;B.frame.scripts.OnEvent(nil,"UNIT_AURA","target");eq(B.refreshAt,nil)
+    B.frame.scripts.OnEvent(nil,"UNIT_AURA","player");assert(B.refreshAt)
     UnitGUID=function() return "Player-0-1-2-3-10-0000" end
     Q:TargetStatus();eq(Q.targetButton.status.value:find("已选中",1,true),nil)
     B.action={kind="objective",questId=1,objectiveIndex=1,targetKind="npc",targetId=20}

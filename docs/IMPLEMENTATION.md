@@ -1113,3 +1113,16 @@ CONFIRM_BINDER 匹配已选或当前自动安排的旅店后，通过既有队�
 复用服务窗口与自动接交场景，覆盖真实 Core→Services→QuestAssist 事件和队列，仍537回归；50个TOC语法、开发内容与diff通过。日志 dist/service-gossip-final-regression.log、service-gossip-content.log。最初两次失败分别为测试夹具遗漏空unlocked表／Merchant.Event，另有旧手动选择文案断言，均已按实际边界修正。未改任务数据，不重跑全角色或两阵营任务数据；未操作客户端、依赖或存档。
 
 完整目标 active。RX06 常规服务菜单已有，任务专用闲聊和完整实机仍待补；全程任务接续、其余适用功能继续。装备暂缓、指南导入不恢复，未升版发布安装，客户端仍129。
+
+
+## 2026-11-09 已生效重复增益免重复领取（未发布）
+
+上一轮5ec8ac5为progress。本轮先用1.0.12与1.0.13公开Contract4核对98405、889、91741、99143：所查需求字段一致，未升级或修改依赖。98405仍为空结构目标，实际规划可推荐接取，离线连续诊断在模拟Accept时无法生成未采集的原生日志而停止；已接事件定位仍使用原生日志，未补造数量、空交付事实或完成。
+
+实际889“风之魂”要求血岩碎片10件，参考XP模型为0、奖励spell／spellCast16618，无物品或后续任务。增加通用规则：未接可重复任务的已知经验为0、仅奖励当前仍生效的同一增益且没有物品／后续／职业技能价值时降优先级，显示“增益仍在生效／稍后再领”。已有任务、手动锁定与安排、正经验／未知经验、额外物品或技能及后续关系继续保留；增益消失恢复推荐。没有按889硬编码或新增收益／时长模型。
+
+Data.BuildIndex只索引可重复任务的奖励施法ID；State按这些ID读取公开GetPlayerAuraBySpellID，匹配可访问spellId才记录，快照独立保存、指纹变化重算。仅玩家UNIT_AURA请求合并刷新，无全量光环扫描；未读取光环时长或推算未来跑速。API缺失／受限／失败保留任务原优先级。固定Forever UnitAuraDocumentation URL／SHA256记入SOURCES，clientVerified仍false。
+
+复用原有状态、价值和事件场景，537回归通过；两阵营实际Questie API联跑、50个TOC与checker语法、开发内容及diff检查通过。真实889验证NativeAura快照下的降级与消失恢复；日志dist/reward-aura-regression.log、reward-aura-alliance.log、reward-aura-horde.log、reward-aura-content.log。连续诊断不模拟奖励增益，本轮未重跑或改写旧56角色报告，未把本批当作完整1—60证据。
+
+完整目标active，全程接续、任务专用闲聊、其余RestedXP适用功能与实机继续。装备暂缓、指南导入不恢复，不升版、发布或安装，客户端仍129。

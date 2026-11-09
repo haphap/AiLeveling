@@ -364,4 +364,18 @@ if faction=="Horde" then
     local active=run(function() return A.Planner.TaskChoices(context,A.Data,{q.id},true,options) end)
     assert(not active[1].lowValue and active[1].actions[1].kind=="turnin")
     print("Horde: real #1464 stops automatic restocking while Fire Sapta is held; consumption restores it; manual and accepted tasks remain available")
+    local wind=assert(A.Data:GetQuest(889))
+    local context=dofile(root.."/tests/fixtures.lua").State()
+    context.clientVersion,context.clientBuild,context.interface="1.60.1","70862",16001
+    context.level=20;context.quests={};context.completed={};context.faction="Horde"
+    assert(A.Data.rewardAuraSpells[16618] and wind.taskFacts.rewards.spellCast==16618)
+    assert(A.TaskGuide.XP(wind,context.level,context)==0)
+    local native=C_UnitAuras
+    C_UnitAuras={GetPlayerAuraBySpellID=function(id) if id==16618 then return {spellId=id} end end}
+    A.State.RewardAuras(context)
+    assert(A.TaskGuide.LowValue(wind,context,A.Data).summary=="增益仍在生效")
+    C_UnitAuras.GetPlayerAuraBySpellID=function() end;A.State.RewardAuras(context)
+    assert(not A.TaskGuide.LowValue(wind,context,A.Data))
+    C_UnitAuras=native
+    print("Horde: real #889 skips redundant Spirit of the Wind while its native aura is active; expiration restores it without inventing XP")
 end

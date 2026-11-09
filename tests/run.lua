@@ -233,6 +233,20 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     A.State:QuestOffersEvent("QUEST_TURNED_IN");A.State:Refresh()
     eq(A.state.questOffers[11],nil);assert(offers.questOffers[11]);eq(A.state.revision,offers.revision+1)
     A.State.questOffers,A.State.questOffersRevision=nil,nil
+    local oldAuras,oldAccess=C_UnitAuras,canaccessvalue
+    A.Data.rewardAuraSpells={[16618]=true,[42]=true}
+    local aura,reads={spellId=16618},0
+    C_UnitAuras={GetPlayerAuraBySpellID=function(id) reads=reads+1;if id==16618 then return aura end end}
+    prior=A.state;A.State:Refresh();eq(reads,2);eq(A.state.rewardAuras[16618],true)
+    eq(prior.rewardAuras[16618],nil);eq(A.state.revision,prior.revision+1)
+    prior=A.state;A.State:Refresh();eq(A.state.revision,prior.revision)
+    aura=nil;A.State:Refresh();eq(A.state.rewardAuras[16618],nil);eq(prior.rewardAuras[16618],true)
+    local secret={};canaccessvalue=function(value) return value~=secret end
+    aura={spellId=secret};A.State:Refresh();eq(A.state.rewardAuras[16618],nil)
+    aura=secret;A.State:Refresh();eq(A.state.rewardAuras[16618],nil)
+    C_UnitAuras.GetPlayerAuraBySpellID=function() error("unavailable aura") end
+    A.State:Refresh();eq(next(A.state.rewardAuras),nil)
+    C_UnitAuras,canaccessvalue=oldAuras,oldAccess
     C_SkillInfo,A.WeaponSkills=oldSkills,oldWeaponSkills
     A.clientVersion,A.build,A.interface=oldVersion,oldBuild,oldInterface
     A.Data=provider;A.Navigation=oldNavigation

@@ -292,7 +292,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if not A.ready then return end
         for _, name in ipairs({"PLAYER_ENTERING_WORLD", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED",
             "QUEST_DATA_LOAD_RESULT", "QUEST_REMOVED", "QUEST_TURNED_IN", "QUEST_COMPLETE", "QUEST_PROGRESS", "QUEST_FINISHED", "GOSSIP_SHOW", "GOSSIP_CLOSED", "QUEST_DETAIL", "PLAYER_LEVEL_UP", "PLAYER_XP_UPDATE",
-            "PLAYER_EQUIPMENT_CHANGED", "BAG_UPDATE_DELAYED", "GROUP_ROSTER_UPDATE", "UNIT_CONNECTION", "PLAYER_ROLES_ASSIGNED", "UNIT_SPEED", "PLAYER_TARGET_CHANGED", "PLAYER_FLAGS_CHANGED", "PLAYER_LOGOUT",
+            "PLAYER_EQUIPMENT_CHANGED", "BAG_UPDATE_DELAYED", "GROUP_ROSTER_UPDATE", "UNIT_CONNECTION", "PLAYER_ROLES_ASSIGNED", "UNIT_SPEED", "UNIT_AURA", "PLAYER_TARGET_CHANGED", "PLAYER_FLAGS_CHANGED", "PLAYER_LOGOUT",
             "ZONE_CHANGED_NEW_AREA", "PLAYER_DIFFICULTY_CHANGED", "PLAYER_ALIVE", "PLAYER_DEAD", "PLAYER_UNGHOST", "PLAYER_REGEN_ENABLED",
             "PLAYER_REGEN_DISABLED", "GET_ITEM_INFO_RECEIVED", "BAG_UPDATE_COOLDOWN", "BAG_OPEN", "BAG_CLOSED", "UPDATE_INVENTORY_DURABILITY", "MERCHANT_SHOW", "MERCHANT_CLOSED"}) do
             frame:RegisterEvent(name)
@@ -329,7 +329,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
         A.State:TurnedIn(...)
         if A.LevelingTracker and (A.char.turnIns[(...)] or 0)>before then A.LevelingTracker:QuestTurnedIn() end
         A:RequestRefresh()
-    elseif event=="UNIT_SPEED" then
+    elseif event=="UNIT_SPEED" or event=="UNIT_AURA" then
         if (...)=="player" then A:RequestRefresh() end
     elseif event:sub(1,15)=="UNIT_SPELLCAST_" then
         if hearthChanged then A:RequestRefresh() end
