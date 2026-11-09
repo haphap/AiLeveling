@@ -15,7 +15,19 @@
       "api_blob": "65316921a9a52100fa1eca861167a87c15a5f0f5",
       "bundled": false,
       "archive_sha256": "bc1e6894b64fc347e29758fa73e4ca9e4921844a16852c0c428f45f14ca2f8cf",
-      "effective_audit": "EFFECTIVE_DATA_AUDIT.json"
+      "effective_audit": "EFFECTIVE_DATA_AUDIT.json",
+      "additional_tested_releases": [
+        {
+          "version": "v1.0.13",
+          "contract": 4,
+          "commit": "0f7d8adc92b28ac6594f4ad8745257f4d9784edf",
+          "url": "https://github.com/Questie/QuestieDB/releases/tag/v1.0.13",
+          "archive_sha256": "f07c6cb18a723c8fba824038ffaaf5de23ab5c8ecd1d9235b122f06a59666f0c",
+          "installed": false,
+          "client_verified": false,
+          "scope": "Public API load and quest XP fallback in 18 faction/class contexts; 77 additional fixed-level 1-59 quest XP models versus AiLeveling 0.1.119-dev with the same provider."
+        }
+      ]
     },
     {
       "name": "HereBeDragons",
@@ -106,6 +118,14 @@
           "sha256": "231825ae9ab45e9fb4d163848bef8cc030882041ddc86989040691b3d37be51c"
         }
       ]
+    },
+    {
+      "name": "Questie public quest XP support interpretation",
+      "url": "https://github.com/Questie/Questie/blob/d6f33444c2f4266aace3fa57ba667c92ac18a335/Database/QuestXP/QuestieXP.lua",
+      "retrieved": "2026-11-09",
+      "sha256": "b3b04221bcf7caf3197df40ece32c967a580644acf3490ba357c0f5dff434816",
+      "scope": "QuestXP.db rows are base XP and quest level; level reduction and tier rounding independently implemented as a fallback; native rewards and existing matching curves retain priority. Compared against the upstream consumer for every added row at player levels 1-59. Buff multipliers are not inferred.",
+      "code_copied": false
     }
   ],
   "api_references": [

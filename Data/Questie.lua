@@ -190,7 +190,10 @@ function D:GetQuest(id)
     q.repeatable = math.floor((q.specialFlags or 0) / 1) % 2 == 1
     q.title = q.name or ("任务 #" .. id)
     local xp = self.xp[id]
-    q.referenceXP = xp and xp[2] or nil
+    if type(xp)=="table" and type(xp[1])=="number" and xp[1]>=1 and xp[1]<=60 and xp[1]%1==0 and
+        type(xp[2])=="number" and xp[2]>=0 and xp[2]<math.huge and xp[2]%1==0 then
+        q.referenceXPLevel,q.referenceXP=xp[1],xp[2]
+    end
     q.taskFacts=A.TaskFacts and A.TaskFacts.quests[id]
     if overlay then for k, v in pairs(overlay) do q[k] = v end end
     self.cache[id] = q

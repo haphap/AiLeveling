@@ -126,7 +126,9 @@ test("自有新增任务进入等级资格和关系索引且不改上游 ID 表"
     assert(loadfile("Planner/Chains.lua"))("AiLeveling",B)
     assert(loadfile("Data/Questie.lua"))("AiLeveling",B)
     local ids={1};local source={name="上游任务",questLevel=20,requiredLevel=1}
-    local db={RequireContract=function() return true end,Support={Get=function() return {} end},
+    local db={RequireContract=function() return true end,Support={Get=function(name)
+        return name=="QuestXP" and {db={[1]={20,1234}}} or {}
+    end},
         Enum={npcFlags={VENDOR=4,REPAIR=16384}},Npc={GetAllIds=function() return {} end},Quest={
         Get=function(id,key) if id==1 and key=="objectives" then return {[4]={72,3000}} end end,
         GetAllIds=function() return ids end,GetAll=function(id,fields)
@@ -140,6 +142,10 @@ test("自有新增任务进入等级资格和关系索引且不改上游 ID 表"
     eq(B.Data.requirements.reputations[72],true)
     assert(edge(B.Data.chainIndex,1,2,"all"));eq(B.Data:GetQuest(2).title,"自有任务")
     source.name="另一个角色上下文";assert(B.Data:Connect(db));eq(B.Data:GetQuest(1).title,"另一个角色上下文")
+    eq(B.Data:GetQuest(1).referenceXP,1234);eq(B.Data:GetQuest(1).referenceXPLevel,20)
+    for _,bad in ipairs({{0,100},{20,-1},{20,math.huge},{20,"100"},{1.5,100},{61,100}}) do
+        B.Data.xp[1]=bad;B.Data.cache={};eq(B.Data:GetQuest(1).referenceXP,nil)
+    end
 end)
 
 local function widget()

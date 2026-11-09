@@ -21,7 +21,7 @@ Forever 练级助手，当前版本 `0.1.113-dev`。完整首版目标和验收�
 ## 安装开发包
 
 1. 使用 Forever 客户端，目标接口号 `16001`。本机检测到的客户端构建为 `1.60.1.70862`。
-2. 安装 [QuestieDB v1.0.12](https://github.com/Questie/QuestieDB/releases/tag/v1.0.12) 或满足公开 Contract 4 的兼容发行版。
+2. 安装 [QuestieDB v1.0.13 Forever](https://github.com/Questie/QuestieDB/releases/tag/v1.0.13)，也兼容 v1.0.12 或其他满足公开 Contract 4 的发行版。
 3. 安装 [HereBeDragons](https://www.wowace.com/projects/herebedragons/files) 的 Forever 兼容发行包，须包含 HBD 2.0 和 HBD-Pins 2.0。
 4. 从 [Releases](https://github.com/haphap/AiLeveling/releases) 下载 `AiLeveling-*.zip`（GitHub 自动生成的 Source code 为源码归档）。将开发包内的 `AiLeveling` 目录解压到 `_forever_/Interface/AddOns/`，登录或重新载入界面。
 5. 执行 `/ail status` 查看构建与接口状态，执行 `/ail audit` 盘点实际任务库及自有内容覆盖。
