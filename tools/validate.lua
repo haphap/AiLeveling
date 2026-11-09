@@ -114,13 +114,6 @@ for id,source in pairs(c.gearSources or {}) do
     if (low~=nil or high~=nil) and (not probability(low) or not probability(high) or low>high) then fail("掉落概率区间无效："..id) end
     if source.shareChance~=nil and not probability(source.shareChance) then fail("装备分配概率无效："..id) end
 end
-local progression=c.progression
-if progression and progression.verified then
-    if not c.sources[progression.source] then fail("升级经验曲线缺少来源") end
-    for level,xp in pairs(progression.xpToLevel or {}) do
-        if type(level)~="number" or level%1~=0 or level<1 or level>=60 or not positive(xp) then fail("升级经验曲线条目无效") end
-    end
-end
 for id,d in pairs(c.dungeons) do
     dungeonCount=dungeonCount+1
     if d.verified and not c.sources[d.source] then fail("副本缺少来源："..id) end

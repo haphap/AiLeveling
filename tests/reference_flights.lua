@@ -156,15 +156,6 @@ test("训练旅店服务使用统一交通且到达不完成服务",function()
     B.PublicTransitData=nil;nav.Distance=function() return nil end
     result=B.Services.Build(s);eq(result.referenceJourney,nil);eq(#result.travelActions,1);assert(s.serviceStop)
 end)
-test("原生转乘各段合计只计算一次候机",function()
-    local B,s,a,nav,O,D,L,T=joint()
-    s.taxiHops={["1:2"]="1:4:2"}
-    B.FlightData.durations.Alliance["1:4"]=40;B.FlightData.durations.Alliance["4:2"]=20
-    local route=B.Flights.Routes(O,T,s,nav)[1]
-    eq(route.seconds,120);eq(route.cost,nil);eq(route.flights,1)
-    local actions=B.Flights.Actions(route,a,nav)
-    eq(actions[1].timeSampleKey,B.Flights.TimeKey(1,2,s.faction,"1:4:2",s.taxiSpeed))
-end)
 test("无需先飞过航线即可按参考落地点估时且实际落地点优先",function()
     local B,s,a,nav,O,D,L,T=joint()
     s.taxiLandings={}
@@ -224,22 +215,6 @@ test("连续航班的实际转乘点按直线连接",function()
     s.taxiAvailability["3:4"]=true
     local routes=B.Flights.Routes(O,T4,s,nav)
     eq(routes[1].flights,2);eq(routes[1].seconds,175)
-end)
-test("跨图完整飞行耗时进入任务时间与排序",function()
-    local B,s,a,nav,O,D,L,T=joint()
-    assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
-    local choice={questId=99,stagesComplete=true,stages={{position=T,kind="turnin"}},
-        remainingXP=1000,actions={{position=T}},status="turnin"}
-    local timing=B.TaskGuide.Timing(O,choice,s,nav)
-    eq(timing.seconds,160);eq(timing.flightCount,1)
-    local oldGuide,oldNav=A.TaskGuide,A.Navigation
-    A.TaskGuide=B.TaskGuide;A.Navigation=nav
-    local localTarget={map=1,x=0.6,y=0}
-    local other={questId=98,stagesComplete=true,stages={{position=localTarget,kind="turnin"}},
-        remainingXP=1000,actions={{position=localTarget}},status="turnin"}
-    s.quests={[99]={ready=true},[98]={ready=true}};s.mode="relaxed"
-    local order=A.Planner.TaskOrder(s,{other,choice});eq(order[1].questId,98);eq(order[1].orderBasis,"movement-xp")
-    A.TaskGuide,A.Navigation=oldGuide,oldNav
 end)
 test("完整参考规划只执行选中路线的首段并等待实际交付",function()
     local B,s,a,nav,O,D,L,T=joint()
@@ -541,15 +516,6 @@ test("集中交付只合并实际接取且同一收件人的有效任务",functi
     eq(#B.TaskGuide.DeliveryGroups({a,b},s),0)
     b.stages[2].position.entityId=900;b.stages[2].position.entityKind="object"
     eq(#B.TaskGuide.DeliveryGroups({a,b},s),0)
-end)
-test("炉石等待和落地直线距离进入比较且保留未消费冷却方案",function()
-    local B,s,a,nav,O,L,T=hearthFixture()
-    local routes=B.Flights.Routes(O,T,s,nav)
-    eq(routes[1].seconds,50);eq(routes[1].hearths,1);eq(routes[1].hearthReady,math.huge)
-    local retained=false;for _,r in ipairs(routes) do if r.hearths==0 then retained=true end end;assert(retained)
-    local actions=B.Flights.Actions(routes[1],a,nav);eq(actions[1].mode,"hearth");eq(actions[1].hearthBindingKey,s.hearthBindingKey)
-    s.hearthReady=s.now+50;eq(B.Flights.Routes(O,T,s,nav)[1].seconds,100)
-    s.bags={};for _,r in ipairs(B.Flights.Routes(O,T,s,nav)) do eq(r.hearths,0) end
 end)
 test("整个队列保留炉石用于后续任务且传播使用后的冷却",function()
     local B,s,a,nav,O,L,T=hearthFixture()

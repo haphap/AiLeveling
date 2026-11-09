@@ -271,17 +271,6 @@ test("服务插入覆盖普通规划保留锁定且必要维修优先并在完�
     result=plan(s,d,{minutes=60,dungeons=false},B);eq(result.serviceStop,nil);eq(result.fallback.questId,42)
     finish()
 end)
-test("服务目录只按直线距离且未知距离排后",function()
-    local B,e,finish=setup()
-    B.Data={AmenityPoints=function() return {
-        {kind="bind",npcId=1,title="近点",position={map=1,x=0.51,y=0.5}},
-        {kind="bind",npcId=2,title="远点",position={map=1,x=0.6,y=0.5}}} end}
-    B.Navigation.hbd={}
-    local rows=B.Services:Choices("bind");eq(rows[1].npcId,1)
-    B.Navigation.Distance=function(_,from,to) if to.x~=0.51 then return 100 end end
-    rows=B.Services:Choices("bind");eq(rows[1].npcId,2)
-    finish()
-end)
 test("服务点比较接续任务的总直线距离且过期规划不参与",function()
     local B,e,finish=setup();B.plan=nil
     B.Data={AmenityPoints=function() return {

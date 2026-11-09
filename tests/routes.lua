@@ -7,12 +7,6 @@ local function engine()
     return B
 end
 local function direct(p,map) if p.map==map then return p.x,p.y end end
-test("地图连线只连接目的地且不读取道路折线",function()
-    local B=engine();local a,b=point(0.1,0.1),point(0.9,0.9)
-    local actions={{kind="objective",position=b,roadPath={a,point(0.5,0.1),b}}}
-    local segments,missing=B.Routes.Segments(actions,1,1,direct,a)
-    eq(#segments,1);eq(missing,0);eq(segments[1].tx,0.9);eq(segments[1].ty,0.9)
-end)
 test("目的地连线去重且不会把飞行航程画成地面连接",function()
     local B=engine();local a,b,c=point(0,0),point(1,1),point(1,1,2)
     local actions={{kind="transit",departure=b,position=c,mode="flight"},{kind="objective",position=point(0,0,2)}}

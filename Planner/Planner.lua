@@ -62,7 +62,7 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
                 choice.distance=action.position and A.Navigation and A.Navigation.Distance and A.Navigation:Distance(state.position,action.position)
             end
             choice.remainingXP=A.TaskGuide.XP(q,state.level,state)
-            if choice.remainingXP then choice.forecast=A.Progression.Advance(state,choice.remainingXP,data.content) end
+            if choice.remainingXP then choice.forecast=A.Progression.Advance(state,choice.remainingXP) end
         end
         if kind=="accept" and A.Supplies then choice.acceptBlocked=A.Supplies.AcceptIssue(state) end
         if q.taskFacts then

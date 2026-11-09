@@ -54,9 +54,6 @@ test("依赖循环终止且缺失前置去重展示",function()
     local B=fixture(qs);local graph=B.Chains.Graph(1,B.Data,B.state)
     eq(graph.cycle,true);eq(graph.byId[99].status,"missing")
     eq(#B.Chains.Descendants(1,B.Data.chainIndex).ids,2)
-    local nodes=B.Chains.Explain(1,B.Data,B.state);local missing=0
-    for _,node in ipairs(nodes) do if node.id==99 then missing=missing+1 end end
-    eq(missing,1)
 end)
 test("恢复一个链起点保留重叠整链与独立单任务暂缓",function()
     local B=fixture(linked(3))

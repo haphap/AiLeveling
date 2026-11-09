@@ -241,24 +241,3 @@ function C.Graph(id,data,state,limit)
     for _,node in ipairs(queue) do visit(node.id) end
     return graph
 end
-
--- Data stays quest-ID based. Layout positions never define prerequisite semantics.
-function A.Chains.Explain(id, data, state)
-    local nodes, visiting, visited, cycles = {}, {}, {}, {}
-    local function visit(questId, depth)
-        if visiting[questId] then cycles[#cycles + 1] = questId; return end
-        if visited[questId] then return end
-        local q = data:GetQuest(questId)
-        if not q then nodes[#nodes + 1] = {id = questId, status = "missing", depth = depth};visited[questId]=true; return end
-        visiting[questId] = true
-        for _, required in ipairs(q.preQuestGroup or {}) do if required ~= 0 then visit(math.abs(required), depth + 1) end end
-        for _, required in ipairs(q.preQuestSingle or {}) do if required > 0 then visit(required, depth + 1) end end
-        local eligible, reason = A.Eligibility.Check(q, state, data)
-        nodes[#nodes + 1] = { id = questId, title = q.title, depth = depth,
-            status = A.State.Status(state, questId), eligible = eligible, reason = reason,
-            all = q.preQuestGroup, any = q.preQuestSingle, exclusive = q.exclusiveTo }
-        visiting[questId], visited[questId] = nil, true
-    end
-    visit(id, 0)
-    return nodes, cycles
-end

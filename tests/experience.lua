@@ -12,9 +12,6 @@ test("版本构建接口或原生门槛不匹配时拒绝参考表但保留当�
         local after=A.Progression.Advance(s,901,{})
         eq(after.level,2);eq(after.xp,900);eq(after.uncertain,true);eq(after.curveSource,nil)
     end
-    local s=state();s.clientBuild="other";s.xp=399
-    local after=A.Progression.Advance(s,901,{progression={verified=true,xpToLevel={[2]=900,[3]=1400}}})
-    eq(after.level,3);eq(after.xp,0);eq(after.maxXP,1400);eq(after.curveSource,"authored")
 end)
 test("预测跨多个等级按每一级门槛扣除且精确边界与未知状态不误推进",function()
     local s=state();s.xp=399

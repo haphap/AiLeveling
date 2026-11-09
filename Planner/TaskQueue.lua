@@ -142,7 +142,7 @@ function Q.Evaluate(order,state,navigation,data,cache)
                     xp=quest and A.TaskGuide.XP(quest,context.level,context) or
                         (context.level==state.level and choice.remainingXP or nil)
                 end
-                local forecast=xp and A.Progression and A.Progression.Advance(context,xp,data and data.content or {}) or path.forecast
+                local forecast=xp and A.Progression and A.Progression.Advance(context,xp) or path.forecast
                 if xp==nil then forecast=copy(path.forecast);forecast.uncertain=true end
                 for _,route in ipairs(timing.travelRoutes) do
                     local stepTiming=copy(timing)

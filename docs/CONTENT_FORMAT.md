@@ -2,7 +2,7 @@
 
 当前约定（2026-11-08）：地面移动一律按地图库直线距离÷当前跑速估时；nodes 仅表示任务、服务或交通目的地，edges／path／道路长度不再读取。道路数据和工具已归档至 archive/roads，不进入加载、安装和发布要求。参考服务与交通导航动作字段统一为 travelActions；资料不足的任务仍保留在列表。
 
-任务由 QuestieDB、TaskFacts 和原生日志动态生成；quests 仅作任务字段补充。其余内容由 `Data/Content.lua` 中的 quests、nodes、edges、transit、dungeons、sources、items、gearSources、progression 提供，测试夹具独立保存。正式数据须有来源和目标构建验证，完整范围以 PLAN.md 为准。
+任务由 QuestieDB、TaskFacts 和原生日志动态生成；quests 仅作任务字段补充。其余内容由 `Data/Content.lua` 中的 quests、nodes、transit、dungeons、sources、items、gearSources 提供，测试夹具独立保存。正式数据须有来源和目标构建验证，完整范围以 PLAN.md 为准。
 
 ## 副本行程
 
@@ -50,7 +50,7 @@
 
 ## 等级预测
 
-`progression={verified=true,source=...,xpToLevel={[等级]=升至下级所需经验}}`。当前等级门槛由 UnitXPMax 提供，其后的门槛只读已验证曲线。预测按交付顺序更新等级，再取对应等级的任务经验；交付还会解锁 quest:ID 道路条件。未知曲线导致预测不确定时停止继续展开。当前预测仅累计明确建模的任务交付经验，尚未计入途中击杀经验；完整经验模型仍须补齐。
+当前等级门槛由 UnitXPMax 提供，后续门槛使用匹配当前客户端版本、构建、接口及原生门槛的 Data/Experience.lua。预测按实际交付顺序更新等级，再取对应等级的任务经验；门槛未知时停止累计确定预测。当前预测仅累计任务交付经验。
 
 ## 交通实况映射
 
@@ -141,7 +141,7 @@ Services 使用角色存档 serviceStop 保存用户选择的 kind（train／bin
 
 ## 升级经验参考表
 
-Data/Experience.lua 独立于自有 progression，包含精确 version／build／interface、source、clientVerified=false 与 1—59 的 xpToLevel。仅在当前原生门槛匹配时启用，来源与逐级数值见 EXPERIENCE_DATA_AUDIT.json。Core 采集客户端版本，State 每次重建携带版本与当前 UnitXPMax；不保存为角色曲线。Progression 的 curveSource 随预测传到行程和任务预览，预测只累计交付经验，实际事实保持不变。
+Data/Experience.lua 包含精确 version／build／interface、source、clientVerified=false 与 1—59 的 xpToLevel。仅在当前原生门槛匹配时启用，来源与逐级数值见 EXPERIENCE_DATA_AUDIT.json。Core 采集客户端版本，State 每次重建携带版本与当前 UnitXPMax；不保存为角色曲线。Progression 的 curveSource 随预测传到行程和任务预览，预测只累计交付经验，实际事实保持不变。
 
 重新生成：python3 tools/import_experience.py；核对固定原始 CSV 和现有生成资料：python3 tools/import_experience.py --check。原始资料保存在 .dependencies，发布包只带生成值与来源审计。客户端门槛、版本或接口不匹配时使用原生当前门槛并保留后续未知；自有 verified 曲线继续优先。
 

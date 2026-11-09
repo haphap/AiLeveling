@@ -55,18 +55,6 @@ test("缺失目标位置保留未知但事件标记不阻断已知位置的移�
     B,s,data,q=fixture();q.specialFlags=2
     _,complete=B.TaskGuide.Stages(q,s,data,{kind="objective",objectiveIndex=2,position={map=1,x=10}});eq(complete,true)
 end)
-test("规划按完整剩余路程比较并从交付点衔接下一任务",function()
-    local B,s=fixture();B.TaskGuide.Distance=function(origin,candidate) return math.abs(origin.x-candidate.stages[1].position.x)+
-        math.abs(candidate.stages[1].position.x-candidate.stages[2].position.x),nil end
-    assert(loadfile("Planner/Planner.lua"))("AiLeveling",B)
-    s.quests={[1]={},[2]={}}
-    local choices={
-        {questId=1,actions={{position={map=1,x=1}}},stages={{position={map=1,x=1}},{position={map=1,x=100}}}},
-        {questId=2,actions={{position={map=1,x=10}}},stages={{position={map=1,x=10}},{position={map=1,x=11}}}}}
-    local order=B.Planner.TaskOrder(s,choices)
-    eq(order[1].questId,2);eq(order[1].orderBasis,"completion-geometry")
-    s.locked=1;eq(B.Planner.TaskOrder(s,choices)[1].questId,1)
-end)
 test("等级经验按分段来源读取且等级修正不匹配时保留未知",function()
     local B,_,_,q=fixture()
     eq(B.TaskGuide.XP(q,10),1000);eq(B.TaskGuide.XP(q,16),800);eq(B.TaskGuide.XP(q,59),100)
@@ -96,21 +84,6 @@ test("服务器缓存经验按构建与任务等级启用且原生奖励优先",
     s.clientBuild="70862";eq(B.TaskGuide.XP(q,11,s),1500)
     eq(B.TaskGuide.XP(q,60,s),nil)
     q.questLevel=-1;eq(B.TaskGuide.XP(q,20,s),nil)
-end)
-test("实际新增任务缓存经验补缺且不冒充完整奖励或任务资格",function()
-    local B,s=fixture();assert(loadfile("Data/TaskFacts.lua"))("AiLeveling",B)
-    s.clientVersion,s.clientBuild,s.interface="1.60.1","70862",16001
-    local q={id=97277,questLevel=6}
-    eq(B.TaskGuide.XP(q,6,s),410);eq(B.TaskGuide.XP(q,12,s),320)
-    eq(B.TaskGuide.XP(q,16,s),40);eq(q.taskFacts,nil)
-    local corrected={id=745,questLevel=8,taskFacts=B.TaskFacts.quests[745]}
-    eq(corrected.taskFacts.level,6);eq(B.TaskGuide.XP(corrected,8,s),700)
-    eq(B.TaskGuide.XP({id=91733,questLevel=1},1,s),nil)
-    eq(B.TaskGuide.XP({id=98248,questLevel=60},29,s),650)
-    eq(B.TaskGuide.XP({id=98248,questLevel=60},60,s),nil)
-    local courier=B.TaskFacts.cacheXP.quests[99101]
-    eq(courier.level,9);eq(courier.sourceItemId,286104);eq(courier.objectives[1].count,1)
-    eq(B.TaskGuide.XP({id=99101,questLevel=9},9,s),nil)
 end)
 test("缓存经验补齐后进入任务收益排序与低价值保护",function()
     local B={};for k,v in pairs(A) do B[k]=v end

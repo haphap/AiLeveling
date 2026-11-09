@@ -2,9 +2,7 @@ local _, A = ...
 A.Progression = {}
 local X = A.Progression
 
-function X.Curve(state,content)
-    local curve=content.progression
-    if curve and curve.verified then return curve.xpToLevel,"authored" end
+function X.Curve(state)
     local reference=A.Experience
     if not reference or state.clientVersion~=reference.version or tostring(state.clientBuild)~=reference.build or
         state.interface~=reference.interface then return nil,"客户端版本未匹配参考经验表" end
@@ -12,10 +10,10 @@ function X.Curve(state,content)
     return reference.xpToLevel,reference.source
 end
 
-function X.Advance(state,reward,content)
+function X.Advance(state,reward)
     if state.level>=60 then return {level=60,xp=0,maxXP=0} end
     local result={level=state.level,xp=(state.xp or 0)+reward,maxXP=state.maxXP,uncertain=state.xpUncertain}
-    local thresholds,source=X.Curve(state,content)
+    local thresholds,source=X.Curve(state)
     result.curveSource=thresholds and source or nil
     thresholds=thresholds or {}
     if result.uncertain then result.reason="等级预测暂不可用";return result end
