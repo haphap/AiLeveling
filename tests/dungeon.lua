@@ -321,16 +321,6 @@ return function(test,eq,F,plan)
         s.quests[1]={objectives={},ready=true}
         result=B.Dungeon.Evaluate(d,s,B.settings,data);eq(result.waitActivity,nil)
     end)
-    test("副本往返传播交通费用，缺钱时阻止完整行程",function()
-        local B,d,s,data=context()
-        data.content.edges={};data.content.nodes.goal.position.map=2
-        data.content.transit={go={from="start",to="goal",verified=true,kind="flight",cost=40,seconds=5},
-            back={from="goal",to="start",verified=true,kind="flight",cost=40,seconds=5}}
-        s.money=50
-        eq(B.Dungeon.Evaluate(d,s,B.settings,data),nil)
-        s.money=100
-        eq(B.Dungeon.Evaluate(d,s,B.settings,data).seconds,910)
-    end)
     test("副本数据更新重建道路游标且资料缺失保留明确选择",function()
         local B,d,s,data=context()
         B.Dungeon:Accept(1)

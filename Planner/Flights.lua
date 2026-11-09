@@ -109,22 +109,21 @@ function F.PreviewUnlock(state,row,navigation)
     if not F.Matches(state) or (state.unlocked or {})["taxi:"..row.taxiId]~=false or
         not unlockNode(A.FlightData.nodes[row.taxiId],state) then return end
     local preview={};for key,value in pairs(state) do preview[key]=value end
-    for _,field in ipairs({"unlocked","taxiAvailability","taxiCosts","taxiDepartures","taxiLandings","taxiHops"}) do
+    for _,field in ipairs({"unlocked","taxiAvailability","taxiDepartures","taxiLandings","taxiHops"}) do
         preview[field]={};for key,value in pairs(state[field] or {}) do preview[field][key]=value end
     end
     preview.unlocked["taxi:"..row.taxiId]=true
     local count=0
     for _,path in pairs(A.FlightData.paths or {}) do
-        local from,to,cost=path[1],path[2],path[3]
+        local from,to=path[1],path[2]
         local source,dest=A.FlightData.nodes[from],A.FlightData.nodes[to]
         if (from==row.taxiId or to==row.taxiId) and unlockNode(source,state) and unlockNode(dest,state) and
-            source.instance==dest.instance and preview.unlocked["taxi:"..from]==true and preview.unlocked["taxi:"..to]==true and
-            type(cost)=="number" and cost>=0 and cost<math.huge then
+            source.instance==dest.instance and preview.unlocked["taxi:"..from]==true and preview.unlocked["taxi:"..to]==true then
             local key=from..":"..to
             local a=from==row.taxiId and row.position or preview.taxiDepartures[from] or referenceLanding(source,row.position,row.position,navigation.hbd)
             local b=to==row.taxiId and row.position or referenceLanding(dest,row.position,row.position,navigation.hbd)
             if a and b and F.Seconds(from,to,state,key) then
-                preview.taxiAvailability[key]=true;preview.taxiCosts[key]=cost
+                preview.taxiAvailability[key]=true
                 preview.taxiDepartures[from]=a;preview.taxiLandings[key]=b;preview.taxiHops[key]=key
                 count=count+1
             end
@@ -133,7 +132,7 @@ function F.PreviewUnlock(state,row,navigation)
     if count>0 then return preview end
 end
 
--- Native availability and fare authorize a flight; reference coordinates suffice for straight-line walking.
+-- Compare available flights with straight-line walking.
 function F.Routes(origin,target,state,navigation)
     if not origin or not target or not navigation or not A.Travel or
         state.dead or state.onTaxi or state.inInstance then return end
@@ -156,11 +155,10 @@ function F.Routes(origin,target,state,navigation)
             local departure=(state.taxiDepartures or {})[from]
             local seconds,label
             if from and to then seconds,label=F.Seconds(from,to,state) end
-            local cost=(state.taxiCosts or {})[key]
             if source and dest and departure and seconds and seconds>0 and source.instance==dest.instance and
                 math.floor(source.factionMask/mask)%2==1 and math.floor(dest.factionMask/mask)%2==1 and
                 (state.unlocked or {})["taxi:"..from] and (state.unlocked or {})["taxi:"..to] and
-                available==true and type(cost)=="number" and cost>=0 and cost<math.huge then
+                available==true then
                 local observed=(state.taxiLandings or {})[key]
                 local landing=observed or referenceLanding(dest,target,departure,navigation.hbd)
                 local hops=(state.taxiHops or {})[key]
@@ -168,7 +166,7 @@ function F.Routes(origin,target,state,navigation)
                 local spread=label=="本地实测" and sample and sample.n>1 and math.sqrt(sample.m2/(sample.n-1)) or seconds*0.25
                 local boarding=A.Estimates and A.Estimates.flightBoardSeconds
                 if boarding and landing then
-                    flights[#flights+1]={kind="flight",key=key,from=departure,to=landing,fromTaxi=from,toTaxi=to,cost=cost,
+                    flights[#flights+1]={kind="flight",key=key,from=departure,to=landing,fromTaxi=from,toTaxi=to,
                         arrival=observed and 12 or 25,
                         flightSeconds=seconds,durationSource=label,seconds=seconds+boarding,faction=state.faction,hops=hops,taxiSpeed=state.taxiSpeed,
                         low=math.max(1,seconds-spread)+boarding*0.5,high=seconds+spread+boarding*3}
@@ -183,7 +181,7 @@ function F.Routes(origin,target,state,navigation)
         end
     end
     table.sort(flights,function(a,b) return a.key<b.key end)
-    local first={position=origin,seconds=0,low=0,high=0,money=state.money,legs={},flights=0,cost=0,
+    local first={position=origin,seconds=0,low=0,high=0,legs={},flights=0,
         hearthReady=state.hearthReady,hearths=0,initial=false}
     local pending,labels,results={first},{origin={first}},{}
     local function offer(candidate,key)
@@ -203,22 +201,19 @@ function F.Routes(origin,target,state,navigation)
             local finish=walk(current.position,target)
             if finish and (not state.maxSeconds or current.seconds+finish.seconds<=state.maxSeconds) then
                 results[#results+1]={seconds=current.seconds+finish.seconds,low=current.low+finish.seconds,high=current.high+finish.seconds,
-                    money=current.money,legs=append(current.legs,finish),flights=current.flights,initial=current.initial,cost=current.cost,
+                    legs=append(current.legs,finish),flights=current.flights,initial=current.initial,
                     hearthReady=current.hearthReady,hearths=current.hearths,coarse=current.coarse or finish.coarse}
                 results[#results].initial=current.initial or finish.coarse==true
             end
             for _,flight in ipairs(flights) do
-                if flight.cost==0 or current.money and current.money>=flight.cost then
-                    local approach=walk(current.position,flight.from)
-                    if approach then
-                        local candidate={position=flight.to,seconds=current.seconds+approach.seconds+flight.seconds,
-                            low=current.low+approach.seconds+flight.low,high=current.high+approach.seconds+flight.high,
-                            money=current.money and current.money-flight.cost,
-                            legs=append(append(current.legs,approach),flight),flights=current.flights+(flight.kind=="flight" and 1 or 0),cost=current.cost+flight.cost,
-                            hearthReady=current.hearthReady,hearths=current.hearths,initial=true,
-                            coarse=current.coarse or approach.coarse}
-                        offer(candidate,flight.key)
-                    end
+                local approach=walk(current.position,flight.from)
+                if approach then
+                    local candidate={position=flight.to,seconds=current.seconds+approach.seconds+flight.seconds,
+                        low=current.low+approach.seconds+flight.low,high=current.high+approach.seconds+flight.high,
+                        legs=append(append(current.legs,approach),flight),flights=current.flights+(flight.kind=="flight" and 1 or 0),
+                        hearthReady=current.hearthReady,hearths=current.hearths,initial=true,
+                        coarse=current.coarse or approach.coarse}
+                    offer(candidate,flight.key)
                 end
                 count=count+1;checkpoint(count)
             end
@@ -231,7 +226,7 @@ function F.Routes(origin,target,state,navigation)
                         name=state.bindName,bindingKey=state.hearthBindingKey}
                     local seconds=current.seconds+wait+duration
                     offer({position=state.hearthPoint,seconds=seconds,low=current.low+wait+low,high=current.high+wait+high,
-                        money=current.money,legs=append(current.legs,leg),flights=current.flights,cost=current.cost,
+                        legs=append(current.legs,leg),flights=current.flights,
                         hearthReady=(state.now or 0)+seconds+(state.hearthCooldown or math.huge),hearths=current.hearths+1,
                         initial=current.initial or initial,coarse=current.coarse},"hearth")
                 end
@@ -244,7 +239,7 @@ function F.Routes(origin,target,state,navigation)
 end
 
 function F.Itinerary(origin,stages,state,navigation,delays)
-    local paths={{position=origin,seconds=0,low=0,high=0,money=state.money,legs={},flights=0,cost=0,
+    local paths={{position=origin,seconds=0,low=0,high=0,legs={},flights=0,
         hearthReady=state.hearthReady,hearths=0}}
     local elapsed=0
     for index,stage in ipairs(stages) do
@@ -252,21 +247,18 @@ function F.Itinerary(origin,stages,state,navigation,delays)
         local nextPaths={}
         for _,path in ipairs(paths) do
             local context={};for key,value in pairs(state) do context[key]=value end
-            context.money=path.money;context.now=(state.now or 0)+path.seconds+elapsed
+            context.now=(state.now or 0)+path.seconds+elapsed
             context.hearthReady=path.hearthReady
             context.maxSeconds=state.maxSeconds and math.max(0,state.maxSeconds-path.seconds-elapsed)
             for _,route in ipairs(F.Routes(path.position,stage.position,context,navigation) or {}) do
-                local cost,income=stage.moneyCost or 0,stage.moneyGain or 0
-                if cost==0 or route.money and route.money>=cost then
-                    local legs={};for _,leg in ipairs(path.legs) do legs[#legs+1]=leg end
-                    for _,leg in ipairs(route.legs) do legs[#legs+1]=leg end
-                    nextPaths[#nextPaths+1]={position=stage.position,seconds=path.seconds+route.seconds,
-                        low=path.low+route.low,high=path.high+route.high,money=route.money and route.money-cost+income,
-                        legs=legs,flights=path.flights+route.flights,initial=path.initial or route.initial,
-                        cost=path.cost+route.cost,firstRoute=path.firstRoute or route,coarse=path.coarse or route.coarse}
-                    nextPaths[#nextPaths].hearthReady=route.hearthReady
-                    nextPaths[#nextPaths].hearths=path.hearths+route.hearths
-                end
+                local legs={};for _,leg in ipairs(path.legs) do legs[#legs+1]=leg end
+                for _,leg in ipairs(route.legs) do legs[#legs+1]=leg end
+                nextPaths[#nextPaths+1]={position=stage.position,seconds=path.seconds+route.seconds,
+                    low=path.low+route.low,high=path.high+route.high,
+                    legs=legs,flights=path.flights+route.flights,initial=path.initial or route.initial,
+                    firstRoute=path.firstRoute or route,coarse=path.coarse or route.coarse}
+                nextPaths[#nextPaths].hearthReady=route.hearthReady
+                nextPaths[#nextPaths].hearths=path.hearths+route.hearths
             end
         end
         elapsed=elapsed+(delays and delays[index] or 0)
@@ -297,14 +289,14 @@ function F.Actions(route,action,navigation)
             actions[#actions+1]={kind="transit",mode="flight",questId=action.questId,title="飞往 "..name,
                 text=string.format("与出发点飞行管理员交谈，手动选择「%s」，落地后继续任务。",name),
                 departure=leg.from,departureRadius=12,position=leg.to,arrival=leg.arrival or 12,fromTaxi=leg.fromTaxi,toTaxi=leg.toTaxi,
-                moneyCost=leg.cost,travelSeconds=leg.seconds,timeSampleKey=F.TimeKey(leg.fromTaxi,leg.toTaxi,leg.faction,leg.hops,leg.taxiSpeed),referenceFlight=true}
+                travelSeconds=leg.seconds,timeSampleKey=F.TimeKey(leg.fromTaxi,leg.toTaxi,leg.faction,leg.hops,leg.taxiSpeed),referenceFlight=true}
         end
     end
     actions[#actions+1]=action
     return actions
 end
 
--- Direction-only fallback when ground access cannot yet support a complete cost comparison.
+-- Direction-only fallback when the full journey cannot be timed.
 function F.Guide(action,state,navigation)
     local anchor,target=state.taxiOrigin,action and action.position
     if not F.Matches(state) or not anchor or not target or not state.position or not navigation or not navigation.hbd or
@@ -323,20 +315,17 @@ function F.Guide(action,state,navigation)
     local original=navigation:Distance(state.position,target)
     for id,node in pairs(data.nodes) do
         local key=anchor.id..":"..id
-        local cost=(state.taxiCosts or {})[key]
         if id~=anchor.id and node.instance==source.instance and math.floor(node.factionMask/mask)%2==1 and
-            (state.unlocked or {})["taxi:"..id] and (state.taxiAvailability or {})[key]==true and
-            type(cost)=="number" and cost>=0 and cost<math.huge and cost<=(state.money or 0) then
+            (state.unlocked or {})["taxi:"..id] and (state.taxiAvailability or {})[key]==true then
             local landing=F.Position(node,target.map,navigation.hbd)
             local remaining=landing and navigation:Distance(landing,target)
             if remaining and (not original or remaining+50<original) then
-                candidates[#candidates+1]={id=id,node=node,landing=landing,distance=remaining,cost=cost}
+                candidates[#candidates+1]={id=id,node=node,landing=landing,distance=remaining}
             end
         end
     end
     table.sort(candidates,function(a,b)
         if a.distance~=b.distance then return a.distance<b.distance end
-        if a.cost~=b.cost then return a.cost<b.cost end
         return a.id<b.id
     end)
     local best=candidates[1]
@@ -346,8 +335,8 @@ function F.Guide(action,state,navigation)
     local text="与当前飞行管理员交谈，手动选择「"..name.."」，落地后继续任务。"
     local transit={kind="transit",mode="flight",questId=action.questId,title="飞往 "..name,text=text,
         departure=anchor.position,departureRadius=12,position=best.landing,arrival=25,
-        fromTaxi=anchor.id,toTaxi=best.id,moneyCost=best.cost,travelSeconds=seconds,
+        fromTaxi=anchor.id,toTaxi=best.id,travelSeconds=seconds,
         timeSampleKey=F.TimeKey(anchor.id,best.id,state.faction,(state.taxiHops or {})[anchor.id..":"..best.id],state.taxiSpeed),referenceFlight=true}
-    return {actions={transit,action},from=anchor.id,to=best.id,cost=best.cost,flightSeconds=seconds,
+    return {actions={transit,action},from=anchor.id,to=best.id,flightSeconds=seconds,
         durationSource=sourceLabel}
 end

@@ -51,9 +51,10 @@ run("多入口副本按当前可用交通选择更快入口",function()
     local action={kind="objective",questId=1,title="本内目标",position={map=2,x=0.1,y=0.3}}
     local entry=B.Dungeon.TaskApproach(action,s,data)
     assert(entry.position.x==0.9,"flight must select the faster entrance");eq(entry.questId,1)
-    s.money=0;eq(B.Dungeon.TaskApproach(action,s,data).position.x,0.2)
+    s.money=0;eq(B.Dungeon.TaskApproach(action,s,data).position.x,0.9)
     s.money=100;s.transportKnown=false;eq(B.Dungeon.TaskApproach(action,s,data).position.x,0.2)
-    s.transportKnown=true;s.taxiCosts={};eq(B.Dungeon.TaskApproach(action,s,data).position.x,0.2)
+    s.transportKnown=true;s.taxiCosts={};eq(B.Dungeon.TaskApproach(action,s,data).position.x,0.9)
+    s.taxiAvailability["1:2"]=false
     assert(loadfile("Hearth.lua"))("AiLeveling",B)
     s.hearthPoint={map=1,x=0.9,y=0.3};s.hearthBindingKey="旅店";s.hearthReady=0;s.hearthCooldown=3600;s.bags[6948]=1
     assert(B.Dungeon.TaskApproach(action,s,data).position.x==0.9,"hearth must select the faster entrance")

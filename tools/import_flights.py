@@ -155,7 +155,7 @@ def main():
                      f'factionMask={int(row["Flags"]) & 3},condition={row["ConditionID"]},visibility={row["VisibilityConditionID"]}}},')
     lines += ['},paths={']
     for row in sorted(paths, key=lambda x: int(x['ID'])):
-        lines.append(f' [{row["ID"]}]={{{row["FromTaxiNode"]},{row["ToTaxiNode"]},{row["Cost"]}}},')
+        lines.append(f' [{row["ID"]}]={{{row["FromTaxiNode"]},{row["ToTaxiNode"]}}},')
     lines += ['},durations={']
     for side in ['Alliance', 'Horde']:
         lines.append(f' {side}={{')
@@ -185,9 +185,9 @@ def main():
              'notes': ['Durations are directed and faction-specific; Classic Era plus Forever overrides only.',
                        'Same-build EG Link duration histograms override InFlight references; local valid samples retain priority.',
                        'Observed routes must match client topology and identify exactly one faction; speed-modified variants are excluded.',
-                       'Observation counts are external evidence, not this character\'s learned samples; native fares and unlocks remain required.',
+                       'Observation counts are external evidence, not this character\'s learned samples; native unlocks remain required.',
                        'A duration pair may contain intermediate stops; it is not an assertion of a direct flight edge.',
-                       'Native discovered/available destinations and actual fares gate every suggested flight.',
+                       'Native discovered/available destinations determine flight availability; fares are ignored.',
                        'Client base costs are catalog metadata, never substituted for unknown native fares.']}
     outputs = {ROOT / 'Data/Flights.lua': '\n'.join(lines),
                ROOT / 'docs/FLIGHT_DATA_AUDIT.json': json.dumps(audit, ensure_ascii=False, indent=2) + '\n',

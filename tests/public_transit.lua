@@ -18,8 +18,8 @@ end
 test("公共交通跨大陆双向接续且不依赖金币或解锁飞行点",function()
     local B,s,legs=fixture();local target={map=2,x=0.5,y=0}
     local routes=B.Flights.Routes(s.position,target,s,B.Navigation)
-    eq(#routes,1);eq(routes[1].seconds,140);eq(routes[1].flights,0);eq(routes[1].money,0)
-    eq(routes[1].legs[2],legs[1]);eq(routes[1].cost,0)
+    eq(#routes,1);eq(routes[1].seconds,140);eq(routes[1].flights,0)
+    eq(routes[1].legs[2],legs[1])
     local reverse=B.Flights.Routes(target,s.position,s,B.Navigation);eq(reverse[1].seconds,150)
     s.money=nil;assert(B.Flights.Routes(s.position,target,s,B.Navigation))
     s.clientBuild="70840";eq(B.Flights.Routes(s.position,target,s,B.Navigation),nil)
@@ -101,7 +101,7 @@ test("当前构建公共交通数据保持八个有向停靠点与阵营边界",
     local B={};assert(loadfile("Data/PublicTransit.lua"))("AiLeveling",B)
     eq(#B.PublicTransitData.legs,8)
     for _,leg in ipairs(B.PublicTransitData.legs) do
-        assert(leg.seconds>leg.low and leg.high>leg.seconds and leg.cost==0)
+        assert(leg.seconds>leg.low and leg.high>leg.seconds)
         for _,p in ipairs({leg.from,leg.to}) do assert(p.x>=0 and p.x<=1 and p.y>=0 and p.y<=1) end
         if leg.kind=="zeppelin" then eq(leg.faction,"Horde") else eq(leg.faction,nil) end
     end

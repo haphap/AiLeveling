@@ -2,7 +2,7 @@ return function(test,eq,F,A,plan)
 local function setup()
     local B={};for k,v in pairs(A) do B[k]=v end
     B.Navigation={Distance=function(_,a,b) if a and b and a.map==b.map then return math.abs(a.x-b.x)*1000 end end}
-    B.Roads=nil;B.TaskGuide=nil
+    B.TaskGuide=nil
     for _,file in ipairs({"Data/Questie.lua","Planner/Supplies.lua","Planner/Planner.lua"}) do assert(loadfile(file))("AiLeveling",B) end
     local rows={
         [1]={name="联盟商人",npcFlags=4,friendlyToFaction="A",spawns={[10]={{15,50}}}},
@@ -93,12 +93,8 @@ end)
 
 test("服务点仅按直线距离选择且直接指向服务目的地",function()
     local B,s,d,rows,finish=setup();B.Navigation.hbd={}
-    B.Roads={Route=function(_,a,b) return {complete=true,length=b.x==0.15 and 1000 or 200} end,
-        Actions=function(_,route,action) return {{kind="move",position={map=1,x=0.1,y=0.5}},action} end}
     local result=plan(s,d,{minutes=60,mode="fast",dungeons=false},B)
     eq(result.fallback.npcId,1);eq(#result.travelActions,1);eq(result.travelActions[1].kind,"service")
-    B.Roads.Route=function(_,a,b) if b.x==0.2 then return end;return {complete=true,length=1000} end
-    result=plan(s,d,{minutes=60,mode="fast",dungeons=false},B);eq(result.fallback.npcId,1)
     s.dead=true;result=plan(s,d,{minutes=60,mode="fast",dungeons=false},B);eq(result.maintenance,nil)
     finish()
 end)

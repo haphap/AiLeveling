@@ -6,7 +6,7 @@ local function setup()
     local saved={};for _,name in ipairs(names) do saved[name]=_G[name] end
     local B={};for k,v in pairs(A) do B[k]=v end
     B.char={locked=42,itinerary={quests={42}},samples={}};B.state=F.State();B.state.position={map=1,x=0.5,y=0.5};B.state.money=20
-    B.ready=true;B.indexReady=true;B.jobs={};B.Roads=nil;B.TaskGuide=nil
+    B.ready=true;B.indexReady=true;B.jobs={};B.TaskGuide=nil
     B.State={Position=function() end,Refresh=function() B.Services:Snapshot(B.state);B.state.revision=B.state.revision+1 end}
     B.Observations={Reset=function() end};B.Transport={InFlight=function() return B.flying end}
     B.Navigation={Distance=function(_,a,b) return a.map==b.map and math.abs(a.x-b.x)*1000 or nil end}
@@ -32,14 +32,13 @@ local function chooseTraining(B)
     B.Services:Event("TRAINER_SHOW");B.Services:Snapshot(B.state)
     local rows=B.Services:Choices("learn");assert(B.Services:Pick(rows[1],B.state.revision));return B.char.serviceStop
 end
-test("训练快照读取原生状态金币与费用类型且关闭后不保留旧列表",function()
+test("训练快照读取原生状态与训练类型且关闭后清除列表",function()
     local B,e,finish=setup();local S=B.Services
     S:Event("TRAINER_SHOW");local first=S:Snapshot(B.state);local t=B.state.trainer
-    eq(t.npcId,78);eq(t.rows[1].status,"available");eq(t.rows[1].cost,30);eq(t.rows[1].affordable,false)
-    e.rows[1].cost=10;assert(S:Snapshot(B.state)~=first);eq(B.state.trainer.rows[1].affordable,true)
+    eq(t.npcId,78);eq(t.rows[1].status,"available");eq(t.rows[1].cost,nil)
+    e.rows[1].status="used";assert(S:Snapshot(B.state)~=first);eq(B.state.trainer.rows[1].status,"used");e.rows[1].status="available"
     e.kind=3;S:Snapshot(B.state);eq(B.state.trainer.rows[1].cost,nil)
     local rows=S:Choices("learn");eq(S:CanPick(rows[1],B.state.revision),false)
-    e.kind=0;e.rows[1].cost=0/0;S:Snapshot(B.state);eq(B.state.trainer.rows[1].cost,nil)
     canaccessvalue=function(value) return type(value)~="string" end;S:Snapshot(B.state);eq(B.state.trainer,nil)
     canaccessvalue=nil;S:Event("TRAINER_CLOSED");S:Snapshot(B.state);eq(B.state.trainer,nil)
     finish()
@@ -64,21 +63,20 @@ test("训练专业与前置技能条件影响状态指纹并区分未满足和�
     eq(#B.state.trainer.rows[1].requirements,0)
     finish()
 end)
-test("当前训练项目优先可学且付得起，资金与学习条件变化更新排序",function()
+test("当前训练项目优先可学，学习条件变化更新排序",function()
     local B,e,finish=setup();local S=B.Services
     e.rows={{name="已学",status="used",cost=0},{name="条件不足",status="unavailable",cost=0},
         {name="昂贵",status="available",cost=30},{name="可学",status="available",cost=10}}
     S:Event("TRAINER_SHOW");local before=S:Snapshot(B.state)
-    local rows=S:Choices("learn");eq(rows[1].offer.name,"可学");eq(rows[2].offer.name,"昂贵")
+    local rows=S:Choices("learn");eq(rows[1].offer.name,"昂贵");eq(rows[2].offer.name,"可学")
     eq(rows[3].offer.name,"条件不足");eq(rows[4].offer.name,"已学")
-    B.state.money=40;assert(S:Snapshot(B.state)~=before);rows=S:Choices("learn");eq(rows[1].offer.name,"昂贵")
     e.rows[3].skill,e.rows[3].rank,e.rows[3].skillMet="炼金术",75,false
     S:Snapshot(B.state);rows=S:Choices("learn");eq(rows[1].offer.name,"可学");eq(S:CanPick(rows[2],B.state.revision),false)
     finish()
 end)
-test("已安排训练显示实际缺少条件或资金且不自动学习或误完成",function()
+test("已安排训练显示实际缺少条件且不自动学习或误完成",function()
     local B,e,finish=setup();local stop=chooseTraining(B);local S=B.Services
-    local action=S.Build(B.state).fallback;assert(action.text:find("还差 10 铜",1,true))
+    local action=S.Build(B.state).fallback;assert(action.text:find("向训练师学习",1,true))
     e.rows[1].skill,e.rows[1].rank,e.rows[1].skillMet="炼金术",75,false
     e.rows[1].abilities={{name="初级炼金术",met=false}};e.rows[1].level=30
     S:Snapshot(B.state);action=S.Build(B.state).fallback
@@ -166,13 +164,11 @@ end)
 test("服务目录只按直线距离且未知距离排后",function()
     local B,e,finish=setup()
     B.Data={AmenityPoints=function() return {
-        {kind="bind",npcId=1,title="近点绕路",position={map=1,x=0.51,y=0.5}},
-        {kind="bind",npcId=2,title="远点通路",position={map=1,x=0.6,y=0.5}}} end}
-    B.Navigation.hbd={};B.Roads={Route=function(_,from,to) return {complete=true,length=to.x==0.51 and 1000 or 200} end}
+        {kind="bind",npcId=1,title="近点",position={map=1,x=0.51,y=0.5}},
+        {kind="bind",npcId=2,title="远点",position={map=1,x=0.6,y=0.5}}} end}
+    B.Navigation.hbd={}
     local rows=B.Services:Choices("bind");eq(rows[1].npcId,1)
-    B.Roads.Route=function(_,from,to) if to.x==0.51 then return {complete=true,length=1000} end end
-    rows=B.Services:Choices("bind");eq(rows[1].npcId,1)
-    B.Roads=nil;B.Navigation.Distance=function(_,from,to) if to.x~=0.51 then return 100 end end
+    B.Navigation.Distance=function(_,from,to) if to.x~=0.51 then return 100 end end
     rows=B.Services:Choices("bind");eq(rows[1].npcId,2)
     finish()
 end)
@@ -319,7 +315,6 @@ test("手选旅店直接到店不安排延后步骤且不预测新绑定",functi
     p.bindingChoices=S.PlanBindings(p,s,B.Data)
     local rows=S:Choices("bind");eq(rows[1].npcId,2);assert(S:Pick(rows[1],s.revision))
     eq(s.serviceStop.afterTask,nil)
-    p.taskOrder[1].stages[2].moneyCost=10000
     local result=S.Build(s,p);eq(result.fallback.serviceKind,"bind")
     eq(s.hearthBindingKey,"old");eq(s.hearthPoint.x,0)
     for _,leg in ipairs(result.referenceJourney.legs) do
@@ -327,36 +322,27 @@ test("手选旅店直接到店不安排延后步骤且不预测新绑定",functi
     end
     S:Cancel();eq(s.serviceStop,nil);finish()
 end)
-local function fundedServiceFixture()
+local function flightServiceFixture()
     local B,s,p,inns,finish=bindingFixture()
     s.bags={};s.hearthPoint=nil;s.hearthBindingKey=nil;s.hearthReady=nil
     s.clientVersion,s.clientBuild,s.interface="1.60.1","70862",16001;s.transportKnown=true;s.faction="Alliance";s.taxiSpeed=1
     B.FlightData={version="service-test",clientVersion="1.60.1",build=70862,interface=16001,
         nodes={[1]={name="出发",instance=0,world={0,0,0},factionMask=1},[2]={name="服务",instance=0,world={0.4,0,0},factionMask=1}},
         durations={Alliance={["1:2"]=20},Horde={}}}
-    s.unlocked={["taxi:1"]=true,["taxi:2"]=true};s.taxiAvailability={["1:2"]=true};s.taxiCosts={["1:2"]=15}
+    s.unlocked={["taxi:1"]=true,["taxi:2"]=true};s.taxiAvailability={["1:2"]=true}
     s.taxiDepartures={[1]={map=1,x=0,y=0}};s.taxiLandings={["1:2"]={map=1,x=0.4,y=0}}
     s.taxiHops={["1:2"]="1:2"};B.Estimates.flightBoardSeconds=3
     s.serviceStop={kind="train",npcId=78,title="训练师",position={map=1,x=0.4,y=0}}
-    p.taskOrder[1].stages[2].moneyCost=20
     return B,s,p,finish
 end
-test("手选服务保留后续任务金币而不采用到店最快的付费飞行",function()
-    local B,s,p,finish=fundedServiceFixture();local S=B.Services
-    local greedy=S.Build(s);eq(greedy.referenceJourney.firstRoute.flights,1)
-    local result=S.Build(s,p);eq(result.referenceJourney.firstRoute.flights,0);eq(result.referenceJourney.money,0)
-    eq(s.money,20);eq(s.taxiCosts["1:2"],15);eq(p.taskOrder[1].stages[2].moneyCost,20)
-    s.money=35;result=S.Build(s,p);eq(result.referenceJourney.firstRoute.flights,1);eq(result.referenceJourney.money,0)
-    finish()
-end)
 test("训练访问顺路安排在任务之后，完成后恢复服务且具体技能仍先学",function()
-    local B,s,p,finish=fundedServiceFixture();local S=B.Services
+    local B,s,p,finish=flightServiceFixture();local S=B.Services
     s.transportKnown=false;s.position={map=1,x=0,y=0};s.serviceStop.position={map=1,x=0.9,y=0}
     local stages=p.taskOrder[1].stages
     stages[1].position={map=1,x=0.2,y=0};stages[2].position={map=1,x=0.8,y=0}
     local stop=s.serviceStop
     eq(S.Build(s,p),nil);assert(p.serviceDeferred and p.serviceDeferred:find("训练师",1,true))
-    eq(s.serviceStop,stop);eq(s.completed[42],nil);eq(s.money,20)
+    eq(s.serviceStop,stop);eq(s.completed[42],nil)
     s.quests={}
     local choice=p.taskOrder[1]
     p.taskQueue={remaining=0,steps={{choice=choice,stage=stages[1]},{choice=choice,stage=stages[2]}}}
@@ -389,23 +375,14 @@ test("训练访问顺路安排在任务之后，完成后恢复服务且具体�
     result=plan(s,data,{minutes=60,dungeons=false},B);eq(result.fallback.serviceKind,"train");eq(result.serviceDeferred,nil)
     finish()
 end)
-test("服务整程计入当前所选训练报价且不沿用关闭窗口后的报价",function()
-    local B,s,p,finish=fundedServiceFixture();local S=B.Services
-    s.money=40;s.serviceStop.position={map=1,x=0,y=0};s.serviceStop.learnKey="训练"
-    s.trainer={npcId=78,rows={{key="训练",name="训练",status="available",playerTraining=true,cost=20}}}
-    local result=S.Build(s,p);eq(result.referenceJourney.flights,0);eq(result.referenceJourney.money,0);eq(s.money,40)
-    s.trainer.rows[1].cost=5;result=S.Build(s,p);eq(result.referenceJourney.flights,1);eq(result.referenceJourney.money,0)
-    s.trainer=nil;result=S.Build(s,p);eq(result.referenceJourney.flights,1);eq(result.referenceJourney.money,5)
-    eq(s.serviceStop.cost,nil);finish()
-end)
 test("已知服务后段不可行时保持手选意图并拒绝单段贪心回退",function()
-    local B,s,p,finish=fundedServiceFixture();local S=B.Services
-    local stop=s.serviceStop;p.taskOrder[1].stages[2].moneyCost=21
+    local B,s,p,finish=flightServiceFixture();local S=B.Services
+    local stop=s.serviceStop;p.taskOrder[1].stages[2].position={map=999,x=0,y=0}
+    local distance=B.Navigation.Distance
+    B.Navigation.Distance=function(self,a,b) if a.map==999 or b.map==999 then return nil end;return distance(self,a,b) end
     assert(S.Build(s).referenceJourney)
     local result=S.Build(s,p);eq(result.fallback.kind,"selectionBlocked");eq(result.travelActions,nil);eq(s.serviceStop,stop)
-    s.money=21;result=S.Build(s,p);eq(result.fallback.kind,"service");eq(result.referenceJourney.firstRoute.flights,0)
-    -- Incomplete task data cannot establish an unaffordable continuation.
-    p.taskOrder[1].stagesComplete=false;s.money=20
+    p.taskOrder[1].stagesComplete=false
     result=S.Build(s,p);eq(result.fallback.kind,"service");eq(result.referenceJourney.firstRoute.flights,1)
     finish()
 end)
@@ -414,7 +391,7 @@ local function unlockFixture()
     C_Map={GetMapInfo=function(id) return {mapType=3,name="区域"} end}
     s.bags={};s.hearthPoint=nil;s.hearthBindingKey=nil;s.hearthReady=nil;s.hearthCooldown=nil
     s.clientVersion,s.clientBuild,s.interface="1.60.1","70862",16001;s.transportKnown=true;s.faction="Alliance";s.taxiSpeed=1
-    s.unlocked={["taxi:1"]=false,["taxi:2"]=true};s.taxiAvailability={};s.taxiCosts={};s.taxiDepartures={};s.taxiLandings={};s.taxiHops={}
+    s.unlocked={["taxi:1"]=false,["taxi:2"]=true};s.taxiAvailability={};s.taxiDepartures={};s.taxiLandings={};s.taxiHops={}
     B.FlightData={version="test",clientVersion="1.60.1",build=70862,interface=16001,nodes={
         [1]={name="沿途飞行点",world={0,0.2,0},instance=0,factionMask=1,condition=0,visibility=0},
         [2]={name="交付地",world={0,1,0},instance=0,factionMask=1,condition=0,visibility=0}},
@@ -430,7 +407,7 @@ test("开飞行点比较完整后续行程并优先做沿途目标且预览不�
     local B,s,p,finish=unlockFixture();local S=B.Services
     p.flightUnlockChoices=S.PlanFlightUnlocks(p,s)
     local choice=p.flightUnlockChoices[1];assert(math.abs(choice.saving-697)<0.001);eq(choice.afterStage,1)
-    eq(choice.afterTask,p.fallback);eq(s.unlocked["taxi:1"],false);eq(next(s.taxiAvailability),nil);eq(next(s.taxiCosts),nil);eq(s.money,20)
+    eq(choice.afterTask,p.fallback);eq(s.unlocked["taxi:1"],false);eq(next(s.taxiAvailability),nil)
     local rows=S:Choices("unlockFlight");eq(#rows,1);eq(rows[1].taxiId,1);eq(rows[1].unlockSaving,choice.saving)
     B.UI={};assert(loadfile("UI/Services.lua"))("AiLeveling",B)
     B.UI.Services.kind="unlockFlight";B.UI.Services.preview=rows[1]
@@ -444,11 +421,9 @@ test("开飞行点比较完整后续行程并优先做沿途目标且预览不�
     s.unlocked["taxi:1"]=true;S:Snapshot(s);eq(s.serviceStop,nil);eq(B.char.serviceStop,nil);eq(B.char.locked,42)
     finish()
 end)
-test("开点预览保留资金炉石与绕路约束且费用未知不补零",function()
+test("开点预览保留炉石与绕路约束并要求航线耗时",function()
     local B,s,p,finish=unlockFixture();local S=B.Services
-    s.money=9;assert(S.PlanFlightUnlocks(p,s)[1].saving<=0)
-    s.money=20;B.FlightData.paths[1][3]=nil;eq(next(S.PlanFlightUnlocks(p,s)),nil)
-    B.FlightData.paths[1][3]=10;B.FlightData.durations.Alliance={};eq(next(S.PlanFlightUnlocks(p,s)),nil)
+    B.FlightData.durations.Alliance={};eq(next(S.PlanFlightUnlocks(p,s)),nil)
     B.FlightData.durations.Alliance["1:2"]=100
     s.bags={[6948]=1};s.hearthPoint={map=1,x=1,y=0};s.hearthBindingKey="near";s.hearthCooldown=3600;s.hearthReady=0
     assert(S.PlanFlightUnlocks(p,s)[1].saving<=0);eq(s.hearthReady,0);eq(s.hearthPoint.x,1)
@@ -476,7 +451,7 @@ test("开点只预览有向直连不会臆造反向航线或解锁其他点",fun
     local B,s,p,finish=unlockFixture();local rows=B.Services:Choices("unlockFlight")
     local preview=B.Flights.PreviewUnlock(s,rows[1],B.Navigation)
     eq(preview.taxiAvailability["1:2"],true);eq(preview.taxiAvailability["2:1"],nil)
-    eq(preview.taxiCosts["1:2"],10);eq(preview.taxiHops["1:2"],"1:2")
+    eq(preview.taxiHops["1:2"],"1:2")
     B.FlightData.nodes[2].condition=1;eq(B.Flights.PreviewUnlock(s,rows[1],B.Navigation),nil)
     B.FlightData.nodes[2].condition=0;s.unlocked["taxi:2"]=false;eq(B.Flights.PreviewUnlock(s,rows[1],B.Navigation),nil)
     s.unlocked["taxi:2"]=true;assert(B.Services:Pick(rows[1],s.revision))
@@ -500,7 +475,7 @@ test("原生明确未发现的飞行点进入状态指纹，未知标记不推�
         {nodeID=1,faction=2,isUndiscovered=true},{nodeID=2,faction=2,isUndiscovered=false},
         {nodeID=3,faction=2,isUndiscovered=0},{nodeID=4,faction=1,isUndiscovered=true}} end}
     local B={Content={transit={}}};assert(loadfile("Transport.lua"))("AiLeveling",B)
-    local s={unlocked={},taxiCosts={},now=0};local key=B.Transport.Key(s)
+    local s={unlocked={},now=0};local key=B.Transport.Key(s)
     B.Transport:RefreshKnown(1,"Alliance");s.unlocked=B.Transport.known
     eq(s.unlocked["taxi:1"],false);eq(s.unlocked["taxi:2"],true);eq(s.unlocked["taxi:3"],nil);eq(s.unlocked["taxi:4"],nil)
     assert(B.Transport.Key(s)~=key);s.unlocked["taxi:2"]=nil
@@ -518,7 +493,7 @@ test("炉石旅店按集中交付与可接任务排序且不推演换绑行程",
     local hub=p.bindingChoices[S.BindingKey(inns[2])];eq(hub.deliveryCount,2);eq(hub.acceptCount,1)
     eq(p.bindingChoices[S.BindingKey(inns[1])].deliveryCount,0)
     local rows=S:Choices("bind");eq(rows[1].npcId,2)
-    eq(s.hearthBindingKey,"old");eq(s.hearthPoint.x,0);eq(s.money,20);eq(s.hearthReady,0)
+    eq(s.hearthBindingKey,"old");eq(s.hearthPoint.x,0);eq(s.hearthReady,0)
     B.UI={};assert(loadfile("UI/Services.lua"))("AiLeveling",B);B.UI.Services.preview=rows[1]
     local lines=table.concat(B.UI.Services:Lines(),"\n")
     assert(lines:find("2 个已接任务",1,true));assert(lines:find("1 个可接任务",1,true))

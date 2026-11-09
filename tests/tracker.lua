@@ -170,10 +170,10 @@ test("暂停飞行手动导航保持真实当前类型且不自动跳过任务",
     B.Navigation.manual={};B.action={kind="manual",title="手动目的地"};B.UI:RenderTracker();assert(T.queueLabel.value:find("任务列表",1,true))
     B.finish()
 end)
-test("可交付任务的交通步骤保留航线票价说明",function()
-    local B=ready();B.action={kind="transit",mode="flight",questId=2,text="手动选择落地点；实际票价 110 铜。"}
+test("可交付任务的交通步骤保留航线说明",function()
+    local B=ready();B.action={kind="transit",mode="flight",questId=2,text="手动选择落地点，落地后继续任务。"}
     B.UI:RenderTracker();eq(B.UI.tracker.step.value,"交通")
-    assert(B.UI.body.value:find("实际票价 110 铜",1,true));B.finish()
+    assert(B.UI.body.value:find("落地后继续任务",1,true));B.finish()
 end)
 test("施法事件只为相关炉石状态请求刷新而不响应其他单位法术",function()
     local B=ready();B.Hearth={Event=function(_,event,unit,guid,spell) return unit=="player" and spell==8690 or nil end}
@@ -204,12 +204,12 @@ test("重排普通步骤和队列不触碰战斗中安全物品属性",function(
     local after=0;for _,button in ipairs(B.QuestAssist.buttons) do after=after+button.attributeWrites end
     eq(after,writes);B.finish()
 end)
-test("商店事件触发刷新且主服务卡片显示实时全修费用与金币缺口",function()
+test("商店事件触发刷新且维修卡片可以忽略",function()
     local B=ready();assert(loadfile("Merchant.lua"))("AiLeveling",B)
     assert(loadfile("Planner/Supplies.lua"))("AiLeveling",B)
     B.action={kind="service",serviceKind="repair",npcId=78,title="铁匠",serviceGoal={durability=0.2}}
     B.state.merchant={npcId=78,canRepair=true,repairCost=123,items={}};B.state.money=100
-    B.UI:RenderTracker();assert(B.UI.body.value:find("自费全修：123 铜",1,true));assert(B.UI.body.value:find("还差 23 铜",1,true))
+    B.UI:RenderTracker();assert(not B.UI.body.value:find("铜",1,true))
     local T=B.UI.tracker;eq(T.skip.text.value,"忽略维修");eq(T.queuePanel.shown,true);eq(#T.model.rows,3)
     B.action.questId=1
     T.skip.scripts.OnClick();eq(B.char.ignoreRepair,true);assert(B.refreshAt)
@@ -244,7 +244,7 @@ test("原生服务页可切换旅店与训练项目插入取消且页签隐藏�
     U.cancel.scripts.OnClick();eq(B.char.serviceStop,nil)
     U.mode.scripts.OnClick();eq(U.kind,"train");U.mode.scripts.OnClick();eq(U.kind,"learn")
     B.state.money=20;B.state.trainer={npcId=78,name="训练师",rows={{name="新技能",sub="等级 1",key="新技能\031等级 1",status="available",cost=30,playerTraining=true}}}
-    B.UI:SelectTab(7);assert(B.UI.detailText.value:find("还差 10 铜",1,true))
+    B.UI:SelectTab(7);assert(B.UI.detailText.value:find("新技能",1,true))
     U.choose.scripts.OnClick();eq(B.char.serviceStop.kind,"train");assert(B.char.serviceStop.learnKey)
     B.action=B.Services.Build({serviceStop=B.char.serviceStop,position=B.state.position}).fallback
     B.UI:RenderTracker();eq(B.UI.tracker.step.value,"训练")

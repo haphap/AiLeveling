@@ -2359,5 +2359,5 @@
   },
   "scope": "Base rewards only; native current-level rewards take priority. No character XP bonuses inferred.",
   "flagReference": "https://master.trinitycore.net/d8/d60/structquestobjective",
-  "transformation": "IDs, fixed levels, XP curves and monster/object/item/area-trigger requirements. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; negative reward money retained as a payment exclusion. No text, eligibility or item rewards copied."
+  "transformation": "IDs, fixed levels, XP curves and monster/object/item/area-trigger requirements. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; payment quests remain complex objectives. No text, eligibility or item rewards copied."
 }

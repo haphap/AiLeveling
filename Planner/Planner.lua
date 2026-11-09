@@ -182,7 +182,7 @@ function P.Project(state,path)
         if action.kind=="turnin" then virtual.completed[action.questId],virtual.quests[action.questId]=true,nil end
     end
     if path.resources then
-        virtual.now,virtual.money,virtual.hearthReady=path.resources.now,path.resources.money,path.resources.hearthReady
+        virtual.now,virtual.hearthReady=path.resources.now,path.resources.hearthReady
         virtual.unlocked=path.resources.unlocked or virtual.unlocked
         if A.Supplies and path.resources.supplies then A.Supplies.Project(virtual,path.resources.supplies) end
     end
@@ -408,7 +408,6 @@ function P.TaskOrder(state,choices,data)
         local choice=table.remove(pending,best)
         choice.orderHeld=held
         choice.orderTiming=timings[best]
-        if choice.orderTiming and choice.orderTiming.travelPlan then projected.money=choice.orderTiming.money end
         choice.orderBasis=timings[best] and useTime and (useRate and "movement-xp" or "movement-time") or
             (allStages and completion[best] and "completion-geometry" or "geometry")
         order[#order+1]=choice
@@ -747,7 +746,7 @@ end
 function P.Choose(old, new, locked)
     if locked or new.sessionActive or new.preferenceApplied or new.maintenance or new.selectionActive or new.serviceStop or new.taskBatch then return new end
     -- Both plans must have been recomputed against the same current state.
-    -- Never reuse an old plan with stale eligibility or spent travel costs.
+    -- Always choose from candidates evaluated against the current state.
     if not old or not old.best then return new end
     local oldCandidate
     for _,c in ipairs(new.alternatives) do

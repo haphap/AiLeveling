@@ -69,7 +69,7 @@ def main():
         cycle = sum(rides) + sum(int(path[i]["Delay"]) for i in stops)
         for direction in range(2):
             legs.append(dict(key=f"public:{path_id}:{direction}", kind=mode, fromPoint=points[direction],
-                             toPoint=points[1-direction], faction=faction, cost=0,
+                             toPoint=points[1-direction], faction=faction,
                              seconds=rides[direction]+cycle/2, low=rides[direction], high=rides[direction]+cycle))
         evidence.append(dict(objectId=object_id, pathId=path_id, serverName=obj["name"], sources=obj["sources"],
                              speed=speed, acceleration=acceleration, ports=points, rideSeconds=rides, cycleSeconds=cycle))
@@ -78,7 +78,7 @@ def main():
     for leg in legs:
         def point(p):
             return '{map=%d,x=%.9f,y=%.9f}' % (p['map'], p['x'], p['y'])
-        lines.append('    {key="%s",kind="%s",from=%s,to=%s,fromName="%s",toName="%s",cost=0,seconds=%s,low=%s,high=%s%s},' % (
+        lines.append('    {key="%s",kind="%s",from=%s,to=%s,fromName="%s",toName="%s",seconds=%s,low=%s,high=%s%s},' % (
             leg['key'], leg['kind'], point(leg['fromPoint']), point(leg['toPoint']), leg['fromPoint']['name'],
             leg['toPoint']['name'], leg['seconds'], leg['low'], leg['high'], ',faction="'+leg['faction']+'"' if leg['faction'] else ''))
     lines += ['}}', '']

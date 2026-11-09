@@ -375,8 +375,7 @@ function D:DeliveryOnly(q,state)
     end
     local facts=cache or q.taskFacts
     return facts~=nil and facts.level==q.questLevel and facts.complex==false and
-        facts.objectives~=nil and #facts.objectives==0 and not facts.moneyCost and
-        not (facts.rewards and (facts.rewards.money or 0)<0) and self:Recipient(q)~=nil
+        facts.objectives~=nil and #facts.objectives==0 and self:Recipient(q)~=nil
 end
 
 function D:ItemUseRules(q,state)

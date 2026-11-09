@@ -74,7 +74,7 @@ def load():
                 complex_objectives = True
         curves[id] = dict(level=level, xp=curve, objectives=objectives, complex=complex_objectives)
         if rewards.get('money', 0) < 0:
-            curves[id]['moneyCost'] = -rewards['money']
+            curves[id]['complex'] = True
     located, rejected = [], []
     for id, objectives in locations['quests'].items():
         for index, observed in objectives.items():
@@ -143,5 +143,5 @@ def load():
                                 rejected=rejected_uses, scope='Successful item spells followed by quest progress. Use purpose and observed targets only; no required quantities, consumption or recovery inferred.'),
                   scope='Base rewards only; native current-level rewards take priority. No character XP bonuses inferred.',
                   flagReference='https://master.trinitycore.net/d8/d60/structquestobjective',
-                  transformation='IDs, fixed levels, XP curves and monster/object/item/area-trigger requirements. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; negative reward money retained as a payment exclusion. No text, eligibility or item rewards copied.')
+                  transformation='IDs, fixed levels, XP curves and monster/object/item/area-trigger requirements. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; payment quests remain complex objectives. No text, eligibility or item rewards copied.')
     return data, report

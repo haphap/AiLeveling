@@ -1,5 +1,5 @@
 local _, A = ...
-A.Transport = {known={},costs={},availability={},hops={},departures={},landings={},landingOrder={},dirty=true}
+A.Transport = {known={},availability={},hops={},departures={},landings={},landingOrder={},dirty=true}
 local T = A.Transport
 
 function T:IsFlying()
@@ -89,7 +89,7 @@ function T:CaptureTaxi()
         self.taxiNames=self.taxiNames or {}
         local prefix=from..":"
         for key in pairs(self.availability) do
-            if key:sub(1,#prefix)==prefix then self.availability[key]=nil;self.costs[key]=nil;self.hops[key]=nil end
+            if key:sub(1,#prefix)==prefix then self.availability[key]=nil;self.hops[key]=nil end
         end
         for _,node in ipairs(nodes) do
             if type(node.name)=="string" then self.taxiNames[node.nodeID]=node.name end
@@ -97,17 +97,13 @@ function T:CaptureTaxi()
                 local key=prefix..node.nodeID
                 if node.state==1 or node.state==2 then self.availability[key]=node.state==1 end
                 if node.state==1 then self.hops[key]=taxiHops(from,node,slots,#nodes) end
-                if node.state==1 and TaxiNodeCost and type(node.slotIndex)=="number" and node.slotIndex>0 then
-                    local cost=TaxiNodeCost(node.slotIndex)
-                    if type(cost)=="number" and cost>=0 and cost<math.huge then self.costs[key]=cost end
-                end
             end
         end
     end
 end
 
 function T:InvalidateFlights()
-    self.costs,self.availability,self.hops,self.dirty={},{},{},true
+    self.availability,self.hops,self.dirty={},{},true
     self.taxiOrigin,self.taxiExpiry=nil,nil
 end
 
@@ -144,9 +140,8 @@ function T:Snapshot(state)
     self.readyAt=nil
     local map=C_Map.GetBestMapForUnit("player")
     if self.dirty or self.map~=map then self:RefreshKnown(map,state.faction);self.dirty=false;self.map=map end
-    state.transportKnown,state.unlocked,state.taxiCosts,state.taxiAvailability=true,{},{},{}
+    state.transportKnown,state.unlocked,state.taxiAvailability=true,{},{}
     for key,value in pairs(self.known) do state.unlocked[key]=value end
-    for key,value in pairs(self.costs) do state.taxiCosts[key]=value end
     for key,value in pairs(self.availability) do state.taxiAvailability[key]=value end
     state.taxiHops={};for key,value in pairs(self.hops) do state.taxiHops[key]=value end
     state.taxiNames={};for key,value in pairs(self.taxiNames or {}) do state.taxiNames[key]=value end
@@ -194,7 +189,6 @@ function T.Key(state)
     local p=state.hearthPoint
     if p then keys[#keys+1]=string.format("hearth:%s:%d:%.8f:%.8f:%s",state.hearthBindingKey,p.map,p.x,p.y,tostring(state.hearthCooldown)) end
     for id,value in pairs(state.unlocked) do keys[#keys+1]=id.."="..tostring(value) end
-    for id,value in pairs(state.taxiCosts) do keys[#keys+1]=id.."="..value end
     for id,value in pairs(state.taxiAvailability or {}) do keys[#keys+1]="flight:"..id.."="..tostring(value) end
     for id,value in pairs(state.taxiHops or {}) do keys[#keys+1]="hops:"..id.."="..value end
     for field,points in pairs({departures=state.taxiDepartures or {},landings=state.taxiLandings or {}}) do

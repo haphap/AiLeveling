@@ -53,7 +53,7 @@ end)
 test("任务预览保留交付等级预测与原生状态且隐藏内部来源说明",function()
     local B={};for k,v in pairs(A) do B[k]=v end
     assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B);assert(loadfile("Planner/Planner.lua"))("AiLeveling",B)
-    B.Navigation={Distance=function() return 1 end};B.Roads=nil
+    B.Navigation={Distance=function() return 1 end}
     local s=state();s.xp=399;s.position={map=1,x=0,y=0};s.quests[1]={title="实际日志任务",ready=true,objectives={}}
     local q=F.Quest(1);q.questLevel=1;q.taskFacts={level=1,xp={{1,170}},objectives={}}
     local d=F.Data({[1]=q});d.Target=function() return {map=1,x=0.1,y=0} end

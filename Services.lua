@@ -57,7 +57,7 @@ local function trainingRank(offer)
     if offer.status=="used" then return 4 end
     if offer.status=="unavailable" then return 3 end
     if not offer.playerTraining or offer.ambiguous or offer.requirementsBlocked then return 2 end
-    return offer.affordable and 0 or 1
+    return 0
 end
 local function taskStep(step)
     return type(step)=="table" and number(step.questId,1,2147483647) and type(step.title)=="string" and #step.title<=512 and
@@ -117,8 +117,8 @@ function S:Snapshot(state)
             state.trainer=trainer;key[#key+1]=id
             local kind=C_Trainer and C_Trainer.GetTrainerType and C_Trainer.GetTrainerType()
             local types=Enum and Enum.TrainerType
-            local copper=types and accessible(kind) and (kind==types.General or kind==types.Tradeskills)
-            trainer.copper=copper==true
+            local playerTraining=types and accessible(kind) and (kind==types.General or kind==types.Tradeskills)
+            trainer.playerTraining=playerTraining==true
             local count=GetNumTrainerServices and GetNumTrainerServices()
             if not number(count,0,10000) or not GetTrainerServiceInfo then trainer.pending=true
             else
@@ -127,16 +127,13 @@ function S:Snapshot(state)
                     local name,status,_,level,sub,category=GetTrainerServiceInfo(index)
                     name,status,sub=text(name),text(status),text(sub)
                     if name and (status=="available" or status=="unavailable" or status=="used") then
-                        local row={index=index,name=name,status=status,level=number(level,0,1000) and level or nil,sub=sub,playerTraining=trainer.copper}
+                        local row={index=index,name=name,status=status,level=number(level,0,1000) and level or nil,sub=sub,playerTraining=trainer.playerTraining}
                         row.key=table.concat({name,sub or "",text(category) or ""},"\031")
-                        local cost=GetTrainerServiceCost and GetTrainerServiceCost(index)
-                        if trainer.copper and number(cost,0,2147483647) then row.cost=cost end
-                        row.affordable=row.cost~=nil and (row.cost==0 or state.money~=nil and state.money>=row.cost)
                         requirements(row)
                         if row.level and state.level and state.level<row.level then row.requirementsBlocked=true end
                         keys[row.key]=(keys[row.key] or 0)+1
                         trainer.rows[#trainer.rows+1]=row
-                        key[#key+1]=table.concat({row.key,status,tostring(row.cost),tostring(row.level),tostring(row.affordable),
+                        key[#key+1]=table.concat({row.key,status,tostring(row.level),
                             tostring(row.playerTraining),tostring(row.requirementsPending)},":")
                         for _,req in ipairs(row.requirements) do
                             key[#key+1]=table.concat({req.name,tostring(req.rank),tostring(req.met)},":")
@@ -333,7 +330,7 @@ function S.PlanFlightUnlocks(plan,state)
                     end
                     before[#before+1]=row
                     for _,path in ipairs(A.Flights.Itinerary(state.position,before,state,A.Navigation) or {}) do
-                        preview.money=path.money;preview.now=(state.now or 0)+path.seconds;preview.hearthReady=path.hearthReady
+                        preview.now=(state.now or 0)+path.seconds;preview.hearthReady=path.hearthReady
                         preview.maxSeconds=state.maxSeconds and math.max(0,state.maxSeconds-path.seconds)
                         local routes=A.Flights.Itinerary(row.position,after,preview,A.Navigation)
                         local seconds=routes and path.seconds+routes[1].seconds
@@ -474,15 +471,11 @@ function S.Build(state,plan,automatic)
         stop.learnKey and ("向训练师学习「"..stop.learnKey:match("^[^\031]+").."」；学会后继续原任务。") or
         "与训练师交谈，在服务页选择要学习的项目。"
     if automatic then instruction="建议把炉石设在这里，做完任务后回来集中交付。" end
-    local trainingCost
     if stop.kind=="train" and stop.learnKey and state.trainer and state.trainer.npcId==stop.npcId then
         for _,offer in ipairs(state.trainer.rows) do
             if offer.key==stop.learnKey and not offer.ambiguous and offer.status~="used" then
-                if offer.playerTraining and offer.status=="available" and not offer.requirementsBlocked then trainingCost=offer.cost end
                 local needs=S.TrainingNeeds(offer,state)
                 if needs~="" then instruction="学习「"..offer.name.."」还需："..needs.."。可取消服务安排，继续任务。"
-                elseif offer.cost and state.money and state.money<offer.cost then
-                    instruction="学习「"..offer.name.."」还差 "..(offer.cost-state.money).." 铜。可取消服务安排，继续任务。"
                 elseif offer.status=="unavailable" then instruction="「"..offer.name.."」当前无法学习，请查看训练窗口中的条件。" end
                 break
             end
@@ -493,7 +486,7 @@ function S.Build(state,plan,automatic)
     local stages=stop.kind~="bind" and A.Flights and plan and taskStages(plan,state)
     local route={action}
     if stages then
-        route[1]={kind=stop.kind,title=stop.title,position=action.position,moneyCost=trainingCost}
+        route[1]={kind=stop.kind,title=stop.title,position=action.position}
         for _,stage in ipairs(stages) do route[#route+1]=stage end
     end
     local routes=A.Flights and A.Flights.Itinerary(state.position,route,state,A.Navigation)
@@ -525,7 +518,7 @@ function S.Build(state,plan,automatic)
     if journey then return {fallback=action,travelActions=A.Flights.Actions(journey.firstRoute,action,A.Navigation),referenceJourney=journey} end
     if stages then
         return {fallback={kind="selectionBlocked",title="服务后的任务行程暂不可衔接",
-            text="当前交通、金币或行程时间不足以接续剩余任务。可取消服务安排，继续原任务。"}}
+            text="当前交通或行程时间无法接续剩余任务。可取消服务安排，继续原任务。"}}
     end
     local flight=A.Flights and A.Flights.Guide(action,state,A.Navigation)
     return {fallback=action,travelActions=flight and flight.actions or {action},referenceFlight=flight}

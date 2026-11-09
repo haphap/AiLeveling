@@ -15,28 +15,13 @@ local function dungeon(content,s)
     B.State.Refresh=function() B.Dungeon:Sync(s,{}) end
     return B,d
 end
-test("交通返回最快与省钱非劣方案并消除无资源收益的循环",function()
+test("交通只保留最快方案并消除无收益循环",function()
     local c,s=graph(),F.State();s.money=40;s.now=100
     c.transit.loop={from="goal",to="goal",kind="boat",verified=true,seconds=0}
     local routes=A.Travel.Routes(c,"start","goal",s)
-    eq(#routes,2);eq(routes[1].seconds,1);eq(routes[1].money,0);eq(routes[2].seconds,20);eq(routes[2].money,40)
+    eq(#routes,1);eq(routes[1].seconds,1);eq(routes[1].money,nil)
     s.maxSeconds=10;eq(#A.Travel.Routes(c,"start","goal",s),1)
     eq(s.money,40)
-end)
-test("同一任务的整程选择保留返程路费",function()
-    local c,s,q=graph(),F.State(),F.Quest(1);s.money=40;s.now=100
-    q.actions={{kind="accept",node="start",seconds=1},{kind="objective",node="goal",seconds=1},{kind="turnin",node="home",seconds=1}}
-    local r=A.Planner.Evaluate(q,s,data({[1]=q},c),{minutes=60},"start")
-    eq(r.seconds,25);eq(r.resources.money,0)
-    local flights=0;for _,a in ipairs(r.actions) do if a.kind=="transit" then flights=flights+1;eq(a.transitId,"back") end end
-    eq(flights,1)
-end)
-test("跨任务搜索保留较慢前段并继承剩余金币",function()
-    local c,s,q1,q2=graph(),F.State(),F.Quest(1),F.Quest(2);s.money=40;s.now=100
-    q1.setup=true;q1.xp=1;q1.actions={{kind="turnin",node="goal",seconds=1}}
-    q2.preQuestGroup={1};q2.xp=20000;q2.actions={{kind="turnin",node="home",seconds=1}}
-    local p=plan(s,data({[1]=q1,[2]=q2},c));eq(p.best.xp,20001);eq(p.best.seconds,25);eq(p.best.resources.money,0)
-    eq(s.money,40);eq(s.completed[1],nil)
 end)
 test("直线往返更快时保留炉石而不受旧单向道路限制",function()
     local c={nodes={a=F.Node(0),b=F.Node(0.2),c=F.Node(0.21)},edges={a={{to="b",seconds=20,verified=true}},b={{to="c",seconds=1,verified=true}}},transit={
@@ -56,26 +41,6 @@ test("束宽按任务序列计算且路线稳定比较完整动作身份",functi
     local old={best={id=1,routeKey="old"}}
     local fresh={best={id=2,routeKey="new",rate=100},alternatives={{id=1,routeKey="different",rate=100}}}
     eq(A.Planner.Choose(old,fresh).best.id,2)
-end)
-test("副本整程与实际入口导航一致保留返程路费",function()
-    local c,s=graph(),F.State();s.money=40;F.Party(s);s.now=100
-    local B,d=dungeon(c,s)
-    local r=B.Dungeon.Evaluate(d,s,B.settings,B.Data);eq(r.seconds,625);eq(r.resources.money,0)
-    eq(B.Dungeon:Accept(1),true);eq(B.Dungeon:Control("ready"),true)
-    local p=plan(s,B.Data,B.settings,B)
-    eq(p.best.actions[1].kind,"move");eq(p.best.actions[1].node,"goal")
-    for _,a in ipairs(p.best.actions) do assert(a.transitId~="fast") end
-end)
-test("等队活动选择须同时保留完整副本所需交通资源",function()
-    local c,s=graph(),F.State();s.money=40;s.now=100
-    c.nodes.side=F.Node(0.01,2);c.nodes.goal.position.x=10
-    c.transit.toSide={from="start",to="side",kind="flight",verified=true,seconds=1,cost=40}
-    c.edges.side={{to="start",seconds=1,verified=true}}
-    local B,d=dungeon(c,s);d.waitSeconds=100;d.interruptibleQuestIds={1}
-    local q=F.Quest(1);q.interruptible=true;q.actions={{kind="turnin",node="side",seconds=1}}
-    B.Data=data({[1]=q},c)
-    local r=B.Dungeon.Evaluate(d,s,B.settings,B.Data)
-    eq(r.waitActivity,nil);eq(r.seconds,1705)
 end)
 test("已消耗等队时间从后续副本比较中扣除",function()
     local c,s=graph(),F.State();s.money=80;s.now=100

@@ -71,10 +71,6 @@ function U:Lines()
             lines[#lines+1]="需要："..req.name..(req.rank and (" "..req.rank) or "").." · "..status
         end
         if offer.requirementsPending then lines[#lines+1]="在训练窗口查看学习条件。" end
-        if offer.cost~=nil then
-            lines[#lines+1]="当前训练费用："..offer.cost.." 铜"
-            if s.money~=nil and s.money<offer.cost then lines[#lines+1]="自有金币还差 "..(offer.cost-s.money).." 铜" end
-        else lines[#lines+1]="在训练窗口查看费用。" end
         if offer.ambiguous then lines[#lines+1]="在训练窗口选择具体项目。" end
         lines[#lines+1]="学习所选技能后继续任务。"
     elseif self.kind=="unlockFlight" then lines[#lines+1]="与飞行管理员交谈，开通此飞行点。"

@@ -212,7 +212,7 @@ test("航线校准按内容版本隔离且不受装备上下文降权",function(
     route=A.Travel.Route(B.Content,"a","b",{now=0,money=100,samples=B.char.samples});eq(route.seconds,10)
 end)
 test("原生飞行状态变化进入决策指纹",function()
-    local a={unlocked={},taxiCosts={},onTaxi=false,now=0}
+    local a={unlocked={},onTaxi=false,now=0}
     local B=fixture();local old=B.Transport.Key(a);a.onTaxi=true
     assert(B.Transport.Key(a)~=old)
 end)

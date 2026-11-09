@@ -381,8 +381,6 @@ function UI:RenderTracker()
         local goal=action.serviceGoal or {}
         items(goal.items,"需携带：");items(action.consumeItems,"整理／出售：");items(goal.capacityItems,"预留容量：")
         if goal.freeSlots and goal.freeSlots>0 then lines[#lines+1]="通用空格至少 "..goal.freeSlots.." 格" end
-        if action.moneyCost then lines[#lines+1]="预留费用 "..action.moneyCost.." 铜" end
-        if action.moneyGain then lines[#lines+1]="预计收入 "..action.moneyGain.." 铜" end
         if A.Merchant then for _,line in ipairs(A.Merchant.Lines(action,state)) do lines[#lines+1]=line end end
     end
     self.body:SetText(table.concat(lines,"\n"))

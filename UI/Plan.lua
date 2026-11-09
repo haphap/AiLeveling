@@ -122,7 +122,6 @@ function UI:Lines()
         if queue.xpKnown then lines[#lines+1]=string.format("预计交付经验：%.0f",queue.xp) end
         if (queue.remaining or 0)>0 then lines[#lines+1]="另有 "..queue.remaining.." 项任务位置待确认，仍保留在建议列表。" end
         if (queue.optional or 0)>0 then lines[#lines+1]="另有 "..queue.optional.." 项任务暂未计入自动行程。" end
-        if queue.money then lines[#lines+1]=string.format("预计上述任务完成后余额 %d 铜；费用与奖励按完成顺序计入。",queue.money) end
     end
     if A.char.paused then lines[#lines+1]="规划提示已暂停；执行所选行程会恢复提示。" end
     if A.Navigation.manual then lines[#lines+1]="当前导航到手动目的地；执行所选行程会解除手动导航。" end
@@ -186,9 +185,6 @@ function UI:Lines()
                 end
             end
             items(reward.items,"任务奖励：");items(reward.choices,"可选奖励：")
-            if reward.money and reward.money~=0 then
-                lines[#lines+1]=(reward.money>0 and "奖励金币：" or "交付费用：")..math.abs(reward.money).." 铜"
-            end
         end
         if candidate.stages then
             lines[#lines+1]="剩余任务步骤："
@@ -213,7 +209,7 @@ function UI:Lines()
                         local names=A.state.taxiNames or {}
                         local from=names[leg.fromTaxi] or A.FlightData.nodes[leg.fromTaxi].name
                         local to=names[leg.toTaxi] or A.FlightData.nodes[leg.toTaxi].name
-                        lines[#lines+1]=string.format("飞行：%s → %s · %.1f 分钟 · %d 铜",from,to,leg.flightSeconds/60,leg.cost)
+                        lines[#lines+1]=string.format("飞行：%s → %s · %.1f 分钟",from,to,leg.flightSeconds/60)
                     end
                 end
             end
@@ -233,13 +229,9 @@ function UI:Lines()
     if current and current~=candidate and not ongoing(current) and not ongoing(candidate) then
         lines[#lines+1]=string.format("与当前规划方案相比：耗时 %+.1f 分钟；经验 %+.0f；经验率 %+.0f／小时",
             (candidate.seconds-current.seconds)/60,candidate.xp-current.xp,(candidate.rate-current.rate)*3600)
-        if candidate.resources and current.resources and candidate.resources.money and current.resources.money then
-            lines[#lines+1]=string.format("行程结束余额差：%+d 铜",candidate.resources.money-current.resources.money)
-        end
     end
     if candidate.resources then
         local r=candidate.resources
-        if r.money and A.state.money then lines[#lines+1]=string.format("预计结束余额 %d 铜；相对当前现金净变化 %+d 铜",r.money,r.money-A.state.money) end
         if r.hearthReady then
             local seconds=math.max(0,r.hearthReady-(r.now or 0))
             lines[#lines+1]=seconds==0 and "行程结束时炉石可用" or string.format("行程结束时炉石仍冷却 %.1f 分钟",seconds/60)
@@ -263,8 +255,6 @@ function UI:Lines()
             action.title or (action.questId and ("任务 #"..action.questId)) or "继续当前阶段",
             node and node.label and (" · "..node.label) or "",duration and string.format(" · %.1f 分钟",duration/60) or "")
         if action.text then lines[#lines+1]=action.text end
-        if action.moneyCost then lines[#lines+1]="预留费用 "..action.moneyCost.." 铜" end
-        if action.moneyGain then lines[#lines+1]="预计收入 "..action.moneyGain.." 铜" end
     end
     if plan.gearTargetBlocked then lines[#lines+1]=plan.gearTargetBlocked end
     return lines

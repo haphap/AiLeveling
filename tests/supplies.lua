@@ -7,7 +7,7 @@ local function state(free)
 end
 local function services(quests)
     local d=F.Data(quests);d.content.sources={fixture={}}
-    d.content.services={smith={verified=true,source="fixture",title="夹具服务点",node="near",repair={costMax=50,seconds=10},purchaseSeconds=8,stock={[100]={unitPrice=2,unlimited=true}},vendorSeconds=6}}
+    d.content.services={smith={verified=true,source="fixture",title="夹具服务点",node="near",repair={seconds=10},purchaseSeconds=8,stock={[100]={unlimited=true}},vendorSeconds=6}}
     return d
 end
 test("日志满时先交付再接新任务且已接任务不额外占槽",function()
@@ -37,10 +37,10 @@ test("明确全量消耗释放空间，部分消耗不虚增空格",function()
     eq(after.bags[100],0);eq(after.bags[101],1)
     eq(S.Apply({consumeItems={[100]=5},gainItems={[101]=1}},S.Cursor(s),s.itemMetadata),nil)
 end)
-test("低耐久插入有来源维修并传播费用与耗时",function()
+test("低耐久插入有来源维修并传播耐久与耗时",function()
     local s,q=state(16),F.Quest(1);s.durability=0.1;q.combat=true
     local r=A.Planner.Evaluate(q,s,services({[1]=q}),{minutes=60},"start")
-    eq(r.seconds,50);eq(r.resources.money,50);eq(r.resources.supplies.durability,1);eq(s.durability,0.1)
+    eq(r.seconds,50);eq(r.resources.supplies.durability,1);eq(s.durability,0.1)
     local found=false
     for _,a in ipairs(r.actions) do if a.kind=="service" then found=true;eq(a.serviceKind,"repair");eq(a.serviceGoal.durability,0.2) end end
     eq(found,true)
@@ -48,7 +48,7 @@ end)
 test("补给只购买有来源的足量库存并在使用后扣除",function()
     local s,q=state(16),F.Quest(1);q.actions[2].requiredItems={[100]=5};q.actions[2].consumeItems={[100]=5}
     local d=services({[1]=q});local r=A.Planner.Evaluate(q,s,d,{minutes=60},"start")
-    eq(r.seconds,48);eq(r.resources.money,90);eq(r.resources.supplies.bags[100],0)
+    eq(r.seconds,48);eq(r.resources.supplies.bags[100],0)
     d.content.services.smith.stock[100].unlimited=false
     local candidate,reason=A.Planner.Evaluate(q,s,d,{minutes=60},"start");eq(candidate,nil);assert(reason:find("必需物品"))
 end)
@@ -56,29 +56,11 @@ test("买补给前空间不足先整理且不出售受保护物品",function()
     local s,q=state(0),F.Quest(1);s.bags[900]=2;s.inventory.slots={{id=900,count=2,bag=0,questKnown=true,questItem=false}}
     q.actions[2].requiredItems={[100]=1};q.actions[2].consumeItems={[100]=1}
     local d=services({[1]=q});local r=A.Planner.Evaluate(q,s,d,{minutes=60},"start")
-    assert(r);eq(r.resources.money,118)
+    assert(r)
     local seen={};for _,a in ipairs(r.actions) do if a.kind=="service" then seen[#seen+1]=a.serviceKind end end
     eq(seen[1],"vendor");eq(seen[2],"supply")
     s.protectedItems={[900]=true};eq(A.Planner.Evaluate(q,s,d,{minutes=60},"start"),nil)
     s.protectedItems={};s.inventory.slots[1].questItem=true;eq(A.Planner.Evaluate(q,s,d,{minutes=60},"start"),nil)
-end)
-test("整理所得金币只能用于出售之后的交通",function()
-    local s,q=state(0),F.Quest(1);s.money=0;s.bags[900]=2;s.inventory.slots={{id=900,count=2,bag=0,questKnown=true,questItem=false}}
-    q.actions[2].gainItems={[100]=1}
-    local d=services({[1]=q});d.content.transit={back={kind="flight",verified=true,from="goal",to="start",seconds=5,cost=20}}
-    local r=A.Planner.Evaluate(q,s,d,{minutes=60},"start")
-    eq(r.resources.money,0);eq(r.seconds,31)
-    d.content.edges.start={};d.content.nodes.near.position.map=2;d.content.transit.go={kind="flight",verified=true,from="start",to="near",seconds=1,cost=1}
-    eq(A.Planner.Evaluate(q,s,d,{minutes=60},"start"),nil)
-end)
-test("维修费用与交通共同计费且保留较便宜服务来源",function()
-    local s,q=state(16),F.Quest(1);s.money=40;s.durability=0.1;q.combat=true
-    local d=services({[1]=q});d.content.services.other={verified=true,source="fixture",title="远处维修",node="goal",repair={costMax=10,seconds=20}}
-    local r=A.Planner.Evaluate(q,s,d,{minutes=60},"start")
-    assert(r);eq(r.resources.money,30)
-    local found;for _,a in ipairs(r.actions) do if a.kind=="service" then found=a.serviceId end end
-    eq(found,"other")
-    d.content.services.other.repair.costMax=nil;eq(A.Planner.Evaluate(q,s,d,{minutes=60},"start"),nil)
 end)
 test("未知堆叠数据保持阻断，预测消耗不修改真实物品",function()
     local s=state(1);s.itemMetadata[100].stackSize=nil
@@ -92,14 +74,6 @@ test("服务动作等待实际数量或耐久变化才完成",function()
     eq(S.Done(action,s),false);s.bags[100]=5;s.durability=0.1;eq(S.Done(action,s),false)
     s.durability=1;eq(S.Done(action,s),true)
 end)
-test("金币不足时先出售已知灰色物品再支付服务费",function()
-    local s,q=state(1),F.Quest(1);s.money=0;s.durability=0.1;q.combat=true
-    s.bags[900]=2;s.inventory.slots={{id=900,count=2,bag=0,questKnown=true,questItem=false}}
-    local d=services({[1]=q});d.content.services.smith.repair.costMax=20
-    local r=A.Planner.Evaluate(q,s,d,{minutes=60},"start");assert(r);eq(r.resources.money,0)
-    local kinds={};for _,a in ipairs(r.actions) do if a.kind=="service" then kinds[#kinds+1]=a.serviceKind end end
-    eq(kinds[1],"vendor");eq(kinds[2],"repair")
-end)
 test("服务点阵营与解锁条件参与后续任务搜索",function()
     local s,q1,q2=state(16),F.Quest(1),F.Quest(2);s.faction="Alliance";s.durability=0.1
     q1.xp=1;q1.setup=true;q2.preQuestGroup={1};q2.xp=20000;q2.combat=true
@@ -108,27 +82,13 @@ test("服务点阵营与解锁条件参与后续任务搜索",function()
     d.content.services.smith.faction="Alliance";d.content.services.smith.unlock="quest:1"
     eq(plan(s,d).best.xp,20001)
 end)
-test("未知维修费用先提供到店确认卡片且不预记任务经验",function()
-    local s,q=state(16),F.Quest(1);s.durability=0.1;q.combat=true
-    local d=services({[1]=q});d.content.services.smith.repair.costMax=nil
-    d.Target=function() return d.content.nodes.goal.position end
-    local p=plan(s,d);eq(p.best.kind,"service");eq(p.best.xp,0);eq(p.maintenance,true)
-    local last=p.best.actions[#p.best.actions];eq(last.serviceKind,"repair");eq(S.Done(last,s),false)
-    eq(p.taskOrder[1].questId,1)
-    s.ignoreRepair=true;p=plan(s,d);assert(p.best.xp>0);eq(p.maintenance,nil)
-    for _,action in ipairs(p.best.actions) do assert(action.serviceKind~="repair") end
-    eq(p.best.resources.supplies.durability,0.1);eq(s.durability,0.1);eq(S.Done(last,s),false)
-    local scripts=S.Compile({last},s,d.content);eq(#scripts[1].actions,0);eq(scripts[1].cursor.durability,0.1)
-    s.freeSlots=0;local service=S.Fallback(s,d,{})
-    eq(service.actions[#service.actions].serviceKind,"vendor")
-end)
 test("副本出发补齐物品与耐久并保留内部消耗和返程资源",function()
     local s=state(16);s.durability=0.1;F.Party(s)
     local d=services({});local instance={id=1,instanceId=42,difficultyId=1,title="服务夹具副本",verified=true,minLevel=10,maxLevel=30,
         entryNode="goal",exitNode="goal",returnNode="start",runSeconds=600,xp=1000,waitSeconds=0,actions={},items={[100]=2},consumeItems={[100]=2},lootSlots=2,durabilityLoss=0.1}
     d.content.dungeons[1]=instance
     local r=A.Dungeon.Evaluate(instance,s,{minutes=60,role="DAMAGER",dungeons=true},d)
-    assert(r);eq(r.resources.money,46);eq(r.resources.supplies.bags[100],0);eq(r.resources.supplies.durability,0.9)
+    assert(r);eq(r.resources.supplies.bags[100],0);eq(r.resources.supplies.durability,0.9)
     eq(r.resources.supplies.inventory.bags[0].free,14)
     local services=0;for _,a in ipairs(r.previewActions) do if a.kind=="service" then services=services+1;eq(a.stage,"before") end end
     eq(services,2)
@@ -150,16 +110,15 @@ test("服务完成由实际状态推进且完成采样在重算前确认",functi
     o:Refresh({durability=1});eq(B.char.samples.recovery.n,1);eq(B.char.samples.recovery.mean,1)
     o:Refresh({durability=1});eq(B.char.samples.recovery.n,1)
 end)
-test("服务资源格式拒绝负数、无穷费用和空完成条件",function()
+test("服务资源格式拒绝负数物品与空完成条件",function()
     eq(S.ValidAction({gainItems={[100]=-1}}),false)
-    eq(S.ValidAction({moneyCost=math.huge}),false)
     eq(S.ValidAction({kind="service",serviceGoal={}}),false)
     eq(S.ValidAction({kind="service",serviceGoal={items={[100]=5}}}),true)
     local d=services({});local point=d.content.services.smith
-    eq(S.ValidService(point,d.content),true);point.stock[100].unitPrice=-1;eq(S.ValidService(point,d.content),false)
+    eq(S.ValidService(point,d.content),true);point.purchaseSeconds=-1;eq(S.ValidService(point,d.content),false)
 end)
 
-test("库存或价格未确认时导航到店核对而不计后续奖励",function()
+test("库存未确认时导航到店核对而不计后续奖励",function()
     local s,q=state(16),F.Quest(1);q.actions[2].requiredItems={[100]=5}
     local d=services({[1]=q});d.content.services.smith.stock[100].unlimited=false
     local p=plan(s,d);eq(p.best.kind,"service");eq(p.best.xp,0)

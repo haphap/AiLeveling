@@ -148,6 +148,8 @@ test("全部设置有原生控件且有效关闭值跨归一化保留",function(
     B.settings.fontScale=0/0;B.settings.density="bad";B.settings.detailPosition={"bad","CENTER",0,0}
     B:NormalizeSettings(B.settings);eq(B.settings.fontScale,1);eq(B.settings.density,"normal");eq(B.settings.detailPosition,nil)
     control(B,"gearPreference").button.scripts.OnClick();eq(B.settings.gearPreference,"xp");assert(B.refreshes>0)
+    for _,key in ipairs({"quest","move","taskwork:old","tasktalk:v1:turnin:fast"}) do B.char.samples[key]={n=3,mean=10,m2=0} end
+    B:NormalizeCharacter(B.char);eq(next(B.char.samples),nil)
     B.finish()
 end)
 test("原生任务对话自动接交同NPC任务，保留整组交付、多选奖励及手动覆盖",function()
@@ -340,32 +342,6 @@ test("装备偏好关闭时保留经验排序和手动来源优先",function()
     eq(A.Gear.Prefer({base,gear},base,{}, {mode="relaxed",gearPreference="xp"}),base)
     eq(A.Gear.Prefer({base,gear},base,{gearTarget="wanted"},{mode="relaxed",gearPreference="xp"}),gear)
 end)
-test("本地绝对耗时存档检查单位数值并限制记录数",function()
-    local B=setup()
-    for i=1,130 do B.char.samples["taskwork:valid:"..i]={n=3,mean=10,m2=0,unit="seconds/unit"} end
-    B.char.samples["taskwork:badunit"]={n=3,mean=10,m2=0,unit="ratio"}
-    B.char.samples["taskwork:badtime"]={n=3,mean=0.5,m2=0,unit="seconds/unit"}
-    B.char.samples["tasktalk:v1:turnin:fast"]={n=3,mean=5,m2=0,unit="seconds"}
-    B.char.samples["tasktalk:v1:turnin:invalid"]={n=3,mean=5,m2=0,unit="seconds"}
-    B:NormalizeCharacter(B.char)
-    local count=0;for key in pairs(B.char.samples) do if key:sub(1,9)=="taskwork:" then count=count+1 end end
-    eq(count,128);eq(B.char.samples["taskwork:badunit"],nil);eq(B.char.samples["taskwork:badtime"],nil)
-    eq(B.char.samples["tasktalk:v1:turnin:fast"].mean,5);eq(B.char.samples["tasktalk:v1:turnin:invalid"],nil)
-    B.finish()
-end)
-test("接交事件保留实际任务事实但不采集耗时且玩家速度触发重算",function()
-    local B=setup();local calls={}
-    B.Observations.TalkOpened=function(_,kind,id) calls[#calls+1]={kind,id,"opened"} end
-    B.Observations.TalkConfirmed=function(_,kind,id) calls[#calls+1]={kind,id,"confirmed"} end
-    B.State.TurnedIn=function(_,id) B.turnedIn=id end
-    local event=B.frame.scripts.OnEvent
-    event(nil,"QUEST_DETAIL");event(nil,"QUEST_ACCEPTED",1)
-    event(nil,"QUEST_COMPLETE");event(nil,"QUEST_TURNED_IN",1,100,0)
-    eq(#calls,0);eq(B.turnedIn,1)
-    B.refreshAt=nil;event(nil,"UNIT_SPEED","target");eq(B.refreshAt,nil)
-    event(nil,"UNIT_SPEED","player");assert(B.refreshAt)
-    B.finish()
-end)
 test("取消自动换绑的当前任务组偏好可持久保存且拒绝损坏大值",function()
     local B=setup()
     B.char.declinedBinding="42:0,43:1";B:NormalizeCharacter(B.char);eq(B.char.declinedBinding,"42:0,43:1")
@@ -385,6 +361,8 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     UnitGUID=function() return "Creature-0-1-2-3-10-0000" end
     B.refreshAt=nil;B.frame.scripts.OnEvent(nil,"PLAYER_TARGET_CHANGED")
     assert(Q.targetButton.status.value:find("已选中",1,true));eq(B.refreshAt,nil)
+    B.frame.scripts.OnEvent(nil,"UNIT_SPEED","target");eq(B.refreshAt,nil)
+    B.frame.scripts.OnEvent(nil,"UNIT_SPEED","player");assert(B.refreshAt)
     UnitGUID=function() return "Player-0-1-2-3-10-0000" end
     Q:TargetStatus();eq(Q.targetButton.status.value:find("已选中",1,true),nil)
     B.action={kind="objective",questId=1,objectiveIndex=1,targetKind="npc",targetId=20}

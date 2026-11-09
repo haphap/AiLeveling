@@ -262,24 +262,14 @@ test("同路任务簇合并接取与交付移动且逐任务保留收益",functi
     eq(r.actions[1].kind,"accept");eq(r.actions[2].kind,"accept")
     local p=plan(s,data);eq(p.best.kind,"cluster");eq(p.best.xp,2000)
 end)
-test("交通可连续衔接且记录金币与炉石资源",function()
+test("交通连续衔接只比较耗时并保留炉石冷却",function()
     local content={nodes={a=F.Node(0,1),b=F.Node(0,2),c=F.Node(0,3),d=F.Node(0,4)},edges={},transit={
         ship={from="a",to="b",kind="boat",seconds=20,verified=true},
         flight={from="b",to="c",kind="flight",seconds=30,cost=40,verified=true},
         hearth={from="c",to="d",kind="hearth",seconds=10,cooldown=3600,verified=true}}}
     local r=A.Travel.Route(content,"a","d",{now=100,money=100,hearthReady=200})
-    eq(r.seconds,110);eq(r.money,60);eq(r.hearthReady,3810);eq(#r.actions,3)
-    eq(A.Travel.Route(content,"a","d",{now=100,money=20,hearthReady=200}),nil)
-end)
-test("束搜索的后续步骤继承已消耗的交通金币",function()
-    local q1,q2,s=F.Quest(1),F.Quest(2),F.State()
-    q2.preQuestGroup={1};s.money=50;s.now=100
-    local data=F.Data({[1]=q1,[2]=q2})
-    data.content.edges.start={{to="goal",seconds=100,verified=true}}
-    data.content.transit={one={from="start",to="goal",seconds=5,cost=40,verified=true,kind="flight"}}
-    local p=plan(s,data)
-    local count=0;for _,a in ipairs(p.best.actions) do if a.kind=="transit" then count=count+1 end end
-    eq(count,1);eq(p.best.resources.money,10)
+    eq(r.seconds,110);eq(r.money,nil);eq(r.hearthReady,3810);eq(#r.actions,3)
+    eq(A.Travel.Route(content,"a","d",{now=100,money=0,hearthReady=200}).seconds,110)
 end)
 test("带符号组前置区分指定交付与互斥分支替代",function()
     local q,pre,alt,s=F.Quest(3),F.Quest(1),F.Quest(2),F.State()
@@ -297,6 +287,9 @@ end)
 test("恢复采样仅在确认后结算且排除挂机与中断",function()
     local o=A.Observations
     A.char={samples={}};A.RequestRefresh=function() end
+    for _,kind in ipairs({"objective","move"}) do
+        o:Tick(0,{kind=kind,questId=1,referenceSeconds=10},true,true);eq(o.current,nil)
+    end
     local action={kind="service",serviceId="recovery",referenceSeconds=10}
     o:Reset();o:Tick(0,action,true,true)
     for i=1,10 do o:Tick(i,action,true,true) end
@@ -310,15 +303,6 @@ test("恢复采样仅在确认后结算且排除挂机与中断",function()
     o:Finish(true);eq(A.char.samples.recovery.n,1)
     o:Tick(200,action,true,true);o:Tick(210,action,true,true)
     o:Finish(true);eq(A.char.samples.recovery.n,1)
-end)
-test("任务与步行不采样且清理旧执行样本",function()
-    A.char={samples={quest={n=10},move={n=10},["taskwork:1"]={n=10}}}
-    local o=A.Observations
-    for _,kind in ipairs({"objective","move"}) do
-        o:Tick(0,{kind=kind,questId=1,referenceSeconds=10},true,true)
-        eq(o.current,nil)
-    end
-    o:Context(F.State());eq(next(A.char.samples),nil)
 end)
 test("有效审计将空接取集合记为缺口并保留任务 ID",function()
     local q=F.Quest(1);q.startedBy={};q.finishedBy={};q.actions=nil;q.preQuestGroup={-2}

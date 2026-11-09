@@ -67,23 +67,15 @@ test("所选后续资格不足时保留意图并阻断其他任务替换",functi
     eq(result.best,nil);eq(result.fallback.kind,"selectionBlocked");eq(result.unverified,nil)
     assert(result.selectionBlocked:find("第 2 组",1,true));eq(B.state.completed[1],nil)
 end)
-test("整程重评保留较慢省钱变体以支付后续必要费用",function()
-    local B=fixture({[1]=F.Quest(1),[2]=F.Quest(2)})
-    B.state.money=100;B.state.itinerary=intent("1>2")
-    B.Data:GetQuest(2).actions[1].moneyCost=80
-    B.Content.transit={flight={from="start",to="goal",kind="flight",seconds=5,cost=40,verified=true}}
-    local result=plan(B.state,B.Data)
-    assert(result.best);eq(result.best.sequence,"1>2");eq(result.best.resources.money,20)
-    eq(hasTransit(result.best),false);eq(B.state.money,100)
-end)
 test("所选行程阻断时必要服务可先恢复且保留原任务顺序",function()
     local q=F.Quest(1);q.combat=true
     local B=fixture({[1]=q});B.state.itinerary=intent("1");B.state.durability=0.1
     B.Content.sources={fixture={}}
     B.Content.services={smith={verified=true,source="fixture",title="先维修",node="near",repair={seconds=10}}}
     local result=plan(B.state,B.Data)
-    eq(result.selectionActive,true);assert(result.selectionBlocked)
-    eq(result.best.kind,"service");eq(result.maintenance,true)
+    eq(result.selectionActive,true);eq(result.selectionBlocked,nil)
+    local repair=false;for _,action in ipairs(result.best.actions) do if action.serviceKind=="repair" then repair=true end end
+    eq(repair,true)
     eq(B.state.itinerary.sequence,"1");eq(B.state.durability,0.1)
     B.state.durability=1;result=plan(B.state,B.Data)
     eq(result.best.sequence,"1");eq(result.selectionBlocked,nil)
@@ -94,13 +86,11 @@ test("当前仍可行的手选交通变体优先且使用重新计算后的数�
     B.state.itinerary=intent("1")
     local result=plan(B.state,B.Data)
     eq(hasTransit(result.best),true)
-    local walking
-    for _,candidate in ipairs(result.alternatives) do if candidate.sequence=="1" and not hasTransit(candidate) then walking=candidate end end
-    assert(walking);B.state.itinerary.preferredKey=walking.routeKey
-    B.Data:GetQuest(1).seconds=200;B.state.runSpeed=14
+    local before=result.best;B.state.itinerary.preferredKey=before.routeKey
+    B.Content.transit.flight.seconds=100;B.state.runSpeed=14
     result=plan(B.state,B.Data)
     eq(hasTransit(result.best),false);eq(result.best.seconds,20)
-    assert(result.best.gearSources);assert(result.best~=walking)
+    assert(result.best.gearSources);assert(result.best~=before)
 end)
 test("原生交付推进整程且就绪任务保留至实际交付",function()
     local B=fixture();B.char.itinerary=intent("1:2>3","old-path")

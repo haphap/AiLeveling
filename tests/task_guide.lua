@@ -145,7 +145,6 @@ end)
 test("完整后续资料未知时按当前目标直线距离比较",function()
     local B,s=fixture()
     B.TaskGuide.Distance=function() return nil end
-    B.Roads={Route=function(_,a,b) return {complete=true,length=b.x==1 and 100 or 5} end}
     B.Navigation.hbd={}
     assert(loadfile("Planner/Planner.lua"))("AiLeveling",B)
     s.quests={[1]={},[2]={}}

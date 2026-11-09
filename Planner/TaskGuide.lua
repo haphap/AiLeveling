@@ -112,10 +112,6 @@ function G.Stages(q,state,data,first)
     local function reward(stage)
         stage.itemRequirements=G.ItemRequirements(q,state,data)
         if data.Recipient then stage.recipient=data:Recipient(q,stage.position) end
-        local money=q.taskFacts and q.taskFacts.rewards and q.taskFacts.rewards.money
-        if type(money)=="number" then
-            stage.moneyCost=money<0 and -money or nil;stage.moneyGain=money>0 and money or nil
-        end
         return stage
     end
     if active and active.ready then return {reward(copy(first))},first.position~=nil end
@@ -262,7 +258,7 @@ function G.Timing(origin,choice,state,navigation)
         travel=route and route.seconds or nil;result.travel=travel
         if route then
             result.travelLow,result.travelHigh=route.low,route.high
-            result.flightCount,result.travelFare,result.money=route.flights,route.cost,route.money
+            result.flightCount=route.flights
             result.hearthReady,result.hearthCount=route.hearthReady,route.hearths
             result.initial,result.coarse=route.initial,route.coarse
         end

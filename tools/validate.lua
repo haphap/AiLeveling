@@ -20,7 +20,7 @@ for id,node in pairs(A.FlightData.nodes) do
     flightNodes=flightNodes+1
 end
 for id,path in pairs(A.FlightData.paths) do
-    assert(positive(id) and id%1==0 and A.FlightData.nodes[path[1]] and A.FlightData.nodes[path[2]] and finite(path[3]) and path[3]>=0)
+    assert(positive(id) and id%1==0 and A.FlightData.nodes[path[1]] and A.FlightData.nodes[path[2]])
     flightPaths=flightPaths+1
 end
 for _,times in pairs(A.FlightData.durations) do
@@ -31,7 +31,7 @@ for _,times in pairs(A.FlightData.durations) do
     end
 end
 assert(flightNodes==71 and flightPaths==292 and flightTimes==881)
-print(string.format("参考飞行：%d 节点、%d 有向航线、%d 分阵营耗时记录；原生可达与票价门控",flightNodes,flightPaths,flightTimes))
+print(string.format("参考飞行：%d 节点、%d 有向航线、%d 分阵营耗时记录",flightNodes,flightPaths,flightTimes))
 local experienceLevels,experienceTotal=0,0
 for level,xp in pairs(A.Experience.xpToLevel) do
     assert(finite(level) and level%1==0 and level>=1 and level<60 and positive(xp) and xp%1==0,"参考经验门槛无效")
@@ -56,7 +56,6 @@ for id,fact in pairs(A.TaskFacts.quests) do
     end
     if fact.rewards then
         rewardCount=rewardCount+1
-        assert(finite(fact.rewards.money) and fact.rewards.money%1==0,"参考奖励金币无效")
         for _,list in ipairs({fact.rewards.items,fact.rewards.choices}) do for _,item in ipairs(list) do
             assert(positive(item.id) and item.id%1==0 and positive(item.count) and item.count%1==0,"参考奖励物品无效")
         end end
@@ -87,7 +86,6 @@ for id,transit in pairs(c.transit or {}) do
     if not positive(transit.seconds) then fail("交通耗时无效："..id) end
     if transit.period and not positive(transit.period) then fail("交通周期无效："..id) end
     if transit.kind=="hearth" and not positive(transit.cooldown) then fail("炉石冷却无效："..id) end
-    if transit.cost and (type(transit.cost)~="number" or transit.cost<0 or transit.cost==math.huge) then fail("交通费用无效："..id) end
     if transit.verified and not c.sources[transit.source] then fail("已验证交通缺少来源："..id) end
 end
 for id,q in pairs(c.quests) do

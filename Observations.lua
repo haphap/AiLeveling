@@ -52,9 +52,6 @@ function O:Refresh(state)
 end
 
 function O:Context(state)
-    for kind in pairs(A.char.samples) do
-        if kind=="quest" or kind=="move" or kind:sub(1,9)=="taskwork:" then A.char.samples[kind]=nil end
-    end
     local parts = {state.class, state.role, math.floor(state.level / 10),state.damageStyle or "auto"}
     for _, slot in ipairs({16,17,18}) do
         local item=state.equipment[slot]
@@ -65,7 +62,7 @@ function O:Context(state)
         self:Reset()
         if A.Dungeon and A.Dungeon.runSample then A.Dungeon.runSample.valid=false end
         for kind, sample in pairs(A.char.samples) do
-            if kind:sub(1,7)~="flight:" and kind:sub(1,11)~="flighttime:" and kind:sub(1,11)~="hearthtime:" and kind:sub(1,9)~="tasktalk:" then
+            if kind:sub(1,7)~="flight:" and kind:sub(1,11)~="flighttime:" and kind:sub(1,11)~="hearthtime:" then
                 sample.n, sample.m2 = math.floor(sample.n / 4), sample.m2 / 4
             end
         end

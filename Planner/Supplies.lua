@@ -190,27 +190,26 @@ local function recover(issue,cursor,state,content,protected)
         local service=content.services[id]
         if S.Available(service,{level=cursor.level,faction=state.faction,unlocked=cursor.unlocked},content) then
             local action={kind="service",serviceId=id,node=service.node,title=service.title,sampleKind="recovery"}
-            if issue.kind=="repair" and cursor.durability~=nil and service.repair and service.repair.costMax~=nil then
-                action.serviceKind,action.repairTo,action.moneyCost="repair",1,service.repair.costMax
+            if issue.kind=="repair" and cursor.durability~=nil and service.repair then
+                action.serviceKind,action.repairTo="repair",1
                 action.seconds=service.repair.seconds
                 action.serviceGoal={durability=issue.durability}
                 action.text="维修装备。"
             elseif issue.kind=="items" and service.stock then
-                local gains,targets,cost={},{},0
+                local gains,targets={},{}
                 for item,count in pairs(issue.missing) do
                     local stock=service.stock[item]
-                    if stock and stock.unlimited and stock.unitPrice~=nil then
+                    if stock and stock.unlimited then
                         gains[item],targets[item]=count,(cursor.bags[item] or 0)+count
-                        cost=cost+count*stock.unitPrice
                     end
                 end
                 if next(gains) then
-                    action.serviceKind,action.gainItems,action.moneyCost="supply",gains,cost
+                    action.serviceKind,action.gainItems="supply",gains
                     action.seconds=service.purchaseSeconds;action.serviceGoal={items=targets}
                     action.text="购买所列必需物品。"
                 end
-            elseif (issue.kind=="space" or issue.kind=="finance") and service.vendorSeconds then
-                local sales,unsafe,income={},{},0
+            elseif issue.kind=="space" and service.vendorSeconds then
+                local sales,unsafe={},{}
                 for _,slot in ipairs(cursor.inventory.slots) do
                     local item=state.itemMetadata and state.itemMetadata[slot.id]
                     if slot.id and (protected[slot.id] or not slot.questKnown or slot.questItem or slot.locked or
@@ -219,11 +218,10 @@ local function recover(issue,cursor,state,content,protected)
                 for _,slot in ipairs(cursor.inventory.slots) do
                     if slot.id and not unsafe[slot.id] and slot.count>0 then sales[slot.id]=(sales[slot.id] or 0)+slot.count end
                 end
-                for item,count in pairs(sales) do income=income+count*state.itemMetadata[item].sellPrice end
                 if next(sales) then
-                    action.serviceKind,action.consumeItems,action.moneyGain="vendor",sales,income
+                    action.serviceKind,action.consumeItems="vendor",sales
                     action.seconds=service.vendorSeconds
-                    action.serviceGoal=issue.kind=="finance" and {absentItems=sales} or {capacityItems=issue.capacityItems,freeSlots=issue.freeSlots}
+                    action.serviceGoal={capacityItems=issue.capacityItems,freeSlots=issue.freeSlots}
                     action.text="整理背包或出售灰色物品。"
                 end
             end
@@ -251,19 +249,7 @@ function S.Compile(actions,state,content)
         end
         local after,issue=S.Apply(action,cursor,metadata)
         if after then
-            local results={{cursor=after,actions={action}}}
-            if action.kind=="service" and (action.moneyCost or 0)>0 then
-                for _,sale in ipairs(recover({kind="finance"},cursor,state,content,protected)) do
-                    local funded=S.Apply(sale,cursor,metadata)
-                    local finished=funded and S.Apply(action,funded,metadata)
-                    if finished then
-                        sale.questId,sale.dungeonId,sale.stage=action.questId,action.dungeonId,action.stage
-                        sale.text="出售所列灰色物品。"
-                        results[#results+1]={cursor=finished,actions={sale,action}}
-                    end
-                end
-            end
-            return results
+            return {{cursor=after,actions={action}}}
         end
         reason=issue.text
         local key=S.Key(cursor)..":"..(action.serviceId or action.kind)..":"..issue.kind
@@ -397,10 +383,7 @@ function S.Itinerary(content,from,actions,state)
     for _,paths in pairs(groups) do
         for _,path in ipairs(A.Travel.Prune(paths,state.now)) do results[#results+1]=path end
     end
-    table.sort(results,function(a,b)
-        if a.seconds~=b.seconds then return a.seconds<b.seconds end
-        return (a.money or -1)>(b.money or -1)
-    end)
+    table.sort(results,function(a,b) return a.seconds<b.seconds end)
     if #results==0 then return nil,reason end
     return results
 end
@@ -482,8 +465,8 @@ function S.ValidAction(action)
             if not number(id,1,math.huge,true) or not number(count,1,math.huge,true) then return false,"物品 ID 或数量无效" end
         end
     end
-    for _,field in ipairs({"minFreeSlots","reserveSlots","lootSlots","moneyCost","moneyGain"}) do
-        if action[field]~=nil and not number(action[field],0,math.huge,true) then return false,"容量或费用模型无效" end
+    for _,field in ipairs({"minFreeSlots","reserveSlots","lootSlots"}) do
+        if action[field]~=nil and not number(action[field],0,math.huge,true) then return false,"容量模型无效" end
     end
     for _,field in ipairs({"minDurability","repairTo"}) do
         if action[field]~=nil and not (number(action[field],0,1) and action[field]>0) then return false,"耐久模型无效" end
@@ -523,7 +506,6 @@ function S.ValidService(point,content)
     if point.faction and point.faction~="Alliance" and point.faction~="Horde" and point.faction~="Neutral" then return false,"服务阵营无效" end
     if point.repair then
         if type(point.repair)~="table" or not number(point.repair.seconds,0,math.huge) or point.repair.seconds==0 then return false,"维修耗时无效" end
-        if point.repair.costMax~=nil and not number(point.repair.costMax,0,math.huge,true) then return false,"维修费用无效" end
     end
     for _,field in ipairs({"purchaseSeconds","vendorSeconds"}) do
         if point[field]~=nil and not (number(point[field],0,math.huge) and point[field]>0) then return false,"服务耗时无效" end
@@ -532,7 +514,6 @@ function S.ValidService(point,content)
         if type(point.stock)~="table" or not point.purchaseSeconds then return false,"补给耗时或库存无效" end
         for id,stock in pairs(point.stock) do
             if not number(id,1,math.huge,true) or type(stock)~="table" or type(stock.unlimited)~="boolean" then return false,"库存条目无效" end
-            if stock.unitPrice~=nil and not number(stock.unitPrice,0,math.huge,true) then return false,"补给价格无效" end
         end
     end
     if not point.repair and not point.vendorSeconds and not (point.stock and next(point.stock)) then return false,"服务能力缺失" end

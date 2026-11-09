@@ -35,16 +35,16 @@ test("参考飞行资料保留当前构建节点有向航线和分阵营耗时",
     assert(B.FlightData.nodes[3276]);assert(not B.FlightData.nodes[3207])
     assert(B.FlightData.durations.Alliance["2:4"]~=B.FlightData.durations.Alliance["4:2"])
 end)
-test("原生可达与票价齐全才在当前飞行点接续跨图任务",function()
+test("原生可达即可接续跨图任务，忽略票价与金币",function()
     local B,s,a,nav=fixture();local route=B.Flights.Guide(a,s,nav)
-    eq(route.from,1);eq(route.to,2);eq(route.cost,110);eq(route.flightSeconds,100)
+    eq(route.from,1);eq(route.to,2);eq(route.cost,nil);eq(route.flightSeconds,100)
     eq(route.actions[1].mode,"flight");eq(route.actions[1].position.x,0.8)
     eq(route.actions[2],a);eq(route.groundComplete,nil)
     assert(route.actions[1].text:find("落地后继续任务",1,true));assert(not route.actions[1].text:find("分钟",1,true));eq(route.seconds,nil)
     s.taxiAvailability["1:2"]=false;eq(B.Flights.Guide(a,s,nav),nil)
     s.taxiAvailability["1:2"]=nil;eq(B.Flights.Guide(a,s,nav),nil)
-    s.taxiAvailability["1:2"]=true;s.taxiCosts["1:2"]=nil;eq(B.Flights.Guide(a,s,nav),nil)
-    s.taxiCosts["1:2"]=110;s.money=109;eq(B.Flights.Guide(a,s,nav),nil)
+    s.taxiAvailability["1:2"]=true;s.taxiCosts=nil;assert(B.Flights.Guide(a,s,nav))
+    s.money=0;assert(B.Flights.Guide(a,s,nav))
     s.money=110;s.unlocked["taxi:2"]=nil;eq(B.Flights.Guide(a,s,nav),nil)
 end)
 test("飞行参考拒绝旧构建远离出发点过期和洞内投影",function()
@@ -158,30 +158,21 @@ local function joint()
         return math.abs(world(a)-world(b))
     end
     local O,D,L,T={map=1,x=0,y=0},{map=1,x=0.1,y=0},{map=2,x=0.8,y=0},{map=2,x=0.9,y=0}
-    local edges={}
-    local function key(p) return p.map..":"..p.x end
-    local function edge(from,to,seconds,complete)
-        edges[key(from)..">"..key(to)]={seconds=seconds,complete=complete~=false,length=seconds*7}
-    end
-    B.Roads={Route=function(_,from,to) return edges[key(from)..">"..key(to)] end,
-        Time=function(road) return road.complete and road.seconds or nil end,
-        Actions=function(_,road,action,from,to) return {{kind="move",position=to,title="步行"},action} end}
     s.transportKnown=true;s.taxiOrigin=nil;s.position=O
     s.taxiDepartures={[1]=D};s.taxiLandings={["1:2"]=L}
-    edge(O,D,20);edge(L,T,30);edge(O,T,600)
-    return B,s,a,nav,O,D,L,T,edge
+    return B,s,a,nav,O,D,L,T
 end
-test("飞行天赋改变交通选择但不缩短地面候机或重复折扣票价",function()
+test("飞行天赋改变交通选择但不缩短地面候机",function()
     local B,s,a,nav,O,D,L,T=joint()
     B.FlightData.durations.Alliance["1:2"]=600
     local routes=B.Flights.Routes(O,T,s,nav);eq(#routes,1);eq(routes[1].flights,0);eq(routes[1].seconds,600)
     s.taxiSpeed=1.2;routes=B.Flights.Routes(O,T,s,nav)
-    eq(routes[1].flights,1);eq(routes[1].seconds,560);eq(routes[1].cost,110);eq(routes[1].money,890)
+    eq(routes[1].flights,1);eq(routes[1].seconds,560)
     eq(routes[1].legs[2].flightSeconds,500);eq(routes[1].legs[2].seconds,510)
     local actions=B.Flights.Actions(routes[1],a,nav)
     eq(actions[1].timeSampleKey,B.Flights.TimeKey(1,2,s.faction,nil,1.2))
     s.position=D;s.taxiOrigin={id=1,at=s.now,position=D}
-    local guide=B.Flights.Guide(a,s,nav);eq(guide.flightSeconds,500);eq(guide.cost,110)
+    local guide=B.Flights.Guide(a,s,nav);eq(guide.flightSeconds,500)
     eq(guide.actions[1].timeSampleKey,actions[1].timeSampleKey)
 end)
 test("训练旅店服务使用统一交通且到达不完成服务",function()
@@ -193,7 +184,7 @@ test("训练旅店服务使用统一交通且到达不完成服务",function()
     eq(result.referenceJourney.flights,1);eq(result.travelActions[1].mode,"flight")
     eq(result.travelActions[#result.travelActions],result.fallback);eq(result.fallback.npcId,78)
     eq(result.fallback.serviceKind,"train");eq(s.money,1000)
-    s.taxiCosts={};result=B.Services.Build(s);eq(result.referenceJourney.flights,0)
+    s.taxiAvailability={};result=B.Services.Build(s);eq(result.referenceJourney.flights,0)
     for _,action in ipairs(result.travelActions) do assert(action.kind~="transit") end
     s.serviceStop.kind="bind";s.position=T;result=B.Services.Build(s)
     eq(result.referenceJourney.seconds,0);eq(#result.travelActions,1);eq(result.fallback.serviceKind,"bind")
@@ -208,46 +199,38 @@ test("训练旅店服务使用统一交通且到达不完成服务",function()
     B.PublicTransitData=nil;nav.Distance=function() return nil end
     result=B.Services.Build(s);eq(result.referenceJourney,nil);eq(#result.travelActions,1);assert(s.serviceStop)
 end)
-test("构建飞行记录进入完整往返比较且不代替角色解锁票价与采样",function()
+test("构建飞行记录进入完整往返比较且不代替角色解锁与采样",function()
     local B,s,a,nav,O,D,L,T=joint()
     B.FlightData.observedDurations={Alliance={["1:2"]=80}}
     local routes=B.Flights.Itinerary(O,{{position=T},{position=O}},s,nav)
-    eq(routes[1].seconds,740);eq(routes[1].flights,1);eq(routes[1].money,890)
+    eq(routes[1].seconds,740);eq(routes[1].flights,1)
     eq(routes[1].firstRoute.legs[2].durationSource,"当前构建飞行记录")
-    eq(next(s.samples),nil);eq(s.taxiCosts["1:2"],110)
-    s.taxiCosts={};eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
-    s.taxiCosts={["1:2"]=110};s.unlocked["taxi:2"]=nil
+    eq(next(s.samples),nil)
+    s.taxiAvailability={};eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
+    s.taxiAvailability={["1:2"]=true};s.unlocked["taxi:2"]=nil
     eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
 end)
-test("原生转乘各段合计仅收一次候机与原生整趟票价",function()
+test("原生转乘各段合计只计算一次候机",function()
     local B,s,a,nav,O,D,L,T=joint()
     s.taxiHops={["1:2"]="1:4:2"}
     B.FlightData.durations.Alliance["1:4"]=40;B.FlightData.durations.Alliance["4:2"]=20
     local route=B.Flights.Routes(O,T,s,nav)[1]
-    eq(route.seconds,120);eq(route.cost,110);eq(route.flights,1)
+    eq(route.seconds,120);eq(route.cost,nil);eq(route.flights,1)
     local actions=B.Flights.Actions(route,a,nav)
     eq(actions[1].timeSampleKey,B.Flights.TimeKey(1,2,s.faction,"1:4:2",s.taxiSpeed))
 end)
-test("远端飞行按直线接近候机飞行与落地移动比较并保留省钱方案",function()
+test("远端飞行按直线接近候机飞行与落地移动比较",function()
     local B,s,a,nav,O,D,L,T=joint()
     local routes=B.Flights.Routes(O,T,s,nav)
-    eq(#routes,2);eq(routes[1].seconds,160);eq(routes[1].money,890);eq(routes[1].cost,110)
-    eq(routes[2].seconds,600);eq(routes[2].money,1000)
+    eq(#routes,1);eq(routes[1].seconds,160)
     assert(routes[1].low<160 and routes[1].high>160 and routes[1].initial)
     local actions=B.Flights.Actions(routes[1],a,nav)
     eq(actions[1].kind,"transit");eq(actions[1].mode,"flight");eq(actions[#actions],a)
     eq(actions[1].departure,D);eq(actions[1].position,L)
     assert(actions[1].timeSampleKey:find(":Alliance:",1,true))
 end)
-test("完整行程保留较慢省钱路径支付后续交付费用",function()
-    local B,s,a,nav,O,D,L,T=joint()
-    local routes=B.Flights.Itinerary(O,{{position=T},{position=T,moneyCost=950}},s,nav)
-    eq(#routes,1);eq(routes[1].seconds,600);eq(routes[1].money,50)
-    eq(routes[1].firstRoute.flights,0);eq(s.money,1000)
-    s.maxSeconds=599;eq(B.Flights.Itinerary(O,{{position=T},{position=T,moneyCost=950}},s,nav),nil)
-end)
 test("无需先飞过航线即可按参考落地点估时且实际落地点优先",function()
-    local B,s,a,nav,O,D,L,T,edge=joint()
+    local B,s,a,nav,O,D,L,T=joint()
     s.taxiLandings={}
     local route=B.Flights.Routes(O,T,s,nav)[1]
     eq(route.flights,1);eq(route.seconds,160);eq(route.legs[2].to.x,0.8)
@@ -257,17 +240,14 @@ test("无需先飞过航线即可按参考落地点估时且实际落地点优�
     route=B.Flights.Routes(O,T,s,nav)[1]
     assert(math.abs(route.seconds-145)<0.00001);eq(route.legs[2].to,s.taxiLandings["1:2"])
     eq(B.Flights.Actions(route,a,nav)[1].arrival,12)
-    s.taxiLandings={["1:2"]=L};edge(O,D,20,false);eq(B.Flights.Routes(O,T,s,nav)[1].flights,1)
-    edge(O,D,20);s.taxiCosts={};eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
-    s.taxiCosts={["1:2"]=110};s.money=109;eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
+    s.taxiLandings={["1:2"]=L}
+    s.taxiAvailability={};eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
 end)
-test("参考落地点仍需原生可达票价版本与已知飞行耗时",function()
+test("参考落地点仍需原生可达版本与已知飞行耗时",function()
     local B,s,a,nav,O,D,L,T=joint();s.taxiLandings={}
     local function walking() eq(B.Flights.Routes(O,T,s,nav)[1].flights,0) end
     s.taxiAvailability["1:2"]=false;walking();s.taxiAvailability["1:2"]=true
     s.unlocked["taxi:2"]=nil;walking();s.unlocked["taxi:2"]=true
-    s.taxiCosts["1:2"]=nil;walking();s.taxiCosts["1:2"]=110
-    s.money=109;walking();s.money=1000
     s.clientBuild="other";walking();s.clientBuild="70862"
     B.FlightData.durations.Alliance["1:2"]=nil;walking();B.FlightData.durations.Alliance["1:2"]=100
     s.taxiDepartures={};walking();s.taxiDepartures={[1]=D}
@@ -298,44 +278,35 @@ test("参考落地点投影到区域或上级大陆且拒绝洞内和无效坐�
     eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
     C_Map.GetMapInfo=old
 end)
-test("连续航班传播同一余额且实际转乘点按直线连接",function()
-    local B,s,a,nav,O,D,L,T,edge=joint()
+test("连续航班的实际转乘点按直线连接",function()
+    local B,s,a,nav,O,D,L,T=joint()
     local D3,L4,T4={map=2,x=0.85,y=0},{map=3,x=0.8,y=0},{map=3,x=0.9,y=0}
     B.FlightData.nodes[3].factionMask=1
     B.FlightData.nodes[4]={name="四号",instance=0,world={0,0,0},factionMask=1}
     B.FlightData.durations.Alliance["3:4"]=10
     s.unlocked["taxi:4"]=true;s.taxiDepartures[3]=D3;s.taxiLandings["3:4"]=L4
-    s.taxiAvailability["3:4"]=true;s.taxiCosts["1:2"],s.taxiCosts["3:4"]=80,80
-    edge(L,D3,5);edge(L4,T4,10)
-    s.money=100;local low=B.Flights.Routes(O,T4,s,nav);assert(low[1].flights<=1 and low[1].money>=0)
-    s.money=200;local routes=B.Flights.Routes(O,T4,s,nav)
-    eq(routes[1].flights,2);eq(routes[1].money,40);eq(routes[1].seconds,175)
+    s.taxiAvailability["3:4"]=true
+    local routes=B.Flights.Routes(O,T4,s,nav)
+    eq(routes[1].flights,2);eq(routes[1].seconds,175)
 end)
-test("跨图完整飞行成本进入任务时间与排序并携带交付资金",function()
-    local B,s,a,nav,O,D,L,T,edge=joint()
-    B.Observations={TalkEstimate=function() return 10,8,12 end}
+test("跨图完整飞行耗时进入任务时间与排序",function()
+    local B,s,a,nav,O,D,L,T=joint()
     assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
-    local choice={questId=99,stagesComplete=true,stages={{position=T,kind="turnin",moneyCost=950}},
+    local choice={questId=99,stagesComplete=true,stages={{position=T,kind="turnin"}},
         work={known=0,missing=0,seconds=0,low=0,high=0},remainingXP=1000,actions={{position=T}},status="turnin"}
     local timing=B.TaskGuide.Timing(O,choice,s,nav)
-    eq(timing.seconds,600);eq(timing.money,50);eq(timing.flightCount,0)
-    choice.stages[1].moneyCost=nil;timing=B.TaskGuide.Timing(O,choice,s,nav)
-    eq(timing.seconds,160);eq(timing.flightCount,1);eq(timing.money,890);eq(timing.travelFare,110)
-    s.quests[99]={ready=true}
-    local stages=B.TaskGuide.Stages({id=99,taskFacts={rewards={money=-950}}},s,{}, {position=T,kind="turnin"})
-    eq(stages[1].moneyCost,950)
+    eq(timing.seconds,160);eq(timing.flightCount,1)
     local oldGuide,oldNav=A.TaskGuide,A.Navigation
     A.TaskGuide=B.TaskGuide;A.Navigation=nav
-    local localTarget={map=1,x=0.6,y=0};edge(O,localTarget,300)
+    local localTarget={map=1,x=0.6,y=0}
     local other={questId=98,stagesComplete=true,stages={{position=localTarget,kind="turnin"}},work=choice.work,
         remainingXP=1000,actions={{position=localTarget}},status="turnin"}
     s.quests={[99]={ready=true},[98]={ready=true}};s.mode="relaxed"
     local order=A.Planner.TaskOrder(s,{other,choice});eq(order[1].questId,98);eq(order[1].orderBasis,"movement-xp")
     A.TaskGuide,A.Navigation=oldGuide,oldNav
 end)
-test("完整参考规划只执行选中资金方案的首段并等待实际交付",function()
+test("完整参考规划只执行选中路线的首段并等待实际交付",function()
     local B,s,a,nav,O,D,L,T=joint()
-    B.Observations={TalkEstimate=function() return 10,8,12 end}
     assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
     local oldFlights,oldGuide,oldNav=A.Flights,A.TaskGuide,A.Navigation
     A.Flights,A.TaskGuide,A.Navigation=B.Flights,B.TaskGuide,nav
@@ -350,20 +321,19 @@ test("完整参考规划只执行选中资金方案的首段并等待实际交�
     A.Flights,A.TaskGuide,A.Navigation=oldFlights,oldGuide,oldNav
 end)
 local function queueFixture()
-    local B,s,a,nav,O,D,L,T,edge=joint()
+    local B,s,a,nav,O,D,L,T=joint()
     B.Progression=A.Progression
-    B.Observations={TalkEstimate=function() return 10,8,12 end}
     assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
     assert(loadfile("Planner/TaskQueue.lua"))("AiLeveling",B)
     s.maxXP=1000000;s.xp=0;s.mode="relaxed"
-    local function choice(id,point,cost,income)
-        return {questId=id,stagesComplete=true,stages={{position=point,kind="turnin",moneyCost=cost,moneyGain=income}},
+    local function choice(id,point)
+        return {questId=id,stagesComplete=true,stages={{position=point,kind="turnin"}},
             work={known=0,missing=0,seconds=0,low=0,high=0},remainingXP=10,actions={{position=point}},status="turnin"}
     end
-    return B,s,nav,O,T,edge,choice
+    return B,s,nav,O,T,choice
 end
 local function sharedItemsFixture()
-    local B,s,nav,O,T,edge,choice=queueFixture()
+    local B,s,nav,O,T,choice=queueFixture()
     s.bags={[2592]=60};s.quests={[1]={ready=true,objectives={}},[2]={ready=true,objectives={}}}
     local a,b=choice(1,T),choice(2,T)
     for _,c in ipairs({a,b}) do
@@ -510,7 +480,7 @@ test("接取发放物品只在接取后计入并在交付后扣除",function()
     s.bags[2592]=1;queue=B.TaskQueue.Evaluate({a},s,nav);eq(queue.bags[2592],0)
 end)
 test("队列使用原生交付经验且跨级后恢复分级资料或未知",function()
-    local B,s,nav,O,T,edge,choice=queueFixture()
+    local B,s,nav,O,T,choice=queueFixture()
     B.Experience={version="1.60.1",build="70862",interface=16001,source="test",xpToLevel={[20]=100,[21]=100}}
     assert(loadfile("Planner/Progression.lua"))("AiLeveling",B)
     s.level,s.xp,s.maxXP=20,0,100
@@ -528,14 +498,14 @@ test("队列使用原生交付经验且跨级后恢复分级资料或未知",fun
     eq(s.level,20);eq(s.quests[2].rewardXP,80)
 end)
 test("整批路程相同时优先交付高经验任务且手动锁定保留",function()
-    local B,s,nav,O,T,edge,choice=queueFixture()
+    local B,s,nav,O,T,choice=queueFixture()
     local low,high=choice(1,O),choice(2,O);low.remainingXP=10;high.remainingXP=100
     local order,queue=B.TaskQueue.Solve({low,high},s,nav)
     eq(order[1],high);eq(queue.xp,110);eq(queue.seconds,0);eq(high.orderBasis,"queue-movement-xp")
     s.locked=1;order=B.TaskQueue.Solve({low,high},s,nav);eq(order[1],low)
 end)
 test("整批同路程优先保留升级前的较高交付经验",function()
-    local B,s,nav,O,T,edge,choice=queueFixture()
+    local B,s,nav,O,T,choice=queueFixture()
     B.Experience={version="1.60.1",build="70862",interface=16001,source="test",xpToLevel={[20]=100,[21]=100,[22]=100}}
     assert(loadfile("Planner/Progression.lua"))("AiLeveling",B)
     s.level,s.xp,s.maxXP=20,0,100
@@ -548,14 +518,14 @@ test("整批同路程优先保留升级前的较高交付经验",function()
     eq(before.xp,110);eq(queue.xp,190);eq(queue.seconds,before.seconds);eq(order[1],a)
 end)
 local function hearthFixture()
-    local B,s,a,nav,O,D,L,T,edge=joint()
+    local B,s,a,nav,O,D,L,T=joint()
     B.Estimates.hearthSeconds=20
     assert(loadfile("Hearth.lua"))("AiLeveling",B)
     s.bags={[6948]=1};s.hearthPoint=L;s.hearthBindingKey="0:旅店";s.bindName="旅店";s.hearthReady=0
-    return B,s,a,nav,O,L,T,edge
+    return B,s,a,nav,O,L,T
 end
 test("队列按整程跑路选择顺序而非只看最近首目标且无需执行资料",function()
-    local B,s,nav,O,T,edge,choice=queueFixture()
+    local B,s,nav,O,T,choice=queueFixture()
     s.taxiAvailability={}
     function nav:Distance(a,b) return math.abs(a.x-b.x)*700 end
     local function task(id,start,finish)
@@ -580,7 +550,7 @@ test("队列按整程跑路选择顺序而非只看最近首目标且无需执�
     s.locked=1;local order=B.TaskQueue.Solve({a,b,c},s,nav);eq(order[1],a)
 end)
 local function stagedFixture()
-    local B,s,nav,O,T,edge,choice=queueFixture()
+    local B,s,nav,O,T,choice=queueFixture()
     s.taxiAvailability={}
     function nav:Distance(a,b) return math.abs(a.x-b.x)*700 end
     local function task(id,x)
@@ -606,15 +576,6 @@ test("相邻任务目标先集中完成再交付且经验只在交付计入",fun
     a.stagesComplete=false
     local nextOrder=B.TaskQueue.Solve({a,b},s,nav)
     eq(nextOrder[1],b);eq(a.executionAction,nil);eq(a.executionTiming,nil)
-end)
-test("交错步骤仍需先赚足交付费用且保留手动锁定整项任务",function()
-    local B,s,nav,O,a,b=stagedFixture()
-    a.stages[2].moneyGain=100;b.stages[2].moneyCost=1100
-    local _,queue=B.TaskQueue.Solve({a,b},s,nav)
-    eq(queue.money,0);eq(queue.steps[3].choice,a);eq(queue.steps[4].choice,b)
-    s.locked=1
-    local order,locked=B.TaskQueue.Solve({a,b},s,nav)
-    eq(order[1],a);eq(locked.stagePlan,nil);eq(locked.seconds,340)
 end)
 test("交错移动缓存区分同一任务不同阶段和多个目标",function()
     local B,s,nav,O,a,b=stagedFixture()
@@ -737,34 +698,11 @@ test("整个队列保留炉石用于后续任务且传播使用后的冷却",fun
     s.hearthCooldown=100;queue=B.TaskQueue.Evaluate({choice(1,T),choice(2,L)},s,nav)
     eq(queue.seconds,80);eq(queue.steps[1].timing.hearthCount,1);eq(queue.steps[2].timing.hearthCount,0)
 end)
-test("整个参考队列保留首任务省钱路径而非提前选最快航班",function()
-    local B,s,nav,O,T,edge,choice=queueFixture()
-    local first,second=choice(99,T),choice(98,T,950)
-    local order,queue=B.TaskQueue.Solve({first,second},s,nav)
-    eq(order[1],first);eq(queue.seconds,600);eq(queue.money,50)
-    eq(first.executionTiming.travelPlan.flights,0);eq(first.executionTiming.seconds,600)
-    eq(second.executionTiming,nil);eq(second.orderTiming.money,50);eq(s.money,1000)
-end)
-test("先做奖励任务再支付费用且手动锁定不能被联合搜索改序",function()
-    local B,s,nav,O,T,edge,choice=queueFixture()
-    s.money=100
-    local fee,reward=choice(99,T,950),choice(98,O,nil,1000)
-    local order,queue=B.TaskQueue.Solve({fee,reward},s,nav)
-    eq(order[1],reward);eq(order[2],fee);eq(queue.money,40);eq(queue.seconds,160)
-    fee.orderHeld=true;s.currentTask=99
-    eq(B.TaskQueue.Solve({fee,reward},s,nav)[1],reward)
-    s.locked=99;eq(B.TaskQueue.Solve({fee,reward},s,nav),nil)
-    s.locked=nil;s.mode="story";eq(B.TaskQueue.Solve({fee,reward},s,nav)[1],reward)
-end)
 test("三项窗口滚动到全队列且始终包含窗口外任务",function()
-    local B,s,nav,O,T,edge,choice=queueFixture()
+    local B,s,nav,O,T,choice=queueFixture()
     s.taxiLandings={}
     local points,choices={},{}
     for i=1,4 do points[i]={map=1,x=i/10,y=0};choices[i]=choice(i,points[i]) end
-    for i=1,4 do
-        edge(O,points[i],i==1 and 100 or i==4 and 1 or i)
-        for j=1,4 do if i~=j then edge(points[i],points[j],j==i-1 and 1 or 5) end end
-    end
     local order,queue=B.TaskQueue.Solve(choices,s,nav)
     eq(#order,4);eq(#queue.steps,4);eq(order[1].questId,1)
     local seen={};for _,c in ipairs(order) do assert(not seen[c.questId]);seen[c.questId]=true end
@@ -772,15 +710,15 @@ test("三项窗口滚动到全队列且始终包含窗口外任务",function()
     assert(math.abs(queue.seconds-80)<0.000001);eq(s.position,O)
 end)
 test("执行耗时未知仍参与队列但位置缺失保留待确认",function()
-    local B,s,nav,O,T,edge,choice=queueFixture()
-    local first,second=choice(99,T),choice(98,T,950)
+    local B,s,nav,O,T,choice=queueFixture()
+    local first,second=choice(99,T),choice(98,T)
     second.work.missing=1;local order,partial=B.TaskQueue.Solve({first,second},s,nav);eq(#order,2);eq(#partial.steps,2);eq(partial.remaining,0)
     second.work.missing=0;second.stagesComplete=false;order,partial=B.TaskQueue.Solve({first,second},s,nav);eq(#order,2);eq(partial.remaining,1)
-    second.stagesComplete=true;s.maxSeconds=599;eq(B.TaskQueue.Solve({first,second},s,nav),nil)
-    s.maxSeconds=600;assert(B.TaskQueue.Solve({first,second},s,nav))
+    second.stagesComplete=true;s.maxSeconds=159;eq(B.TaskQueue.Solve({first,second},s,nav),nil)
+    s.maxSeconds=160;assert(B.TaskQueue.Solve({first,second},s,nav))
 end)
 test("位置未知的任务保留且所有模式都按移动时间比较并保留锁定",function()
-    local B,s,nav,O,T,edge,choice=queueFixture()
+    local B,s,nav,O,T,choice=queueFixture()
     local unknown,first,second=choice(777,O),choice(99,T),choice(98,O)
     unknown.stagesComplete=false
     local order,queue=B.TaskQueue.Solve({unknown,first,second},s,nav)
@@ -809,7 +747,7 @@ test("队列调度按小批量让出而非每个前缀占用一帧",function()
     assert(count>1 and count<200,"队列协程恢复过多："..count)
 end)
 test("队列连续升级保留客户端曲线口径且未知门槛后停止累计确定经验",function()
-    local B,s,nav,O,T,edge,choice=queueFixture()
+    local B,s,nav,O,T,choice=queueFixture()
     B.Experience={version="1.60.1",build="70862",interface=16001,source="test",xpToLevel={[20]=100,[21]=100,[22]=100,[23]=100}}
     assert(loadfile("Planner/Progression.lua"))("AiLeveling",B)
     s.level,s.xp,s.maxXP=20,90,100
@@ -819,21 +757,6 @@ test("队列连续升级保留客户端曲线口径且未知门槛后停止累�
     eq(queue.forecast.level,23);eq(queue.forecast.xp,90);eq(queue.xp,300);eq(queue.xpKnown,true)
     B.Experience.xpToLevel[21]=nil;queue=B.TaskQueue.Evaluate(order,s,nav,data)
     eq(queue.xpKnown,false);eq(queue.xp,100);eq(queue.forecast.uncertain,true);eq(s.level,20);eq(s.xp,90)
-end)
-test("实际规划与导航执行队列保留资金的路线而非任务单独最快路线",function()
-    local B,s,nav,O,T=queueFixture()
-    local oldFlights,oldGuide,oldQueue,oldNav=A.Flights,A.TaskGuide,A.TaskQueue,A.Navigation
-    A.Flights,A.TaskGuide,A.TaskQueue,A.Navigation=B.Flights,B.TaskGuide,B.TaskQueue,nav
-    s.quests={[99]={title="先做",ready=true,objectives={}},[98]={title="费用任务",ready=true,objectives={}}};s.locked=99
-    local d=F.Data({[99]={id=99,title="先做"},[98]={id=98,title="费用任务",taskFacts={rewards={money=-950}}}})
-    d.Target=function() return T end
-    local result=plan(s,d)
-    assert(result.taskQueue);eq(result.taskOrder[1].questId,99);eq(result.referenceJourney.flights,0)
-    eq(result.taskOrder[1].timing.travelPlan.flights,1)
-    eq(result.taskOrder[1].executionTiming.travelPlan.flights,0)
-    for _,step in ipairs(result.travelActions) do assert(step.mode~="flight") end
-    eq(result.travelActions[#result.travelActions].kind,"turnin");eq(s.completed[99],nil);eq(s.money,1000)
-    A.Flights,A.TaskGuide,A.TaskQueue,A.Navigation=oldFlights,oldGuide,oldQueue,oldNav
 end)
 test("实际规划入口把飞行段插入参考任务且保留原生交付条件",function()
     local B,s,a,nav=fixture();local oldFlights,oldNav=A.Flights,A.Navigation
@@ -854,18 +777,18 @@ test("原生飞行地图捕获独立快照并在世界变更或期限到期失�
     GetTime=function() return now end;GetTaxiMapID=function() return 1 end;TaxiNodeCost=function() return 110 end;UnitOnTaxi=nil
     C_TaxiMap={GetAllTaxiNodes=function() return {{nodeID=1,state=0,name="起点"},{nodeID=2,state=1,slotIndex=1,name="落地点"}} end}
     C_Map.GetBestMapForUnit=function() return 1 end
-    local B={Content={nodes={},edges={},transit={}},char={},State={Position=function(_,s) s.position={map=1,x=0.1,y=0.1} end},RequestRefresh=function() end}
+    local B={Content={nodes={},transit={}},char={},State={Position=function(_,s) s.position={map=1,x=0.1,y=0.1} end},RequestRefresh=function() end}
     assert(loadfile("Transport.lua"))("AiLeveling",B)
     B.Transport:CaptureTaxi()
     local s={now=0,faction="Alliance",completed={},bags={}}
-    B.Transport:Snapshot(s);eq(s.taxiOrigin.id,1);eq(s.taxiCosts["1:2"],110);eq(s.taxiNames[2],"落地点")
+    B.Transport:Snapshot(s);eq(s.taxiOrigin.id,1);eq(s.taxiNames[2],"落地点")
     s.taxiOrigin.position.x=0.9;s.taxiDepartures[1].x=0.9
     eq(B.Transport.taxiOrigin.position.x,0.1);eq(B.Transport.departures[1].x,0.1)
     now=121;B.Transport:Update();s.now=now;B.Transport:Snapshot(s);eq(s.taxiOrigin,nil)
     now=0;B.Transport:CaptureTaxi();B.Transport:World();eq(B.Transport.taxiOrigin,nil)
     GetTime,GetTaxiMapID,C_TaxiMap,TaxiNodeCost,UnitOnTaxi=old.GetTime,old.GetTaxiMapID,old.C_TaxiMap,old.TaxiNodeCost,old.UnitOnTaxi
 end)
-test("飞行加速变化清理旧报价且开图后采用原生新价和独立快照",function()
+test("飞行加速变化清理旧可达信息且重新开图恢复",function()
     local old={GetTime=GetTime,GetTaxiMapID=GetTaxiMapID,C_TaxiMap=C_TaxiMap,TaxiNodeCost=TaxiNodeCost,C_SpellBook=C_SpellBook}
     local B,s=fixture();local learned=false
     B.state=s;B.Content={nodes={},transit={}};B.char={}
@@ -877,13 +800,13 @@ test("飞行加速变化清理旧报价且开图后采用原生新价和独立�
     C_Map.GetBestMapForUnit=function() return 1 end
     assert(loadfile("Transport.lua"))("AiLeveling",B)
     B.Transport:CaptureTaxi();B.Transport:Snapshot(s)
-    eq(s.taxiSpeed,1);eq(s.taxiCosts["1:2"],110)
+    eq(s.taxiSpeed,1);eq(s.taxiAvailability["1:2"],true)
     local key=B.Transport.Key(s);learned=true;B.Transport:Snapshot(s)
-    eq(s.taxiSpeed,1.2);eq(next(s.taxiCosts),nil);eq(next(s.taxiAvailability),nil)
+    eq(s.taxiSpeed,1.2);eq(next(s.taxiAvailability),nil)
     assert(key~=B.Transport.Key(s));eq(s.taxiOrigin,nil)
-    B.Transport:CaptureTaxi();B.Transport:Snapshot(s);eq(s.taxiCosts["1:2"],55)
-    learned=false;B.Transport:CaptureTaxi();B.Transport:Snapshot(s);eq(s.taxiCosts["1:2"],110);eq(s.taxiSpeed,1)
-    C_SpellBook=nil;B.Transport:Snapshot(s);eq(s.taxiSpeed,nil);eq(next(s.taxiCosts),nil)
+    B.Transport:CaptureTaxi();B.Transport:Snapshot(s);eq(s.taxiAvailability["1:2"],true)
+    learned=false;B.Transport:CaptureTaxi();B.Transport:Snapshot(s);eq(s.taxiAvailability["1:2"],true);eq(s.taxiSpeed,1)
+    C_SpellBook=nil;B.Transport:Snapshot(s);eq(s.taxiSpeed,nil);eq(next(s.taxiAvailability),nil)
     for _,name in ipairs({"GetTime","GetTaxiMapID","C_TaxiMap","TaxiNodeCost","C_SpellBook"}) do _G[name]=old[name] end
 end)
 test("飞行停靠由原生槽位映射为节点且变化触发重算并清理失效路线",function()
@@ -910,7 +833,7 @@ test("飞行停靠由原生槽位映射为节点且变化触发重算并清理�
         route=bad;s=snapshot();eq(s.taxiHops["80:23"],nil);eq(s.taxiAvailability["80:23"],true)
     end
     route={{3,9}};s=snapshot();assert(s.taxiHops["80:23"])
-    GetNumRoutes=nil;s=snapshot();eq(s.taxiHops["80:23"],nil);eq(s.taxiCosts["80:23"],110)
+    GetNumRoutes=nil;s=snapshot();eq(s.taxiHops["80:23"],nil);eq(s.taxiAvailability["80:23"],true)
     GetNumRoutes=old.GetNumRoutes;B.Transport:InvalidateFlights();eq(next(B.Transport.hops),nil)
     GetTime,GetTaxiMapID,C_TaxiMap,TaxiNodeCost,GetNumRoutes,TaxiGetNodeSlot=old.GetTime,old.GetTaxiMapID,old.C_TaxiMap,old.TaxiNodeCost,old.GetNumRoutes,old.TaxiGetNodeSlot
 end)

@@ -130,14 +130,6 @@ test("手选装备来源超出经验率候选上限仍保留且任务锁定优�
     for _,a in ipairs(p.best.actions) do if a.questId==1 then found=true end end
     eq(found,true)
 end)
-test("预测交付解锁后续道路且不改变原始解锁快照",function()
-    local s,q1,q2=F.State(),F.Quest(1),F.Quest(2)
-    s.unlocked={};q1.xp=1;q1.setup=true;q2.preQuestGroup={1};q2.xp=20000
-    q1.actions={q1.actions[1],q1.actions[3]}
-    local d=F.Data({[1]=q1,[2]=q2})
-    for _,edge in ipairs(d.content.edges.start) do edge.unlock="quest:1" end
-    local p=plan(s,d);eq(p.best.xp,20001);eq(s.unlocked["quest:1"],nil)
-end)
 -- Native API mocks are scoped to the final scenarios and restored afterwards.
 local saved={};local globals={"C_Map","C_TaxiMap","C_Container","GetBindLocation","GetTaxiMapID","TaxiNodeCost","GetTime","C_Item","C_PlayerInfo","CanDualWield"}
 for _,key in ipairs(globals) do saved[key]=_G[key] end
@@ -150,21 +142,21 @@ C_Container={GetItemCooldown=function() return 100,60,1 end}
 local function snapshot(now)
     local s=F.State();s.faction="Alliance";s.now=now or 120;s.bags[6948]=1;B.Transport:Snapshot(s);return s
 end
-test("交通发现过滤阵营与未知节点并使用实时折扣费用",function()
+test("交通发现过滤阵营与未知节点并忽略费用",function()
     local s=snapshot();eq(s.unlocked["taxi:1"],true);eq(s.unlocked["taxi:2"],false);eq(s.unlocked["taxi:3"],nil);eq(s.unlocked["taxi:4"],nil)
     GetTaxiMapID=function() return 1 end
     C_TaxiMap.GetAllTaxiNodes=function() return {{nodeID=1,state=0,slotIndex=1},{nodeID=5,state=1,slotIndex=2}} end
     TaxiNodeCost=function(slot) eq(slot,2);return 20 end
     B.Transport:CaptureTaxi();s=snapshot();s.money=20
     local flight={verified=true,kind="flight",fromTaxi=1,toTaxi=5,cost=100,seconds=30}
-    eq(A.Travel.Transit(flight,120,s),30);eq(A.Travel.Cost(flight,s),20)
-    s.money=19;eq(A.Travel.Transit(flight,120,s),nil)
+    eq(A.Travel.Transit(flight,120,s),30)
+    s.money=0;eq(A.Travel.Transit(flight,120,s),30)
 end)
-test("飞行点已发现仍须尊重当前起点不可达并清除旧票价",function()
+test("飞行点已发现仍须尊重当前起点不可达",function()
     local flight={verified=true,kind="flight",fromTaxi=1,toTaxi=5,cost=100,seconds=30}
     C_TaxiMap.GetAllTaxiNodes=function() return {{nodeID=1,state=0,slotIndex=1},{nodeID=5,state=2,slotIndex=2}} end
     B.Transport:CaptureTaxi();local s=snapshot();s.money=100
-    eq(s.unlocked["taxi:5"],true);eq(s.taxiAvailability["1:5"],false);eq(s.taxiCosts["1:5"],nil)
+    eq(s.unlocked["taxi:5"],true);eq(s.taxiAvailability["1:5"],false)
     eq(A.Travel.Transit(flight,120,s),nil)
     local key=B.Transport.Key(s)
     C_TaxiMap.GetAllTaxiNodes=function() return {{nodeID=1,state=0,slotIndex=1},{nodeID=5,state=1,slotIndex=2}} end
@@ -180,9 +172,9 @@ test("飞行地图切层图标不能当作实际飞行连接或询价",function(
     eq(s.unlocked["taxi:9"],nil);eq(s.taxiAvailability["1:9"],nil);eq(calls,0)
     TaxiNodeCost=original
 end)
-test("新飞行点与声望变化清除旧连通及价格缓存",function()
-    B.Transport.costs["1:5"]=20;B.Transport.availability["1:5"]=false
-    B.Transport:InvalidateFlights();eq(B.Transport.costs["1:5"],nil);eq(B.Transport.availability["1:5"],nil)
+test("新飞行点与声望变化清除旧连通缓存",function()
+    B.Transport.availability["1:5"]=false
+    B.Transport:InvalidateFlights();eq(B.Transport.availability["1:5"],nil)
     eq(B.Transport.known["taxi:5"],true);eq(B.Transport.dirty,true)
 end)
 test("炉石读取实际冷却且到期只唤醒一次",function()

@@ -218,7 +218,6 @@ function State:Refresh(force)
     s.mode=A.settings.mode
     self.Movement(s)
     s.now, s.freeSlots = GetTime(), 0
-    s.money = GetMoney and GetMoney() or nil
     s.groupSize = math.max(1, s.groupSize)
     fingerprint[#fingerprint+1]=State.Group(s)
     s.inInstance = IsInInstance()
@@ -312,7 +311,7 @@ function State:Refresh(force)
     end
     fingerprint[#fingerprint + 1] = table.concat({s.level, s.xp, tostring(s.maxXP), s.classId, s.raceId, s.groupSize,
         tostring(s.inInstance), A.settings.mode, A.settings.role, A.settings.minutes,
-        tostring(A.settings.dungeons), tostring(s.locked), tostring(s.money), tostring(s.instanceId), tostring(s.instanceDifficultyId), tostring(s.dead),
+        tostring(A.settings.dungeons), tostring(s.locked), tostring(s.instanceId), tostring(s.instanceDifficultyId), tostring(s.dead),
         tostring(A.settings.waitMinutes),s.damageStyle,tostring(s.gearTarget),tostring(A.settings.gearPreference),
         tostring(s.runSpeed),tostring(s.swimSpeed)}, ":")
     local key = table.concat(fingerprint, "|")

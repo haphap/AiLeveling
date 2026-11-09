@@ -24,10 +24,7 @@ function T.Transit(option, departure, context)
     if context.transportKnown and option.kind=="flight" then
         if not option.fromTaxi or not option.toTaxi or not context.unlocked["taxi:"..option.fromTaxi] or not context.unlocked["taxi:"..option.toTaxi] then return nil end
         if context.taxiAvailability and context.taxiAvailability[option.fromTaxi..":"..option.toTaxi]==false then return nil end
-        if option.cost==nil and not (context.taxiCosts and context.taxiCosts[option.fromTaxi..":"..option.toTaxi]) then return nil end
     end
-    local cost=T.Cost(option,context)
-    if cost > (context.money or 0) then return nil end
     local wait = 0
     if option.kind == "hearth" then
         if context.transportKnown and (not context.hearthNode or option.to~=context.hearthNode) then return nil end
@@ -45,17 +42,11 @@ function T.Transit(option, departure, context)
     return wait + seconds
 end
 
-function T.Cost(option,context)
-    local key=option.fromTaxi and option.toTaxi and (option.fromTaxi..":"..option.toTaxi)
-    return (key and context.taxiCosts and context.taxiCosts[key]) or option.cost or 0
-end
-
--- At the later arrival, an earlier route can wait without spending money or a hearth.
+-- Keep a slower arrival only when it preserves an earlier hearth cooldown.
 function T.Dominates(a,b,now)
-    local money=a.money==b.money or (a.money~=nil and b.money~=nil and a.money>=b.money)
     local hearth=a.hearthReady==b.hearthReady or (a.hearthReady~=nil and b.hearthReady~=nil and
         a.hearthReady<=math.max(b.hearthReady,(now or 0)+b.seconds))
-    return a.seconds<=b.seconds and money and hearth
+    return a.seconds<=b.seconds and hearth
 end
 
 function T.Prune(routes,now)
@@ -70,7 +61,6 @@ function T.Prune(routes,now)
     end
     table.sort(result,function(a,b)
         if a.seconds~=b.seconds then return a.seconds<b.seconds end
-        if a.money~=b.money then return (a.money or -1)>(b.money or -1) end
         return (a.hearthReady or math.huge)<(b.hearthReady or math.huge)
     end)
     return result
@@ -91,7 +81,7 @@ function T.Routes(content,from,to,context)
         return {{kind="move",node=type(route.to)~="table" and route.to or nil,position=point(route.to),fromPosition=point(route.from),
             title=node.label or "前往下一目的地",arrival=node.arrival or 12,travelSeconds=route.seconds}}
     end
-    local first={node=from,seconds=0,actions={},money=context.money,hearthReady=context.hearthReady}
+    local first={node=from,seconds=0,actions={},hearthReady=context.hearthReady}
     local labels,pending,results={[from]={first}},{first},{}
     local transitIds={}
     for id in pairs(content.transit or {}) do transitIds[#transitIds+1]=id end
@@ -102,7 +92,7 @@ function T.Routes(content,from,to,context)
         if not label.discarded then
             local exit=walk(label.node,to)
             if exit then
-                local candidate={seconds=label.seconds+exit.seconds,actions={},money=label.money,hearthReady=label.hearthReady}
+                local candidate={seconds=label.seconds+exit.seconds,actions={},hearthReady=label.hearthReady}
                 if not context.maxSeconds or candidate.seconds<=context.maxSeconds then
                     for _,action in ipairs(label.actions) do candidate.actions[#candidate.actions+1]=action end
                     for _,action in ipairs(steps(exit)) do candidate.actions[#candidate.actions+1]=action end
@@ -117,14 +107,14 @@ function T.Routes(content,from,to,context)
                     local departure=(context.now or 0)+label.seconds+approach.seconds
                     local resources={}
                     for key,value in pairs(context) do resources[key]=value end
-                    resources.money,resources.hearthReady=label.money,label.hearthReady
+                    resources.hearthReady=label.hearthReady
                     resources.flightSampleKey=T.FlightKey(id,content.version)
                     local duration=T.Transit(transit,departure,resources)
                     if duration then
                         local ready=label.hearthReady
                         if transit.kind=="hearth" then ready=departure+duration+transit.cooldown end
                         local candidate={node=transit.to,seconds=label.seconds+approach.seconds+duration,
-                            money=label.money and label.money-T.Cost(transit,resources),hearthReady=ready,actions={}}
+                            hearthReady=ready,actions={}}
                         local bucket,dominated=labels[transit.to] or {},false
                         for _,old in ipairs(bucket) do
                             if not old.discarded and T.Dominates(old,candidate,context.now) then dominated=true;break end
@@ -157,11 +147,11 @@ function T.Route(content,from,to,context)
     return routes and routes[1],reason
 end
 
--- Keep resource alternatives until the whole ordered itinerary has been evaluated.
+-- Preserve hearth cooldowns through the ordered itinerary.
 function T.Itinerary(content,from,actions,state)
     local unlocked={}
     for key,value in pairs(state.unlocked or {}) do unlocked[key]=value end
-    local paths={{node=from,seconds=0,actions={},money=state.money,hearthReady=state.hearthReady}}
+    local paths={{node=from,seconds=0,actions={},hearthReady=state.hearthReady}}
     for _,source in ipairs(actions) do
         local action={}
         for key,value in pairs(source) do action[key]=value end
@@ -171,18 +161,15 @@ function T.Itinerary(content,from,actions,state)
             local context={}
             for key,value in pairs(state) do context[key]=value end
             context.now=(state.now or 0)+path.seconds
-            context.money,context.hearthReady,context.unlocked=path.money,path.hearthReady,unlocked
+            context.hearthReady,context.unlocked=path.hearthReady,unlocked
             context.maxSeconds=state.maxSeconds and state.maxSeconds-path.seconds-(action.seconds or 0)
             local routes
             if action.node then routes,reason=T.Routes(content,path.node,action.node,context)
-            else routes={{seconds=0,actions={},money=path.money,hearthReady=path.hearthReady}} end
+            else routes={{seconds=0,actions={},hearthReady=path.hearthReady}} end
             for _,route in ipairs(routes or {}) do
                 local candidate={node=action.arriveNode or action.node or path.node,
-                    seconds=path.seconds+route.seconds+(action.seconds or 0),actions={},money=route.money,hearthReady=route.hearthReady}
-                local cost,income=action.moneyCost or 0,action.moneyGain or 0
-                local funded=cost==0 or (candidate.money~=nil and candidate.money>=cost)
-                if (cost~=0 or income~=0) and candidate.money~=nil then candidate.money=candidate.money-cost+income end
-                if funded and (not state.maxSeconds or candidate.seconds<=state.maxSeconds) then
+                    seconds=path.seconds+route.seconds+(action.seconds or 0),actions={},hearthReady=route.hearthReady}
+                if not state.maxSeconds or candidate.seconds<=state.maxSeconds then
                     for _,step in ipairs(path.actions) do candidate.actions[#candidate.actions+1]=step end
                     for _,source in ipairs(route.actions) do
                         local step={}
@@ -202,7 +189,7 @@ function T.Itinerary(content,from,actions,state)
     end
     for _,path in ipairs(paths) do
         path.lastNode=path.node
-        path.resources={now=(state.now or 0)+path.seconds,money=path.money,hearthReady=path.hearthReady,unlocked=unlocked}
+        path.resources={now=(state.now or 0)+path.seconds,hearthReady=path.hearthReady,unlocked=unlocked}
     end
     return paths
 end

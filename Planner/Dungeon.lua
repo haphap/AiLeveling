@@ -246,7 +246,7 @@ function D.Evaluate(d,state,options,data)
             local from=state.position and (state.position.node or state.position)
             if activity then
                 from=activity.lastNode
-                context.money,context.hearthReady,context.unlocked=activity.resources.money,activity.resources.hearthReady,activity.resources.unlocked
+                context.hearthReady,context.unlocked=activity.resources.hearthReady,activity.resources.unlocked
                 for _,action in ipairs(activity.actions) do
                     if action.kind=="turnin" then forecast.completed[action.questId],forecast.quests[action.questId]=true,nil end
                 end

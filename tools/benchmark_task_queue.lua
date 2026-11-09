@@ -4,7 +4,7 @@ for _,path in ipairs({"Planner/Travel.lua","Planner/TaskGuide.lua","Planner/Flig
     assert(loadfile(path))("AiLeveling",A)
 end
 local F=dofile("tests/fixtures.lua")
-local s=F.State();s.money=1000;s.now=0
+local s=F.State();s.now=0
 local order={}
 for id=1,25 do
     s.quests[id]={}

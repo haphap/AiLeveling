@@ -45,20 +45,12 @@ function A:NormalizeCharacter(char)
             if type(id)~="number" or id<=0 or id>=2147483648 or id%1~=0 or value~=true then char[key][id]=nil end
         end
     end
-    local workCount,flightCount,hearthCount=0,0,0
+    local flightCount,hearthCount=0,0
     for kind,sample in pairs(char.samples) do
         local valid=type(kind)=="string" and type(sample)=="table" and type(sample.n)=="number" and
             sample.n>=0 and sample.n<=100 and sample.n%1==0 and type(sample.mean)=="number" and
             sample.mean>0 and sample.mean<math.huge and type(sample.m2)=="number" and sample.m2>=0 and sample.m2<math.huge
-        if valid and kind:sub(1,9)=="taskwork:" then
-            valid=#kind<=512 and sample.unit=="seconds/unit" and sample.mean>=1 and sample.mean<=7200
-            if valid then workCount=workCount+1;valid=workCount<=128 end
-        end
-        if valid and kind:sub(1,9)=="tasktalk:" then
-            local action,mode=kind:match("^tasktalk:v1:(%a+):(%a+)$")
-            valid=(action=="accept" or action=="turnin") and (mode=="relaxed" or mode=="fast" or mode=="story") and
-                sample.unit=="seconds" and sample.mean>=1 and sample.mean<=300
-        end
+        if valid and (kind=="quest" or kind=="move" or kind:sub(1,4)=="task") then valid=false end
         if valid and kind:sub(1,11)=="flighttime:" then
             local route,speed=kind:match("^(.-):speed:([^:]+)$")
             valid=#kind<=128 and sample.unit=="seconds" and sample.mean>=1 and sample.mean<=7200 and
@@ -301,7 +293,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
             "PLAYER_REGEN_DISABLED", "GET_ITEM_INFO_RECEIVED", "BAG_UPDATE_COOLDOWN", "BAG_OPEN", "BAG_CLOSED", "UPDATE_INVENTORY_DURABILITY", "MERCHANT_SHOW", "MERCHANT_UPDATE", "MERCHANT_CLOSED", "MERCHANT_FILTER_ITEM_UPDATE"}) do
             frame:RegisterEvent(name)
         end
-        for _, name in ipairs({"SKILL_LINES_CHANGED", "UPDATE_FACTION", "SPELLS_CHANGED", "PLAYER_MONEY"}) do
+        for _, name in ipairs({"SKILL_LINES_CHANGED", "UPDATE_FACTION", "SPELLS_CHANGED"}) do
             frame:RegisterEvent(name)
         end
         for _,name in ipairs({"TAXIMAP_OPENED","TAXI_NODE_STATUS_CHANGED","HEARTHSTONE_BOUND","UPDATE_INSTANCE_INFO","CHAT_MSG_SYSTEM","UI_ERROR_MESSAGE","UI_INFO_MESSAGE"}) do frame:RegisterEvent(name) end

@@ -61,7 +61,8 @@ for _,id in ipairs(lib:GetQuestIds()) do
  row.complex=#q.objectives.spells>0 or #q.objectives.explore>0 or q.objectives.rep~=nil
  local rewards=lib:GetRewards(id)
  if rewards then
-  row.rewards={items=rewards.items,choices=rewards.choices,money=rewards.money or 0,
+  row.complex=row.complex or (rewards.money or 0)<0
+  row.rewards={items=rewards.items,choices=rewards.choices,
       spell=rewards.spell,spellCast=rewards.spellCast,srcItem=rewards.srcItem}
   local xp,previous={},nil
   for level=1,59 do

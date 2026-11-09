@@ -115,7 +115,7 @@ test("事件物品付款与未知资料不被归为仅交付任务",function()
     for key,value in pairs({specialFlags=2,requiredSourceItems={{100,1}}}) do
         local old=q[key];q[key]=value;eq(B.Data:DeliveryOnly(q,s),false);q[key]=old
     end
-    for key,value in pairs({complex=true,moneyCost=10,rewards={money=-10},objectives={{kind="item",id=100}},level=11}) do
+    for key,value in pairs({complex=true,objectives={{kind="item",id=100}},level=11}) do
         local old=facts[key];facts[key]=value;eq(B.Data:DeliveryOnly(q,s),false);facts[key]=old
     end
     s.quests[1]={objectives={{text="真实日志要求",finished=false}}};eq(B.Data:DeliveryOnly(q,s),false);s.quests={}

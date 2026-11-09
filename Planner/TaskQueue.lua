@@ -77,7 +77,7 @@ function Q.PrepareItems(order,state,reassign)
     return result
 end
 
--- Pruning happens only at the same completed prefix and endpoint, so future funds remain comparable.
+-- Compare routes only at the same completed prefix and endpoint.
 function Q.Evaluate(order,state,navigation,data,cache)
     -- Whole-task permutations may spend the stock on a different recipient first.
     -- Split stages retain their allocation so interleaving cannot create extra items.
@@ -91,7 +91,7 @@ function Q.Evaluate(order,state,navigation,data,cache)
             end
         end
     end
-    local paths={{position=state.position,money=state.money,seconds=0,low=0,high=0,xp=0,xpKnown=true,
+    local paths={{position=state.position,seconds=0,low=0,high=0,xp=0,xpKnown=true,
         forecast=state,steps={},initial=false,hearthReady=state.hearthReady}}
     cache=cache or {}
     for _,choice in ipairs(order) do
@@ -117,7 +117,7 @@ function Q.Evaluate(order,state,navigation,data,cache)
         local nextPaths={}
         for _,path in ipairs(paths) do
             local context=copy(state)
-            context.position,context.money=path.position,path.money
+            context.position=path.position
             context.hearthReady=path.hearthReady
             context.now=(state.now or 0)+path.seconds
             context.maxSeconds=state.maxSeconds and math.max(0,state.maxSeconds-path.seconds)
@@ -127,7 +127,7 @@ function Q.Evaluate(order,state,navigation,data,cache)
             if not p then return end
             local key=table.concat({choice.questId,tostring(choice.itemOriginal and choice.itemOriginal.stages or choice.stages),
                 choice.itemAllocationKey or "",choice.stageIndex or "task",p.map,string.format("%.9f",p.x),string.format("%.9f",p.y),
-                tostring(path.money),tostring(context.level),tostring(context.maxSeconds),tostring(context.hearthReady),
+                tostring(context.level),tostring(context.maxSeconds),tostring(context.hearthReady),
                 state.hearthPoint and tostring(context.now) or ""},":")
             local timing=cache[key]
             if timing==nil then
@@ -149,14 +149,14 @@ function Q.Evaluate(order,state,navigation,data,cache)
                     stepTiming.travelPlan,stepTiming.travel=route,route.seconds
                     stepTiming.coarse=route.coarse
                     stepTiming.travelLow,stepTiming.travelHigh=route.low,route.high
-                    stepTiming.flightCount,stepTiming.travelFare,stepTiming.money=route.flights,route.cost,route.money
+                    stepTiming.flightCount=route.flights
                     stepTiming.hearthReady,stepTiming.hearthCount=route.hearthReady,route.hearths
                     stepTiming.seconds=route.seconds
                     stepTiming.low=route.low
                     stepTiming.high=route.high
                     stepTiming.initial=route.initial
                     if not state.maxSeconds or path.seconds+stepTiming.seconds<=state.maxSeconds then
-                        nextPaths[#nextPaths+1]={position=last.position,money=route.money,
+                        nextPaths[#nextPaths+1]={position=last.position,
                             seconds=path.seconds+stepTiming.seconds,low=path.low+stepTiming.low,high=path.high+stepTiming.high,
                             xp=path.xp+(xp or 0),xpKnown=path.xpKnown and xp~=nil,forecast=forecast,
                             steps=append(path.steps,{choice=choice.sourceChoice or choice,stage=choice.stageIndex and evaluated.stages[1] or nil,timing=stepTiming,xp=xp}),initial=path.initial or stepTiming.initial,
