@@ -435,13 +435,13 @@ end
 
 function P.Build(state, data, options)
     if state.level >= 60 and (not state.dungeon or state.dungeon.phase=="complete") then return { revision = state.revision, complete = true, alternatives = {} } end
-    local gearSource=state.gearTarget and A.Gear.GetSource and A.Gear.GetSource(state.gearTarget,data)
-    if type(state.gearTarget)=="string" and state.gearTarget:match("^reward:") and not gearSource then
-        local reason="所选装备奖励资料暂不可用；可恢复升级目标。"
+    local gearSource=state.gearTarget and A.Gear.GetSource and A.Gear.GetSource(state.gearTarget,data,state)
+    if type(state.gearTarget)=="string" and (state.gearTarget:match("^reward:") or state.gearTarget:match("^drop:")) and not gearSource then
+        local reason="所选装备来源暂不可用；可恢复升级目标。"
         return {revision=state.revision,alternatives={},taskChoices={},selectionBlocked=reason,
             fallback={kind="selectionBlocked",title="装备目标暂不可用",text=reason}}
     end
-    if gearSource and gearSource.reference then state=copy(state);state.locked=gearSource.questId end
+    if gearSource and gearSource.reference and gearSource.kind=="quest" then state=copy(state);state.locked=gearSource.questId end
     local preparation,preparationReason
     if state.locked and not state.itinerary and (not state.dungeon or state.dungeon.phase=="complete") and A.Chains and A.Chains.Preparation then
         local root=data:GetQuest(state.locked)
@@ -637,6 +637,9 @@ function P.Build(state, data, options)
             result.sessionActive=true
         end
     end
+    if not result.sessionActive and gearSource and gearSource.reference and gearSource.kind=="dungeon" then
+        A.Gear.PlanDungeonTarget(result,gearSource,state,data)
+    end
     if not result.sessionActive and A.Supplies and (not result.best or state.serviceStop and
         (state.freeSlots==0 or state.durability and state.durability<0.2)) then
         local maintenance,why=A.Supplies.Fallback(state,data,blocked)
@@ -657,7 +660,7 @@ function P.Build(state, data, options)
         local choices=batch and A.Dungeon.TaskBatchStage(result.taskChoices,state,data) or result.taskChoices
         result.taskOrder,result.taskQueue=P.TaskOrder(state,choices,data)
     end
-    if not result.best and not result.sessionActive and not result.maintenance and not result.serviceStop and not result.selectionActive then
+    if not result.best and not result.sessionActive and not result.maintenance and not result.serviceStop and not result.selectionActive and not result.gearPlan then
         -- Reference quests use straight-line travel estimates.
         result.unverified = true
         local choices=batch and A.Dungeon.TaskBatchStage(result.taskChoices,state,data) or result.taskChoices

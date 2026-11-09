@@ -405,6 +405,20 @@ A.DungeonCatalog.encounters={
     [3644]={instanceId=2998,difficultyId=0,title="高地恐魔"},
     [3676]={instanceId=36,difficultyId=0,title="矿工约翰森"},
 }
+-- Efficient Games CC BY 4.0: observed roll sources, not drop or allocation probabilities.
+A.DungeonCatalog.loot={
+    ["drop:2732:272998"]={id="drop:2732:272998",reference=true,kind="dungeon",dungeonId="reference:389",instanceId=389,encounterId=2732,itemId=272998,title="怒焰裂谷 · 奥格弗林特"},
+    ["drop:2733:14149"]={id="drop:2733:14149",reference=true,kind="dungeon",dungeonId="reference:389",instanceId=389,encounterId=2733,itemId=14149,title="怒焰裂谷 · 饥饿者塔拉加曼"},
+    ["drop:2734:14147"]={id="drop:2734:14147",reference=true,kind="dungeon",dungeonId="reference:389",instanceId=389,encounterId=2734,itemId=14147,title="怒焰裂谷 · 祈求者耶戈什"},
+    ["drop:2735:273007"]={id="drop:2735:273007",reference=true,kind="dungeon",dungeonId="reference:389",instanceId=389,encounterId=2735,itemId=273007,title="怒焰裂谷 · 巴扎兰"},
+    ["drop:2910:15231"]={id="drop:2910:15231",reference=true,kind="dungeon",dungeonId="reference:48",instanceId=48,encounterId=2910,itemId=15231,title="黑暗深渊 · 阿库麦尔"},
+    ["drop:2910:6910"]={id="drop:2910:6910",reference=true,kind="dungeon",dungeonId="reference:48",instanceId=48,encounterId=2910,itemId=6910,title="黑暗深渊 · 阿库麦尔"},
+    ["drop:2911:273846"]={id="drop:2911:273846",reference=true,kind="dungeon",dungeonId="reference:48",instanceId=48,encounterId=2911,itemId=273846,title="黑暗深渊 · 暮光领主克尔里斯"},
+    ["drop:2912:6902"]={id="drop:2912:6902",reference=true,kind="dungeon",dungeonId="reference:48",instanceId=48,encounterId=2912,itemId=6902,title="黑暗深渊 · 瑟拉吉斯"},
+    ["drop:2914:6906"]={id="drop:2914:6906",reference=true,kind="dungeon",dungeonId="reference:48",instanceId=48,encounterId=2914,itemId=6906,title="黑暗深渊 · 格里哈斯特"},
+    ["drop:2915:11121"]={id="drop:2915:11121",reference=true,kind="dungeon",dungeonId="reference:48",instanceId=48,encounterId=2915,itemId=11121,title="黑暗深渊 · 萨利维丝"},
+    ["drop:2916:273839"]={id="drop:2916:273839",reference=true,kind="dungeon",dungeonId="reference:48",instanceId=48,encounterId=2916,itemId=273839,title="黑暗深渊 · 加摩拉"},
+}
 A.PvPCatalog={version="1.60.1",build="70862",entries={
     [30]={instanceId=30,title="奥特兰克山谷",areas={2597},maps={1459}},
     [489]={instanceId=489,title="战歌峡谷",areas={3277},maps={1460}},

@@ -56,6 +56,30 @@ def render():
         title = json.dumps(row['Name_lang'], ensure_ascii=False)
         lines.append(f'    [{row["ID"]}]={{instanceId={row["MapID"]},difficultyId={row["DifficultyID"]},title={title}}},')
     lines.append('}')
+    loot_path = ROOT / '.dependencies/eg-link-156f29c9/1.60.1.70862/loot.json'
+    assert hashlib.sha256(loot_path.read_bytes()).hexdigest() == 'fc1308917a42b0518778df0e0bbcfb46847addb4e1db45c2c3e47514081a2675'
+    loot = json.loads(loot_path.read_text())
+    assert loot['format'] == 3 and loot['meta']['clientBuild'] == '1.60.1.70862'
+    identities = {int(row['ID']): row for row in rows if int(row['MapID']) in party_maps}
+    names = {m['mapId']: m['name'] for m in census['maps']}
+    drops = {}
+    for key, record in loot['rolls'].items():
+        encounter = int(key.split('|')[0].removeprefix('encounter:'))
+        identity = identities.get(encounter)
+        if not identity or record['kills'] <= 0:
+            continue
+        instance = int(identity['MapID'])
+        for item, observation in record['items'].items():
+            assert int(item) > 0 and observation['drops'] > 0
+            source = f'drop:{encounter}:{item}'
+            drops[source] = (instance, encounter, int(item), identity['Name_lang'])
+    assert len(drops) == 11
+    lines.append('-- Efficient Games CC BY 4.0: observed roll sources, not drop or allocation probabilities.')
+    lines.append('A.DungeonCatalog.loot={')
+    for key, (instance, encounter, item, boss) in sorted(drops.items()):
+        title = json.dumps(names[instance] + ' · ' + boss, ensure_ascii=False)
+        lines.append(f'    ["{key}"]={{id="{key}",reference=true,kind="dungeon",dungeonId="reference:{instance}",instanceId={instance},encounterId={encounter},itemId={item},title={title}}},')
+    lines.append('}')
     assignments = ROOT / '.dependencies/UiMapAssignment-1.60.1.70862.csv'
     assert hashlib.sha256(assignments.read_bytes()).hexdigest() == '79267e8be8034e47daab14350411b3acc0b1f64e86efc9d821a217497254ca0a'
     maps = list(csv.DictReader(assignments.open()))

@@ -28,6 +28,51 @@ end
 local function find(p,id) for _,c in ipairs(p.taskChoices) do if c.questId==id then return c end end end
 local balanced={minutes=60,mode="relaxed",gearPreference="balanced",dungeons=false,role="DAMAGER"}
 
+test("同构建首领掉落进入比较与手选导航，击败不当作拿到装备且版本失配保留选择",function()
+    local B,s,d=fixture()
+    for _,file in ipairs({"Data/Dungeons.lua","Planner/Dungeon.lua","Planner/DungeonTasks.lua"}) do assert(loadfile(file))("AiLeveling",B) end
+    s.clientVersion,s.clientBuild="1.60.1","70862"
+    local id="drop:2732:272998"
+    local source=B.Gear.GetSource(id,d)
+    assert(source and source.reference);eq(source.instanceId,389);eq(source.kind,"dungeon")
+    local count=0;for _ in pairs(B.Gear.DungeonSources(s)) do count=count+1 end;eq(count,11)
+    s.items[source.itemId]=item(source.itemId,8)
+    local value=B.Gear.Source(source,s,d.content,d)
+    eq(value.upgrade.delta,7);eq(value.chanceLow,0);eq(value.chanceHigh,1);eq(value.expectedAttemptsHigh,nil)
+    local candidate={dungeonId=source.dungeonId}
+    B.Gear.Benefits({candidate},s,d.content);assert(candidate.gearSources[id]);eq(candidate.gear.chanceLow,0)
+    local fake={};for key,v in pairs(source) do fake[key]=v end
+    fake.encounterId=2733;eq(B.Gear.Source(fake,s,d.content,d),nil)
+    local dungeon=B.DungeonCatalog.entries[source.dungeonId]
+    eq(#B.Gear.DungeonBenefits(dungeon,s,d),1)
+    d.maps={};for _,area in ipairs(dungeon.areas) do d.maps[area]=2 end
+    for _,entry in ipairs(dungeon.entrances) do d.maps[entry[1]]=1 end
+    eq(B.Gear:SetTarget(id),true);eq(B.char.gearTarget,id)
+    local p=plan(s,d,balanced,B)
+    assert(p.gearPlan);eq(p.best,nil);eq(p.fallback.kind,"dungeonEnter");eq(p.fallback.questId,nil)
+    eq(p.fallback.position.map,1);assert(p.fallback.text:find("奥格弗林特",1,true))
+    s.instanceEntryError="等级不足";eq(plan(s,d,balanced,B).fallback.kind,"dungeonBlocked");s.instanceEntryError=nil
+    s.inInstance,s.instanceId=true,389
+    p=plan(s,d,balanced,B);eq(p.fallback.kind,"dungeonRun");assert(p.fallback.text:find("拾取",1,true))
+    B.Dungeon.encounterVisit={instanceId=389,difficulty=1,kills={[2732]="奥格弗林特"}}
+    p=plan(s,d,balanced,B);assert(p.fallback.text:find("已击败",1,true))
+    B.Gear:SyncTarget(s);eq(s.gearTarget,id);eq(s.gearAcquired,nil)
+    B.plan=p;B.UI={};assert(loadfile("UI/Gear.lua"))("AiLeveling",B)
+    local ui=B.UI.Gear;ui.selected=id
+    ui.selector={text={SetText=function() end},SetEnabled=function() end};ui.choose={SetEnabled=function() end}
+    local lines=table.concat(ui:Lines(),"\n")
+    assert(lines:find("获得概率区间 0%—100%",1,true));assert(not lines:find("交付任务",1,true));assert(not lines:find("预计刷取",1,true))
+    assert(loadfile("UI/Dungeon.lua"))("AiLeveling",B)
+    B.UI.Dungeon.entries={[dungeon.id]=dungeon};B.UI.Dungeon.selected=dungeon.id;B.UI.Dungeon.tasks={}
+    lines=table.concat(B.UI.Dungeon:Lines(),"\n");assert(lines:find("副本装备提升",1,true))
+    s.clientBuild="other";eq(B.Gear.GetSource(id,d),nil);eq(B.Gear.Source(source,s,d.content,d),nil)
+    p=plan(s,d,balanced,B);eq(p.fallback.kind,"selectionBlocked");eq(s.gearTarget,id)
+    s.clientBuild="70862";s.bags[source.itemId]=1;B.Gear:SyncTarget(s)
+    eq(s.gearTarget,nil);eq(s.gearAcquired,source.itemId)
+    eq(B.Gear:SetTarget(id),false)
+    eq(next(s.completed),nil)
+end)
+
 test("真实任务奖励解析来源身份并按互斥奖励分别比较而不相加",function()
     local B,s,d,q=fixture()
     local source=B.Gear.GetSource("reward:2:101",d);assert(source.reference);eq(source.verified,nil);eq(source.choice,true)

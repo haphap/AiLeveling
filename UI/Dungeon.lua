@@ -234,6 +234,16 @@ function UI:Lines()
         if rewards.upgrades>0 then lines[#lines+1]="其中 "..rewards.upgrades.." 项任务有装备提升。" end
     end
     if rewards.excluded>0 then lines[#lines+1]="另有 "..rewards.excluded.." 项低收益任务。" end
+    local drops=selected and A.Gear.DungeonBenefits and A.Gear.DungeonBenefits(selected,A.state,A.Data) or {}
+    if #drops>0 then
+        lines[#lines+1]="|cffffd36b副本装备提升|r"
+        for _,value in ipairs(drops) do
+            lines[#lines+1]=string.format("%s · 属性评分 %+.1f\n    %s",value.item.link or value.item.name or ("物品 #"..value.item.id),
+                value.upgrade.delta,value.source.title)
+            for _,note in ipairs(value.upgrade.notes) do lines[#lines+1]="    "..note end
+        end
+        lines[#lines+1]="可在装备页选择获取目标。"
+    end
     local headings={"可交付", "已接任务", "可接任务", "尚未满足条件", "已交付"}
     local group
     for i,row in ipairs(self.tasks or {}) do

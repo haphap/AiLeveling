@@ -41,7 +41,7 @@ for _,level in ipairs({10,20,30,40,50,59}) do
         for _,row in ipairs(rows) do
             total=total+1
             local q=A.Data:GetQuest(row.id)
-            local xp=A.TaskGuide.XP(q,level)
+            local xp=A.TaskGuide.XP(q,level,s)
             if row.group==5 then assert(row.xp==nil) else assert(row.xp==xp) end
             if row.xp then known=known+1 end
             if row.group~=5 and not row.lowValue and not row.requireCheck and (row.allowed and (row.position or row.areaId) or row.preparation) then
@@ -67,3 +67,22 @@ local r=p.taskBatch.rewards
 print(string.format("batch\t%s\t%d roots\t%d counted\t%d reference XP\t%d unknown\t%d need prerequisites",d.title,p.taskBatch.remaining,r.count,r.xp,r.unknownXP,r.prepare))
 assert(not next(s.quests) and not next(s.completed))
 print("PASS all 34 dungeon catalogs at 6 levels and selected starter-dungeon task rewards")
+-- Real source/encounter/entrance identities; no synthetic item stats imply real usability.
+local drops=0
+for id,source in pairs(A.Gear.DungeonSources(s)) do
+    assert(A.Gear.GetSource(id,A.Data,s)==source)
+    local dungeon=catalog[source.dungeonId]
+    local boss=A.Dungeon.EncounterIdentity(source.encounterId,s)
+    assert(dungeon and boss and dungeon.instanceId==boss.instanceId)
+    local p={}
+    s.inInstance,s.instanceId=false,nil
+    A.Gear.PlanDungeonTarget(p,source,s,A.Data)
+    assert(p.gearPlan and p.fallback.kind=="dungeonEnter" and p.fallback.position)
+    assert(p.fallback.position.label==dungeon.title.."入口")
+    s.inInstance,s.instanceId=true,source.instanceId
+    A.Gear.PlanDungeonTarget(p,source,s,A.Data)
+    assert(p.fallback.kind=="dungeonRun" and not p.fallback.position and not s.gearAcquired)
+    drops=drops+1
+end
+assert(drops==11 and not next(s.completed))
+print("PASS 11 observed drop sources: actual encounter maps and Questie entry maps; outside/inside guidance")

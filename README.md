@@ -2,7 +2,7 @@
 
 [下载安装包](https://github.com/haphap/AiLeveling/releases) · 当前提供开发预览版，完整首版仍在建设与验收中。
 
-Forever 练级助手，当前版本 `0.1.126-dev`。完整首版目标和验收标准见 [PLAN.md](PLAN.md)，实际进度见 [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)。
+Forever 练级助手，当前版本 `0.1.127-dev`。完整首版目标和验收标准见 [PLAN.md](PLAN.md)，实际进度见 [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)。
 
 本开发构建已接入真实任务日志、角色与装备状态、当前任务定位、独立安全物品按钮、默认背包高亮和附近场景物件高亮，并提供路线规划、任务链、装备、副本与设置界面。纯逻辑中已有资格筛选、前置闭包、直线移动估时、短程搜索、装备校准入口和副本时间线评价。
 

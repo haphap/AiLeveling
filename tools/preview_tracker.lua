@@ -131,10 +131,15 @@ if dungeonPreview then
         local d=A.Dungeon.Catalog(A.state,A.Content)["reference:36"]
         A.plan={revision=1,taskChoices=choices,taskBatch={id=d.id,journey=A.Dungeon.TaskJourney(d,choices,A.state,A.Data)}}
     end
+    local selected="reference:36"
+    if arg[2]=="loot" then
+        selected="reference:389"
+        A.state.items[272998]={id=272998,name="示例首领装备",usable=true,equipLoc="INVTYPE_HEAD",stats={ITEM_MOD_STRENGTH_SHORT=8}}
+    end
     local panel=A.UI:Panel(nil,UIParent,620,520);panel:SetPoint("TOPLEFT",40,-88)
     local title=A.UI:Text(panel,18);title:SetPoint("TOPLEFT",18,-16);title:SetText("AiLeveling · 副本任务")
     local tabs=A.UI:Text(panel,12);tabs:SetPoint("TOPLEFT",18,-57);tabs:SetText("行程       任务链       装备       副本       设置")
-    A.UI.Dungeon:Create(panel);A.UI.Dungeon.selected="reference:36";A.UI.Dungeon:Refresh();A.UI.Dungeon.frame:Show()
+    A.UI.Dungeon:Create(panel);A.UI.Dungeon.selected=selected;A.UI.Dungeon:Refresh();A.UI.Dungeon.frame:Show()
     local scroll=CreateFrame("ScrollFrame",nil,panel);scroll:SetPoint("TOPLEFT",18,-A.UI.Dungeon.bodyTop);scroll:SetSize(570,520-A.UI.Dungeon.bodyTop-18)
     local child=CreateFrame("Frame",nil,scroll);child:SetSize(560,500);scroll:SetScrollChild(child)
     local text=A.UI:Text(child,12);text:SetPoint("TOPLEFT");text:SetWidth(558)

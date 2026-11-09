@@ -126,7 +126,7 @@ function I:Snapshot(state)
         end
     end
     for _,source in pairs(A.Content.gearSources or {}) do ids[source.itemId]=true end
-    local target=A.char and A.char.gearTarget and A.Gear and A.Gear.GetSource and A.Gear.GetSource(A.char.gearTarget)
+    local target=A.char and A.char.gearTarget and A.Gear and A.Gear.GetSource and A.Gear.GetSource(A.char.gearTarget,nil,state)
     if target then ids[target.itemId]=true end
     for id in pairs(ids) do state.items[id]=self:Read(id) end
     local known=C_SpellBook and C_SpellBook.IsSpellKnown

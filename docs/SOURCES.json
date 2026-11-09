@@ -715,6 +715,18 @@
       "generator": "tools/import_cache_xp.py",
       "audit": "docs/TASK_XP_AUDIT.json",
       "clientVerified": false
+    },
+    {
+      "id": "Forever-boss-loot-1.60.1.70862",
+      "build": "1.60.1.70862",
+      "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862/loot.json",
+      "sha256": "fc1308917a42b0518778df0e0bbcfb46847addb4e1db45c2c3e47514081a2675",
+      "license": "CC BY 4.0",
+      "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+      "transformation": "11 item sources from 10 boss roll records in maps 389 and 48, joined by encounter ID to matching client DungeonEncounter identities. Item usability/stats read at runtime. A rolled item confirms a source, not who won it. Observed chance, threshold, kills and sample size do not establish item or allocation probability; retain [0,1]. Difficulty zero is unspecified, not a claim of drops in every difficulty. No full-run time, XP, admission, boss order, loot table completeness or guaranteed acquisition inferred.",
+      "generator": "tools/build_dungeon_catalog.py",
+      "verification": "tools/check_dungeon_rewards.lua",
+      "clientVerified": false
     }
   ]
 }

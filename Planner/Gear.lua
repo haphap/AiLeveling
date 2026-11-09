@@ -258,20 +258,33 @@ function G.RewardSources(q)
     return sources
 end
 
-function G.GetSource(id,data)
+function G.DungeonSources(state,instanceId)
+    local catalog=A.DungeonCatalog
+    if not catalog or not state or state.clientVersion~=catalog.version or tostring(state.clientBuild)~=catalog.build then return {} end
+    local sources={}
+    for id,source in pairs(catalog.loot or {}) do
+        if not instanceId or source.instanceId==instanceId then sources[id]=source end
+    end
+    return sources
+end
+
+function G.GetSource(id,data,state)
     data=data or A.Data
     local content=data and data.content or A.Content
     local authored=content and content.gearSources and content.gearSources[id]
     if authored then return authored end
-    if type(id)~="string" or not data or not data.GetQuest then return end
+    if type(id)~="string" then return end
+    if id:match("^drop:") then return G.DungeonSources(state or A.state)[id] end
+    if not data or not data.GetQuest then return end
     local quest,item=id:match("^reward:(%d+):(%d+)$")
     if quest and item then return G.RewardSources(data:GetQuest(tonumber(quest)))[id] end
 end
 
 function G.Source(source,state,content,data)
     if not source.verified then
-        local reference=source.reference and G.GetSource(source.id,data)
-        if not reference or not reference.reference or reference.questId~=source.questId or reference.itemId~=source.itemId then
+        local reference=source.reference and G.GetSource(source.id,data,state)
+        if not reference or not reference.reference or reference.kind~=source.kind or reference.questId~=source.questId or
+            reference.itemId~=source.itemId or reference.dungeonId~=source.dungeonId or reference.encounterId~=source.encounterId then
             return nil,"当前暂无可用的装备来源"
         end
         source=reference
@@ -303,7 +316,7 @@ function G:SetTarget(id)
     if not source then return false,"装备来源不存在" end
     local value,reason=G.Source(source,A.state,A.Content)
     if not value then return false,reason end
-    if source.reference then
+    if source.reference and source.kind=="quest" then
         local q=A.Data:GetQuest(source.questId)
         if A.state.completed[source.questId] and not A.state.quests[source.questId] and not q.repeatable then return false,"该奖励任务已经交付" end
         if A.state.skipped[source.questId] or (A.state.chainDeferred or {})[source.questId] then return false,"先恢复暂缓的任务或任务线" end
@@ -325,12 +338,12 @@ end
 function G:SyncTarget(state)
     local id=A.char.gearTarget
     if not id then return end
-    local source=G.GetSource(id)
+    local source=G.GetSource(id,nil,state)
     if source then
         local count=state.bags[source.itemId] or 0
         for _,item in pairs(state.equipment) do if item.id==source.itemId then count=count+1 end end
         if count>(A.char.gearBaseline or 0) then A.char.gearTarget,A.char.gearBaseline=nil,nil;state.gearAcquired=source.itemId
-        elseif source.reference then
+        elseif source.reference and source.kind=="quest" then
             local q=A.Data:GetQuest(source.questId)
             if state.completed[source.questId] and not state.quests[source.questId] and not q.repeatable then
                 A.char.gearTarget,A.char.gearBaseline=nil,nil
@@ -338,6 +351,46 @@ function G:SyncTarget(state)
         end
     end
     state.gearTarget=A.char.gearTarget
+end
+
+function G.DungeonBenefits(d,state,data)
+    local values={}
+    for id,source in pairs(G.DungeonSources(state,d.instanceId)) do
+        local value=G.Source(source,state,data.content,data)
+        if value and not value.owned and (value.upgrade.delta>0 or #(value.upgrade.notes or {})>0) then
+            value.sourceId=id;values[#values+1]=value
+        end
+    end
+    table.sort(values,function(a,b)
+        if a.upgrade.delta~=b.upgrade.delta then return a.upgrade.delta>b.upgrade.delta end
+        return a.sourceId<b.sourceId
+    end)
+    return values
+end
+
+-- An explicit equipment target guides the visit; only actually receiving the item settles it.
+function G.PlanDungeonTarget(plan,source,state,data)
+    local d=A.DungeonCatalog.entries[source.dungeonId]
+    local boss=A.Dungeon.EncounterIdentity(source.encounterId,state)
+    if not d or not boss then return end
+    local item=state.items and state.items[source.itemId]
+    local name=item and (item.link or item.name) or ("物品 #"..source.itemId)
+    local action={kind="dungeonRun",title="获取「"..name.."」",areaId=d.areas[1],
+        text="在"..d.title.."击败"..boss.title.."，拾取「"..name.."」。"}
+    local visit=A.Dungeon.encounterVisit
+    if state.inInstance and state.instanceId==d.instanceId and visit and visit.instanceId==d.instanceId and
+        visit.difficulty==state.instanceDifficultyId and visit.kills[source.encounterId] then
+        action.text=boss.title.."已击败，先拾取装备。未获得时可结束本轮，或出本重置后再刷。"
+    end
+    action=A.Dungeon.TaskApproach(action,state,data)
+    if action.kind=="dungeonEnter" then action.text="前往"..d.title.."，目标装备："..name.."；首领："..boss.title.."。" end
+    plan.best,plan.gearTargetBlocked=nil,nil
+    plan.gearPlan,plan.preferenceApplied=true,true
+    plan.fallback=action
+    local routes=action.position and A.Flights and A.Flights.Itinerary(state.position,{action},state,A.Navigation)
+    local journey=routes and routes[1]
+    local actions=journey and A.Flights.Actions(journey.firstRoute,action,A.Navigation)
+    if actions then plan.travelActions,plan.referenceJourney=actions,journey end
 end
 
 function G.TaskBenefits(choice,q,state,data)
@@ -370,11 +423,15 @@ function G.PreferTask(choices,state,options)
 end
 
 function G.Benefits(candidates,state,content)
+    local sources=G.DungeonSources(state)
+    for id,source in pairs(content.gearSources or {}) do sources[id]=source end
     for _,candidate in ipairs(candidates) do
         local best
         candidate.gearSources={}
-        for id,source in pairs(content.gearSources or {}) do
-            local matches=source.kind=="dungeon" and candidate.dungeonId==source.dungeonId
+        for id,source in pairs(sources) do
+            local dungeon=candidate.dungeonId and content.dungeons[candidate.dungeonId]
+            local matches=source.kind=="dungeon" and (candidate.dungeonId==source.dungeonId or
+                source.instanceId and dungeon and dungeon.instanceId==source.instanceId)
             if source.kind=="quest" then
                 for _,action in ipairs(candidate.actions or {}) do
                     if action.kind=="turnin" and action.questId==source.questId then matches=true;break end

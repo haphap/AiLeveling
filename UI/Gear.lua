@@ -33,6 +33,10 @@ function UI:Ids()
     for _,choice in ipairs(A.plan and A.plan.taskChoices or {}) do
         for id in pairs(choice.gearSources or {}) do add(id) end
     end
+    for id,source in pairs(A.Gear.DungeonSources(A.state)) do
+        local value=A.Gear.Source(source,A.state,A.Content)
+        if value and not value.owned and (value.upgrade.delta>0 or #(value.upgrade.notes or {})>0) then add(id) end
+    end
     local target=A.char and A.char.gearTarget
     if target and A.Gear.GetSource(target) then add(target) end
     table.sort(ids,function(a,b) return tostring(a)<tostring(b) end)
@@ -47,14 +51,14 @@ function UI:Lines()
     local present=false;for _,id in ipairs(ids) do if id==self.selected then present=true;break end end
     if not present then self.selected=ids[1] end
     local source=self.selected and A.Gear.GetSource(self.selected)
-    self.selector.text:SetText(source and ("当前来源："..(source.title or tostring(self.selected)).."（点击切换）") or "当前任务没有可比较的装备奖励")
+    self.selector.text:SetText(source and ("当前来源："..(source.title or tostring(self.selected)).."（点击切换）") or "当前没有适用的装备来源")
     self.selector:SetEnabled(#ids>0)
     self.choose:SetEnabled(A.ready and source~=nil and (source.verified==true or source.reference==true))
     if source and A.ready then
         local value,reason=A.Gear.Source(source,A.state,A.Content)
         if value then
             local itemName=value.item.link or value.item.name or ("物品 #"..source.itemId)
-            if source.reference then
+            if source.reference and source.kind=="quest" then
                 lines[#lines+1]=string.format("%s · 属性评分%s %+.1f",itemName,value.upgrade.delta>0 and "提升" or "变化",value.upgrade.delta)
                 lines[#lines+1]=source.choice and "交付任务时选择此奖励。" or "交付任务后获得此奖励。"
             else
@@ -71,8 +75,10 @@ function UI:Lines()
                 if not candidate.requiresAcceptance and (not fastest or candidate.rate>fastest.rate) then fastest=candidate end
                 if candidate.gearSources and candidate.gearSources[self.selected] and (not route or candidate.seconds<route.seconds) then route=candidate end
             end
-            if source.reference then
+            if source.reference and source.kind=="quest" then
                 lines[#lines+1]="选择此装备目标后，继续对应任务及必要前置。"
+            elseif source.reference and source.kind=="dungeon" then
+                lines[#lines+1]="选择后前往"..source.title.."获取装备。"
             elseif route then
                 lines[#lines+1]=string.format("来源行程 %.1f 分钟 · %.0f 经验／小时%s",route.seconds/60,route.rate*3600,
                     fastest and string.format("；较当前最高经验率方案多用 %+.1f 分钟",(route.seconds-fastest.seconds)/60) or "")

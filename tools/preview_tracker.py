@@ -16,8 +16,9 @@ def main():
     mode = 'dungeon' if len(sys.argv) > 1 and sys.argv[1] == 'dungeon' else 'tracker'
     blocked = mode == 'dungeon' and 'entry-blocked' in sys.argv[2:]
     journey = mode == 'dungeon' and 'journey' in sys.argv[2:]
+    loot = mode == 'dungeon' and 'loot' in sys.argv[2:]
     large = mode == 'tracker' and 'large' in sys.argv[1:]
-    records = json.loads(subprocess.check_output(['lua5.1', 'tools/preview_tracker.lua', mode] + (['entry-blocked'] if blocked else ['journey'] if journey else ['large'] if large else []), cwd=ROOT))
+    records = json.loads(subprocess.check_output(['lua5.1', 'tools/preview_tracker.lua', mode] + (['entry-blocked'] if blocked else ['journey'] if journey else ['loot'] if loot else ['large'] if large else []), cwd=ROOT))
     canvas = Image.new('RGBA', (round(records[0]['rect']['w'] * SCALE), round(records[0]['rect']['h'] * SCALE)))
     draw = ImageDraw.Draw(canvas)
     for y in range(canvas.height):
@@ -75,7 +76,7 @@ def main():
     d = ImageDraw.Draw(canvas)
     font = ImageFont.truetype(FONT, 12 * SCALE)
     d.text((100 * SCALE, 38 * SCALE), '布局预览 · 示例数据', font=font, fill=(145, 165, 176), anchor='lt')
-    output = ROOT / f'dist/{mode}{"-entry-blocked" if blocked else "-journey" if journey else "-large" if large else ""}-preview.png'
+    output = ROOT / f'dist/{mode}{"-entry-blocked" if blocked else "-journey" if journey else "-loot" if loot else "-large" if large else ""}-preview.png'
     canvas.convert('RGB').save(output)
     print(output)
 
