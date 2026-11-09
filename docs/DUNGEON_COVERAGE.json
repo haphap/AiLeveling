@@ -3935,6 +3935,101 @@
       "reason": "not-linked-to-readable-client-map"
     }
   ],
+  "announcedLevelingDungeons": {
+    "source": "https://news.blizzard.com/en-us/article/24301455/explore-the-new-dungeons-of-world-of-warcraft-forever",
+    "entries": [
+      {
+        "name": "Hall of Thanes",
+        "levels": [
+          13,
+          18
+        ],
+        "location": "Dun Morogh",
+        "mapId": 3065
+      },
+      {
+        "name": "Ruins of Lordaeron",
+        "levels": [
+          15,
+          20
+        ],
+        "location": "Tirisfal Glades",
+        "mapId": 2999
+      },
+      {
+        "name": "Excavation Site",
+        "levels": [
+          24,
+          29
+        ],
+        "location": "Wetlands",
+        "mapId": 2998
+      },
+      {
+        "name": "City of Dalaran",
+        "levels": [
+          28,
+          33
+        ],
+        "location": "Alterac Mountains",
+        "mapId": 2959,
+        "preparationQuests": {
+          "Alliance": [
+            92432
+          ],
+          "Horde": [
+            93680,
+            544
+          ]
+        }
+      },
+      {
+        "name": "The Drowned City",
+        "levels": [
+          35,
+          40
+        ],
+        "location": "Stranglethorn Vale, west of Grom'gol",
+        "mapId": null
+      },
+      {
+        "name": "Krol'dok Stronghold",
+        "levels": [
+          40,
+          45
+        ],
+        "location": "Riverglades",
+        "mapId": null
+      },
+      {
+        "name": "Alcaz Prison",
+        "levels": [
+          48,
+          53
+        ],
+        "location": "Dustwallow Marsh, Alcaz Island",
+        "mapId": null
+      },
+      {
+        "name": "Blackmaw Hold",
+        "levels": [
+          55,
+          60
+        ],
+        "location": "Azshara",
+        "mapId": null
+      },
+      {
+        "name": "Shaper's Terrace",
+        "levels": [
+          58,
+          60
+        ],
+        "location": "Un'Goro Crater, northern hills",
+        "mapId": null
+      }
+    ]
+  },
   "limits": [
     "Eight client map records are inaccessible to this offline reader; their identities are unknown.",
     "Party type does not prove enabled content, suitable level, entrance access, or a complete itinerary.",

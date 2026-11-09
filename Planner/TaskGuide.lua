@@ -265,6 +265,8 @@ function G.DeliveryGroups(choices,state,planned,includeAccepts)
         if (active or accepting) and not choice.lowValue and not choice.entryBlocked and not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] and
             p and p.entityKind and p.entityId then
             local key=p.entityKind..":"..p.entityId
+            -- Entry/prerequisite turn-ins must not wait for rewards earned behind that entry.
+            if choice.preparingQuest or choice.dungeonPreparation then key=key..":preparation" end
             local group=byKey[key]
             if not group then
                 group={key=key,title=p.entityName or ((p.entityKind=="npc" and "NPC #" or "对象 #")..p.entityId),choices={},ready=0,items={}}

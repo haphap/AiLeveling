@@ -231,21 +231,32 @@ run("副本整组先接齐可行任务，完成前置后入本，整组完成再
     GetTime=clock
 end)
 run("副本任务行程随前置、接取、本内完成和交付更新",function()
-    local B,s,data=fixture()
+    local B,s,data,_,d=fixture()
+    d.quests.Alliance[4]="preparation"
+    s.quests[4]={ready=true,objectives={}}
     data.ReferenceObjectiveTargets=function(_,q)
         return {{text="参考目标",numRequired=1,numFulfilled=0}},data:ObjectiveTargets(q)
     end
     assert(B.Dungeon:StartTaskBatch("ref"))
     local p=plan(s,data,B.settings,B)
     local j=p.taskBatch.journey
-    eq(#j.before,4);eq(#j.inside,1);eq(#j.after,1)
+    eq(#j.before,5);eq(#j.inside,1);eq(#j.after,1)
     eq(j.inside[1].action.questId,2);eq(j.entry.kind,"dungeonEnter");assert(j.leave)
     for _,step in ipairs(j.before) do assert(step.action.questId~=1) end
     local prerequisite
     for _,step in ipairs(j.before) do if step.action.questId==3 then prerequisite=step end end
     eq(prerequisite.preparingQuest.id,1);eq(prerequisite.action.kind,"turnin")
+    local entryPreparation
+    for _,step in ipairs(j.before) do if step.action.questId==4 then entryPreparation=step end end
+    eq(entryPreparation.action.kind,"turnin")
     s.completed[3]=true
     s.quests[1]={objectives={{text="本内目标",numRequired=1,numFulfilled=0}}}
+    s.quests[2]={objectives={{text="本内目标",numRequired=1,numFulfilled=0}}}
+    p=plan(s,data,B.settings,B);eq(p.fallback.questId,4);eq(p.fallback.kind,"turnin")
+    -- The entry task shares a recipient with the dungeon rewards but must be delivered before entry.
+    s.quests[4]=nil;s.completed[4]=true;B.char.turnIns[4]=1;B.State:Refresh()
+    p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonEnter")
+    s.quests[2]=nil
     p=plan(s,data,B.settings,B);j=p.taskBatch.journey
     eq(#j.before,1);eq(j.before[1].action.questId,2);eq(#j.inside,2);eq(#j.after,2)
     s.inInstance,s.instanceId,s.position=true,42,{map=2,x=0,y=0}

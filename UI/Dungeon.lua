@@ -251,7 +251,8 @@ function UI:Lines()
     local group
     for i,row in ipairs(self.tasks or {}) do
         if group~=row.group then group=row.group;lines[#lines+1]="|cffffd36b"..headings[group].."|r" end
-        local hint=row.relation=="alternative" and "部分目标有其他来源" or row.relation=="inside" and "副本目标" or "关联任务"
+        local hint=row.relation=="preparation" and "入本准备" or row.relation=="alternative" and "部分目标有其他来源" or
+            row.relation=="inside" and "副本目标" or "关联任务"
         local selected=A.char.taskBatch and A.char.taskBatch.id==self.selected and A.char.taskBatch.baselines[row.id]~=nil
         if selected then hint=hint.." · 已安排" end
         if row.lowValue then hint=hint.." · "..row.lowValue.suggestion end

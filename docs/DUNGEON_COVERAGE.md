@@ -4,6 +4,22 @@
 
 地图表 81 条中读取 73 条，另 8 条当前不可读取，编号未知。分类基于实例类型；练级范围和完整行程尚未验收。
 
+[官方新练级副本清单](https://news.blizzard.com/en-us/article/24301455/explore-the-new-dungeons-of-world-of-warcraft-forever)列出九项；四项已关联当前地图，另五项尚缺地图身份和入口资料。推荐等级不作为准入等级。
+
+| 官方名称 | 推荐等级 | 地区 | 实例 ID |
+| --- | --- | --- | --- |
+| Hall of Thanes | 13—18 | Dun Morogh | 3065 |
+| Ruins of Lordaeron | 15—20 | Tirisfal Glades | 2999 |
+| Excavation Site | 24—29 | Wetlands | 2998 |
+| City of Dalaran | 28—33 | Alterac Mountains | 2959 |
+| The Drowned City | 35—40 | Stranglethorn Vale, west of Grom'gol | 尚未关联 |
+| Krol'dok Stronghold | 40—45 | Riverglades | 尚未关联 |
+| Alcaz Prison | 48—53 | Dustwallow Marsh, Alcaz Island | 尚未关联 |
+| Blackmaw Hold | 55—60 | Azshara | 尚未关联 |
+| Shaper's Terrace | 58—60 | Un'Goro Crater, northern hills | 尚未关联 |
+
+达拉然入城准备：联盟从任务 92432（An Alarming Request）开始，部落关联 93680（Key to the City）及 544（Prison Break In）。目录接入这些准备任务，资格和进度继续由数据库及原生日志决定；资料尚未给出整条解锁链的最终完成标记。
+
 以下列出全部可读的 party 类型地图。任务数按区域分类及别名关联，合并 18 个阵营／职业修正上下文；前置含备选分支，实际执行继续检查资格。
 
 | 实例 ID | 名称 | 区域 ID | 入口记录 | 分类关联任务 | 前置候选 |

@@ -15,6 +15,21 @@ PINS = {
     'dungeon-provider-1.0.12.tsv': 'c71ba791164de9210e7c7911150e9ea11390cc82cf0889c3d20577a4337b39bc',
 }
 
+# Official announced leveling scope, including entries the readable Map table cannot identify yet.
+ANNOUNCEMENT = 'https://news.blizzard.com/en-us/article/24301455/explore-the-new-dungeons-of-world-of-warcraft-forever'
+ANNOUNCED = [
+    {'name':'Hall of Thanes','levels':[13,18],'location':'Dun Morogh','mapId':3065},
+    {'name':'Ruins of Lordaeron','levels':[15,20],'location':'Tirisfal Glades','mapId':2999},
+    {'name':'Excavation Site','levels':[24,29],'location':'Wetlands','mapId':2998},
+    {'name':'City of Dalaran','levels':[28,33],'location':'Alterac Mountains','mapId':2959,
+     'preparationQuests':{'Alliance':[92432],'Horde':[93680,544]}},
+    {'name':'The Drowned City','levels':[35,40],'location':'Stranglethorn Vale, west of Grom\'gol','mapId':None},
+    {'name':"Krol'dok Stronghold",'levels':[40,45],'location':'Riverglades','mapId':None},
+    {'name':'Alcaz Prison','levels':[48,53],'location':'Dustwallow Marsh, Alcaz Island','mapId':None},
+    {'name':'Blackmaw Hold','levels':[55,60],'location':'Azshara','mapId':None},
+    {'name':"Shaper's Terrace",'levels':[58,60],'location':"Un'Goro Crater, northern hills",'mapId':None},
+]
+
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -94,6 +109,7 @@ def build():
                       [{'path':str(source.relative_to(ROOT)),'sha256':digest(source)},
                        {'path':str(raw_map.relative_to(ROOT)),'sha256':digest(raw_map)}],
             'counts':counts,'maps':rows,'identityConflicts':conflicts,'unmatchedProviderAreas':unresolved,
+            'announcedLevelingDungeons':{'source':ANNOUNCEMENT,'entries':ANNOUNCED},
             'limits':['Eight client map records are inaccessible to this offline reader; their identities are unknown.',
                       'Party type does not prove enabled content, suitable level, entrance access, or a complete itinerary.',
                       'Category quest IDs are associations, not proof that every objective lies in this instance.',
@@ -104,7 +120,13 @@ def markdown(report):
     lines = ['# Forever 副本内容清单', '',
              '目标构建 1.60.1.70862；由 `python3 tools/audit_dungeons.py` 生成。', '',
              '地图表 81 条中读取 73 条，另 8 条当前不可读取，编号未知。分类基于实例类型；练级范围和完整行程尚未验收。', '',
-             '以下列出全部可读的 party 类型地图。任务数按区域分类及别名关联，合并 18 个阵营／职业修正上下文；前置含备选分支，实际执行继续检查资格。', '',
+              f'[官方新练级副本清单]({ANNOUNCEMENT})列出九项；四项已关联当前地图，另五项尚缺地图身份和入口资料。推荐等级不作为准入等级。', '',
+              '| 官方名称 | 推荐等级 | 地区 | 实例 ID |',
+              '| --- | --- | --- | --- |']
+    for row in report['announcedLevelingDungeons']['entries']:
+        lines.append(f'| {row["name"]} | {row["levels"][0]}—{row["levels"][1]} | {row["location"]} | {row["mapId"] or "尚未关联"} |')
+    lines += ['', '达拉然入城准备：联盟从任务 92432（An Alarming Request）开始，部落关联 93680（Key to the City）及 544（Prison Break In）。目录接入这些准备任务，资格和进度继续由数据库及原生日志决定；资料尚未给出整条解锁链的最终完成标记。', '',
+              '以下列出全部可读的 party 类型地图。任务数按区域分类及别名关联，合并 18 个阵营／职业修正上下文；前置含备选分支，实际执行继续检查资格。', '',
              '| 实例 ID | 名称 | 区域 ID | 入口记录 | 分类关联任务 | 前置候选 |',
              '| ---: | --- | ---: | ---: | ---: | ---: |']
     for row in report['maps']:

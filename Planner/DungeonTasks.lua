@@ -471,7 +471,10 @@ function D.TaskBatchChoices(state,data)
     local context={};for k,v in pairs(state) do context[k]=v end
     context.preparingQuest=true
     local choices=A.Planner.TaskChoices(context,data,ids,true)
-    for _,choice in ipairs(choices) do choice.preparingQuest=roots[choice.questId] end
+    for _,choice in ipairs(choices) do
+        choice.preparingQuest=roots[choice.questId]
+        choice.dungeonPreparation=members[choice.questId] and members[choice.questId].relation=="preparation"
+    end
     info.rewards=D.TaskRewards(rows,batch.baselines,choices)
     info.journey=d and D.TaskJourney(d,choices,state,data) or nil
     return choices,info
@@ -487,7 +490,8 @@ function D.TaskJourney(d,choices,state,data)
             for _,stage in ipairs(choice.stages or choice.actions) do
                 local instance=D.TaskInstance(stage.position,state,data,stage.areaId)
                 local inside=instance and instance.instanceId==d.instanceId
-                local phase=inside and "inside" or (crossed or stage.kind=="turnin" and not choice.preparingQuest) and "after" or "before"
+                local phase=inside and "inside" or (crossed or stage.kind=="turnin" and not
+                    (choice.preparingQuest or choice.dungeonPreparation)) and "after" or "before"
                 if inside then crossed=true end
                 local step={action=stage,preparingQuest=choice.preparingQuest,
                     recipient=stage.kind=="turnin" and (stage.recipient or stage.position),

@@ -12,6 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def render():
     census = json.loads((ROOT / 'docs/DUNGEON_COVERAGE.json').read_text())
     evidence = json.loads((ROOT / 'docs/DUNGEON_QUEST_LOCATIONS.json').read_text())
+    preparation = {row['mapId']: row.get('preparationQuests', {})
+                   for row in census['announcedLevelingDungeons']['entries'] if row['mapId']}
     datasets = {}
     for ds in evidence['datasets']:
         for faction, _ in ds['personas']:
@@ -39,6 +41,8 @@ def render():
                     refs[qid] = 'inside'
                 elif inside and qid in refs and refs[qid] != 'inside' and any(row['areaId'] > 0 and m['mapId'] not in row['instanceMapIds'] for row in rows):
                     refs[qid] = 'alternative'
+            for qid in preparation.get(m['mapId'], {}).get(faction, []):
+                refs[qid] = 'preparation'
             pairs = ','.join(f'[{qid}]="{kind}"' for qid, kind in sorted(refs.items()))
             lines.append(f'        {faction}={{{pairs}}},')
         lines.append('    }},')

@@ -603,15 +603,15 @@
       "build": "1.60.1.70862",
       "file": "Data/Dungeons.lua",
       "generator": "tools/build_dungeon_catalog.py",
-      "scope": "Readable party maps, area aliases, provider entrance coordinates and candidate quest associations; entrance direction only, no complete executable itinerary or admission claim",
+      "scope": "Readable party maps, provider entrances and candidate quest associations, including official Dalaran entry preparation. Runtime builds trips from native progress; announced maps without identity remain in DUNGEON_COVERAGE.",
       "client_verified": false,
       "inputs": {
-        "docs/DUNGEON_COVERAGE.json": "7f29a828316e925d9d853f571ded0b9dfd3f2adbcdda3c597ce122ab4d84ab95",
+        "docs/DUNGEON_COVERAGE.json": "2c2cc5a2644675799f7c22b3a1158de37244f890e3e575ce5415bbde13689d55",
         "docs/DUNGEON_QUEST_LOCATIONS.json": "9a8376675167acabe6e0e5c2b9c3191ca3c829d10330c73dcf741f63aa310203"
       },
       "provider": "QuestieDB v1.0.12",
       "evidence_recipe": "docs/QUEST_LOCATION_RECIPE.json",
-      "sha256": "61c755c6cb4d5206beb1a59a47f0716c35a5e55c42e0b977b6feb2e468655e9b"
+      "sha256": "88a7770496257ca6c170ffd963839320ef948179e2b724425489129ba0aee116"
     },
     {
       "id": "Forever-item-sets-1.60.1.70862",
@@ -879,6 +879,14 @@
       "scope": "Dangerous mob locations/patrols, faction/level filtering and emergency item/spell identities; converted to plain data. Outland zones ignored by the fixed Forever map table remain excluded. Runtime implementation is independent.",
       "data_adapted": true,
       "client_verified": false
+    },
+    {
+      "id": "Forever-announced-leveling-dungeons",
+      "url": "https://news.blizzard.com/en-us/article/24301455/explore-the-new-dungeons-of-world-of-warcraft-forever",
+      "checked": "2026-11-10",
+      "scope": "Nine announced new five-player leveling dungeons, recommended levels and locations; four mapped to readable 1.60.1.70862 records, five identities unresolved. Dalaran entry tasks matched by QuestieDB names and giver identities: Alliance 92432, Horde 93680 and 544. No inferred entry level, final unlock flag or exact entrance coordinate.",
+      "audit": "docs/DUNGEON_COVERAGE.json",
+      "clientVerified": false
     }
   ]
 }

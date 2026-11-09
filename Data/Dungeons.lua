@@ -119,8 +119,8 @@ A.DungeonCatalog={version="1.60.1",build="70862",entries={
         Horde={},
     }},
     ["reference:2959"]={id="reference:2959",reference=true,instanceId=2959,title="达拉然城",areas={16544},entrances={{36,8.46,59.21}},quests={
-        Alliance={[92456]="category",[92457]="category",[92458]="category",[92489]="category",[96984]="category",[96986]="category",[96987]="category",[96988]="category"},
-        Horde={[92456]="category",[92457]="category",[92458]="category",[92489]="category",[96984]="category",[96986]="category",[96987]="category",[96988]="category"},
+        Alliance={[92432]="preparation",[92456]="category",[92457]="category",[92458]="category",[92489]="category",[96984]="category",[96986]="category",[96987]="category",[96988]="category"},
+        Horde={[544]="preparation",[92456]="category",[92457]="category",[92458]="category",[92489]="category",[93680]="preparation",[96984]="category",[96986]="category",[96987]="category",[96988]="category"},
     }},
     ["reference:2998"]={id="reference:2998",reference=true,instanceId=2998,title="挖掘场：湿地",areas={16732},entrances={{11,47.79,56.16}},quests={
         Alliance={[95646]="category",[95647]="category",[95663]="category",[95664]="category",[95682]="category",[95697]="category",[95737]="category",[95772]="category",[95795]="category",[95809]="category",[95810]="category",[98815]="category",[98823]="category",[98824]="category"},
