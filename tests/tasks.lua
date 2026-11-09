@@ -73,6 +73,54 @@ test("数据库接交距离全部未知时以同地图位置作为指引",functi
     s.position=nil;assert(B.Data:Target({id=1},s))
     C_Map,C_QuestLog=previousMap,previousLog
 end)
+test("NPC 实际接取列表避开不可接任务并保留其他发布者与已接交付",function()
+    local oldMap,oldLog,oldGossip,oldGuid,oldQuest,oldAccess=C_Map,C_QuestLog,C_GossipInfo,UnitGUID,GetQuestID,canaccessvalue
+    C_Map={GetMapInfo=function() return {} end};C_QuestLog={};canaccessvalue=nil
+    local npc,list=11,{}
+    UnitGUID=function(unit) eq(unit,"npc");return "Creature-0-1-2-3-"..npc.."-00000001" end
+    C_GossipInfo={GetAvailableQuests=function() return list end}
+    local B={Content={quests={}},Navigation=F.Navigation,Merchant=A.Merchant}
+    assert(loadfile("State.lua"))("AiLeveling",B)
+    assert(loadfile("Data/Questie.lua"))("AiLeveling",B)
+    local sources,q={{11}},{id=1,title="待接任务",questLevel=20,requiredLevel=1,zoneOrSort=10}
+    local entity={Get=function(id,key) if key=="name" then return "发布者 "..id end return {[10]={{id,50}}} end}
+    local d=B.Data;d.maps={[10]=1};d.content=F.Data({}).content
+    d.db={Enum={npcFlags={}},Npc=entity,Object=entity,Quest={Get=function(_,key)
+        if key=="startedBy" or key=="finishedBy" then return sources end
+    end}}
+    d.GetQuest=function() return q end;d.Candidates=function() return {1} end
+    local s=F.State();s.position={map=1,x=0,y=0.5}
+    eq(plan(s,d).fallback.questId,1)
+    B.State:QuestOffersEvent("GOSSIP_SHOW");s.questOffers=B.State.questOffers
+    eq(d:Target(q,s),nil);eq(#plan(s,d).taskChoices,0)
+    local snapshot,revision=s.questOffers,B.State.questOffersRevision
+    B.State:QuestOffersEvent("GOSSIP_SHOW");eq(B.State.questOffersRevision,revision)
+    for _,invalid in ipairs({false,{{questID=0}},{{questID="1"}}}) do
+        list=invalid;B.State:QuestOffersEvent("GOSSIP_SHOW");eq(B.State.questOffers,snapshot)
+    end
+    C_GossipInfo.GetAvailableQuests=function() error("not ready") end
+    B.State:QuestOffersEvent("GOSSIP_SHOW");eq(B.State.questOffers,snapshot)
+    C_GossipInfo.GetAvailableQuests=function() return list end
+    sources={{11,12}};eq(d:Target(q,s).entityId,12);eq(plan(s,d).fallback.position.entityId,12)
+    npc=12;list={};B.State:QuestOffersEvent("GOSSIP_SHOW");s.questOffers=B.State.questOffers
+    eq(snapshot[12],nil);eq(d:Target(q,s),nil)
+    sources={{11},{13}};eq(d:Target(q,s).entityKind,"object");sources={{11,12}}
+    s.quests[1]={ready=true,objectives={}};eq(d:Target(q,s).entityId,11)
+    eq(plan(s,d).fallback.kind,"turnin");s.quests[1]=nil
+    npc=11;GetQuestID=function() return 1 end
+    B.State:QuestOffersEvent("QUEST_DETAIL");s.questOffers=B.State.questOffers
+    eq(snapshot[11][1],nil);eq(d:Target(q,s).entityId,11)
+    list={{questID=2}};B.State:QuestOffersEvent("GOSSIP_SHOW");s.questOffers=B.State.questOffers
+    eq(d:Target(q,s),nil);assert(s.questOffers[11][2])
+    list={{questID=1}};B.State:QuestOffersEvent("GOSSIP_SHOW");s.questOffers=B.State.questOffers
+    eq(d:Target(q,s).entityId,11)
+    B.State:QuestOffersEvent("GOSSIP_CLOSED");eq(B.State.questOffers,s.questOffers)
+    B.State:QuestOffersEvent("PLAYER_LEVEL_UP");s.questOffers=B.State.questOffers
+    eq(d:Target(q,s).entityId,11);eq(next(s.questOffers),nil)
+    npc=nil;UnitGUID=function() return "Player-1-123" end
+    B.State:QuestOffersEvent("GOSSIP_SHOW");eq(next(B.State.questOffers),nil)
+    C_Map,C_QuestLog,C_GossipInfo,UnitGUID,GetQuestID,canaccessvalue=oldMap,oldLog,oldGossip,oldGuid,oldQuest,oldAccess
+end)
 test("接交点目标分布与物品来源按跨区域直线距离选择",function()
     local previousMap,previousLog=C_Map,C_QuestLog
     C_Map={GetMapInfo=function() return {} end};C_QuestLog={}

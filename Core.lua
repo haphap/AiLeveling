@@ -276,6 +276,7 @@ local frame = CreateFrame("Frame")
 A.frame = frame
 frame:RegisterEvent("ADDON_LOADED")
 frame:SetScript("OnEvent", function(_, event, ...)
+    if A.ready and A.State and A.State.QuestOffersEvent then A.State:QuestOffersEvent(event) end
     local hearthChanged=A.ready and A.Hearth and A.Hearth:Event(event,...)
     if hearthChanged then A.dirty=true end
     if A.ready and A.Services then A.Services:Event(event,...) end
@@ -285,7 +286,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
         A:Start()
         if not A.ready then return end
         for _, name in ipairs({"PLAYER_ENTERING_WORLD", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED",
-            "QUEST_DATA_LOAD_RESULT", "QUEST_REMOVED", "QUEST_TURNED_IN", "QUEST_COMPLETE", "QUEST_FINISHED", "PLAYER_LEVEL_UP", "PLAYER_XP_UPDATE",
+            "QUEST_DATA_LOAD_RESULT", "QUEST_REMOVED", "QUEST_TURNED_IN", "QUEST_COMPLETE", "QUEST_FINISHED", "GOSSIP_SHOW", "QUEST_DETAIL", "PLAYER_LEVEL_UP", "PLAYER_XP_UPDATE",
             "PLAYER_EQUIPMENT_CHANGED", "BAG_UPDATE_DELAYED", "GROUP_ROSTER_UPDATE", "UNIT_CONNECTION", "PLAYER_ROLES_ASSIGNED", "UNIT_SPEED",
             "ZONE_CHANGED_NEW_AREA", "PLAYER_DIFFICULTY_CHANGED", "PLAYER_ALIVE", "PLAYER_DEAD", "PLAYER_UNGHOST", "PLAYER_REGEN_ENABLED",
             "PLAYER_REGEN_DISABLED", "GET_ITEM_INFO_RECEIVED", "BAG_UPDATE_COOLDOWN", "BAG_OPEN", "BAG_CLOSED", "UPDATE_INVENTORY_DURABILITY", "MERCHANT_SHOW", "MERCHANT_UPDATE", "MERCHANT_CLOSED", "MERCHANT_FILTER_ITEM_UPDATE"}) do

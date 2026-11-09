@@ -2,6 +2,53 @@ local _, A = ...
 A.State = {}
 local State = A.State
 
+local offerResetEvents={PLAYER_ENTERING_WORLD=true,QUEST_ACCEPTED=true,QUEST_TURNED_IN=true,
+    QUEST_REMOVED=true,PLAYER_LEVEL_UP=true,SKILL_LINES_CHANGED=true,UPDATE_FACTION=true,
+    SPELLS_CHANGED=true,BAG_UPDATE_DELAYED=true,PLAYER_MONEY=true}
+
+-- Observed offers belong to this NPC and this eligibility context, not to saved progress.
+function State:QuestOffersEvent(event)
+    if offerResetEvents[event] then
+        if self.questOffers and next(self.questOffers) then
+            self.questOffers={}
+            self.questOffersRevision=(self.questOffersRevision or 0)+1
+        end
+        return
+    end
+    if event~="GOSSIP_SHOW" and event~="QUEST_DETAIL" then return end
+    local npc=A.Merchant and UnitGUID and A.Merchant.NpcId(UnitGUID("npc"))
+    if not npc then return end
+    local function valid(id)
+        return (not canaccessvalue or canaccessvalue(id)) and type(id)=="number" and id>0 and id<math.huge and id%1==0
+    end
+    local offers={}
+    local previous=self.questOffers and self.questOffers[npc]
+    if event=="GOSSIP_SHOW" then
+        if not C_GossipInfo or not C_GossipInfo.GetAvailableQuests then return end
+        local ok,list=pcall(C_GossipInfo.GetAvailableQuests)
+        if not ok or type(list)~="table" then return end
+        for _,quest in pairs(list) do
+            if type(quest)~="table" or not valid(quest.questID) then return end
+            offers[quest.questID]=true
+        end
+    else
+        -- A direct offer can reopen a quest omitted by the earlier gossip list.
+        local id=GetQuestID and GetQuestID()
+        if not valid(id) or not previous or previous[id] then return end
+        for quest in pairs(previous) do offers[quest]=true end
+        offers[id]=true
+    end
+    local same=previous~=nil
+    for id in pairs(offers) do if not previous or not previous[id] then same=false end end
+    for id in pairs(previous or {}) do if not offers[id] then same=false end end
+    if same then return end
+    local snapshot={}
+    for id,quests in pairs(self.questOffers or {}) do snapshot[id]=quests end
+    snapshot[npc]=offers
+    self.questOffers=snapshot
+    self.questOffersRevision=(self.questOffersRevision or 0)+1
+end
+
 function State.Status(snapshot, id)
     local q = snapshot.quests[id]
     if q then return q.ready and "ready" or "active" end
@@ -155,6 +202,8 @@ end
 function State:Refresh(force)
     local previous, fingerprint = A.state, {}
     local s = { revision = previous.revision }
+    s.questOffers=self.questOffers
+    fingerprint[#fingerprint+1]="offers:"..(self.questOffersRevision or 0)
     s.clientVersion,s.clientBuild,s.interface=A.clientVersion,A.build,A.interface
     s.level, s.xp, s.maxXP = UnitLevel("player"), UnitXP("player"), UnitXPMax("player")
     local _, class, classId = UnitClass("player")

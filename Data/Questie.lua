@@ -294,27 +294,34 @@ function D:Target(q, state)
         return
     end
     local sources = self.db.Quest.Get(q.id, group) or {}
-    local best, bestDistance
+    local best, bestDistance, sourceCount, unavailable = nil, nil, 0, 0
     for kind = 1, 2 do
         local entity = kind == 1 and self.db.Npc or self.db.Object
         for _, id in ipairs(sources[kind] or {}) do
-            for _, point in ipairs(self:EntityPoints(entity, id, true)) do
-                local distance = A.Navigation:Distance(state.position, point)
-                local same=state.position and point.map==state.position.map
-                local bestSame=best and state.position and best.map==state.position.map
-                local precise=best and best.approximate and not point.approximate
-                local comparable=not best or (not best.approximate)==(not point.approximate)
-                if not best or precise or comparable and (distance and (not bestDistance or distance<bestDistance) or
-                    not distance and not bestDistance and same and not bestSame) then
-                    best, bestDistance = point, distance
-                    best.label=best.approximate and "区域参考点" or (kind==1 and "QuestieDB NPC 位置" or "QuestieDB 对象位置")
-                    best.entityKind,best.entityId=kind==1 and "npc" or "object",id
-                    best.entityName=entity.Get(id,"name")
+            sourceCount=sourceCount+1
+            local offers=not active and kind==1 and state.questOffers and state.questOffers[id]
+            if offers and not offers[q.id] then
+                unavailable=unavailable+1
+            else
+                for _, point in ipairs(self:EntityPoints(entity, id, true)) do
+                    local distance = A.Navigation:Distance(state.position, point)
+                    local same=state.position and point.map==state.position.map
+                    local bestSame=best and state.position and best.map==state.position.map
+                    local precise=best and best.approximate and not point.approximate
+                    local comparable=not best or (not best.approximate)==(not point.approximate)
+                    if not best or precise or comparable and (distance and (not bestDistance or distance<bestDistance) or
+                        not distance and not bestDistance and same and not bestSame) then
+                        best, bestDistance = point, distance
+                        best.label=best.approximate and "区域参考点" or (kind==1 and "QuestieDB NPC 位置" or "QuestieDB 对象位置")
+                        best.entityKind,best.entityId=kind==1 and "npc" or "object",id
+                        best.entityName=entity.Get(id,"name")
+                    end
                 end
             end
         end
     end
     if best then return best end
+    if sourceCount>0 and unavailable==sourceCount then return end
     if self:UnmappedTargetArea(q,state) then return end
     local point=status=="ready" and self:QuestAreaTarget(q,state) or self:AreaTarget(q)
     -- A known sole recipient remains the same recipient even when its placement is missing.

@@ -225,6 +225,14 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     weapon.modifier=10;A.State:Refresh();eq(A.state.revision,prior.revision+1);eq(prior.weaponSkills[43].modifier,5)
     prior=A.state;weapon.tempPoints=5;A.State:Refresh();eq(A.state.revision,prior.revision+1)
     prior=A.state;weapon.rank=81;A.State:Refresh();eq(A.state.revision,prior.revision+1)
+    prior=A.state
+    A.State.questOffers={[11]={}}
+    A.State.questOffersRevision=1
+    A.State:Refresh();eq(A.state.questOffers[11][1],nil);eq(A.state.revision,prior.revision+1)
+    local offers=A.state
+    A.State:QuestOffersEvent("QUEST_TURNED_IN");A.State:Refresh()
+    eq(A.state.questOffers[11],nil);assert(offers.questOffers[11]);eq(A.state.revision,offers.revision+1)
+    A.State.questOffers,A.State.questOffersRevision=nil,nil
     C_SkillInfo,A.WeaponSkills=oldSkills,oldWeaponSkills
     A.clientVersion,A.build,A.interface=oldVersion,oldBuild,oldInterface
     A.Data=provider;A.Navigation=oldNavigation
@@ -351,6 +359,7 @@ test("原生难度变化事件已注册并触发状态重建",function()
     C.Instances={Request=function() end}
     scripts.OnEvent(nil,"ADDON_LOADED","AiLeveling")
     eq(events.PLAYER_DIFFICULTY_CHANGED,true)
+    eq(events.GOSSIP_SHOW,true);eq(events.QUEST_DETAIL,true)
     local refreshes=0;C.RequestRefresh=function() refreshes=refreshes+1 end
     scripts.OnEvent(nil,"PLAYER_DIFFICULTY_CHANGED")
     eq(refreshes,1);eq(events.QUEST_DATA_LOAD_RESULT,true)
@@ -360,6 +369,9 @@ test("原生难度变化事件已注册并触发状态重建",function()
     scripts.OnEvent(nil,"QUEST_DATA_LOAD_RESULT",43,true);eq(refreshes,2)
     C.state.quests[42]=nil
     scripts.OnEvent(nil,"QUEST_DATA_LOAD_RESULT",42,true);eq(refreshes,2)
+    local offerEvent
+    C.State={QuestOffersEvent=function(_,event) offerEvent=event end}
+    scripts.OnEvent(nil,"GOSSIP_SHOW");eq(offerEvent,"GOSSIP_SHOW");eq(refreshes,3)
     eq(events.ENCOUNTER_START,true);eq(events.ENCOUNTER_END,true)
     local received
     C.Dungeon={EncounterEvent=function(_,...) received={...} end}
