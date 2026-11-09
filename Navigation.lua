@@ -26,6 +26,7 @@ function N:AttachNode(position)
 end
 
 function N:SetPlan(plan)
+    self.plan=plan
     local current=self.actions and self.actions[self.index]
     local goal=self.actions and self.actions[#self.actions]
     local nextActions=plan.best and plan.best.actions or plan.travelActions or (plan.fallback and {plan.fallback}) or {}
@@ -119,53 +120,88 @@ function N:LandFlight(flight,position)
     return false
 end
 
+function N:MapPoints()
+    local points,seen={},{}
+    local function add(action)
+        local pos=N.Target(action)
+        if not pos then return end
+        local key=table.concat({pos.map,pos.x,pos.y},":")
+        local point=seen[key]
+        if not point then
+            if #points>=6 then return end
+            point={position=pos,action=action,actions={},seen={}}
+            points[#points+1]=point;seen[key]=point
+        end
+        local identity=table.concat({action.kind or "",action.questId or "",action.objectiveIndex or "",action.targetId or ""},":")
+        if not point.seen[identity] then
+            point.actions[#point.actions+1]=action;point.seen[identity]=true
+        end
+    end
+    add(self:Current())
+    if #points==0 or self.manual then return points end
+    for i=self.index+1,#(self.actions or {}) do add(self.actions[i]) end
+    local queue=self.plan and self.plan.taskQueue
+    for _,step in ipairs(queue and queue.steps or {}) do
+        if step.stage then add(step.stage)
+        else for _,stage in ipairs(step.choice.stages or {}) do add(stage) end end
+    end
+    if not queue then
+        local goal=self.actions and self.actions[#self.actions]
+        for _,choice in ipairs(self.plan and self.plan.taskChoices or {}) do
+            if goal and choice.questId==goal.questId then
+                for _,stage in ipairs(choice.stages or {}) do add(stage) end
+                break
+            end
+        end
+    end
+    return points
+end
+
+local function mapPin()
+    local pin=CreateFrame("Frame",nil,UIParent)
+    pin.texture=pin:CreateTexture(nil,"OVERLAY");pin.texture:SetAllPoints()
+    pin.number=pin:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
+    pin.number:SetPoint("TOP",pin,"BOTTOM",0,1)
+    pin.number:SetTextColor(1,1,1);pin.number:SetShadowOffset(1,-1)
+    pin:Hide();pin:EnableMouse(true)
+    pin:SetScript("OnEnter",function(f)
+        local point=f.point
+        GameTooltip:SetOwner(f,"ANCHOR_RIGHT")
+        GameTooltip:SetText(string.format("%02d · %s%s",f.order,point.action.title or "AiLeveling",
+            point.position.approximate and " · 区域参考点" or ""))
+        local labels={accept="接取",objective="目标",turnin="交付",service="服务",transit="交通"}
+        for _,action in ipairs(point.actions) do
+            local detail=action.kind=="objective" and action.text
+            GameTooltip:AddLine((labels[action.kind] or "前往").." · "..(action.title or "目的地")..(detail and ("\n"..detail) or ""),1,1,1,true)
+        end
+        GameTooltip:Show()
+    end)
+    pin:SetScript("OnLeave",function() GameTooltip:Hide() end)
+    return pin
+end
+
 function N:RefreshPins()
     if not self.hbdPins then return end
     self.hbdPins:RemoveAllWorldMapIcons(self)
     self.hbdPins:RemoveAllMinimapIcons(self)
     for _, pin in ipairs(self.pins) do pin:Hide() end
     if (not A.settings.pins and not A.settings.minimapPins) or A.char.paused then return end
-    local action = self:Current()
-    local pos = N.Target(action)
-    if not pos then return end
-    local pin = self.pins[1]
-    if not pin then
-        pin = CreateFrame("Frame", nil, UIParent)
-        pin:SetSize(24, 24)
-        pin.texture = pin:CreateTexture(nil, "OVERLAY")
-        pin.texture:SetAllPoints()
-        pin:Hide();pin:EnableMouse(true)
-        pin:SetScript("OnEnter", function(f)
-            GameTooltip:SetOwner(f, "ANCHOR_RIGHT")
-            local current = N:Current()
-            local target=N.Target(current)
-            GameTooltip:SetText((current and current.title or "AiLeveling")..(target and target.approximate and " · 区域参考点" or ""))
-            GameTooltip:Show()
-        end)
-        pin:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        self.pins[1] = pin
+    for order,point in ipairs(self:MapPoints()) do
+        local action,pos=point.action,point.position
+        local atlas=({accept="QuestNormal",turnin="UI-QuestPoi-QuestBangTurnIn",dungeonEnter="Dungeon"})[action.kind]
+            or (action.kind=="transit" and action.mode=="flight" and "FlightPath") or "Waypoint-MapPin-Tracked"
+        -- HBD-Pins requires separate frames for minimap/world map ownership.
+        for surface=1,2 do
+            local index=(order-1)*2+surface
+            local pin=self.pins[index] or mapPin();self.pins[index]=pin
+            pin.point,pin.order=point,order
+            pin:SetSize(surface==1 and 24 or 18,surface==1 and 24 or 18)
+            pin:SetAlpha(order==1 and 1 or 0.75)
+            pin.number:SetText(string.format("%02d",order));pin.texture:SetAtlas(atlas,false)
+            if surface==1 and A.settings.pins then self.hbdPins:AddWorldMapIconMap(self,pin,pos.map,pos.x,pos.y,1)
+            elseif surface==2 and A.settings.minimapPins then self.hbdPins:AddMinimapIconMap(self,pin,pos.map,pos.x,pos.y,false,order==1) end
+        end
     end
-    -- HBD-Pins requires separate frames for minimap/world map ownership.
-    local mini = self.pins[2]
-    if not mini then
-        mini = CreateFrame("Frame", nil, UIParent)
-        mini:SetSize(18, 18)
-        mini.texture = mini:CreateTexture(nil, "OVERLAY")
-        mini.texture:SetAllPoints()
-        mini:Hide();mini:EnableMouse(true)
-        mini:SetScript("OnEnter",function(f)
-            GameTooltip:SetOwner(f,"ANCHOR_RIGHT")
-            local current=N:Current();local target=N.Target(current)
-            GameTooltip:SetText((current and current.title or "AiLeveling")..(target and target.approximate and " · 区域参考点" or ""));GameTooltip:Show()
-        end)
-        mini:SetScript("OnLeave",function() GameTooltip:Hide() end)
-        self.pins[2] = mini
-    end
-    local atlas=({accept="QuestNormal",turnin="UI-QuestPoi-QuestBangTurnIn",dungeonEnter="Dungeon"})[action.kind]
-        or (action.kind=="transit" and action.mode=="flight" and "FlightPath") or "Waypoint-MapPin-Tracked"
-    pin.texture:SetAtlas(atlas,false);mini.texture:SetAtlas(atlas,false)
-    if A.settings.pins then self.hbdPins:AddWorldMapIconMap(self, pin, pos.map, pos.x, pos.y, 1) end
-    if A.settings.minimapPins then self.hbdPins:AddMinimapIconMap(self, mini, pos.map, pos.x, pos.y, false, true) end
 end
 
 function N:Update()

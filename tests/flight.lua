@@ -57,8 +57,9 @@ test("飞行前导航出发点且飞越终点不算落地",function()
     B.Navigation:Update();eq(B.distance,0);eq(B.Navigation.index,1)
     local pinX
     B.settings.pins=true
-    B.Navigation.pins={{Hide=function() end,texture={SetAtlas=function() end}},
-        {Hide=function() end,texture={SetAtlas=function() end}}}
+    local function pin() return {Hide=function() end,SetSize=function() end,SetAlpha=function() end,
+        number={SetText=function() end},texture={SetAtlas=function() end}} end
+    B.Navigation.pins={pin(),pin()}
     B.Navigation.hbdPins={RemoveAllWorldMapIcons=function() pinX=nil end,RemoveAllMinimapIcons=function() end,
         AddWorldMapIconMap=function(_,owner,pin,map,x) pinX=x end,AddMinimapIconMap=function() end}
     B.Navigation:RefreshPins();eq(pinX,0)

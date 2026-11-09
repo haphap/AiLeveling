@@ -297,7 +297,7 @@ test("世界地图点与小地图点独立且关闭方没有游离图标",functi
     local world,mini=0,0
     B.Navigation.hbdPins={RemoveAllWorldMapIcons=function() end,RemoveAllMinimapIcons=function() end,
         AddWorldMapIconMap=function(_,owner,pin) world=world+1;pin:Show() end,
-        AddMinimapIconMap=function(_,owner,pin) mini=mini+1;pin:Show() end}
+        AddMinimapIconMap=function(_,owner,pin,map,x,y,parent,floatOnEdge) mini=mini+1;pin.floats=floatOnEdge;pin:Show() end}
     B.settings.pins=false;B.settings.minimapPins=true;B.Navigation:RefreshPins()
     eq(world,0);eq(mini,1);eq(B.Navigation.pins[1].shown,false);eq(B.Navigation.pins[2].shown,true)
     B.settings.pins=true;B.settings.minimapPins=false;B.Navigation:RefreshPins()
@@ -310,6 +310,35 @@ test("世界地图点与小地图点独立且关闭方没有游离图标",functi
         B.Navigation:RefreshPins()
         eq(B.Navigation.pins[1].texture.atlas,row[2]);eq(B.Navigation.pins[2].texture.atlas,row[2])
     end
+    local current={kind="objective",questId=1,title="当前目标",position={map=1,x=0.1,y=0.2}}
+    local nextGoal={kind="objective",questId=2,title="跨区目标",position={map=2,x=0.3,y=0.4}}
+    local steps={{stage=current},{stage=nextGoal}}
+    for id=2,6 do
+        local action={kind="turnin",questId=id,title="一起交付 "..id,position={map=1,x=0.7,y=0.2}}
+        steps[#steps+1]=id==2 and {choice={stages={action}}} or {stage=action}
+    end
+    B.Navigation:SetPlan({fallback=current,taskQueue={steps=steps}})
+    B.settings.pins,B.settings.minimapPins=true,true;world,mini=0,0
+    B.Navigation:RefreshPins();eq(world,3);eq(mini,3);eq(#B.Navigation.pins,6)
+    local pins=B.Navigation.pins
+    eq(pins[1].point.action,current);eq(pins[3].point.action,nextGoal);eq(pins[3].point.position.map,2)
+    eq(#pins[5].point.actions,5);eq(pins[5].number.value,"03");eq(pins[2].floats,true);eq(pins[4].floats,false)
+    local oldTooltip,tooltip=GameTooltip,{lines={}}
+    GameTooltip={SetOwner=function() end,SetText=function(_,text) tooltip.title=text end,
+        AddLine=function(_,text) tooltip.lines[#tooltip.lines+1]=text end,Show=function() end,Hide=function() end}
+    pins[5].scripts.OnEnter(pins[5]);eq(#tooltip.lines,5)
+    assert(tooltip.title:find("一起交付 2",1,true));assert(tooltip.lines[5]:find("交付 · 一起交付 6",1,true))
+    GameTooltip=oldTooltip
+    B.Navigation.manual={map=3,x=0.5,y=0.5};world,mini=0,0
+    B.Navigation:RefreshPins();eq(world,1);eq(mini,1);eq(pins[3].shown,false);eq(pins[6].shown,false)
+    B.Navigation.manual=nil;world,mini=0,0;B.Navigation:RefreshPins();eq(world,3);eq(mini,3)
+    B.Navigation.plan={};B.Navigation.actions={nextGoal};world,mini=0,0
+    B.Navigation:RefreshPins();eq(world,1);eq(mini,1);eq(pins[1].point.action,nextGoal);eq(pins[5].shown,false)
+    B.Navigation.plan={taskChoices={{questId=2,stages={nextGoal,steps[3].choice.stages[1]}},
+        {questId=7,stages={{kind="accept",position={map=4,x=0.1,y=0.1}}}}}}
+    B.Navigation:RefreshPins();eq(#B.Navigation:MapPoints(),2);eq(pins[3].point.action,steps[3].choice.stages[1])
+    B.char.paused=true;world,mini=0,0;B.Navigation:RefreshPins();eq(world,0);eq(mini,0);eq(pins[1].shown,false)
+    eq(B.Navigation.index,1);eq(next(B.state.completed),nil);eq(current.kind,"objective")
     B.finish()
 end)
 test("真实交付界面比较奖励且开关不触发自动领奖",function()
