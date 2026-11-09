@@ -53,6 +53,8 @@ Forever 练级助手，当前版本 `0.1.106-dev`。完整首版目标和验收�
 
 ## 开发与验证
 
+发布使用 GitHub Actions：将 `AiLeveling.toc` 版本更新并提交后，推送对应的 `v版本号` 标签即可自动检查、打包并上传 Release。例如版本 `0.1.107-dev` 对应标签 `v0.1.107-dev`。带后缀的版本发布为预览版，正式版本通过完整发布检查后发布。Actions 的 Release 工作流也支持填写已有标签手动重跑，重新生成并替换对应附件。
+
 ```sh
 python3 tools/build.py
 ```

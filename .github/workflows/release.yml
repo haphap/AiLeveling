@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to build and publish
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          persist-credentials: false
+      - name: Check version and build
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.1
+          python3 - <<'PY'
+          import os, re, subprocess
+          from pathlib import Path
+          version = next(line.split(': ', 1)[1].strip() for line in
+                         Path('AiLeveling.toc').read_text().splitlines() if line.startswith('## Version: '))
+          assert re.fullmatch(r'\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?', version), 'Invalid version'
+          assert os.environ['RELEASE_TAG'] == 'v' + version, 'Tag must match AiLeveling.toc version'
+          subprocess.run(['python3', 'tools/build.py'] + ([] if '-' in version else ['--release']), check=True)
+          with open(os.environ['GITHUB_ENV'], 'a') as stream:
+              stream.write('VERSION=' + version + '\n')
+          PY
+      - name: Generate checksum
+        working-directory: dist
+        run: sha256sum "AiLeveling-${VERSION}.zip" > SHA256SUMS
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            flags=()
+            if [[ "$VERSION" == *-* ]]; then flags+=(--prerelease); fi
+            cat > dist/release-notes.md <<'NOTES'
+          从附件下载 AiLeveling 安装 ZIP，解压到 `_forever_/Interface/AddOns/`。
+          需独立安装 QuestieDB 与 HereBeDragons，具体版本和操作见仓库 README。
+          开发预览版仍在完善完整任务覆盖和客户端验收。附件附带 SHA256SUMS。
+          NOTES
+            gh release create "$RELEASE_TAG" --verify-tag --title "AiLeveling ${VERSION}" \
+              --notes-file dist/release-notes.md "${flags[@]}"
+          fi
+          gh release upload "$RELEASE_TAG" "dist/AiLeveling-${VERSION}.zip" dist/SHA256SUMS --clobber
