@@ -1,12 +1,16 @@
 return function(test,eq,F,A,plan)
 local names={"UnitGUID","UnitName","GetTime","GetBindLocation","C_Trainer","Enum","GetNumTrainerServices","GetTrainerServiceInfo","GetTrainerServiceCost","canaccessvalue",
     "BuyTrainerService","SetTrainerServiceTypeFilter","ExpandTrainerSkillLine","ConfirmBinder",
-    "GetTrainerServiceSkillReq","GetTrainerServiceNumAbilityReq","GetTrainerServiceAbilityReq","C_TooltipInfo","C_SpellBook"}
+    "GetTrainerServiceSkillReq","GetTrainerServiceNumAbilityReq","GetTrainerServiceAbilityReq","C_TooltipInfo","C_SpellBook",
+    "InCombatLockdown","IsShiftKeyDown","C_PlayerInteractionManager"}
 local function setup()
     local saved={};for _,name in ipairs(names) do saved[name]=_G[name] end
     local B={};for k,v in pairs(A) do B[k]=v end
     B.char={locked=42,itinerary={quests={42}},samples={}};B.state=F.State();B.state.position={map=1,x=0.5,y=0.5};B.state.money=20
     B.ready=true;B.indexReady=true;B.jobs={};B.TaskGuide=nil
+    B.settings={autoTrain=false,autoBind=false}
+    B.Queue=function(_,key,callback) B.jobs[key]=callback end
+    B.RequestRefresh=function() B.refreshRequests=(B.refreshRequests or 0)+1 end
     B.State={Position=function() end,Refresh=function() B.Services:Snapshot(B.state);B.state.revision=B.state.revision+1 end}
     B.Observations={Reset=function() end};B.Transport={InFlight=function() return B.flying end}
     B.Navigation={Distance=function(_,a,b) return a.map==b.map and math.abs(a.x-b.x)*1000 or nil end}
@@ -15,6 +19,8 @@ local function setup()
     local e={npc=78,now=1,binding="旧旅店",kind=0,rows={{name="训练项目",status="available",sub="等级 1",cost=30},{name="下一等级",status="unavailable",cost=90}}}
     UnitGUID=function() return "Creature-0-1-2-3-"..e.npc.."-0001" end;UnitName=function() return "训练师" end
     GetTime=function() return e.now end;GetBindLocation=function() return e.binding end
+    InCombatLockdown=function() return e.combat end;IsShiftKeyDown=function() return e.shift end
+    C_PlayerInteractionManager=nil
     Enum={TrainerType={General=0,Tradeskills=2,Pet=3}};C_Trainer={GetTrainerType=function() return e.kind end}
     GetNumTrainerServices=function() return #e.rows end
     GetTrainerServiceInfo=function(i) local r=e.rows[i];return r.name,r.status,1,r.level or 10,r.sub end
@@ -74,7 +80,7 @@ test("当前训练项目优先可学，学习条件变化更新排序",function(
     S:Snapshot(B.state);rows=S:Choices("learn");eq(rows[1].offer.name,"可学");eq(S:CanPick(rows[2],B.state.revision),false)
     finish()
 end)
-test("已安排训练显示实际缺少条件且不自动学习或误完成",function()
+test("已安排训练按真实条件执行已选项目，重复事件不重学且原生确认后接续",function()
     local B,e,finish=setup();local stop=chooseTraining(B);local S=B.Services
     local action=S.Build(B.state).fallback;assert(action.text:find("向训练师学习",1,true))
     e.rows[1].skill,e.rows[1].rank,e.rows[1].skillMet="炼金术",75,false
@@ -84,6 +90,37 @@ test("已安排训练显示实际缺少条件且不自动学习或误完成",fun
     e.rows[1].skillMet=true;e.rows[1].abilities[1].met=true;e.rows[1].level=10;B.state.money=40
     S:Snapshot(B.state);action=S.Build(B.state).fallback;assert(action.text:find("向训练师学习",1,true))
     e.rows[1].status="used";S:Snapshot(B.state);eq(B.char.serviceStop,nil)
+    finish();B,e,finish=setup();S=B.Services
+    local bought={};BuyTrainerService=function(index) bought[#bought+1]=index end
+    local loaded=false;Enum.TooltipDataType={Spell=1}
+    C_TooltipInfo={GetTrainerService=function() if loaded then return {type=1,id=101} end end}
+    C_SpellBook={IsSpellKnown=function() return false end}
+    B.settings.autoTrain=true;stop=chooseTraining(B)
+    eq(#bought,0);eq(B.char.serviceStop,stop)
+    loaded=true;S:Event("TOOLTIP_DATA_UPDATE",999);eq(B.refreshRequests,1)
+    S:Snapshot(B.state);eq(stop.learnSpellId,101)
+    eq(#bought,1);eq(bought[1],1);eq(B.char.serviceStop,stop)
+    S:Snapshot(B.state);S:Event("TRAINER_SHOW");S:Snapshot(B.state);eq(#bought,1)
+    S:Event("TOOLTIP_DATA_UPDATE",999);eq(B.refreshRequests,1)
+    local function window()
+        S:Event("TRAINER_CLOSED");S:Event("TRAINER_SHOW");S:Snapshot(B.state)
+    end
+    e.npc=79;window();eq(#bought,1);e.npc=78
+    e.shift=true;window();eq(#bought,1);e.shift=false
+    e.combat=true;window();eq(#bought,1);e.combat=false
+    B.char.paused=true;window();eq(#bought,1);B.char.paused=false
+    B.Navigation.manual={};window();eq(#bought,1);B.Navigation.manual=nil
+    B.settings.autoTrain=false;window();eq(#bought,1);B.settings.autoTrain=true
+    B.flying=true;window();eq(#bought,1);B.flying=false
+    e.rows[1].status="unavailable";window();eq(#bought,1);e.rows[1].status="available"
+    e.rows[2]={name=e.rows[1].name,status="available",sub=e.rows[1].sub};window();eq(#bought,1)
+    e.rows[2]=nil;e.kind=3;window();eq(#bought,1);e.kind=0
+    Enum.TooltipDataType={Spell=1};stop.learnSpellId=101
+    C_TooltipInfo={GetTrainerService=function() return {type=1,id=102} end}
+    window();eq(#bought,1)
+    C_TooltipInfo.GetTrainerService=function() return {type=1,id=101} end
+    window();eq(#bought,2);eq(B.char.serviceStop,stop)
+    e.rows[1].status="used";S:Snapshot(B.state);eq(B.char.serviceStop,nil);eq(B.char.locked,42)
     finish()
 end)
 test("所选技能确实学会后即使训练列表隐藏或关闭也恢复原任务",function()
@@ -105,6 +142,10 @@ test("所选技能确实学会后即使训练列表隐藏或关闭也恢复原�
     stop.learnSpellId=nil;B.Services:Cancel();known=false
     C_TooltipInfo.GetTrainerService=function() return {type=0,id=101} end
     stop=chooseTraining(B);eq(stop.learnSpellId,nil)
+    local bought=0;BuyTrainerService=function(index) eq(index,1);bought=bought+1 end
+    B.settings.autoTrain=true;C_TooltipInfo.GetTrainerService=function() return {type=1,id=101} end
+    B.Services:Snapshot(B.state);eq(stop.learnSpellId,101);eq(B.state.serviceStop.learnSpellId,101);eq(bought,1)
+    e.rows={};known=true;inBook=true;B.Services:Snapshot(B.state);eq(B.char.serviceStop,nil)
     finish()
 end)
 test("训练完成只认同NPC同项目已学会且筛选消失和同名歧义保持安排",function()
@@ -144,6 +185,35 @@ test("炉石安排须关联所选旅店确认和真实绑定事件且取消重�
     reset();S:Event("CONFIRM_BINDER","新旅店");e.binding="新旅店";B.state.position.x=0.9;S:Event("HEARTHSTONE_BOUND");assert(B.char.serviceStop)
     reset();S:Event("CONFIRM_BINDER","新旅店");e.binding="新旅店";S:Event("HEARTHSTONE_BOUND");eq(B.char.serviceStop,nil);eq(B.char.locked,42)
     reset();S:Cancel();e.binding="新旅店";S:Event("HEARTHSTONE_BOUND");eq(B.char.serviceStop,nil)
+    local confirmed,cleared,valid=0,0,true
+    B.settings.autoBind=true;Enum.PlayerInteractionType={Binder=77}
+    C_PlayerInteractionManager={IsValidNPCInteraction=function(kind) eq(kind,77);return valid end,
+        ConfirmationInteraction=function(kind) eq(kind,77);confirmed=confirmed+1 end,
+        ClearInteraction=function(kind) eq(kind,77);cleared=cleared+1;valid=false end}
+    local function flush()
+        local job=B.jobs["service:bind"];B.jobs["service:bind"]=nil;if job then job() end
+    end
+    reset();valid=true;S:Event("CONFIRM_BINDER","新旅店");eq(confirmed,0)
+    S:Event("CONFIRM_BINDER","新旅店");flush();eq(confirmed,1);eq(cleared,1);assert(B.char.serviceStop)
+    S:Event("CONFIRM_BINDER","新旅店");flush();eq(confirmed,1)
+    e.binding="新旅店";S:Event("HEARTHSTONE_BOUND");eq(B.char.serviceStop,nil);eq(B.char.locked,42)
+    for _,mode in ipairs({"shift","combat","paused","manual","disabled","cancel","npc","far","closed","expired"}) do
+        reset();valid=true
+        if mode=="shift" then e.shift=true elseif mode=="combat" then e.combat=true
+        elseif mode=="paused" then B.char.paused=true elseif mode=="manual" then B.Navigation.manual={}
+        elseif mode=="disabled" then B.settings.autoBind=false end
+        S:Event("CONFIRM_BINDER","新旅店")
+        if mode=="cancel" then S:Cancel() elseif mode=="npc" then e.npc=79
+        elseif mode=="far" then B.state.position.x=0.9 elseif mode=="closed" then valid=false
+        elseif mode=="expired" then e.now=62 end
+        flush();eq(confirmed,1)
+        e.shift,e.combat,B.char.paused,B.Navigation.manual=nil,nil,nil,nil;B.settings.autoBind=true
+    end
+    reset();valid=true
+    B.plan={revision=B.state.revision,automaticService=B.char.serviceStop};B.char.serviceStop=nil
+    S:Event("CONFIRM_BINDER","新旅店");flush();eq(confirmed,2);eq(cleared,2)
+    local bound=0;B.Hearth={ConfirmBinding=function(_,state,area) eq(state,B.state);eq(area,"新旅店");bound=bound+1 end}
+    e.binding="新旅店";S:Event("HEARTHSTONE_BOUND");eq(bound,1);eq(B.char.serviceStop,nil)
     finish()
 end)
 test("服务插入覆盖普通规划保留锁定且必要维修优先并在完成后恢复任务",function()

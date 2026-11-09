@@ -402,6 +402,29 @@
       "sha256": "00b73465921b66c20d724e45cbcea19df88633fdcbb1d22253e71d2dbcf8a761",
       "scope": "TakeTaxiNode(slotIndex) on the native taxi button; current-master node IDs, reachability and slot mapping come from C_TaxiMap.GetAllTaxiNodes. No fees checked or progress inferred from the call.",
       "clientVerified": false
+    },
+    {
+      "name": "Forever planned training and binding",
+      "build": "1.60.1.70862",
+      "sources": [
+        {
+          "file": "Interface/AddOns/Blizzard_TrainerUI/Mainline/Blizzard_TrainerUI.lua",
+          "url": "https://raw.githubusercontent.com/Gethe/wow-ui-source/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_TrainerUI/Mainline/Blizzard_TrainerUI.lua",
+          "sha256": "f91d2033c51b98dd61f8325f36c98a5bd36b0e850a3400ef830f14a7cec1a238"
+        },
+        {
+          "file": "Interface/AddOns/Blizzard_StaticPopup_Game/GameDialogDefs.lua",
+          "url": "https://raw.githubusercontent.com/Gethe/wow-ui-source/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_StaticPopup_Game/GameDialogDefs.lua",
+          "sha256": "f9583ea8e57feb11ce590c2e80aef16325cb15df6c3f58e367532dccd6df3e17"
+        },
+        {
+          "file": "Interface/AddOns/Blizzard_APIDocumentationGenerated/PlayerInteractionManagerDocumentation.lua",
+          "url": "https://raw.githubusercontent.com/Gethe/wow-ui-source/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_APIDocumentationGenerated/PlayerInteractionManagerDocumentation.lua",
+          "sha256": "bf2531b3a1cf94f89dbe405fbe49606acaadbd5ebb74e9d7cd2df9d27b3adf78"
+        }
+      ],
+      "scope": "BuyTrainerService uses the matching available native service index for the selected training intent after resolving its actual tooltip spell identity; late tooltip data reuses native refresh events. Binding confirmation is deferred until after CONFIRM_BINDER and rechecks the planned inn, NPC, location and native Binder interaction before ConfirmationInteraction/ClearInteraction. Native used/spell-book or HEARTHSTONE_BOUND facts still acknowledge completion. No balances or fees are checked.",
+      "clientVerified": false
     }
   ],
   "native_symbol_checks": {

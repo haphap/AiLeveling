@@ -6,7 +6,7 @@ A.defaults = { mode = "relaxed", minutes = 60, dungeons = true, role = "DAMAGER"
     scale = 1, alpha = 0.94, arrow = true, pins = true, items = true, highlight = true, worldHighlight = true, scanRares = true,
     combatFold = true, learn = true, waitMinutes = 10, damageStyle = "auto",
     fontScale=1,density="normal",lockWindow=false,routes=true,minimapPins=true,
-    distanceUnits="yards",transportHints=true,quantity=true,missingChecks=true,rewardAdvice=true,sound=false,gearPreference="nearby",autoAccept=true,autoTurnIn=true,autoTaxi=true,targets=true,levelingStats=true }
+    distanceUnits="yards",transportHints=true,quantity=true,missingChecks=true,rewardAdvice=true,sound=false,gearPreference="nearby",autoAccept=true,autoTurnIn=true,autoTaxi=true,autoTrain=true,autoBind=true,targets=true,levelingStats=true }
 A.jobs, A.dirty, A.requestedItems = {}, false, {}
 
 function A:NormalizeSettings(settings)
@@ -304,7 +304,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
         for _,name in ipairs({"TRAINER_SHOW","TRAINER_UPDATE","TRAINER_CLOSED","TRAINER_DESCRIPTION_UPDATE","TRAINER_SERVICE_INFO_NAME_UPDATE","CONFIRM_BINDER"}) do frame:RegisterEvent(name) end
         for _,name in ipairs({"ENCOUNTER_START","ENCOUNTER_END"}) do frame:RegisterEvent(name) end
         for _,name in ipairs({"UNIT_SPELLCAST_START","UNIT_SPELLCAST_SUCCEEDED","UNIT_SPELLCAST_FAILED","UNIT_SPELLCAST_FAILED_QUIET","UNIT_SPELLCAST_INTERRUPTED"}) do frame:RegisterEvent(name) end
-        if C_TooltipInfo and C_TooltipInfo.GetHyperlink then frame:RegisterEvent("TOOLTIP_DATA_UPDATE") end
+        if C_TooltipInfo and (C_TooltipInfo.GetHyperlink or C_TooltipInfo.GetTrainerService) then frame:RegisterEvent("TOOLTIP_DATA_UPDATE") end
         if C_Spell and C_Spell.GetSpellDescription then frame:RegisterEvent("SPELL_TEXT_UPDATE") end
         A.Instances:Request()
     elseif event=="QUEST_COMPLETE" then

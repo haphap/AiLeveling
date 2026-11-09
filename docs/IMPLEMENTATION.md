@@ -1091,3 +1091,14 @@ TaskGuide.Stages现在将本轮已取得的未接目标描述、位置与区域�
 新增 RareScanner.lua：从客户端公开单位事件发现活着且可攻击的 rare／rareelite，按 GUID 在本次区域加载期间去重。独立提醒卡显示名称和等级，左键安全选中、右键关闭，10 秒后收起；默认启用，可在任务辅助关闭，声音复用战斗外提示音。战斗中显示文字提醒，仅在脱战且单位仍存在、提醒未过期时更新安全按钮。暂停／飞行／死亡时停用发现；过滤受限值、错误身份及宏命令字符。任务顺序、当前目标按钮及原生任务进度保持原值。
 
 复用并扩展既有目标按钮场景，537 回归通过；50 个 TOC 文件 luac5.1 语法检查及开发内容检查通过，日志 dist/rare-scanner-final-regression.log 与 rare-scanner-content.log。未改任务数据，无额外全角色或两阵营回放。地图追踪、危险怪、死亡风险、紧急操作及本批实机验收仍待补，完整目标 active；装备暂缓、指南导入不恢复，不升版、发布或安装，客户端仍129。
+
+
+## 2026-11-09 已选训练自动执行与旅店绑定确认（未发布）
+
+上一轮 fc87856 为 progress，稀有发现已提交推送。本轮从干净源码继续 RX06。Services.AutoTrain 对当前训练窗口中的已选 learnKey 匹配实际 NPC、唯一可学项目、等级／技能条件和原生 tooltip spellID；信息未加载时等待 TOOLTIP_DATA_UPDATE 合并刷新，记录可确认的技能身份后才调用 BuyTrainerService。每次窗口内同一选择只尝试一次；原生 used 或确实在法术书中的技能继续作为完成依据。统一 trainerSpell 小函数复用选择与执行时的身份读取，避免列表隐藏后无法确认已学。没有改窗口筛选、金币检查或任务进度。
+
+CONFIRM_BINDER 匹配已选或当前自动安排的旅店后，通过既有队列延后一帧；再次核对意图、NPC、25码内位置、时效和原生 Binder 交互，再调用 C_PlayerInteractionManager.ConfirmationInteraction / ClearInteraction。最终仍由 HEARTHSTONE_BOUND、实际绑定名称与位置确认。分别默认启用 autoTrain／autoBind，设置可关闭，Shift、暂停、战斗、手动导航与飞行保留手动操作。两个原有服务场景扩展，另在既有技能确认场景覆盖延迟信息与隐藏列表；未增加场景总数。
+
+最终 537 回归通过，50 个 TOC 文件语法通过；后续仅改动的三个运行文件再次通过语法，开发内容及 diff 检查通过。日志 dist/service-automation-final-regression.log、service-automation-content.log。固定 Forever 原生训练 UI、通用 GameDialogDefs 与 PlayerInteractionManagerDocumentation 的 URL／SHA256 已记入 SOURCES，未操作游戏、依赖或真实存档。任务数据未改，无额外全角色／两阵营回放。
+
+完整目标 active：RX06 服务闲聊选项、全程任务接续、其他适用功能与实机仍待补；装备继续暂缓、指南导入不恢复，不升版、发布或安装，客户端仍129。下一步核对固定 GossipOptionUIInfo.icon 对应的原生服务标识；该构建没有 gossipOptionType，不按名字猜选项。

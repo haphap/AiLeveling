@@ -14,6 +14,12 @@ local function spellKnown(id)
         end
     end
 end
+local function trainerSpell(index)
+    if not (C_TooltipInfo and C_TooltipInfo.GetTrainerService and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Spell~=nil) then return end
+    local ok,tip=pcall(C_TooltipInfo.GetTrainerService,index)
+    if ok and accessible(tip) and type(tip)=="table" and accessible(tip.type) and
+        tip.type==Enum.TooltipDataType.Spell and number(tip.id,1,2147483647) then return tip.id end
+end
 local function position(p)
     return type(p)=="table" and number(p.map,1,2147483647) and type(p.x)=="number" and p.x>=0 and p.x<=1 and
         type(p.y)=="number" and p.y>=0 and p.y<=1
@@ -72,10 +78,59 @@ function S.ValidStop(stop)
         (stop.learnSpellId==nil or stop.kind=="train" and stop.learnKey~=nil and number(stop.learnSpellId,1,2147483647))
 end
 
+function S.CanAutomate(key,state)
+    state=state or A.state
+    return A.ready and A.settings and A.settings[key] and A.char and not A.char.paused and state and not state.dead and
+        not (InCombatLockdown and InCombatLockdown()) and not (IsShiftKeyDown and IsShiftKeyDown()) and
+        not (A.Navigation and A.Navigation.manual) and not (A.Transport and A.Transport:InFlight())
+end
+
+function S:AutoTrain(state)
+    local stop,trainer=A.char.serviceStop,state.trainer
+    if not S.CanAutomate("autoTrain",state) or not self.trainerOpen or not stop or stop.kind~="train" or not stop.learnKey or
+        self.trainingAttempt==stop or not trainer or not trainer.playerTraining or trainer.npcId~=stop.npcId or
+        not A.Navigation:Near(state.position,stop.position,25) or type(BuyTrainerService)~="function" then return end
+    for _,row in ipairs(trainer.rows) do
+        if row.key==stop.learnKey and row.status=="available" and not row.ambiguous and not row.requirementsBlocked then
+            local spell=trainerSpell(row.index)
+            if not spell or stop.learnSpellId and spell~=stop.learnSpellId then return end
+            if not stop.learnSpellId then
+                if spellKnown(spell)~=false then return end
+                stop.learnSpellId=spell
+            end
+            self.trainingAttempt=stop
+            pcall(BuyTrainerService,row.index)
+            return
+        end
+    end
+end
+
+function S:AutoBind(seen)
+    local api=C_PlayerInteractionManager
+    local binder=Enum and Enum.PlayerInteractionType and Enum.PlayerInteractionType.Binder
+    if not S.CanAutomate("autoBind") or self.binding~=seen or not binder or not api or
+        type(api.IsValidNPCInteraction)~="function" or type(api.ConfirmationInteraction)~="function" or
+        type(api.ClearInteraction)~="function" then return end
+    local stop=A.char.serviceStop or A.plan and A.plan.automaticService
+    if not stop or stop.kind~="bind" or (seen.automatic and A.char.serviceStop or not seen.automatic and stop~=seen.stop) or
+        S.BindingKey(stop)~=S.BindingKey(seen.stop) or GetTime()-seen.time>60 then return end
+    A.State:Position()
+    local id=UnitGUID and A.Merchant.NpcId(UnitGUID("npc"))
+    if id~=stop.npcId or not A.Navigation:Near(A.state.position,stop.position,25) then return end
+    local ok,valid=pcall(api.IsValidNPCInteraction,binder)
+    if not ok or not accessible(valid) or valid~=true then return end
+    if pcall(api.ConfirmationInteraction,binder) then pcall(api.ClearInteraction,binder) end
+end
+
 function S:Event(event,...)
-    if event=="TRAINER_SHOW" then self.trainerOpen=true
-    elseif event=="TRAINER_CLOSED" then self.trainerOpen=false
-    elseif event=="PLAYER_ENTERING_WORLD" then self.trainerOpen=false;self.binding=nil
+    if event=="TRAINER_SHOW" then
+        if not self.trainerOpen then self.trainingAttempt=nil end
+        self.trainerOpen=true
+    elseif event=="TRAINER_CLOSED" then self.trainerOpen=false;self.trainingAttempt=nil
+    elseif event=="PLAYER_ENTERING_WORLD" then self.trainerOpen=false;self.trainingAttempt=nil;self.binding=nil
+    elseif event=="TOOLTIP_DATA_UPDATE" and self.trainerOpen and S.CanAutomate("autoTrain") then
+        local stop=A.char.serviceStop
+        if stop and stop.kind=="train" and stop.learnKey and self.trainingAttempt~=stop then A:RequestRefresh() end
     elseif event=="CONFIRM_BINDER" then
         self.binding=nil
         local stop=A.char.serviceStop or S.CurrentAutomatic()
@@ -83,7 +138,11 @@ function S:Event(event,...)
         A.State:Position()
         if stop and stop.kind=="bind" and id==stop.npcId and A.Navigation:Near(A.state.position,stop.position,25) then
             local area=text((...))
-            if area and area~="" then self.binding={stop=stop,area=area,time=GetTime(),automatic=A.char.serviceStop==nil} end
+            if area and area~="" then
+                local seen={stop=stop,area=area,time=GetTime(),automatic=A.char.serviceStop==nil}
+                self.binding=seen
+                if S.CanAutomate("autoBind") then A:Queue("service:bind",function() self:AutoBind(seen) end) end
+            end
         end
     elseif event=="HEARTHSTONE_BOUND" then
         local seen=self.binding;self.binding=nil
@@ -151,6 +210,7 @@ function S:Snapshot(state)
             key[#key+1]=tostring(trainer.pending)
         end
     end
+    self:AutoTrain(state)
     local stop=A.char.serviceStop
     if stop and stop.kind=="unlockFlight" and (state.unlocked or {})["taxi:"..stop.taxiId]==true then
         A.char.serviceStop=nil;stop=nil;self.message="飞行点已开通，继续原任务。"
@@ -418,17 +478,13 @@ end
 function S:Pick(row,revision)
     local ok,why=self:CanPick(row,revision);if not ok then return false,why end
     A.char.serviceStop={kind=row.kind,npcId=row.npcId,taxiId=row.taxiId,title=row.title,position=copy(row.position),learnKey=row.learnKey}
-    if row.offer and self.trainerOpen and C_TooltipInfo and C_TooltipInfo.GetTrainerService and
-        Enum and Enum.TooltipDataType and Enum.TooltipDataType.Spell~=nil and GetTrainerServiceInfo and
+    if row.offer and self.trainerOpen and GetTrainerServiceInfo and
         UnitGUID and A.Merchant.NpcId(UnitGUID("npc"))==row.npcId then
         local name,_,_,_,sub,category=GetTrainerServiceInfo(row.offer.index)
         local currentKey=table.concat({text(name) or "",text(sub) or "",text(category) or ""},"\031")
         if currentKey==row.learnKey then
-            local ok,tip=pcall(C_TooltipInfo.GetTrainerService,row.offer.index)
-            if ok and accessible(tip) and type(tip)=="table" and accessible(tip.type) and
-                tip.type==Enum.TooltipDataType.Spell and number(tip.id,1,2147483647) and spellKnown(tip.id)==false then
-                A.char.serviceStop.learnSpellId=tip.id
-            end
+            local spell=trainerSpell(row.offer.index)
+            if spell and spellKnown(spell)==false then A.char.serviceStop.learnSpellId=spell end
         end
     end
     local step=row.unlockSaving and row.unlockSaving>1 and row.unlockAfterTask
