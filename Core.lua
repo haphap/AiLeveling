@@ -5,7 +5,7 @@ A.version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata
 A.defaults = { minutes = 60, dungeons = true, role = "DAMAGER",
     scale = 1, alpha = 0.94, arrow = true, pins = true, items = true, highlight = true, worldHighlight = true, scanRares = true,
     combatFold = true, learn = true, waitMinutes = 10, damageStyle = "auto",
-    fontScale=1,density="normal",lockWindow=false,routes=true,minimapPins=true,waypointUI=true,
+    fontScale=1,density="normal",lockWindow=false,routes=true,minimapPins=true,waypointUI=true,maxSoulShards=100,
     distanceUnits="yards",transportHints=true,quantity=true,missingChecks=true,rewardAdvice=true,sound=false,gearPreference="nearby",autoAccept=true,autoTurnIn=true,autoTaxi=true,autoTrain=true,autoBind=true,autoSellJunk=false,targets=true,levelingStats=true }
 A.jobs, A.dirty, A.requestedItems = {}, false, {}
 
@@ -17,7 +17,7 @@ function A:NormalizeSettings(settings)
         damageStyle={auto=true,strength=true,agility=true,ranged=true,caster=true,hybrid=true},
         density={compact=true,normal=true,expanded=true},
         distanceUnits={yards=true,meters=true},gearPreference={nearby=true,xp=true}}
-    local bounds={scale={0.75,1.5},alpha={0.2,1},minutes={15,240},waitMinutes={0,60},fontScale={0.85,1.2}}
+    local bounds={scale={0.75,1.5},alpha={0.2,1},minutes={15,240},waitMinutes={0,60},fontScale={0.85,1.2},maxSoulShards={0,100}}
     for key,default in pairs(self.defaults) do
         local value=settings[key]
         local invalid=type(value)~=type(default)
@@ -28,6 +28,7 @@ function A:NormalizeSettings(settings)
         if choices[key] and not choices[key][value] then invalid=true end
         if invalid then settings[key]=default end
     end
+    settings.maxSoulShards=math.floor(settings.maxSoulShards)
     for _,key in ipairs({"position","detailPosition","navigationPosition"}) do
     local p=settings[key]
     if p then
@@ -41,6 +42,10 @@ end
 function A:NormalizeCharacter(char)
     if self.LevelingTracker then self.LevelingTracker.Normalize(char) end
     char.ignoreRepair=char.ignoreRepair==true or nil
+    if type(char.junk)~="table" then char.junk={} end
+    for id,value in pairs(char.junk) do
+        if type(id)~="number" or id<=0 or id>=2147483648 or id%1~=0 or type(value)~="boolean" then char.junk[id]=nil end
+    end
     char.sampleContext=nil
     for _,key in ipairs({"skipped","deferredChains","samples","turnIns","pendingResets"}) do if type(char[key])~="table" then char[key]={} end end
     for _,key in ipairs({"skipped","deferredChains"}) do
@@ -499,6 +504,7 @@ SlashCmdList.AILEVELING = function(command)
     if command == "status" then A.UI:ShowText(A:Diagnostics())
     elseif command=="history" then A.UI:ShowText(A:QuestHistory())
     elseif command=="stats" and A.LevelingTracker then A.UI:ShowText(A.LevelingTracker:Report())
+    elseif command=="bags" then A.UI.Settings:ShowBags()
     elseif command == "pause" then A:TogglePause()
     elseif command == "resume" then
         A.Selection:Clear()

@@ -6,14 +6,14 @@ function S:Create(parent)
     self.frame=CreateFrame("Frame",nil,parent)
     self.frame:SetPoint("TOPLEFT",18,-94);self.frame:SetPoint("BOTTOMRIGHT",-18,18)
     self.groups,self.controls={},{}
-    for i,name in ipairs({"路线规划","显示与导航","任务辅助","数据与兼容"}) do
+    for i,name in ipairs({"路线规划","显示与导航","任务辅助","数据与兼容","背包整理"}) do
         local group=CreateFrame("Frame",nil,self.frame)
         group:SetPoint("TOPLEFT",0,-40);group:SetPoint("BOTTOMRIGHT")
         self.groups[i]=group
-        local b=A.UI:Button(self.frame,name,132,function()
+        local b=A.UI:Button(self.frame,name,108,function()
             for j,f in ipairs(self.groups) do f:SetShown(i==j) end
         end)
-        b:SetPoint("TOPLEFT",(i-1)*143,0);group:SetShown(i==1)
+        b:SetPoint("TOPLEFT",(i-1)*116,0);group:SetShown(i==1)
     end
     local function position(row) return math.floor(row/8)*286,-(row%8)*40 end
     local function check(group,key,label,row)
@@ -73,7 +73,6 @@ function S:Create(parent)
     check(3,"scanRares","发现附近稀有怪",11)
     check(3,"autoTrain","自动学习已选训练项目",12)
     check(3,"autoBind","自动确认已安排的炉石绑定",13)
-    check(3,"autoSellJunk","打开商店时出售灰色杂物",14)
     local binding=A.UI:Text(self.groups[3],12)
     binding:SetPoint("TOPLEFT",286,-280);binding:SetWidth(268)
     binding:SetText("按住 Shift 临时手动操作，多选奖励由你选择。\n\n快捷键见系统按键设置的 AiLeveling。目标按钮左键选中、右键标记，战斗外滚轮／中键切换。")
@@ -128,7 +127,67 @@ function S:Create(parent)
     self.deleteProfile:SetPoint("TOPLEFT",position(12))
     self.profileHint=A.UI:Text(self.groups[4],12);self.profileHint:SetPoint("TOPLEFT",286,-200);self.profileHint:SetWidth(268)
     self.summary=A.UI:Text(self.groups[4],12);self.summary:SetPoint("TOPLEFT",286,-248);self.summary:SetWidth(268)
+    check(5,"autoSellJunk","到店出售垃圾（灰色及手动标记）",0)
+    cycle(5,"maxSoulShards","灵魂碎片保留",{0,5,10,15,20,30,40,100},{"0","5","10","15","20","30","40","100"},1)
+    self.bagSummary=A.UI:Text(self.groups[5],14);self.bagSummary:SetPoint("TOPLEFT",286,-4);self.bagSummary:SetWidth(268)
+    local instruction=A.UI:Text(self.groups[5],12);instruction:SetPoint("TOPLEFT",0,-96);instruction:SetWidth(554)
+    instruction:SetText("拖入物品或输入物品 ID／链接，选择垃圾或保留。\n任务物品与炉石始终保留；灵魂袋内的碎片保留。")
+    self.junkItem=CreateFrame("EditBox",nil,self.groups[5],"InputBoxTemplate")
+    self.junkItem:SetSize(548,30);self.junkItem:SetPoint("TOPLEFT",6,-144)
+    self.junkItem:SetAutoFocus(false);self.junkItem:SetMaxLetters(256);A.UI:RegisterFont(self.junkItem,13)
+    self.junkItem:SetScript("OnEscapePressed",function(box) box:ClearFocus() end)
+    self.junkItem:SetScript("OnTextChanged",function() self:RefreshBags() end)
+    self.junkItem:SetScript("OnReceiveDrag",function(box)
+        local kind,id=GetCursorInfo()
+        if kind=="item" then box:SetText(tostring(id));ClearCursor();self:RefreshBags() end
+    end)
+    local function mark(value)
+        local ok,why=A.Merchant:MarkJunk(self:JunkItemID(),value)
+        self.bagMessage=not ok and why or nil;self.junkItem:ClearFocus();self:RefreshBags()
+    end
+    local junk=A.UI:Button(self.groups[5],"标为垃圾",174,function() mark(true) end);junk:SetPoint("TOPLEFT",0,-184)
+    local keep=A.UI:Button(self.groups[5],"保留此物品",174,function() mark(false) end);keep:SetPoint("TOPLEFT",190,-184)
+    local resetJunk=A.UI:Button(self.groups[5],"恢复此物品默认分类",174,function() mark(nil) end);resetJunk:SetPoint("TOPLEFT",380,-184)
+    self.junkLabel=A.UI:Text(self.groups[5],13);self.junkLabel:SetPoint("TOPLEFT",0,-222);self.junkLabel:SetWidth(554)
+    self.discard=A.UI:Button(self.groups[5],"丢弃价值最低的一组垃圾",554,function()
+        local ok,why=A.Merchant:Discard(self.discardItem)
+        self.bagMessage=not ok and why or nil;self:RefreshBags()
+    end)
+    self.discard:SetPoint("TOPLEFT",0,-264);self.discard:SetHeight(42);self.discard.text:SetWidth(534);self.discard.text:SetMaxLines(2)
+    self.groups[5]:SetScript("OnShow",function() self:RefreshBags() end)
+    for _,event in ipairs({"BAG_UPDATE_DELAYED","GET_ITEM_INFO_RECEIVED","PLAYER_REGEN_DISABLED","PLAYER_REGEN_ENABLED"}) do self.groups[5]:RegisterEvent(event) end
+    self.groups[5]:SetScript("OnEvent",function() if self.frame:IsShown() and self.groups[5]:IsShown() then self:RefreshBags() end end)
     self.frame:Hide()
+end
+
+function S:JunkItemID()
+    local text=self.junkItem:GetText()
+    return tonumber(text:match("item:(%d+)")) or tonumber(text)
+end
+
+function S:ShowBags()
+    A.UI.details:Show();A.UI:SelectTab(5)
+    for i,group in ipairs(self.groups) do group:SetShown(i==5) end
+    self:RefreshBags()
+end
+
+function S:RefreshBags()
+    if not A.Merchant or not A.ready then return end
+    local id=self:JunkItemID()
+    local name,_,quality
+    if id and id>0 and id<2147483648 and id%1==0 then name,_,quality=C_Item.GetItemInfo(id) end
+    self.junkLabel:SetText(self.bagMessage or (name and (name.." · "..(A.Merchant:IsJunk(id,quality) and "垃圾" or "保留")) or "请选择背包物品"))
+    local free=0
+    for bag=0,NUM_BAG_SLOTS or 4 do
+        local count,family=C_Container.GetContainerNumFreeSlots(bag)
+        if family==0 then free=free+(count or 0) end
+    end
+    self.bagSummary:SetText("通用背包空格："..free..(A.state.class=="WARLOCK" and ("\n灵魂碎片："..C_Item.GetItemCount(6265,false,false,false)) or ""))
+    for _,control in ipairs(self.controls) do if control.key=="maxSoulShards" then control.button:SetShown(A.state.class=="WARLOCK") end end
+    self.discardItem=A.Merchant:DiscardCandidate()
+    local item=self.discardItem
+    self.discard.text:SetText(item and ("丢弃："..(item.link or item.name).." ×"..item.count) or "暂无可丢弃的垃圾")
+    self.discard:SetEnabled(item~=nil and not InCombatLockdown())
 end
 
 function S:Refresh()
@@ -147,4 +206,5 @@ function S:Refresh()
     self.summary:SetText("版本："..A.version.."\n已索引任务："..(A.Data.count or 0).."\n自有目的地："..nodes..
         "\n任务／奖励／经验："..(A.TaskGuide and table.concat({A.TaskGuide.Counts()},"／") or "0／0／0")..
         "\n服务 NPC："..(A.Data.serviceCount or 0))
+    if self.groups[5]:IsShown() then self:RefreshBags() end
 end

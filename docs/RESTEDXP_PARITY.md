@@ -12,7 +12,7 @@ A 完成连续任务流程及其必要交互的开发；当前进入 B 补齐其
 - [RestedXP Waypoints](https://www.curseforge.com/wow/addons/restedxp-waypoints)：RXP／Waypoint UI 同步、动作图标、动态更新及手动航点恢复。
 - [官方公开仓库](https://github.com/RestedXP/RXPGuides/tree/d583b89e455d73be6b93970579f074ecf6bb6326)：固定提交 `d583b89e455d73be6b93970579f074ecf6bb6326`，SettingsPanel.lua SHA256 `f6a35a1c3fb9eefd4aabd757dc331d6a03191b18d2371bc9839021f242e7037a`。设置标签用于盘点行为，独立实现；未导入其程序、素材或指南内容。
 - 扫描功能依据：[Targeting.lua](https://github.com/RestedXP/RXPGuides/blob/d583b89e455d73be6b93970579f074ecf6bb6326/Targeting.lua) 的稀有目标列表、姓名板／目标／鼠标指向检测及发现提醒；SettingsPanel.lua 包含 `scanForRares`、`notifyOnRares` 和危险怪追踪选项。其旧式主动扫描另有客户端开关，Forever 使用可读取的原生单位事件实现。
-- 背包功能依据：[InventoryManager.lua](https://github.com/RestedXP/RXPGuides/blob/d583b89e455d73be6b93970579f074ecf6bb6326/InventoryManager.lua) 的商店自动出售；本次独立实现灰色物品识别与任务物品保留。
+- 背包功能依据：[InventoryManager.lua](https://github.com/RestedXP/RXPGuides/blob/d583b89e455d73be6b93970579f074ecf6bb6326/InventoryManager.lua) 的商店出售、垃圾标记、最低价值物品丢弃与灵魂碎片数量设置；独立接入现有 Merchant 和原生背包接口，未复制其背包框架。
 - 原生接口依据：固定 Forever UI 的 GossipInfoDocumentation.lua、GossipFrameShared.lua 和 QuestFrame.lua。任务接交需由实际客户端事件确认。
 
 ## 冻结的对照清单
@@ -32,7 +32,7 @@ A 完成连续任务流程及其必要交互的开发；当前进入 B 补齐其
 | RX09 | 当前步骤、列表、共同目标、详情／链接和显示操作 | 已有实时撤下过期步骤、共同目标／数量、详情与聊天链接；按 A 确认字号、对比度、职业色、长文本、缩放／拖动／锁定／收起和持久化 | A |
 | RX10 | 任务道具、按钮、快捷键、数量与背包高亮 | 主要辅助已有；A 验证使用流程，C 补真实任务的缺失／补发／消耗覆盖 | A／C |
 | RX11 | 任务目标选择、标记、范围与队长跟随 | 已有安全目标按钮、多目标切换、标记、跟随与快捷键。源码中的“范围”是旧单位扫描支持下的附近显示，2025 年后的构建关闭该扫描；本构建沿用姓名板／目标／鼠标指向事件，不新增攻击距离系统。实际操作待统一验收 | A／B |
-| RX12 | 背包、垃圾出售／丢弃、容量与职业物品上限 | 可选灰色杂物出售及任务材料保留已有；手动垃圾标记、丢弃与职业物品上限尚缺，B 完成一组背包操作流程 | B |
+| RX12 | 背包、垃圾出售／丢弃、容量与职业物品上限 | 开发已补齐：按角色标记垃圾／保留，到店可选出售；显示通用空格，列出最低价值垃圾并由玩家点击丢弃；术士碎片按保留数量处理超出部分，保留灵魂袋、任务材料与炉石。复用商店流程检查通过 | B |
 | RX13 | 天赋预览、计划与切换 | 未实现；按固定源码和 Forever 接口完成整组功能 | B |
 | RX14 | 练级计时、分段、历史、比较与报告 | 开发已补齐：活动时间、经验／小时、交付／死亡、等级分段与报告；按角色身份保存账号历史，比较相同完整等级的分段与合计耗时，部分记录不参与比较。沿用现有统计流程验证 | B |
 | RX15 | 队伍设置、步骤／进度分享、任务共享、版本与通知 | 未实现；按实际队伍场景完成整组操作与反馈 | B |

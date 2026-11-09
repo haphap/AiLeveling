@@ -1,6 +1,7 @@
 return function(test,eq,F,A,plan)
 local names={"UnitGUID","UnitName","CanMerchantRepair","GetMerchantNumItems","GetMerchantItemLink","C_MerchantFrame","canaccessvalue",
-    "BuyMerchantItem","RepairAllItems","UseContainerItem","SetMerchantFilter","C_Container","MerchantFrame","IsShiftKeyDown","InCombatLockdown"}
+    "BuyMerchantItem","RepairAllItems","UseContainerItem","SetMerchantFilter","C_Container","MerchantFrame","IsShiftKeyDown","InCombatLockdown",
+    "C_Item","GetCursorInfo","ClearCursor","DeleteCursorItem","UnitIsDeadOrGhost"}
 local function setup()
     local saved={};for _,name in ipairs(names) do saved[name]=_G[name] end
     local B={};for k,v in pairs(A) do B[k]=v end
@@ -89,6 +90,31 @@ test("当前商店进入必要服务规划且仅实际恢复资源后返回保�
     M:Event("MERCHANT_CLOSED");M:SellJunk();eq(#calls,3)
     C_Container.UseContainerItem=function(_,slot) calls[#calls+1]=slot;M:Event("MERCHANT_CLOSED") end
     open();M:SellJunk();eq(#calls,4);eq(calls[4],1)
+    local shardCount,cursor,deleted=7,nil,0
+    C_Item={GetItemInfo=function(id) return "物品"..id,"item:"..id,id==102 and 1 or 0,1,1,"","",20,"",1,id==6265 and 0 or id end,
+        GetItemCount=function() return shardCount end}
+    C_Container.UseContainerItem=function(_,slot) calls[#calls+1]=slot end
+    assert(M:MarkJunk(101,false));assert(M:MarkJunk(102,true));assert(M:MarkJunk(103,true))
+    open();M:SellJunk();eq(calls[5],2);eq(#calls,7)
+    assert(M:MarkJunk(102,nil));eq(M:IsJunk(102,1),false)
+    assert(M:MarkJunk(6948,true)==false)
+    B.settings.maxSoulShards=5;s.class="WARLOCK"
+    slots[12]={itemID=6265,stackCount=7,quality=1,isLocked=false,hasNoValue=true}
+    s.bagEntries[12]={bag=0,slot=12,id=6265,count=7}
+    C_Container.GetContainerNumFreeSlots=function() return 0,0 end
+    UnitIsDeadOrGhost=function() return false end
+    GetCursorInfo=function() if cursor then return "item",cursor end end
+    ClearCursor=function() cursor=nil end
+    C_Container.SplitContainerItem=function(bag,slot,count) eq(slot,12);eq(count,2);cursor=6265;shardCount=5;slots[12].stackCount=5 end
+    C_Container.PickupContainerItem=function(_,slot) cursor=slots[slot].itemID end
+    DeleteCursorItem=function() deleted=deleted+1;cursor=nil end
+    B.RequestRefresh=function() end
+    local candidate=M:DiscardCandidate();eq(candidate.id,6265);eq(candidate.count,2)
+    combat=true;eq(M:Discard(candidate),false);eq(deleted,0);combat=false
+    assert(M:Discard(candidate));eq(deleted,1);eq(shardCount,5)
+    candidate=M:DiscardCandidate();assert(candidate.id~=6265 and candidate.id~=103)
+    slots[candidate.slot].itemID=999;eq(M:Discard(candidate),false);eq(deleted,1)
+    assert(M:MarkJunk(101,nil));eq(M:IsJunk(101,0),true)
     s.freeSlots=1;eq(B.Supplies.Done(service.actions[1],s),true)
     s.dead=true;eq(M.CurrentService(s,"repair"),nil);s.dead=false;s.inInstance=true;eq(M.CurrentService(s,"vendor"),nil)
     finish()

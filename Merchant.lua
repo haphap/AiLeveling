@@ -20,6 +20,84 @@ function M:Event(event)
     end
 end
 
+function M:QuestItems()
+    local keep={ [6948]=true }
+    for id in pairs(A.state.quests or {}) do
+        for _,item in ipairs(A.QuestAssist.Requirements({kind="objective",questId=id},A.state,A.Data)) do keep[item.id]=true end
+    end
+    return keep
+end
+
+function M:ProtectedItem(entry,keep)
+    if keep[entry.id] then return true end
+    local items=A.Data and A.Data.db and A.Data.db.Item
+    if not items then return true end
+    if (items.Get(entry.id,"startQuest") or 0)>0 then return true end
+    for _,id in ipairs(items.Get(entry.id,"relatedQuests") or {}) do
+        if A.state.quests[id] then return true end
+    end
+    local quest=C_Container.GetContainerItemQuestInfo(entry.bag,entry.slot)
+    return not (quest and accessible(quest.isQuestItem) and accessible(quest.questID) and accessible(quest.isActive) and
+        quest.isQuestItem==false and not quest.isActive and (not quest.questID or quest.questID==0))
+end
+
+function M:IsJunk(id,quality)
+    local marked=A.char.junk and A.char.junk[id]
+    if marked~=nil then return marked end
+    return quality==0
+end
+
+function M:MarkJunk(id,value)
+    if not id or id<=0 or id>=2147483648 or id%1~=0 or not C_Item.GetItemInfo(id) then return false,"请拖入背包物品或输入有效物品 ID。" end
+    if id==6948 or id==6265 then return false,id==6265 and "灵魂碎片按保留数量整理。" or "保留炉石。" end
+    A.char.junk=A.char.junk or {};A.char.junk[id]=value
+    return true
+end
+
+function M:DiscardCandidate()
+    local keep,best=self:QuestItems()
+    local shards=C_Item.GetItemCount(6265,false,false,false) or 0
+    local excess=A.state.class=="WARLOCK" and math.max(0,shards-(A.settings.maxSoulShards or 100)) or 0
+    for _,entry in ipairs(A.state.bagEntries or {}) do
+        if entry.bag>=0 then
+            local info=C_Container.GetContainerItemInfo(entry.bag,entry.slot)
+            if info and accessible(info.itemID) and accessible(info.stackCount) and accessible(info.quality) and
+                accessible(info.isLocked) and accessible(info.hasLoot) and info.itemID==entry.id and info.stackCount==entry.count and
+                not info.isLocked and not info.hasLoot and not self:ProtectedItem(entry,keep) then
+                local count=entry.count
+                local junk=self:IsJunk(entry.id,info.quality)
+                if entry.id==6265 then
+                    local _,family=C_Container.GetContainerNumFreeSlots(entry.bag)
+                    count=math.min(count,excess);junk=family==0 and count>0
+                end
+                if junk then
+                    local name,link,_,_,_,_,_,_,_,_,price=C_Item.GetItemInfo(entry.id)
+                    if price and (not best or count*price<best.price) then
+                        best={bag=entry.bag,slot=entry.slot,id=entry.id,count=count,stackCount=entry.count,
+                            name=name,link=link,price=count*price}
+                    end
+                end
+            end
+        end
+    end
+    return best
+end
+
+function M:Discard(expected)
+    if InCombatLockdown() or UnitIsDeadOrGhost("player") then return false,"脱离战斗并复活后整理。" end
+    if GetCursorInfo() then return false,"请先放回鼠标上的物品。" end
+    local item=self:DiscardCandidate()
+    if not expected or not item or item.bag~=expected.bag or item.slot~=expected.slot or item.id~=expected.id or
+        item.count~=expected.count or item.stackCount~=expected.stackCount then return false,"背包已变化，请查看新的丢弃物品。" end
+    if item.count<item.stackCount then C_Container.SplitContainerItem(item.bag,item.slot,item.count)
+    else C_Container.PickupContainerItem(item.bag,item.slot) end
+    local kind,id=GetCursorInfo()
+    if kind~="item" or id~=item.id then ClearCursor();return false,"物品未能拿起，请重试。" end
+    DeleteCursorItem()
+    A:RequestRefresh()
+    return true
+end
+
 function M:SellJunk()
     if not self.junkPending then return end
     self.junkPending=nil
@@ -29,10 +107,7 @@ function M:SellJunk()
         M.NpcId(UnitGUID("npc"))~=state.merchant.npcId then return end
     local container,items=C_Container,A.Data and A.Data.db and A.Data.db.Item
     if not container or not container.UseContainerItem or not container.GetContainerItemQuestInfo or not items then return end
-    local keep={}
-    for id in pairs(state.quests or {}) do
-        for _,item in ipairs(A.QuestAssist.Requirements({kind="objective",questId=id},state,A.Data)) do keep[item.id]=true end
-    end
+    local keep=self:QuestItems()
     for _,entry in ipairs(state.bagEntries or {}) do
         if not self.open or not MerchantFrame:IsShown() or MerchantFrame.selectedTab~=1 then return end
         if entry.bag>=0 then
@@ -41,19 +116,11 @@ function M:SellJunk()
                 accessible(info.isLocked) and accessible(info.hasNoValue) and accessible(info.hasLoot) and info.itemID==entry.id and info.stackCount==entry.count then
                 local key=table.concat({entry.bag,entry.slot,entry.id,entry.count},":")
                 if not self.junkTried[key] then
-                    if info.quality==nil or info.quality==0 and info.isLocked then self.junkPending=true
-                    elseif info.quality==0 and info.hasNoValue==false and not info.hasLoot and not keep[entry.id] then
-                        local quest=container.GetContainerItemQuestInfo(entry.bag,entry.slot)
-                        local starter=items.Get(entry.id,"startQuest")
-                        local needed=(starter or 0)>0
-                        for _,id in ipairs(items.Get(entry.id,"relatedQuests") or {}) do
-                            if (state.quests or {})[id] then needed=true;break end
-                        end
-                        if quest and accessible(quest.isQuestItem) and accessible(quest.questID) and accessible(quest.isActive) and
-                            quest.isQuestItem==false and not quest.isActive and (not quest.questID or quest.questID==0) and not needed then
-                            self.junkTried[key]=true
-                            container.UseContainerItem(entry.bag,entry.slot)
-                        end
+                    if info.quality==nil or self:IsJunk(entry.id,info.quality) and info.isLocked then self.junkPending=true
+                    elseif entry.id~=6265 and self:IsJunk(entry.id,info.quality) and info.hasNoValue==false and
+                        not info.hasLoot and not self:ProtectedItem(entry,keep) then
+                        self.junkTried[key]=true
+                        container.UseContainerItem(entry.bag,entry.slot)
                     end
                 end
             end
