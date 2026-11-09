@@ -10,7 +10,7 @@ end}}
 C_Map={GetMapInfo=function(id) return {mapID=id} end};C_QuestLog={}
 for _,file in ipairs({"State.lua","Hearth.lua","Data/Content.lua","Data/TaskFacts.lua","Data/ItemLimits.lua","Data/Experience.lua","Data/Flights.lua","Data/Questie.lua","Planner/Eligibility.lua",
     "Planner/Chains.lua","Planner/TaskGuide.lua","Planner/TaskQueue.lua","Planner/Estimates.lua","Planner/Gear.lua","Planner/Progression.lua","Planner/Travel.lua","Planner/Flights.lua",
-    "Planner/Supplies.lua","Planner/Dungeon.lua","Planner/Planner.lua"}) do
+    "Planner/Supplies.lua","Planner/Dungeon.lua","Planner/Planner.lua","QuestAssist.lua"}) do
     assert(loadfile(root.."/"..file))("AiLeveling",A)
 end
 local function run(fn,label)
@@ -366,4 +366,18 @@ if faction=="Horde" then
     local active=run(function() return A.Planner.TaskChoices(context,A.Data,{q.id},true,options) end)
     assert(not active[1].lowValue and active[1].actions[1].kind=="turnin")
     print("Horde: real #1464 stops automatic restocking while Fire Sapta is held; consumption restores it; manual and accepted tasks remain available")
+end
+do
+    local q=assert(A.Data:GetQuest(273))
+    local row=assert(db.Quest.Get(q.id,"objectives")[5][1])
+    assert(#row[1]>1,"real multi-target fixture changed")
+    local context={position=s.position,faction=faction,completed={},quests={[q.id]={objectives={
+        {type="monster",targetKind="killcredit",targetId=row[2]}}}}}
+    local action={kind="objective",questId=q.id,objectiveIndex=1}
+    local targets=A.QuestAssist.TargetNPCs(action,context,A.Data)
+    local seen={};for _,npc in ipairs(targets) do assert(not seen[npc.id]);seen[npc.id]=true end
+    for _,npcId in ipairs(row[1]) do assert(seen[npcId],"missing real kill-credit NPC #"..npcId) end
+    context.quests[q.id].objectives[1].finished=true
+    assert(#A.QuestAssist.TargetNPCs(action,context,A.Data)==0)
+    print(faction..": real #273 exposes "..#targets.." kill-credit NPC targets and removes completed objectives")
 end

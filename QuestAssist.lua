@@ -5,52 +5,72 @@ BINDING_HEADER_AILEVELING = "AiLeveling"
 for i=1,4 do _G["BINDING_NAME_CLICK AiLevelingItem"..i..":LeftButton"] = "使用当前任务物品 "..i end
 _G["BINDING_NAME_CLICK AiLevelingTarget:LeftButton"]="选中当前任务目标"
 _G["BINDING_NAME_CLICK AiLevelingTarget:RightButton"]="标记当前选中的目标"
+BINDING_NAME_AILEVELING_TARGET_NEXT="切换当前任务目标"
 
-function Q.TargetNPC(action,state,data)
+function Q.TargetNPCs(action,state,data)
+    local targets,seen={},{}
     if not action or not state or not data or
-        (action.kind~="accept" and action.kind~="turnin" and action.kind~="objective" and action.kind~="service") then return end
+        (action.kind~="accept" and action.kind~="turnin" and action.kind~="objective" and action.kind~="service") then return targets end
+    local function add(id,point)
+        if type(id)~="number" or id<=0 or id>=2147483648 or id%1~=0 or seen[id] then return end
+        local name=data.db and data.db.Npc.Get(id,"name") or
+            point and point.entityKind=="npc" and point.entityId==id and point.entityName
+        -- Names enter a secure macro: reject command syntax instead of escaping it.
+        if type(name)~="string" or name=="" or #name>200 or name:find("[%c%[%];/\\]") or name:match("^%s") or name:match("%s$") then return end
+        seen[id]=true;targets[#targets+1]={id=id,name=name}
+    end
     local point=action.position
     local id=action.npcId or (point and point.entityKind=="npc" and point.entityId)
     local q=action.questId and data:GetQuest(action.questId)
     local active=action.questId and (state.quests or {})[action.questId]
     if action.kind=="objective" then
-        if not active or active.ready then return end
+        if not active or active.ready then return targets end
         local objective=action.objectiveIndex and (active.objectives or {})[action.objectiveIndex]
-        if objective and objective.finished then return end
-        if not id and action.targetKind=="npc" then id=action.targetId end
-        if not id and q and data.ObjectiveTargets then
-            local points=data:ObjectiveTargets(q,state)
-            for _,p in ipairs(points) do
-                if (action.objectiveIndex and p.objectiveIndex==action.objectiveIndex or not action.objectiveIndex and #points==1) and p.entityKind=="npc" then
-                    point,id=p,p.entityId;break
+        if not (objective and objective.finished) then add(id or action.targetKind=="npc" and action.targetId,point) end
+        if q then
+            local points={}
+            for _,p in ipairs(data.ObjectiveTargets and data:ObjectiveTargets(q,state) or {}) do points[p.objectiveIndex or 1]=p end
+            local identities=data.ObjectiveIdentities and data:ObjectiveIdentities(q,state) or {}
+            for index,o in ipairs(active.objectives or {}) do
+                if not o.finished then
+                    local p,identity=points[index],identities[index]
+                    if p and p.entityKind=="npc" then add(p.entityId,p) end
+                    if identity and identity.kind=="npc" then add(identity.id)
+                    elseif identity and identity.kind=="killcredit" then
+                        for _,npcId in ipairs(identity.npcIds or {}) do add(npcId) end
+                    end
                 end
             end
         end
-    elseif not id and q and data.Target then
-        local lookup={position=state.position,faction=state.faction,completed=state.completed,quests={}}
-        if action.kind=="turnin" then lookup.quests[q.id]={ready=true} end
-        point=data:Target(q,lookup)
-        id=point and point.entityKind=="npc" and point.entityId
+    else
+        if not id and q and data.Target then
+            local lookup={position=state.position,faction=state.faction,completed=state.completed,quests={}}
+            if action.kind=="turnin" then lookup.quests[q.id]={ready=true} end
+            point=data:Target(q,lookup)
+            id=point and point.entityKind=="npc" and point.entityId
+        end
+        add(id,point)
     end
-    if type(id)~="number" or id<=0 or id>=2147483648 or id%1~=0 then return end
-    local name=data.db and data.db.Npc.Get(id,"name") or
-        point and point.entityKind=="npc" and point.entityId==id and point.entityName
-    -- Names enter a secure macro: reject command syntax instead of escaping it.
-    if type(name)~="string" or name=="" or #name>200 or name:find("[%c%[%];/\\]") or name:match("^%s") or name:match("%s$") then return end
-    return {id=id,name=name}
+    return targets
 end
 
 function Q:TargetStatus()
     if not self.targetButton then return end
     local target=self.targetActive
-    self.targetButton.text:SetText(target and ("选中 "..target.name) or "")
-    local status="右键：为当前选中的目标加骷髅标记"
+    local count=#(self.targetActiveChoices or {})
+    local prefix=count>1 and (self.targetActiveIndex.."/"..count.." · ") or ""
+    self.targetButton.text:SetText(target and (prefix.."选中 "..target.name) or "")
+    local status=count>1 and "滚轮／中键切换 · 右键标记" or "右键：为当前选中的目标加骷髅标记"
     if self.targetQueued then status="战斗结束后更新目标"
     elseif target and UnitGUID then
         local guid=UnitGUID("target")
         if (not canaccessvalue or canaccessvalue(guid)) and type(guid)=="string" then
             local kind,id=guid:match("^(%a+)%-[^%-]+%-[^%-]+%-[^%-]+%-[^%-]+%-(%d+)%-")
-            if (kind=="Creature" or kind=="Vehicle") and tonumber(id)==target.id then status="已选中 · "..target.name.." · 右键标记" end
+            if kind=="Creature" or kind=="Vehicle" then
+                for _,npc in ipairs(self.targetActiveChoices or {}) do
+                    if tonumber(id)==npc.id then status="已选中 · "..npc.name.." · 右键标记";break end
+                end
+            end
         end
     end
     self.targetButton.status:SetText(status)
@@ -59,16 +79,23 @@ end
 function Q:ApplyTarget()
     if not self.targetButton then return end
     if InCombatLockdown() then
-        self.targetQueued=(self.targetActive and self.targetActive.id)~=(self.targetWanted and self.targetWanted.id)
+        self.targetQueued=self.targetActiveKey~=self.targetKey
         self:TargetStatus();return
     end
     self.targetQueued=nil
     local target=self.targetWanted
     self.targetActive=target
+    self.targetActiveChoices,self.targetActiveIndex,self.targetActiveKey=self.targetChoices,self.targetIndex,self.targetKey
     self.targetButton:SetAttribute("macrotext1",target and ("/targetexact "..target.name) or nil)
     self.targetButton:SetShown(target~=nil)
     self.targetButton:SetScale(A.settings.scale or 1)
     self:TargetStatus()
+end
+
+function Q:CycleTarget(delta)
+    if InCombatLockdown() or #(self.targetChoices or {})<2 then return end
+    self.targetIndex=(self.targetIndex-1+delta)%#self.targetChoices+1
+    self.targetWanted=self.targetChoices[self.targetIndex];self:ApplyTarget()
 end
 
 function Q.DialogChoice(id,kind)
@@ -245,6 +272,9 @@ function Q:Create()
     target:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1})
     target:SetBackdropColor(0.035,0.05,0.065,0.96);target:SetBackdropBorderColor(A.UI:Accent())
     target:RegisterForClicks("AnyUp","AnyDown")
+    target:EnableMouseWheel(true)
+    target:SetScript("OnMouseWheel",function(_,delta) self:CycleTarget(delta>0 and -1 or 1) end)
+    target:SetScript("PostClick",function(_,button,down) if button=="MiddleButton" and not down then self:CycleTarget(1) end end)
     target:SetAttribute("type1","macro")
     target:SetAttribute("type2","raidtarget");target:SetAttribute("unit2","target")
     target:SetAttribute("marker2",8);target:SetAttribute("action2","set-unmarked")
@@ -252,8 +282,9 @@ function Q:Create()
     target.status=A.UI:Text(target,11);target.status:SetPoint("TOPLEFT",10,-32);target.status:SetWidth(320);target.status:SetMaxLines(1)
     target:SetScript("OnEnter",function(b)
         if self.targetActive then
-            GameTooltip:SetOwner(b,"ANCHOR_RIGHT");GameTooltip:SetText(self.targetActive.name)
-            GameTooltip:AddLine("左键选中任务目标；右键标记当前选中的目标。",1,1,1,true);GameTooltip:Show()
+            GameTooltip:SetOwner(b,"ANCHOR_RIGHT");GameTooltip:SetText("当前任务目标")
+            for index,npc in ipairs(self.targetActiveChoices or {}) do GameTooltip:AddLine(index.." · "..npc.name,1,1,1,true) end
+            GameTooltip:AddLine("左键选中；右键标记；战斗外滚轮或中键切换。",1,1,1,true);GameTooltip:Show()
         end
     end)
     target:SetScript("OnLeave",function() GameTooltip:Hide() end)
@@ -380,7 +411,12 @@ end
 function Q:Update(quiet)
     if not A.state or not A.settings then return end
     local action = A.Navigation:Current()
-    self.targetWanted=A.settings.targets~=false and not A.char.paused and Q.TargetNPC(action,A.state,A.Data) or nil
+    self.targetChoices=A.settings.targets~=false and not A.char.paused and Q.TargetNPCs(action,A.state,A.Data) or {}
+    local targets={tostring(action and action.kind),tostring(action and action.questId),tostring(action and action.objectiveIndex)}
+    for _,npc in ipairs(self.targetChoices) do targets[#targets+1]=npc.id..":"..npc.name end
+    local targetKey=table.concat(targets,"\031")
+    if self.targetKey~=targetKey then self.targetIndex=1;self.targetKey=targetKey end
+    self.targetWanted=self.targetChoices[self.targetIndex]
     local wanted = Q.Desired(action,A.state,A.settings.items,A.Data)
     local key = table.concat(wanted,":")
     if key~=self.key then self.page=1; self.key=key end

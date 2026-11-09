@@ -5,4 +5,5 @@
     <Binding name="CLICK AiLevelingItem4:LeftButton" category="BINDING_HEADER_AILEVELING"/>
     <Binding name="CLICK AiLevelingTarget:LeftButton" category="BINDING_HEADER_AILEVELING"/>
     <Binding name="CLICK AiLevelingTarget:RightButton" category="BINDING_HEADER_AILEVELING"/>
+    <Binding name="AILEVELING_TARGET_NEXT" category="BINDING_HEADER_AILEVELING">AiLeveling.QuestAssist:CycleTarget(1)</Binding>
 </Bindings>

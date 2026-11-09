@@ -6,7 +6,7 @@ local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","
     "UnitClassification","UnitName","UnitCanAttack","UnitIsDeadOrGhost","UnitOnTaxi","C_NamePlate","UIErrorsFrame","issecretvalue","canaccessvalue","Enum"}
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
-    for _,key in ipairs({"SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","RegisterForDrag",
+    for _,key in ipairs({"SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag",
         "RegisterForClicks","SetAllPoints","SetTexture","SetBlendMode","SetVertexColor","SetMaxLines","SetFontObject","SetMultiLine",
         "SetMaxLetters","SetShadowColor","SetShadowOffset","SetAutoFocus","ClearFocus","SetFocus","HighlightText","SetFrameStrata","SetCooldown","Clear"}) do w[key]=function() end end
     w.SetPoint=function(self,...) self.point={...} end
@@ -446,6 +446,28 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     Q:Update();eq(Q.targetActive.id,20)
     B.Data.ObjectiveTargets=function() return {{objectiveIndex=1,entityKind="object",entityId=20}} end
     Q:Update();eq(Q.targetButton.shown,false)
+    entities[21],entities[22]="黑熊","林间居民"
+    B.action={kind="objective",questId=1,objectiveIndex=1,position={entityKind="npc",entityId=20}}
+    B.state.quests[1].objectives={{finished=false},{finished=false}}
+    B.Data.ObjectiveTargets=function() return {{objectiveIndex=1,entityKind="npc",entityId=20},{objectiveIndex=2,entityKind="npc",entityId=22}} end
+    B.Data.ObjectiveIdentities=function() return {[1]={kind="killcredit",npcIds={20,21,21}},[2]={kind="npc",id=22}} end
+    Q:Update();eq(#Q.targetChoices,3);eq(Q.targetActive.id,20)
+    local wheel=assert(Q.targetButton.scripts.OnMouseWheel)
+    wheel(nil,-1);eq(Q.targetActive.id,21);eq(Q.targetButton.macrotext1,"/targetexact 黑熊")
+    assert(Q.targetButton.text.value:find("2/3",1,true))
+    Q:Update();eq(Q.targetActive.id,21)
+    UnitGUID=function() return "Creature-0-1-2-3-22-0000" end
+    Q:TargetStatus();assert(Q.targetButton.status.value:find("已选中 · 林间居民",1,true))
+    Q.targetButton.scripts.PostClick(nil,"MiddleButton",true);eq(Q.targetActive.id,21)
+    Q.targetButton.scripts.PostClick(nil,"MiddleButton",false);eq(Q.targetActive.id,22)
+    wheel(nil,1);eq(Q.targetActive.id,21)
+    B.combat(true);writes=Q.targetButton.attributeWrites;wheel(nil,-1);eq(Q.targetActive.id,21)
+    B.state.quests[1].objectives[1].finished=true;Q:Update()
+    eq(Q.targetActive.id,21);eq(Q.targetButton.attributeWrites,writes)
+    B.combat(false);B.frame.scripts.OnEvent(nil,"PLAYER_REGEN_ENABLED")
+    eq(Q.targetActive.id,22);eq(#Q.targetChoices,1)
+    B.state.quests[1].ready=true;Q:Update();eq(Q.targetButton.shown,false);B.state.quests[1].ready=nil
+    B.Data.ObjectiveIdentities=nil;B.state.quests[1].objectives={}
     B.action={kind="turnin",questId=1}
     B.Data.Target=function(_,q,s) eq(s.quests[1].ready,true);return {entityKind="npc",entityId=10} end
     Q:Update();eq(Q.targetActive.id,10)

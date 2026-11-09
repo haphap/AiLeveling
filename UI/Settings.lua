@@ -75,7 +75,7 @@ function S:Create(parent)
     check(3,"autoBind","自动确认已安排的炉石绑定",13)
     local binding=A.UI:Text(self.groups[3],12)
     binding:SetPoint("TOPLEFT",286,-248);binding:SetWidth(268)
-    binding:SetText("按住 Shift 可临时手动接交、选择航线、训练或绑定。多选奖励由你选择。\n\n快捷键在系统按键设置的 AiLeveling 分类中设置。目标按钮左键选中、右键标记；已有标记保留。")
+    binding:SetText("按住 Shift 可临时手动接交、选择航线、训练或绑定。多选奖励由你选择。\n\n快捷键在系统按键设置的 AiLeveling 分类中设置。目标按钮左键选中、右键标记；战斗外滚轮或中键切换，悬停查看名单。已有标记保留。")
     check(4,"learn","记录本地耗时统计",0)
     local reset=A.UI:Button(self.groups[4],"重置本地统计",270,function()
         A.char.samples={};A.char.sampleContext=nil

@@ -51,13 +51,13 @@ local function widget(kind,parent)
     function w:SetThickness(value) self.thickness=value end
     function w:SetStartPoint(point,relative,x,y) self.start={point=point,relative=relative,x=x,y=y} end
     function w:SetEndPoint(point,relative,x,y) self.finish={point=point,relative=relative,x=x,y=y} end
-    for _,name in ipairs({"SetJustifyV","SetBackdrop","SetShadowColor","SetShadowOffset","SetMovable","EnableMouse","RegisterForDrag","SetMaxLines",
+    for _,name in ipairs({"SetJustifyV","SetBackdrop","SetShadowColor","SetShadowOffset","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag","SetMaxLines",
         "RegisterForClicks","SetAttribute","SetScale","SetTexture","SetDesaturated","SetCooldown","Clear"}) do w[name]=function() end end
     return w
 end
 local dungeonPreview=arg[1]=="dungeon"
 local canvasWidth=dungeonPreview and 700 or 560
-local canvasHeight=dungeonPreview and 760 or 1100
+local canvasHeight=dungeonPreview and 760 or arg[1]=="assist" and 240 or 1100
 UIParent=widget("Root");UIParent:SetSize(canvasWidth,canvasHeight)
 CreateFrame=function(kind,_,parent) return widget(kind,parent) end
 STANDARD_TEXT_FONT="preview"
@@ -152,8 +152,13 @@ A.UI.navFrame:ClearAllPoints();A.UI.navFrame:SetPoint("TOP",A.UI.frame,"BOTTOM",
 if arg[1]=="assist" then
     A.UI.frame:Hide();A.UI.navFrame:Hide()
     InCombatLockdown=function() return false end
-    action.position.entityKind,action.position.entityId,action.position.entityName="npc",10,"治安官玛克布莱德"
-    A.Data={GetQuest=function() return {} end};A.state.bags={}
+    action.objectiveIndex=1
+    action.position.entityKind,action.position.entityId="npc",10
+    A.state.quests[7].objectives[2]={text="消灭狗头人劳工",numFulfilled=2,numRequired=8}
+    local names={[10]="狗头人歹徒",[20]="狗头人劳工"}
+    A.Data={GetQuest=function() return {id=7} end,db={Npc={Get=function(id) return names[id] end}},
+        ObjectiveTargets=function() return {{objectiveIndex=1,entityKind="npc",entityId=10},{objectiveIndex=2,entityKind="npc",entityId=20}} end}
+    A.state.bags={}
     assert(loadfile("QuestAssist.lua"))("AiLeveling",A)
     A.QuestAssist:Create();A.QuestAssist:Update()
     A.QuestAssist.targetButton:ClearAllPoints();A.QuestAssist.targetButton:SetPoint("TOPLEFT",110,-100)
