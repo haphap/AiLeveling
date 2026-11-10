@@ -28,7 +28,7 @@ test("同NPC任务连续显示整组真实进度并保持行宽与点击",functi
     eq(#T.model.rows,3);eq(T.model.rows[1].questId,1);eq(T.model.rows[2].questId,3);eq(T.model.rows[3].questId,2)
     eq(T.rows[1].group.value,"治安官 · 已完成 1/2")
     eq(T.rows[2].group.shown,false);eq(T.rows[2].status.value,"可交付")
-    assert(T.rows[2].progress.value:find("等「当前任务」完成，再到治安官一起交",1,true))
+    eq(T.rows[2].progress.value,"同组还差 1 项，做完一起交")
     eq(T.model.deliverySummary,"同组还差 1 项，做完一起交")
     eq(T.rows[1].number.point[3],T.rows[1].title.point[3]);eq(T.queuePanel.width,T.card.width)
     T.rows[2].scripts.OnClick();eq(B.char.locked,3)
@@ -307,7 +307,7 @@ test("分散交付点明确现在就近交和等同NPC任务一起交并跟随�
     B.UI:RenderTracker();local T=B.UI.tracker
     assert(T.model.deliverySummary:find("就近交付：到东谷守卫",1,true))
     local rows={};for _,row in ipairs(T.model.rows) do rows[row.questId]=row end
-    assert(rows[2].delivery:find("等「后续目标」完成，再到闪金镇治安官一起交",1,true))
+    eq(rows[2].delivery,"同组还差 1 项，做完一起交")
     eq(rows[2].status,"可交付");eq(B.action,ta);eq(B.state.completed[1],nil)
     B.state.quests[3].ready=true;B.plan.taskQueue.steps={{choice=a,stage=ta},{choice=b,stage=tb},{choice=c,stage=tc}}
     B.UI:RenderTracker();assert(T.model.deliverySummary:find("再去闪金镇治安官",1,true))
