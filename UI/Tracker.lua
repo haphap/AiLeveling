@@ -1,6 +1,6 @@
 local _,A=...
 local UI=A.UI
-local palette={white={0.97,0.98,1},muted={0.78,0.84,0.89},gold={1,0.83,0.45},green={0.55,0.95,0.72},blue={0.55,0.80,1},purple={0.79,0.68,1}}
+local palette=UI.colors
 local media="Interface\\AddOns\\AiLeveling\\Media\\"
 local verbs={taskReview="任务建议",accept="接取",objective="进行中",turnin="交付",move="前往目的地",transit="交通",service="补给",
     flight="飞行中",hearthCast="炉石返回",manual="手动目的地",pvpEnter="进入战场",pvpLeave="离开战场",dungeonBlocked="进入受限",dungeonWait="等待队伍",dungeonEnter="进入副本",dungeonLeave="离开副本",dungeonRun="副本进行中",dungeonEnd="结束本轮"}
@@ -391,34 +391,36 @@ function UI:CreateTracker()
         GameTooltip:AddLine("左键拖动面板\n右键：暂停、收起与详细面板",1,1,1,true);GameTooltip:Show()
     end)
     f:SetScript("OnLeave",function() GameTooltip:Hide() end)
+    self:Rounded(f,18);f:SetBackdropColor(0.14,0.10,0.08,0.58)
     local T=self.tracker
+    T.content=CreateFrame("Frame",nil,f);T.content:SetPoint("TOPLEFT",10,-10)
     T.showCompleted=true
-    T.zone=text(f,14);T.zone:SetPoint("TOPLEFT",2,-2);T.zone:SetMaxLines(1)
-    T.experience=text(f,12,palette.muted);T.experience:SetJustifyH("RIGHT")
+    T.zone=text(T.content,14,palette.white);T.zone:SetPoint("TOPLEFT",2,-2);T.zone:SetMaxLines(1)
+    T.experience=text(T.content,12,palette.muted);T.experience:SetJustifyH("RIGHT")
     T.headerButtons={}
     for i,spec in ipairs({{label="专业",tab=8},{label="职业",tab=9},{label="+",tab=1}}) do
-        local button=self:Button(f,spec.label,i==3 and 22 or 40,function() self.details:Show();self:SelectTab(spec.tab) end,11)
+        local button=self:Button(T.content,spec.label,i==3 and 22 or 40,function() self.details:Show();self:SelectTab(spec.tab) end,11)
         button.baseColor={0,0,0,0};button:SetBackdropColor(0,0,0,0);T.headerButtons[i]=button
     end
-    T.previous=self:Button(f,"‹",22,function()
+    T.previous=self:Button(T.content,"‹",22,function()
         local rows=T.model and T.model.rows or {};T.browse=math.max(1,(T.browse or 2)-1)
         if rows[T.browse] then self:QuestClick(rows[T.browse].questId,"LeftButton") end
     end,18)
-    T.next=self:Button(f,"›",22,function()
+    T.next=self:Button(T.content,"›",22,function()
         local rows=T.model and T.model.rows or {};T.browse=math.min(#rows,(T.browse or 0)+1)
         if rows[T.browse] then self:QuestClick(rows[T.browse].questId,"LeftButton") end
     end,18)
-    T.stepCount=text(f,12,palette.white)
-    T.skip=self:Button(f,"暂缓",40,function()
+    T.stepCount=text(T.content,12,palette.white)
+    T.skip=self:Button(T.content,"暂缓",40,function()
         if T.model and T.model.questId then A.Selection:Skip(T.model.questId) end
     end,12)
-    T.menu=self:Button(f,"···",26,function() self:TrackerMenu(T.questTitle) end,16)
+    T.menu=self:Button(T.content,"···",26,function() self:TrackerMenu(T.questTitle) end,16)
     for _,button in ipairs({T.previous,T.next,T.skip,T.menu}) do button.baseColor={0,0,0,0};button:SetBackdropColor(0,0,0,0) end
-    T.divider=f:CreateTexture(nil,"BACKGROUND");T.divider:SetColorTexture(0.7,0.75,0.85,0.18)
-    T.xpBack=f:CreateTexture(nil,"BACKGROUND");T.xpBack:SetColorTexture(1,1,1,0.10)
+    T.divider=T.content:CreateTexture(nil,"BACKGROUND");T.divider:SetColorTexture(unpack(palette.line))
+    T.xpBack=T.content:CreateTexture(nil,"BACKGROUND");T.xpBack:SetColorTexture(0.75,0.57,0.44,0.16)
     T.xpBack:SetPoint("TOPLEFT",0,-23);T.xpBack:SetSize(280,2)
-    T.xpFill=f:CreateTexture(nil,"ARTWORK");T.xpFill:SetPoint("TOPLEFT",0,-23);T.xpFill:SetSize(1,2)
-    T.card=CreateFrame("Frame",nil,f)
+    T.xpFill=T.content:CreateTexture(nil,"ARTWORK");T.xpFill:SetPoint("TOPLEFT",0,-23);T.xpFill:SetSize(1,2)
+    T.card=CreateFrame("Frame",nil,T.content)
     T.card:SetPoint("TOPLEFT",0,-66);T.card:SetSize(280,150)
     T.rail=T.card:CreateTexture(nil,"ARTWORK");T.rail:SetPoint("TOPLEFT",0,0);T.rail:SetPoint("BOTTOMLEFT",0,0);T.rail:SetWidth(2)
     T.stepIcon=T.card:CreateTexture(nil,"ARTWORK")
@@ -440,23 +442,23 @@ function UI:CreateTracker()
     T.objectives={}
     T.completed=self:Button(T.currentChild,"",180,function() T.showCompleted=not T.showCompleted;self:RenderTracker() end,12)
     T.completed.baseColor={0,0,0,0};T.completed:SetBackdropColor(0,0,0,0)
-    T.footer=text(f,12,palette.gold)
-    T.thenText=text(f,13,palette.blue)
-    T.thenButton=CreateFrame("Button",nil,f);T.thenButton:SetAllPoints(T.thenText)
+    T.footer=text(T.content,12,palette.gold)
+    T.thenText=text(T.content,13,palette.blue)
+    T.thenButton=CreateFrame("Button",nil,T.content);T.thenButton:SetAllPoints(T.thenText)
     T.thenButton:SetScript("OnClick",function() if T.thenQuest then self:QuestClick(T.thenQuest,"LeftButton") end end)
-    T.note=self:Button(f,"",250,function() T.noteExpanded=not T.noteExpanded;self:LayoutTracker() end,12)
+    T.note=self:Button(T.content,"",250,function() T.noteExpanded=not T.noteExpanded;self:LayoutTracker() end,12)
     T.note:SetBackdropColor(0,0,0,0);T.note.text:ClearAllPoints();T.note.text:SetPoint("TOPLEFT");T.note.text:SetJustifyH("LEFT")
     T.note:SetScript("OnEnter",function(button)
         GameTooltip:SetOwner(button,"ANCHOR_RIGHT");GameTooltip:SetText(T.model and (T.model.deliverySummary or T.model.hint or T.model.instruction) or "")
         GameTooltip:Show()
     end)
     T.note:SetScript("OnLeave",function() GameTooltip:Hide() end)
-    T.region=self:Button(f,"",250,function() self.details:Show();self:SelectTab(10) end,12)
+    T.region=self:Button(T.content,"",250,function() self.details:Show();self:SelectTab(10) end,12)
     T.region.baseColor={0,0,0,0};T.region:SetBackdropColor(0,0,0,0)
 
 
-    T.queueLabel=text(f,12,palette.white)
-    T.queuePanel=CreateFrame("Frame",nil,f);T.queuePanel:SetSize(280,144)
+    T.queueLabel=text(T.content,12,palette.white)
+    T.queuePanel=CreateFrame("Frame",nil,T.content);T.queuePanel:SetSize(280,144)
     T.queueScroll=CreateFrame("ScrollFrame",nil,T.queuePanel,"UIPanelScrollFrameTemplate");T.queueScroll:SetSize(252,120)
     T.queueScroll:SetPoint("TOPLEFT",8,-4)
     T.queueChild=CreateFrame("Frame",nil,T.queueScroll);T.queueChild:SetSize(252,120);T.queueScroll:SetScrollChild(T.queueChild)
@@ -494,10 +496,10 @@ function UI:TrackerRow(index)
     row.goal:SetNonSpaceWrap(false)
     row.check=text(row,14,palette.muted);row.check:SetPoint("TOPRIGHT");row.check:SetText("□")
     row.metrics=text(row,13,palette.gold);row.metrics:SetWidth(270)
-    row.separator=row:CreateTexture(nil,"BACKGROUND");row.separator:SetColorTexture(0.6,0.7,0.8,0.15)
+    row.separator=row:CreateTexture(nil,"BACKGROUND");row.separator:SetColorTexture(unpack(palette.line))
     row.separator:SetPoint("BOTTOMLEFT",0,0);row.separator:SetSize(302,1)
     row:RegisterForClicks("LeftButtonUp","RightButtonUp")
-    row:SetScript("OnEnter",function() row:SetBackdropColor(0.15,0.23,0.27,0.35);questTooltip(row) end)
+    row:SetScript("OnEnter",function() row:SetBackdropColor(0.36,0.23,0.17,0.40);questTooltip(row) end)
     row:SetScript("OnLeave",function() row:SetBackdropColor(0,0,0,0);GameTooltip:Hide() end)
     row:SetScript("OnClick",function(_,button)
         if button=="RightButton" then self:TrackerMenu(row)
@@ -522,7 +524,7 @@ function UI:RenderTracker()
     local ratio=state.maxXP and state.maxXP>0 and math.max(0,math.min(1,(state.xp or 0)/state.maxXP)) or 0
     T.experience:SetText(string.format("%d 级  ·  %.0f%%",state.level or 1,ratio*100))
     T.xpRatio=ratio;T.xpFill:SetShown(ratio>0)
-    local r,g,b=self:Accent();T.xpFill:SetColorTexture(r,g,b,0.70);T.rail:SetColorTexture(r,g,b,0.90)
+    local r,g,b=unpack(palette.accent);T.xpFill:SetColorTexture(r,g,b,0.70);T.rail:SetColorTexture(r,g,b,0.90)
     local serviceLabel=action and action.kind=="service" and ({train="训练",bind="设置炉石",repair="维修"})[action.serviceKind]
     T.step:SetText(A.char.paused and "已暂停" or serviceLabel or (verbs[model.kind] or "当前步骤"))
     T.stepIcon:SetTexture(media..(({accept="accept",objective="objective",turnin="turnin",
@@ -601,7 +603,7 @@ function UI:RenderTracker()
         local native=(state.quests[model.questId] or {}).objectives and state.quests[model.questId].objectives[i]
         local symbol=native and native.type=="item" and "collect" or "objective"
         local count=type(objective.need)=="number" and objective.need>0 and string.format(" %d/%d",objective.have or 0,objective.need) or ""
-        row.text:SetText(self:Icon(objective.done and "turnin" or symbol,14).." "..label.."|cfff1f3f8"..count.."|r")
+        row.text:SetText(self:Icon(objective.done and "turnin" or symbol,14).." "..label.."|cfff5ebdb"..count.."|r")
         row.check:SetText(objective.done and "✓" or "□");row.check:SetTextColor(unpack(objective.done and palette.green or palette.muted))
         row.text:SetTextColor(unpack(objective.done and palette.muted or symbol=="collect" and palette.purple or palette.blue))
         row.done=objective.done
@@ -632,7 +634,7 @@ function UI:RenderTracker()
             for _,objective in ipairs(native and native.objectives or {}) do
                 local label=(objective.text or item.title):gsub("%s*%d+%s*/%s*%d+",""):gsub("^%s+","")
                 local count=objective.numRequired and objective.numRequired>0 and string.format(" %d/%d",objective.numFulfilled or 0,objective.numRequired) or ""
-                goals[#goals+1]=(objective.finished and "|cffc7cfda" or objective.type=="item" and "|cffcaadff" or "|cff8cccff")..label.."|r|cfff1f3f8"..count.."|r"
+                goals[#goals+1]=(objective.finished and "|cffc7b8a8" or objective.type=="item" and "|cffcaadd4" or "|cffadc9d1")..label.."|r|cfff5ebdb"..count.."|r"
             end
             if #goals>0 then goal=table.concat(goals,"\n") end
             if native and native.objectives and native.objectives[1] and native.objectives[1].type=="item" then row.statusIcon:SetTexture(media.."collect.tga") end
@@ -665,9 +667,11 @@ function UI:LayoutTracker()
         if minimap then self.frame:SetPoint("TOPRIGHT",minimap,"BOTTOMRIGHT",0,-12)
         else self.frame:SetPoint("TOPRIGHT",UIParent,"TOPRIGHT",-24,-260) end
     end
+    self.frame:SetWidth(width)
+    width=width-20
     local inner=width-28
     local scale=A.settings.fontScale or 1
-    self.frame:SetWidth(width);T.card:SetWidth(width);T.queuePanel:SetWidth(width)
+    T.content:SetWidth(width);T.card:SetWidth(width);T.queuePanel:SetWidth(width)
     T.rail:Hide();T.step:Hide()
     T.zone:SetWidth(width-110*scale)
     for i,button in ipairs(T.headerButtons) do
@@ -768,7 +772,7 @@ function UI:LayoutTracker()
     bottom=bottom+(collapsed and 0 or 23*scale)
     T.xpBack:ClearAllPoints();T.xpBack:SetPoint("TOPLEFT",0,-bottom);T.xpBack:SetWidth(width)
     T.xpFill:ClearAllPoints();T.xpFill:SetPoint("TOPLEFT",0,-bottom);T.xpFill:SetWidth(math.max(1,width*(T.xpRatio or 0)))
-    self.frame:SetHeight(bottom+3)
+    T.content:SetHeight(bottom+3);self.frame:SetHeight(bottom+23)
     if A.QuestAssist then A.QuestAssist:LayoutTarget() end
 end
 

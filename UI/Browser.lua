@@ -2,7 +2,8 @@ local _,A=...
 -- The main window: one list and one detail pane, backed by the existing task models.
 A.UI.Browser={selection={}}
 local B=A.UI.Browser
-local gold,blue,green,muted="ffd473","8cccff","8cf2b8","a5afbf"
+local gold,blue,green,muted="f2bd7a","adc9d1","9cc9a6","c7b8a8"
+local colors=A.UI.colors
 local function color(c,s) return "|cff"..c..tostring(s).."|r" end
 local function questLink(id,title) return color(blue,"|Hquest:"..id..":0|h["..title.."]|h") end
 local function itemLink(item)
@@ -42,13 +43,15 @@ end
 
 function B:Create(parent)
     self.frame=CreateFrame("Frame",nil,parent);self.frame:SetPoint("TOPLEFT",194,-88);self.frame:SetSize(784,490)
-    local line=self.frame:CreateTexture(nil,"BACKGROUND");line:SetColorTexture(0.6,0.66,0.8,0.14)
-    line:SetPoint("TOPLEFT",410,0);line:SetSize(1,490)
-    self.summary=A.UI:Text(self.frame,13,{0.67,0.73,0.82});self.summary:SetPoint("TOPLEFT");self.summary:SetWidth(392)
+    local listSurface=A.UI:Panel(nil,self.frame,402,432)
+    listSurface:SetPoint("TOPLEFT",-8,-66);listSurface:SetBackdropColor(unpack(colors.panel))
+    local detailSurface=A.UI:Panel(nil,self.frame,362,490)
+    detailSurface:SetPoint("TOPLEFT",418,0);detailSurface:SetBackdropColor(unpack(colors.panel))
+    self.summary=A.UI:Text(self.frame,13,colors.muted);self.summary:SetPoint("TOPLEFT");self.summary:SetWidth(392)
     self.search=CreateFrame("EditBox",nil,self.frame,"InputBoxTemplate")
     self.search:SetPoint("TOPLEFT",8,-36);self.search:SetSize(370,24);self.search:SetAutoFocus(false)
     A.UI:RegisterFont(self.search,13)
-    self.searchHint=A.UI:Text(self.frame,12,{0.67,0.73,0.82});self.searchHint:SetPoint("TOPLEFT",12,-40);self.searchHint:SetText("搜索名称或任务编号")
+    self.searchHint=A.UI:Text(self.frame,12,colors.muted);self.searchHint:SetPoint("TOPLEFT",12,-40);self.searchHint:SetText("搜索名称或任务编号")
     self.search:SetScript("OnEscapePressed",function(box) box:SetText("");box:ClearFocus() end)
     self.search:SetScript("OnTextChanged",function(box)
         self.query=box:GetText():lower();self.searchHint:SetShown(self.query=="")
@@ -58,7 +61,7 @@ function B:Create(parent)
     self.list:SetPoint("TOPLEFT",0,-70);self.list:SetSize(382,420)
     self.child=CreateFrame("Frame",nil,self.list);self.child:SetSize(382,460);self.list:SetScrollChild(self.child)
     self.info=CreateFrame("ScrollFrame",nil,self.frame,"UIPanelScrollFrameTemplate")
-    self.info:SetPoint("TOPLEFT",430,0);self.info:SetSize(330,382)
+    self.info:SetPoint("TOPLEFT",434,-14);self.info:SetSize(326,368)
     self.infoChild=CreateFrame("Frame",nil,self.info);self.infoChild:SetSize(330,382);self.info:SetScrollChild(self.infoChild)
     self.infoChild:SetHyperlinksEnabled(true)
     self.infoChild:SetScript("OnHyperlinkClick",function(_,link,text,button)
@@ -70,7 +73,7 @@ function B:Create(parent)
     end)
     self.infoChild:SetScript("OnHyperlinkLeave",function() GameTooltip:Hide() end)
     self.title=A.UI:Text(self.infoChild,21);self.title:SetPoint("TOPLEFT");self.title:SetWidth(326)
-    self.detail=A.UI:Text(self.infoChild,14,{0.87,0.91,0.97});self.detail:SetWidth(326)
+    self.detail=A.UI:Text(self.infoChild,14,colors.white);self.detail:SetWidth(326)
     self.buttons={}
     for i=1,3 do
         local b=A.UI:Button(self.frame,"",330,function() local f=self.buttons[i].run;if f then f() end end,14)
@@ -236,7 +239,9 @@ function B:Refresh(mode)
             row=A.UI:Button(self.child,"",382,function() end,15)
             row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",28,-9);row.text:SetWidth(342);row.text:SetMaxLines(1)
             row.icon=A.UI:Text(row,16);row.icon:SetPoint("TOPLEFT",4,-9)
-            row.sub=A.UI:Text(row,12,{0.67,0.73,0.82});row.sub:SetWidth(342);row.sub:SetMaxLines(2)
+            row.sub=A.UI:Text(row,12,colors.muted);row.sub:SetWidth(342);row.sub:SetMaxLines(2)
+            row.line=row:CreateTexture(nil,"ARTWORK");row.line:SetPoint("BOTTOMLEFT",28,0);row.line:SetPoint("BOTTOMRIGHT",-8,0);row.line:SetHeight(1)
+            row.line:SetColorTexture(unpack(colors.line))
             row.marker=row:CreateTexture(nil,"ARTWORK");row.marker:SetPoint("TOPLEFT");row.marker:SetPoint("BOTTOMLEFT");row.marker:SetWidth(2)
             row:RegisterForClicks("LeftButtonUp","RightButtonUp")
             row:SetScript("OnClick",function(f,button)
@@ -255,12 +260,12 @@ function B:Refresh(mode)
         end
         row.entry,row.questId,row.candidate,row.revision=entry,entry.questId,entry.choice,A.plan and A.plan.revision
         row.deferred=entry.questId and ((A.state.skipped or {})[entry.questId] or (A.state.chainDeferred or {})[entry.questId])
-        row.text:SetText(entry.title);row.text:SetTextColor(0.95,0.97,1)
+        row.text:SetText(entry.title);row.text:SetTextColor(unpack(colors.white))
         row.icon:SetText(A.UI:Icon(entry.icon,16));row.sub:SetText(entry.sub or "")
         row.sub:ClearAllPoints();row.sub:SetPoint("TOPLEFT",28,-(12+18*scale))
         local h=18*scale+row.sub:GetStringHeight()+22
         row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y);row:SetSize(382,h);row:Show();y=y+h+2
-        local r,g,b=A.UI:Accent();row.baseColor={r*0.20,g*0.20,b*0.20,entry==self.selected and 0.95 or 0}
+        local r,g,b=unpack(colors.accent);row.baseColor=entry==self.selected and colors.selected or {0,0,0,0}
         row:SetBackdropColor(unpack(row.baseColor));row.marker:SetColorTexture(r,g,b,1);row.marker:SetShown(entry==self.selected)
     end
     for i=#rows+1,#self.rows do self.rows[i]:Hide() end

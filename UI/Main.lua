@@ -1,7 +1,15 @@
 local _, A = ...
 A.UI = {fonts={}}
 local UI = A.UI
-local colors = { bg = {0.065,0.078,0.105,0.96}, button = {0.12,0.145,0.19,0.9} }
+UI.colors={
+    bg={0.105,0.075,0.060,0.94}, sidebar={0.085,0.060,0.048,0.88},
+    panel={0.18,0.14,0.12,0.70}, button={0.23,0.17,0.14,0.88},
+    hover={0.36,0.23,0.17,0.85}, selected={0.32,0.20,0.15,0.90},
+    accent={0.89,0.48,0.32}, white={0.96,0.92,0.86}, muted={0.78,0.72,0.66},
+    gold={0.95,0.74,0.48}, green={0.61,0.79,0.65}, blue={0.68,0.79,0.82}, purple={0.79,0.68,0.83},
+    line={0.66,0.46,0.34,0.16},
+}
+local colors=UI.colors
 local media="Interface\\AddOns\\AiLeveling\\Media\\"
 function UI:Accent()
     local class=A.state and A.state.class
@@ -45,7 +53,7 @@ end
 function UI:Panel(name, parent, width, height)
     local f = CreateFrame("Frame", name, parent or UIParent, "BackdropTemplate")
     f:SetSize(width, height)
-    self:Rounded(f,12)
+    self:Rounded(f,18)
     f:SetBackdropColor(unpack(colors.bg))
     return f
 end
@@ -53,7 +61,7 @@ end
 function UI:Text(parent, size, color, flags)
     local text = parent:CreateFontString(nil, "OVERLAY")
     self:RegisterFont(text,size,color=="accent" and "accent" or nil,flags)
-    if color=="accent" then text:SetTextColor(self:Accent()) else text:SetTextColor(unpack(color or {0.86, 0.9, 0.93})) end
+    if color=="accent" then text:SetTextColor(self:Accent()) else text:SetTextColor(unpack(color or colors.white)) end
     text:SetJustifyH("LEFT")
     text:SetJustifyV("TOP")
     return text
@@ -69,7 +77,7 @@ function UI:Button(parent, label, width, callback, fontSize)
     b.text:SetText(label)
     b:SetScript("OnClick", callback)
     b:SetScript("OnEnter", function()
-        local r,g,blue=UI:Accent();b:SetBackdropColor(r*0.35,g*0.35,blue*0.35,1)
+        b:SetBackdropColor(unpack(colors.hover))
     end)
     b:SetScript("OnLeave", function()
         b:SetBackdropColor(unpack(b.baseColor or colors.button))
@@ -129,11 +137,11 @@ function UI:Create()
     close:SetPoint("TOPRIGHT", -12, -12)
     self.tabs = {}
     local side=self:Panel(nil,self.details,164,584)
-    side:SetPoint("TOPLEFT",8,-8);side:SetBackdropColor(0.055,0.065,0.09,1)
+    side:SetPoint("TOPLEFT",8,-8);side:SetBackdropColor(unpack(colors.sidebar))
     self.detailMark=side:CreateTexture(nil,"ARTWORK")
     self.detailMark:SetTexture(media.."compass.tga");self.detailMark:SetSize(24,24);self.detailMark:SetPoint("TOPLEFT",12,-16)
     local brand=self:Text(side,18);brand:SetPoint("TOPLEFT",42,-18);brand:SetText("AILeveling")
-    local subtitle=self:Text(side,12,{0.6,0.66,0.75});subtitle:SetPoint("TOPLEFT",12,-50);subtitle:SetText("少跑路 · 多经验")
+    local subtitle=self:Text(side,12,colors.muted);subtitle:SetPoint("TOPLEFT",12,-50);subtitle:SetText("少跑路 · 多经验")
     local labels={"任务行程","任务链","装备","地下城","设置","数据","服务","专业任务","职业任务","练级区域","坐骑任务"}
     local icons={"compass","objective","turnin","entry","compass","xp","accept","objective","party","entry","compass"}
     for n,i in ipairs({1,10,9,8,11,4,3,2,7,5,6}) do
@@ -144,13 +152,13 @@ function UI:Create()
     end
     self.detailHeading=self:Text(self.details,23)
     self.detailHeading:SetPoint("TOPLEFT",194,-22);self.detailHeading:SetText("任务行程")
-    self.detailSubtitle=self:Text(self.details,13,{0.65,0.71,0.8})
+    self.detailSubtitle=self:Text(self.details,13,colors.muted)
     self.detailSubtitle:SetPoint("TOPLEFT",194,-54)
     self.scroll = CreateFrame("ScrollFrame", nil, self.details, "UIPanelScrollFrameTemplate")
     self.scroll:SetPoint("TOPLEFT", 18, -96); self.scroll:SetPoint("BOTTOMRIGHT", -36, 18)
     self.scrollChild = CreateFrame("Frame", nil, self.scroll)
     self.scrollChild:SetSize(560, 380); self.scroll:SetScrollChild(self.scrollChild)
-    self.detailText = self:Text(self.scrollChild, 16, {0.97,0.98,1})
+    self.detailText = self:Text(self.scrollChild, 16, colors.white)
     self.detailText:SetPoint("TOPLEFT"); self.detailText:SetWidth(552)
     self.copyBox = CreateFrame("EditBox", nil, self.scrollChild)
     self.copyBox:SetPoint("TOPLEFT"); self.copyBox:SetSize(552, 380)
@@ -180,7 +188,7 @@ function UI:ApplyStyle()
         if entry.role=="accent" then entry.text:SetTextColor(self:Accent()) end
     end
     if self.accent then local r,g,b=self:Accent();self.accent:SetColorTexture(r,g,b,1) end
-    if self.detailMark then self.detailMark:SetVertexColor(self:Accent()) end
+    if self.detailMark then self.detailMark:SetVertexColor(unpack(colors.accent)) end
     if A.settings.lockWindow then self.frame:StopMovingOrSizing();self.details:StopMovingOrSizing() end
     if self.navFrame then
         self.navFrame:SetScale(A.settings.scale);self.navFrame:SetAlpha(A.settings.alpha)
@@ -222,11 +230,11 @@ function UI:SelectTab(index)
     self.copyBox:ClearFocus(); self.copyBox:Hide(); self.detailText:Show()
     if self.selectedTab~=index then self.scroll:SetVerticalScroll(0) end
     self.selectedTab = index
-    local r,g,b=self:Accent()
+    local r,g,b=unpack(colors.accent)
     for i,tab in ipairs(self.tabs or {}) do
-        tab.baseColor=i==index and {r*0.24,g*0.24,b*0.24,1} or {0,0,0,0}
+        tab.baseColor=i==index and colors.selected or {0,0,0,0}
         tab:SetBackdropColor(unpack(tab.baseColor))
-        if i==index then tab.text:SetTextColor(r,g,b) else tab.text:SetTextColor(0.74,0.79,0.86) end
+        if i==index then tab.text:SetTextColor(r,g,b) else tab.text:SetTextColor(unpack(colors.muted)) end
     end
     local names={"任务行程","任务链","装备情况","地下城","设置","运行数据","附近服务","专业任务","职业任务","练级区域","坐骑任务"}
     self.detailHeading:SetText(names[index])
