@@ -209,6 +209,9 @@ function D.Tasks(d,state,data)
     local refs={}
     if d.reference then
         for id,kind in pairs(d.quests[state.faction] or {}) do refs[id]=kind end
+        for _,area in ipairs(d.areas or {}) do
+            for _,id in ipairs(data.byArea and data.byArea[area] or {}) do refs[id]=refs[id] or "category" end
+        end
     else
         for _,action in ipairs(d.actions or {}) do if action.questId then refs[action.questId]="inside" end end
     end
@@ -219,7 +222,8 @@ function D.Tasks(d,state,data)
         if not refs[id] then
             local q=data:GetQuest(id) or {id=id,title=active.title,questLevel=active.level}
             local position=data:Target(q,state)
-            local instance=D.TaskInstance(position,state,data)
+            local area=not position and data.UnmappedTargetArea and data:UnmappedTargetArea(q,state)
+            local instance=D.TaskInstance(position,state,data,area)
             if instance and instance.instanceId==d.instanceId then refs[id]="inside" end
         end
     end
@@ -297,9 +301,9 @@ end
 function D.SuggestTaskBatch(state,data,options)
     if not options.dungeons or state.inInstance or state.taskBatch or state.gearTarget or
         state.dungeon and state.dungeon.phase~="complete" then return end
-    local best
+    local candidates={}
     for _,d in pairs(D.Catalog(state,data.content)) do
-        if d.reference and (not d.minLevel or state.level>=d.minLevel) and (not d.maxLevel or state.level<=d.maxLevel) then
+        if d.reference and (not d.minLevel or state.level>=d.minLevel) then
             local entry=D.TaskApproach({kind="dungeonEnter",title=d.title,areaId=d.areas[1]},state,data)
             local seconds
             if entry.position then
@@ -309,24 +313,29 @@ function D.SuggestTaskBatch(state,data,options)
                     end
                 else seconds=A.Travel.Walk(state.position,entry.position,state,A.Navigation) end
             end
-            if seconds then
-                local rows=D.Tasks(d,state,data)
-                local rewards=D.TaskRewards(rows)
-                if rewards.count>rewards.ready then
-                    local xp=rewards.unknownXP==0 and rewards.xp or nil
-                    local rate=xp and A.TaskGuide.MovementRate(seconds,xp)
-                    local candidate={id=d.id,kind="dungeon",reference=true,dungeonId=d.id,title=d.title,
-                        requiresAcceptance=true,actions={entry},rewards=rewards,remainingXP=xp,
-                        timing={seconds=seconds},rate=rate}
-                    if not best or rate and best.rate and rate>best.rate or
-                        (not rate or not best.rate or rate==best.rate) and (seconds<best.timing.seconds or
-                        seconds==best.timing.seconds and tostring(d.id)<tostring(best.id)) then best=candidate end
-                end
+            local rows=D.Tasks(d,state,data)
+            local rewards=D.TaskRewards(rows)
+            local insideDelivery=false
+            for _,row in ipairs(rows) do
+                local instance=row.group==1 and row.allowed and not row.lowValue and D.TaskInstance(row.position,state,data,row.areaId)
+                if instance and instance.instanceId==d.instanceId then insideDelivery=true;break end
+            end
+            if rewards.count>rewards.ready or insideDelivery then
+                local xp=rewards.unknownXP==0 and rewards.xp or nil
+                candidates[#candidates+1]={id=d.id,kind="dungeon",reference=true,dungeonId=d.id,title=d.title,
+                    requiresAcceptance=true,actions={entry},rewards=rewards,remainingXP=xp,
+                    timing={seconds=seconds},rate=xp and seconds and A.TaskGuide.MovementRate(seconds,xp)}
             end
         end
         coroutine.yield()
     end
-    return best
+    table.sort(candidates,function(a,b)
+        if (a.rate or -1)~=(b.rate or -1) then return (a.rate or -1)>(b.rate or -1) end
+        local aa,bb=a.timing.seconds or math.huge,b.timing.seconds or math.huge
+        if aa~=bb then return aa<bb end
+        return tostring(a.id)<tostring(b.id)
+    end)
+    return candidates[1],candidates
 end
 
 function D:ContinueTask(d,id)
@@ -424,6 +433,16 @@ function D:TaskBatchSnapshot(state)
             (not state.quests[id] and state.completed[id] and q and not q.repeatable)
         if done then batch.baselines[id]=nil
         else ids[#ids+1]=id;baselines[id]=n end
+    end
+    -- A quest picked up during the trip joins the same batch, including quests absent at departure.
+    local d=D.Catalog(state,A.Content)[batch.id]
+    for _,row in ipairs(d and D.Tasks(d,state,A.Data) or {}) do
+        if state.quests[row.id] and not (A.State.confirmed and A.State.confirmed[row.id]) and
+            baselines[row.id]==nil and D.CanContinueTask(row) then
+            local n=(A.char.turnIns or {})[row.id] or 0
+            batch.baselines[row.id],baselines[row.id]=n,n;ids[#ids+1]=row.id
+            batch.returning=nil
+        end
     end
     if #ids==0 then
         if state.inInstance then batch.returning=true

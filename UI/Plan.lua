@@ -14,6 +14,7 @@ function UI.Rows(plan)
         if key and not seen[key] then rows[#rows+1]=candidate;seen[key]=true end
     end
     add(plan and plan.suggestedDungeon)
+    for _,candidate in ipairs(plan and plan.dungeonChoices or {}) do add(candidate) end
     add(plan and plan.best)
     for _,candidate in ipairs(plan and plan.alternatives or {}) do add(candidate) end
     for _,candidate in ipairs(plan and plan.taskChoices or {}) do add(candidate) end

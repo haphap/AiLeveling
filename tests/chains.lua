@@ -85,7 +85,7 @@ test("自有新增任务进入等级资格和关系索引且不改上游 ID 表"
         [3]={title="随等级任务",questLevel=-1,requiredLevel=20}}}}
     assert(loadfile("Planner/Chains.lua"))("AiLeveling",B)
     assert(loadfile("Data/Questie.lua"))("AiLeveling",B)
-    local ids={1};local source={name="上游任务",questLevel=20,requiredLevel=1}
+    local ids={1};local source={name="上游任务",questLevel=20,requiredLevel=1,zoneOrSort=100}
     local db={RequireContract=function() return true end,Support={Get=function(name)
         return name=="QuestXP" and {db={[1]={20,1234}}} or {}
     end},
@@ -98,6 +98,7 @@ test("自有新增任务进入等级资格和关系索引且不改上游 ID 表"
     assert(B.Data:Connect(db));eq(#ids,1);eq(#B.Data.ids,3)
     local co=coroutine.create(function() B.Data:BuildIndex() end)
     repeat local ok,why=coroutine.resume(co);assert(ok,why) until coroutine.status(co)=="dead"
+    eq(B.Data.byArea[100][1],1)
     eq(B.Data.count,3);eq(B.Data.byLevel[21][1],2);eq(B.Data.requirements.skills[123],true)
     -- The displayed quest level is not its minimum acceptance level.
     source.questLevel,source.requiredLevel=22,14;B.Data.cache={};B.Data.byLevel={[22]={1}}

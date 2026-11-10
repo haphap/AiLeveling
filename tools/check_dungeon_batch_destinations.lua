@@ -30,11 +30,13 @@ C_Map.GetMapInfo=function(id) if native[id] then return {mapID=id,mapType=3,name
 assert(loadfile(root.."/Planner/Selection.lua"))("AiLeveling",A)
 local s=dofile(root.."/tests/fixtures.lua").State()
 s.clientVersion,s.clientBuild,s.interface="1.60.1","70862",16001
+A.clientVersion,A.build=s.clientVersion,s.clientBuild
 s.faction,s.class,s.raceId=faction,class,raceId
 s.classMask,s.raceMask=db.Enum.classKeys[class],db.Enum.raceMaskById[raceId]
 s.level,s.maxXP=40,A.Experience.xpToLevel[40]
 s.position={map=faction=="Alliance" and 1436 or 1413,x=0.5,y=0.5}
 A.state,A.ready=s,true
+A.settings={learn=false}
 A.State.Refresh=function() s.locked=A.char.locked;A.Selection:Snapshot(s);A.Dungeon:TaskBatchSnapshot(s) end
 local catalogs,selected,restored,journeySteps=0,0,0,0
 for id,d in pairs(A.Dungeon.Catalog(s,A.Content)) do
@@ -93,6 +95,6 @@ for id,d in pairs(A.Dungeon.Catalog(s,A.Content)) do
   assert(rewards.count==expectedCount)
  else assert(not ok) end
 end
-assert(catalogs==34 and restored>0)
+assert(catalogs==39 and restored>0)
 print(string.format("PASS %d native-map dungeon catalogs; %d selected roots; %d coordinate-free roots retained in batch/actions/rewards",catalogs,selected,restored))
 print(string.format("PASS %d remaining actions preserved exactly once in dungeon task journey phases",journeySteps))

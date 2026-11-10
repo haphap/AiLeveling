@@ -27,7 +27,7 @@ function D:Connect(db)
     local ok, message = db.RequireContract(4)
     if not ok then return false, message end
     self.db = db
-    self.cache,self.chainIndex={},nil
+    self.cache,self.chainIndex,self.byArea={},nil,{}
     self.servicesByMap,self.serviceCount={},0
     self.amenitiesByMap,self.amenityCount={},0
     self.ids={}
@@ -47,7 +47,7 @@ function D:Connect(db)
 end
 
 function D:BuildIndex()
-    self.byLevel, self.count = {}, 0
+    self.byLevel, self.byArea, self.count = {}, {}, 0
     self.requirements = {skills = {}, reputations = {}, spells = {}, specializations = {}}
     local chainIndex=A.Chains.NewIndex()
     for i, id in ipairs(self.ids) do
@@ -56,6 +56,10 @@ function D:BuildIndex()
         level = math.floor(level)
         self.byLevel[level] = self.byLevel[level] or {}
         table.insert(self.byLevel[level], id)
+        if q and q.zoneOrSort and q.zoneOrSort>0 then
+            self.byArea[q.zoneOrSort]=self.byArea[q.zoneOrSort] or {}
+            table.insert(self.byArea[q.zoneOrSort],id)
+        end
         self.count = self.count + 1
         local function get(key) return q and q[key] end
         local skill = get("requiredSkill")

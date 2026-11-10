@@ -27,6 +27,7 @@ function S.CanChoose(candidate,revision)
     local found=plan.best==candidate or plan.suggestedDungeon==candidate
     for _,c in ipairs(plan.alternatives or {}) do if c==candidate then found=true;break end end
     for _,c in ipairs(plan.taskChoices or {}) do if c==candidate then found=true;break end end
+    for _,c in ipairs(plan.dungeonChoices or {}) do if c==candidate then found=true;break end end
     if not candidate or not found then return false,"该备选已失效，请重新选择" end
     if candidate.kind=="task" then return true end
     if candidate.requiresAcceptance and candidate.kind=="dungeon" then return true end

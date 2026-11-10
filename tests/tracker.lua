@@ -194,6 +194,8 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.Dungeon={StartTaskBatch=function(_,id) started=id;return true end}
     T.rows[1].scripts.OnClick(nil,"RightButton");local valid,why=B.Selection.CanChoose(suggestion,B.plan.revision);assert(valid,why);B.menu["安排整组任务"].callback();eq(started,suggestion.dungeonId)
     B.plan.suggestedDungeon=nil;B.UI:RenderTracker();eq(T.rows[1].dungeonId,nil)
+    B.plan.dungeonChoices={suggestion}
+    eq(B.UI.Plan.Rows(B.plan)[1],suggestion);assert(B.Selection.CanChoose(suggestion,B.plan.revision))
     B.finish()
 end)
 test("未来行动中的交付预期不能把未接任务显示成已接或可交付",function()

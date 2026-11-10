@@ -237,8 +237,14 @@ run("副本任务行程随前置、接取、本内完成和交付更新",functio
     data.ReferenceObjectiveTargets=function(_,q)
         return {{text="参考目标",numRequired=1,numFulfilled=0}},data:ObjectiveTargets(q)
     end
+    data.byArea={[100]={2}};d.quests.Alliance[2]=nil
     local suggested=plan(s,data,B.settings,B).suggestedDungeon
     eq(suggested.dungeonId,"ref");eq(suggested.rewards.prepare,1);eq(s.taskBatch,nil)
+    d.maxLevel=s.level-1
+    local navigation=B.Navigation;B.Navigation={Distance=function() end}
+    local unlocated=plan(s,data,B.settings,B)
+    eq(unlocated.suggestedDungeon.dungeonId,"ref");eq(unlocated.dungeonChoices[1],unlocated.suggestedDungeon)
+    eq(unlocated.suggestedDungeon.timing.seconds,nil);B.Navigation=navigation
     B.settings.dungeons=false;eq(plan(s,data,B.settings,B).suggestedDungeon,nil);B.settings.dungeons=true
     assert(B.Dungeon:StartTaskBatch("ref"))
     local p=plan(s,data,B.settings,B)
@@ -531,6 +537,14 @@ run("缺本内坐标的已接任务可单独继续并完整加入同NPC交付组
     s.inInstance,s.instanceId,s.position=true,42,{map=9,x=0.2,y=0.3}
     p=plan(s,data,B.settings,B);eq(p.fallback.kind,"objective")
     s.quests[4].ready=true;p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonLeave")
+    -- Another quest accepted during this same trip joins without selecting the batch again.
+    s.quests[6]={title="本内新接任务",objectives={{text="本内目标",numRequired=1,numFulfilled=0}}}
+    local precise=data.Target
+    data.Target=function(self,quest,state) if quest.id~=6 then return precise(self,quest,state) end end
+    data.UnmappedTargetArea=function(_,quest) if quest.id==6 then return 100,1 end end
+    B.char.taskBatch.returning=true
+    B.State:Refresh();eq(s.taskBatch.baselines[6],0);eq(s.taskBatch.returning,nil)
+    B.Selection:Skip(6);eq(s.taskBatch.baselines[6],nil);s.quests[6]=nil
     s.inInstance=false;s.position={map=1,x=0,y=0}
     p=plan(s,data,B.settings,B);eq(p.fallback.kind,"turnin");eq(p.fallback.questId,4)
     s.quests[4]=nil;B.char.turnIns[4]=1;B.State:Refresh();eq(s.taskBatch,nil)

@@ -409,8 +409,10 @@ function P.Build(state, data, options)
         result.fallback={kind="selectionBlocked",title=batch.title.."任务等待处理",
             text=(batch.blocked[1] or "当前任务尚无可执行目标").."；可在副本页查看任务条件或结束安排。"}
     end
-    if not result.suggestedDungeon and A.Dungeon.SuggestTaskBatch then
-        result.suggestedDungeon=A.Dungeon.SuggestTaskBatch(state,data,options)
+    if A.Dungeon.SuggestTaskBatch then
+        local suggested,choices=A.Dungeon.SuggestTaskBatch(state,data,options)
+        result.suggestedDungeon=result.suggestedDungeon or suggested
+        result.dungeonChoices=choices
     end
     if A.Dungeon.TaskBatchWaitPlan then A.Dungeon.TaskBatchWaitPlan(result,state,data,options) end
     if A.Services then result.bindingChoices=A.Services.PlanBindings(result,state,data) end
