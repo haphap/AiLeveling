@@ -31,7 +31,7 @@ test("同NPC任务连续显示整组真实进度并保持行宽与点击",functi
     eq(T.rows[2].progress.value,"同组还差 1 项，做完一起交")
     eq(T.model.deliverySummary,"同组还差 1 项，做完一起交")
     eq(T.rows[1].number.point[3],T.rows[1].title.point[3]);eq(T.queuePanel.width,T.card.width)
-    T.rows[2].scripts.OnClick();eq(B.char.locked,3)
+    T.rows[2].scripts.OnClick(nil,"RightButton");B.menu["优先做此任务"].callback();eq(B.char.locked,3)
     B.state.quests[1].ready=true;B.UI:RenderTracker()
     eq(T.rows[1].group.value,"治安官 · 已完成 2/2");eq(T.rows[1].progress.value,"一起交给治安官（2项）")
     assert(loadfile("UI/Plan.lua"))("AiLeveling",B)
@@ -111,16 +111,23 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     IsModifiedClick=function() return modified end
     ChatFrameUtil={InsertLink=function(link) inserted=link;return focused end,OpenChat=function(link) opened=link end}
     eq(T.rows[1].clicks[2],"RightButtonUp")
-    T.rows[1].scripts.OnClick(nil,"RightButton");eq(shown,2);eq(B.char.locked,nil)
+    T.rows[1].scripts.OnClick(nil,"LeftButton");eq(shown,2);eq(B.char.locked,nil)
     T.questTitle.scripts.OnClick(nil,"LeftButton");eq(shown,1);eq(B.char.locked,nil)
     modified=true;T.rows[1].scripts.OnClick(nil,"LeftButton")
     eq(inserted,GetQuestLink(2));eq(opened,nil);eq(B.char.locked,nil)
     focused=false;T.questTitle.scripts.OnClick(nil,"LeftButton");eq(opened,GetQuestLink(1))
     GetQuestLink=function() end;opened=nil;T.rows[1].scripts.OnClick(nil,"LeftButton");eq(opened,nil);eq(B.char.locked,nil)
     modified=false
-    T.rows[1].scripts.OnClick();eq(B.char.locked,2)
-    B.state.revision=B.state.revision+1;T.rows[1].scripts.OnClick(nil,"RightButton");eq(shown,2)
+    T.rows[1].scripts.OnClick(nil,"RightButton");assert(B.menu["优先做此任务"].enabled)
+    B.menu["优先做此任务"].callback();eq(B.char.locked,2)
+    B.state.revision=B.state.revision+1;T.rows[1].scripts.OnClick(nil,"RightButton")
+    eq(B.menu["优先做此任务"].enabled,false);B.menu["查看任务详情"].callback();eq(shown,2)
     eq(B.char.locked,2);eq(B.state.completed[2],nil)
+    T.questTitle.scripts.OnClick(nil,"RightButton");B.menu["恢复自动安排"].callback();eq(B.char.locked,nil)
+    T.rows[2].scripts.OnClick(nil,"RightButton")
+    local defer=B.menu["暂缓此任务"].callback
+    T.rows[2].questId=1;defer();eq(B.char.skipped[3],true);eq(B.char.skipped[1],nil)
+    eq(T.tools,nil)
     B.finish()
 end)
 test("后续任务按真实日志区分已接和未接且接取后更新进度",function()
@@ -131,11 +138,12 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     eq(T.rows[2].status.value,"已接取");eq(T.rows[3].status.value,"未接取")
     eq(T.rows[3].progress.value,"先接取，再推进任务目标")
     eq(T.model.acceptedCount,2);eq(T.model.unacceptedCount,1)
-    T.rows[3].scripts.OnClick(nil,"RightButton")
+    T.rows[3].scripts.OnClick(nil,"LeftButton")
     eq(B.UI.Plan.preview.questId,4);eq(B.UI.details.shown,true);eq(B.char.locked,nil)
     B.state.skipped[4]=true;B.UI:RenderTracker();eq(T.rows[3].enabled,true)
     T.rows[3].scripts.OnClick(nil,"LeftButton");eq(B.char.locked,nil);eq(B.state.skipped[4],true)
-    T.rows[3].scripts.OnClick(nil,"RightButton");eq(B.UI.Plan.preview.questId,4)
+    T.rows[3].scripts.OnClick(nil,"RightButton");eq(B.menu["优先做此任务"].enabled,false)
+    B.menu["查看任务详情"].callback();eq(B.UI.Plan.preview.questId,4)
     B.state.skipped[4]=nil
     assert(T.queueLabel.value:find("未接取 1",1,true))
     local starter=B.plan.taskChoices[4].actions[1]
@@ -160,7 +168,8 @@ test("未来行动中的交付预期不能把未接任务显示成已接或可�
 end)
 test("原生更新后清除旧目标和旧任务行且拒绝过期任务点击",function()
     local B=ready();local T=B.UI.tracker
-    B.state.revision=B.state.revision+1;T.rows[1].scripts.OnClick();eq(B.char.locked,nil)
+    B.state.revision=B.state.revision+1;T.rows[1].scripts.OnClick(nil,"RightButton")
+    eq(B.menu["优先做此任务"].enabled,false);eq(B.char.locked,nil)
     B.state.quests[2]=nil;B.state.quests[3]=nil;B.plan.taskChoices={};B.plan.taskOrder={}
     B.state.quests[1].objectives={};B.UI:RenderTracker()
     eq(T.objectives[1].shown,false);eq(T.rows[1].shown,false);eq(T.queueScroll.shown,false)
@@ -181,9 +190,8 @@ test("暂停飞行手动导航保持真实当前类型且不自动跳过任务",
     B.action={kind="flight",title="正在飞行"};B.UI:RenderTracker();eq(T.step.value,"飞行中");eq(T.model.hint,nil)
     assert(not B.UI.body.value:find("旧前置",1,true));B.plan.preparingQuest=nil
     B.Navigation.manual={};B.action={kind="manual",title="手动目的地"};B.UI:RenderTracker();assert(T.queueLabel.value:find("任务列表",1,true))
-    eq(T.skip.text.value,"返回任务")
     local cleared=0;B.Navigation.ClearManual=function(self) self.manual=nil;cleared=cleared+1 end
-    B.char.locked=1;T.skip.scripts.OnClick()
+    B.char.locked=1;T.questTitle.scripts.OnClick(nil,"RightButton");B.menu["返回任务"].callback()
     eq(cleared,1);eq(B.Navigation.manual,nil);eq(B.char.locked,1);eq(B.state.quests[1].objectives[1].numFulfilled,3)
     B.finish()
 end)
@@ -214,11 +222,12 @@ test("商店事件触发刷新且维修卡片可以忽略",function()
     B.action={kind="service",serviceKind="repair",npcId=78,title="铁匠",serviceGoal={durability=0.2}}
     B.state.merchant={npcId=78,canRepair=true,repairCost=123,items={}};B.state.money=100
     B.UI:RenderTracker();assert(not B.UI.body.value:find("铜",1,true))
-    local T=B.UI.tracker;eq(T.skip.text.value,"忽略维修");eq(T.queuePanel.shown,true);eq(#T.model.rows,3)
+    local T=B.UI.tracker;eq(T.queuePanel.shown,true);eq(#T.model.rows,3)
     B.action.questId=1
-    T.skip.scripts.OnClick();eq(B.char.ignoreRepair,true);assert(B.refreshAt)
+    T.questTitle.scripts.OnClick(nil,"RightButton");B.menu["忽略维修"].callback();eq(B.char.ignoreRepair,true);assert(B.refreshAt)
     eq(B.char.skipped[1],nil);eq(B.state.quests[1].objectives[1].finished,nil)
-    B.action={kind="objective",questId=1,title="当前任务"};B.UI:RenderTracker();eq(T.skip.text.value,"暂缓任务")
+    B.action={kind="objective",questId=1,title="当前任务"};B.UI:RenderTracker()
+    T.questTitle.scripts.OnClick(nil,"RightButton");assert(B.menu["暂缓此任务"]);eq(B.menu["忽略维修"],nil)
     local event=B.frame.scripts.OnEvent
     event(nil,"MERCHANT_SHOW");eq(B.Merchant.open,true);assert(B.refreshAt)
     local saleRefresh

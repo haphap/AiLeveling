@@ -271,9 +271,9 @@ function UI.TrackerModel(state,plan,action,paused)
         elseif plan.revision and plan.revision~=state.revision then model.title="正在更新行程";model.instruction="正在安排下一步。"
         elseif plan.selectionBlocked then model.title="所选行程等待处理";model.instruction=plan.selectionBlocked
         elseif not A.indexReady then model.title="正在整理任务";model.instruction="任务数据加载后显示当前步骤。"
-        else model.title="选择下一项任务";model.instruction="点击下方任务开始，或打开详情查看行程。" end
+        else model.title="选择下一项任务";model.instruction="右键任务可选择优先做，左键查看详情。" end
     end
-    if paused then model.instruction="引导已暂停，点击继续恢复。";model.hint=nil;model.deliverySummary=nil end
+    if paused then model.instruction="引导已暂停，右键标题栏可继续引导。";model.hint=nil;model.deliverySummary=nil end
     if A.error then model.title="需要处理";model.instruction=A.error;model.hint=nil;model.deliverySummary=nil end
     return model
 end
@@ -284,10 +284,46 @@ local function text(parent,size,color)
     return value
 end
 
-local function questTooltip(owner,primary)
-    if not owner.questId then return end
-    GameTooltip:SetOwner(owner,"ANCHOR_RIGHT");GameTooltip:SetText(primary)
-    GameTooltip:AddLine("右键：查看任务详情\nShift+左键：插入任务链接",1,1,1,true);GameTooltip:Show()
+local function questTooltip(owner)
+    GameTooltip:SetOwner(owner,"ANCHOR_RIGHT")
+    GameTooltip:SetText(owner.questId and "左键：查看任务详情" or "右键：当前步骤操作")
+    if owner.questId then GameTooltip:AddLine("右键：任务操作\nShift+左键：插入任务链接",1,1,1,true) end
+    GameTooltip:Show()
+end
+
+function UI:TrackerMenu(owner)
+    local id,candidate,revision=owner.questId,owner.candidate,owner.revision
+    local action=owner==self.tracker.questTitle and self.tracker.action
+    GameTooltip:Hide()
+    MenuUtil.CreateContextMenu(owner,function(_,menu)
+        if action and action.kind=="manual" then
+            menu:CreateButton("返回任务",function() A.Navigation:ClearManual() end)
+        elseif action and action.kind=="service" and action.serviceKind=="repair" then
+            menu:CreateButton("忽略维修",function() A.Supplies:IgnoreRepair() end)
+        elseif id then
+            menu:CreateButton("查看任务详情",function() self:QuestClick(id,"RightButton") end)
+            local choose=menu:CreateButton("优先做此任务",function()
+                local ok,why
+                if candidate then ok,why=A.Selection:Lock(candidate,revision)
+                else ok,why=A.Selection:LockQuest(id) end
+                if not ok then A:Message(why) end
+            end)
+            choose:SetEnabled(not owner.deferred and (not candidate or A.Selection.CanChoose(candidate,revision)==true))
+            menu:CreateButton("暂缓此任务",function() A.Selection:Skip(id) end):SetEnabled(not owner.deferred)
+        end
+        if A.char.locked or A.char.itinerary then
+            menu:CreateButton("恢复自动安排",function()
+                local ok,why=A.Selection:Automatic();if not ok then A:Message(why) end
+            end)
+        end
+        if owner==self.frame or not id then
+            menu:CreateButton(A.char.paused and "继续引导" or "暂停引导",function() A:TogglePause() end)
+            menu:CreateButton("详细面板",function() self:ToggleDetails() end)
+            menu:CreateButton(self.folded and "展开任务列表" or "收起任务列表",function()
+                self.folded=not self.folded;self:LayoutCard()
+            end)
+        end
+    end)
 end
 
 function UI:CreateTracker()
@@ -297,6 +333,12 @@ function UI:CreateTracker()
     local p=A.settings.position
     if p then f:ClearAllPoints();f:SetPoint(p[1],UIParent,p[2],p[3],p[4]) end
     self:Movable(f,"position")
+    f:SetScript("OnMouseUp",function(_,button) if button=="RightButton" then self:TrackerMenu(f) end end)
+    f:SetScript("OnEnter",function()
+        GameTooltip:SetOwner(f,"ANCHOR_TOP");GameTooltip:SetText("AiLeveling")
+        GameTooltip:AddLine("左键拖动面板\n右键：暂停、收起与详细面板",1,1,1,true);GameTooltip:Show()
+    end)
+    f:SetScript("OnLeave",function() GameTooltip:Hide() end)
     local T=self.tracker
     T.zone=text(f,16);T.zone:SetPoint("TOPLEFT",2,-2);T.zone:SetWidth(226);T.zone:SetMaxLines(1)
     T.experience=text(f,13,palette.muted);T.experience:SetPoint("TOPRIGHT",-2,-5);T.experience:SetJustifyH("RIGHT")
@@ -315,9 +357,10 @@ function UI:CreateTracker()
     T.questTitle=CreateFrame("Button",nil,T.card);T.questTitle:SetAllPoints(self.title)
     T.questTitle:RegisterForClicks("LeftButtonUp","RightButtonUp")
     T.questTitle:SetScript("OnClick",function(_,mouse)
-        if not self:QuestClick(T.questTitle.questId,mouse) then self:QuestClick(T.questTitle.questId,"RightButton") end
+        if mouse=="RightButton" then self:TrackerMenu(T.questTitle)
+        else self:QuestClick(T.questTitle.questId,mouse) end
     end)
-    T.questTitle:SetScript("OnEnter",function(button) questTooltip(button,"左键：查看任务详情") end)
+    T.questTitle:SetScript("OnEnter",questTooltip)
     T.questTitle:SetScript("OnLeave",function() GameTooltip:Hide() end)
     T.currentScroll=CreateFrame("ScrollFrame",nil,T.card,"UIPanelScrollFrameTemplate")
     T.currentScroll:SetSize(308,80)
@@ -332,25 +375,6 @@ function UI:CreateTracker()
     T.queueScroll:SetPoint("TOPLEFT",16,-12)
     T.queueChild=CreateFrame("Frame",nil,T.queueScroll);T.queueChild:SetSize(302,120);T.queueScroll:SetScrollChild(T.queueChild)
     T.rows={}
-    T.tools=CreateFrame("Frame",nil,f);T.tools:SetSize(360,26)
-    local actions={
-        {"暂停引导",function() A:TogglePause() end},
-        {"锁定任务",function() local action=A.Navigation:Current();local ok,why=A.Selection:LockQuest(action and action.questId);if not ok then A:Message(why) end end,
-            "固定当前任务为优先目标。要恢复自动安排，在详细面板中点击「恢复自动选择」。"},
-        {"暂缓任务",function()
-            local action=A.Navigation:Current()
-            if action and action.kind=="manual" then A.Navigation:ClearManual()
-            elseif action and action.kind=="service" and action.serviceKind=="repair" then A.Supplies:IgnoreRepair()
-            elseif action and action.questId then A.Selection:Skip(action.questId) end
-        end},
-        {"详细面板",function() self:ToggleDetails() end,"打开或关闭详细面板，查看完整规划、任务链、副本与设置。"},
-        {"精简显示",function() self.folded=not self.folded;self:LayoutCard() end},
-    }
-    for i,spec in ipairs(actions) do
-        local b=self:Button(T.tools,spec[1],68,spec[2]);b:SetPoint("TOPLEFT",(i-1)*73,0);b.tooltip=spec[3]
-        b.baseColor={0.10,0.12,0.16,0.88};b:SetBackdropColor(unpack(b.baseColor));b.text:SetTextColor(unpack(palette.white))
-        if i==1 then T.pause=b elseif i==3 then T.skip=b elseif i==5 then self.fold=b end
-    end
     local nav=CreateFrame("Frame","AiLevelingNavigation",UIParent)
     self.navFrame=nav;nav:SetSize(420,90);nav:SetPoint("CENTER",UIParent,"CENTER",0,-110)
     p=A.settings.navigationPosition
@@ -384,13 +408,11 @@ function UI:TrackerRow(index)
     row.separator=row:CreateTexture(nil,"BACKGROUND");row.separator:SetColorTexture(0.6,0.7,0.8,0.15)
     row.separator:SetPoint("BOTTOMLEFT",0,0);row.separator:SetSize(302,1)
     row:RegisterForClicks("LeftButtonUp","RightButtonUp")
-    row:SetScript("OnEnter",function() row:SetBackdropColor(0.15,0.23,0.27,0.35);questTooltip(row,row.lockable and "左键：锁定任务" or "任务详情") end)
+    row:SetScript("OnEnter",function() row:SetBackdropColor(0.15,0.23,0.27,0.35);questTooltip(row) end)
     row:SetScript("OnLeave",function() row:SetBackdropColor(0,0,0,0);GameTooltip:Hide() end)
     row:SetScript("OnClick",function(_,button)
-        if self:QuestClick(row.questId,button) then return end
-        if not row.lockable then return end
-        local ok,why=A.Selection:Lock(row.candidate,row.revision)
-        if not ok then A:Message(why) end
+        if button=="RightButton" then self:TrackerMenu(row)
+        else self:QuestClick(row.questId,button) end
     end)
     T.rows[index]=row
     return row
@@ -402,8 +424,9 @@ function UI:RenderTracker()
     local state,plan=A.state or {},A.plan or {}
     local action=A.Navigation:Current()
     local model=UI.TrackerModel(state,plan,action,A.char.paused)
-    T.model=model
-    T.questTitle.questId=model.questId;T.questTitle:SetEnabled(model.questId~=nil)
+    T.model,T.action=model,action
+    T.questTitle.questId=model.questId
+    T.questTitle.deferred=model.questId and ((state.skipped or {})[model.questId] or (state.chainDeferred or {})[model.questId])
     local map=state.position and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(state.position.map)
     T.zone:SetText(map and map.name or "AiLeveling")
     local ratio=state.maxXP and state.maxXP>0 and math.max(0,math.min(1,(state.xp or 0)/state.maxXP)) or 0
@@ -414,13 +437,6 @@ function UI:RenderTracker()
     T.step:SetText(A.char.paused and "已暂停" or serviceLabel or (verbs[model.kind] or "当前步骤"))
     T.stepIcon:SetTexture(media..(({accept="accept",objective="objective",turnin="turnin",
         dungeonEnter="entry",dungeonRun="objective",dungeonWait="party"})[model.kind] or "compass")..".tga")
-    T.pause.text:SetText(A.char.paused and "继续引导" or "暂停引导")
-    T.pause.tooltip=A.char.paused and "恢复任务引导和导航。" or "暂停任务引导和导航，保留任务列表。点击「继续引导」恢复。"
-    T.skip.text:SetText(action and action.kind=="manual" and "返回任务"
-        or action and action.kind=="service" and action.serviceKind=="repair" and "忽略维修" or "暂缓任务")
-    T.skip.tooltip=action and action.kind=="manual" and "取消手动目的地，回到任务引导。"
-        or action and action.kind=="service" and action.serviceKind=="repair" and "忽略维修提醒，继续安排任务。"
-        or "将当前任务暂时排除出规划，先安排其他任务。任务仍保留在游戏任务日志中。"
     self.title:SetText(model.title)
     local instruction=model.instruction
     if model.kind=="objective" and #model.objectives>0 and not A.char.paused and not A.error and
@@ -477,7 +493,7 @@ function UI:RenderTracker()
         if item.shared then row.progress:SetTextColor(self:Accent()) else row.progress:SetTextColor(unpack(palette.muted)) end
         row.metrics:SetText(self:Icon("xp",14).." "..item.metrics)
         row.candidate,row.revision,row.questId=item.candidate,plan.revision,item.questId
-        row.lockable=not item.deferred and A.Selection.CanChoose(item.candidate,plan.revision)==true
+        row.deferred=item.deferred
         row:SetEnabled(true);row:Show()
     end
     for i=#model.rows+1,#T.rows do T.rows[i]:Hide() end
@@ -548,11 +564,7 @@ function UI:LayoutTracker()
     T.queuePanel:SetHeight(visible+24);T.queuePanel:SetShown(not collapsed and queueHeight>0)
     T.queueLabel:SetShown(not collapsed and queueHeight>0)
     local bottom=collapsed and (42+T.card:GetHeight()+10) or queueTop+(queueHeight>0 and 46+visible or 0)+8
-    T.tools:ClearAllPoints();T.tools:SetPoint("TOPLEFT",0,-bottom)
-    self.frame:SetHeight(bottom+28)
-    self.fold.text:SetText(self.folded and "完整显示" or "精简显示")
-    self.fold.tooltip=self.folded and "展开当前任务的目标进度和后续任务列表。"
-        or "收起目标进度和后续任务列表，保留当前任务标题。"
+    self.frame:SetHeight(bottom)
 end
 
 function UI:SetTrackerNavigation(distance,angle,unverified)

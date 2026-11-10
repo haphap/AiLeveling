@@ -70,14 +70,9 @@ function UI:Button(parent, label, width, callback, fontSize)
     b:SetScript("OnClick", callback)
     b:SetScript("OnEnter", function()
         local r,g,blue=UI:Accent();b:SetBackdropColor(r*0.35,g*0.35,blue*0.35,1)
-        if b.tooltip then
-            GameTooltip:SetOwner(b,"ANCHOR_TOP");GameTooltip:SetText(b.text:GetText())
-            GameTooltip:AddLine(b.tooltip,0.9,0.94,1,true);GameTooltip:Show()
-        end
     end)
     b:SetScript("OnLeave", function()
         b:SetBackdropColor(unpack(b.baseColor or colors.button))
-        if b.tooltip then GameTooltip:Hide() end
     end)
     return b
 end
@@ -291,7 +286,6 @@ function UI:QuestClick(id,button)
         end
         return true
     end
-    if button~="RightButton" then return end
     local index=C_QuestLog and C_QuestLog.GetLogIndexForQuestID and C_QuestLog.GetLogIndexForQuestID(id)
     if (not canaccessvalue or canaccessvalue(index)) and type(index)=="number" and index>0 and QuestMapFrame_OpenToQuestDetails then
         QuestMapFrame_OpenToQuestDetails(id)

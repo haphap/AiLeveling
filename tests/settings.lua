@@ -5,7 +5,7 @@ local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","
     "PlaySound","SOUNDKIT","NUM_CONTAINER_FRAMES","ContainerFrameCombinedBags","AiLeveling",
     "debugprofilestop","C_PlayerInteractionManager","UnitClassification","UnitName","UnitCanAttack","UnitIsDeadOrGhost","UnitOnTaxi","C_NamePlate","UIErrorsFrame","issecretvalue","canaccessvalue","Enum",
     "IsInGroup","IsInRaid","UnitIsGroupLeader","UnitIsConnected","FollowUnit",
-    "GetQuestLink","ChatFrameUtil","IsModifiedClick","QuestMapFrame_OpenToQuestDetails","GetRealmName",
+    "GetQuestLink","ChatFrameUtil","IsModifiedClick","QuestMapFrame_OpenToQuestDetails","GetRealmName","MenuUtil","GameTooltip",
     "WorldMapFrame","UnitHealth","UnitHealthMax","GetMirrorTimerInfo","GetMirrorTimerProgress","FlashClientIcon","GetActionInfo","ActionButton1",
     "PlayerSpellsFrame","PlayerSpellsUtil","PlayerUtil","ExportUtil","C_Traits","C_ClassTalents","C_SpecializationInfo","GetNumSpecGroups"}
 local function widget()
@@ -58,6 +58,15 @@ local function setup(fullUI)
     InCombatLockdown=function() return combat end;GetTime=function() return clock end
     debugprofilestop=function() return 0 end
     local B={}
+    GameTooltip={Hide=function() end}
+    MenuUtil={CreateContextMenu=function(owner,generate)
+        B.menu={}
+        generate(owner,{CreateButton=function(_,label,callback)
+            local entry={callback=callback,enabled=true}
+            entry.SetEnabled=function(self,value) self.enabled=value end
+            B.menu[label]=entry;return entry
+        end})
+    end}
     assert(loadfile("Core.lua"))("AiLeveling",B)
     B.settings={};for k,v in pairs(B.defaults) do B.settings[k]=v end
     B.char={samples={},skipped={},deferredChains={},turnIns={}}
@@ -124,6 +133,14 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     B.UI:ToggleDetails()
     assert(B.UI.details:IsShown())
     assert(B.UI.detailText:GetText()~="")
+    B.UI.frame.scripts.OnMouseUp(nil,"RightButton");B.menu["详细面板"].callback()
+    eq(B.UI.details:IsShown(),false)
+    B.menu["暂停引导"].callback();eq(B.char.paused,true)
+    B.UI.frame.scripts.OnMouseUp(nil,"RightButton");B.menu["继续引导"].callback();eq(B.char.paused,false)
+    B.menu["收起任务列表"].callback();eq(B.UI.tracker.currentScroll.shown,false)
+    B.UI.frame.scripts.OnMouseUp(nil,"RightButton");B.menu["展开任务列表"].callback();eq(B.UI.folded,false)
+    B.UI.frame.scripts.OnDragStart();eq(B.UI.frame.moving,true)
+    B.UI.frame.scripts.OnDragStop();eq(B.UI.frame.moving,false);eq(B.settings.position[3],25)
     local nativeError,message
     geterrorhandler=function() return function(err) nativeError=err end end
     B.Message=function(_,value) message=value end
