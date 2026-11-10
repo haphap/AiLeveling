@@ -153,9 +153,8 @@ function B:DungeonRows()
             end
         end
         local levels=low and string.format("%s %d—%d级",d.minLevel and "推荐" or "任务",low,high or low) or "查看任务"
-        local sub=levels.." · "..rewards.count.."项可安排"
-        if rewards.unknownXP==0 and rewards.count>0 then sub=sub.." · "..color(gold,rewards.xp.."经验") end
-        rows[#rows+1]={key=id,title=d.title,sub=sub,icon="entry",dungeon=d,tasks=tasks,rewards=rewards,low=low or 60}
+        local sub=levels.." · "..color(gold,rewards.count.."项任务")
+        rows[#rows+1]={key=id,title=d.title,sub=sub,icon="entry",dungeon=d,tasks=tasks,rewards=rewards,levels=levels,low=low or 60}
     end
     table.sort(rows,function(a,b)
         local av,bv=a.rewards.count>0,b.rewards.count>0
@@ -277,7 +276,11 @@ function B:Action(index,label,run,enabled)
 end
 
 function B:Detail()
-    for _,button in ipairs(self.buttons) do button:Hide() end
+    for i,button in ipairs(self.buttons) do
+        button:Hide();button:ClearAllPoints();button:SetPoint("TOPLEFT",430,-390-(i-1)*33)
+    end
+    self.info:SetHeight(368);self.detail:Show()
+    if self.dungeonDetail then self.dungeonDetail:Hide() end
     local e=self.selected
     self.title:SetText(e and e.title or "暂无项目")
     local lines={}
@@ -331,18 +334,6 @@ function B:Detail()
         self:Action(3,"恢复自动安排",function() A.Selection:Automatic();self:Refresh(self.mode) end)
     elseif e.dungeon then
         A.UI.Dungeon.selected=e.key;A.UI.Dungeon:Refresh()
-        lines[#lines+1]=e.sub
-        local minimum=A.DungeonCatalog and A.DungeonCatalog.entryLevels and A.DungeonCatalog.entryLevels[e.dungeon.instanceId]
-        if minimum then lines[#lines+1]="最低进入等级  "..minimum.."级" end
-        local tasks,summary=A.UI.Dungeon:Lines()
-        for _,line in ipairs(summary) do lines[#lines+1]=line end
-        for _,line in ipairs(tasks) do
-            for _,task in ipairs(e.tasks) do
-                local start,finish=line:find(task.title,1,true)
-                if start then line=line:sub(1,start-1)..questLink(task.id,task.title)..line:sub(finish+1);break end
-            end
-            lines[#lines+1]=line
-        end
         local d=A.UI.Dungeon
         self:Action(1,d.taskBatch.text:GetText(),function() d.taskBatch:Click() end,d.taskBatch:IsEnabled())
         local batch=A.char.taskBatch
@@ -354,6 +345,8 @@ function B:Detail()
                 end
             end)
         end)
+        self:DungeonDetail(e)
+        return
     elseif e.region then
         local r=e.region
         lines[#lines+1]=color(gold,string.format("%d—%d级任务 · %d项",r.minLevel,r.maxLevel,#r.choices))
@@ -395,6 +388,139 @@ function B:Detail()
     self.detail:ClearAllPoints();self.detail:SetPoint("TOPLEFT",0,-self.title:GetStringHeight()-18)
     self.detail:SetText(table.concat(lines,"\n\n"))
     self.infoChild:SetHeight(math.max(1,self.title:GetStringHeight()+self.detail:GetStringHeight()+30))
+end
+
+function B:DungeonDetail(e)
+    local view=self.dungeonDetail
+    if not view then
+        view=CreateFrame("Frame",nil,self.infoChild);view:SetWidth(326)
+        self.dungeonDetail=view;view.rows={}
+        view.levels=A.UI:Text(view,12,colors.muted);view.levels:SetPoint("TOPLEFT");view.levels:SetWidth(326)
+        view.tasks=A.UI:Text(view,19);view.tasks:SetWidth(154)
+        view.xp=A.UI:Text(view,19,colors.gold);view.xp:SetWidth(162)
+        view.tasksLabel=A.UI:Text(view,12,colors.muted);view.tasksLabel:SetWidth(154)
+        view.xpLabel=A.UI:Text(view,12,colors.muted);view.xpLabel:SetWidth(162);view.xpLabel:SetText("任务经验")
+        view.hint=A.UI:Text(view,13);view.hint:SetWidth(326);view.hint:SetMaxLines(2)
+        view.note=CreateFrame("Frame",nil,view);view.note:SetAllPoints(view.hint);view.note:EnableMouse(true)
+        view.note:SetScript("OnEnter",function(f)
+            GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText("当前安排")
+            for _,line in ipairs(view.tip) do GameTooltip:AddLine(line,0.9,0.85,0.8,true) end
+            GameTooltip:Show()
+        end)
+        view.note:SetScript("OnLeave",function() GameTooltip:Hide() end)
+        view.heading=A.UI:Text(view,12,colors.muted);view.heading:SetWidth(326)
+        view.loot=A.UI:Button(view,"",326,function() A.UI:SelectTab(3) end,13)
+        view.loot.baseColor={0,0,0,0};view.loot:SetBackdropColor(0,0,0,0)
+    end
+    self.detail:Hide();view:Show();view:ClearAllPoints()
+    local top=self.title:GetStringHeight()+10
+    view:SetPoint("TOPLEFT",0,-top)
+    local d=A.UI.Dungeon
+    local batch=A.char.taskBatch
+    local current=batch and batch.id==e.key
+    local plan=current and A.plan
+    local choices=plan and plan.revision==A.state.revision and plan.taskBatch and plan.taskBatch.id==e.key and plan.taskChoices
+    local rewards=A.Dungeon.TaskRewards(e.tasks,current and batch.baselines or nil,choices)
+    local minimum=A.DungeonCatalog and A.DungeonCatalog.entryLevels and A.DungeonCatalog.entryLevels[e.dungeon.instanceId]
+    view.levels:SetText(e.levels..(minimum and "  ·  "..minimum.."级可进入" or ""))
+    local y=view.levels:GetStringHeight()+16
+    view.tasks:ClearAllPoints();view.tasks:SetPoint("TOPLEFT",0,-y)
+    view.tasks:SetText(rewards.count.." 项")
+    view.xp:ClearAllPoints();view.xp:SetPoint("TOPLEFT",164,-y)
+    view.xp:SetText(rewards.unknownXP==0 and rewards.xp or rewards.xp>0 and rewards.xp.."+" or "—")
+    y=y+math.max(view.tasks:GetStringHeight(),view.xp:GetStringHeight())+3
+    view.tasksLabel:ClearAllPoints();view.tasksLabel:SetPoint("TOPLEFT",0,-y);view.tasksLabel:SetText(current and "已安排任务" or "可安排任务")
+    view.xpLabel:ClearAllPoints();view.xpLabel:SetPoint("TOPLEFT",164,-y)
+    y=y+view.tasksLabel:GetStringHeight()+16
+    local hint=d.statusText
+    local journey=choices and plan.taskBatch.journey
+    local nextStep=journey and (journey.before[1] or journey.inside[1] or journey.after[1])
+    if (not hint or hint=="") and nextStep then
+        local action=nextStep.action
+        hint=(action.kind=="accept" and "接取 " or action.kind=="turnin" and "交付 " or "完成 ")..action.title
+    end
+    if not hint or hint=="" or hint=="选择并准备关联任务。" then
+        hint=rewards.count==0 and "暂无可安排任务" or rewards.ready==rewards.count and "任务已完成，可安排交付" or
+            rewards.active+rewards.ready<rewards.count and "先接取关联任务，再完成副本目标" or "完成副本目标后集中交付"
+    end
+    view.hint:ClearAllPoints();view.hint:SetPoint("TOPLEFT",0,-y)
+    view.hint:SetText(A.UI:Icon("entry",14).." "..(self.message or hint))
+    y=y+view.hint:GetStringHeight()+18
+    view.heading:ClearAllPoints();view.heading:SetPoint("TOPLEFT",0,-y)
+    view.heading:SetText("关联任务");y=y+view.heading:GetStringHeight()+6
+    local _,group=A.Dungeon.GroupStatus(e.dungeon,A.state)
+    view.tip={self.message or hint,group}
+    for _,line in pairs({A.Dungeon.EncounterProgress(e.dungeon,A.state),A.Dungeon:TaskActivityText(e.key),d:RepeatText()}) do
+        view.tip[#view.tip+1]=line
+    end
+    local tones={colors.gold,colors.green,colors.blue,colors.muted,colors.muted}
+    for i,task in ipairs(e.tasks) do
+        local row=view.rows[i]
+        if not row then
+            row=A.UI:Button(view,"",326,function() end,14)
+            row.baseColor={0,0,0,0};row:SetBackdropColor(0,0,0,0)
+            row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",24,-10);row.text:SetMaxLines(2)
+            row.icon=A.UI:Text(row,14);row.icon:SetPoint("TOPLEFT",0,-10)
+            row.status=A.UI:Text(row,12);row.status:SetPoint("TOPRIGHT",0,-11);row.status:SetJustifyH("RIGHT")
+            row.meta=A.UI:Text(row,12,colors.muted);row.meta:SetWidth(302)
+            row.line=row:CreateTexture(nil,"ARTWORK");row.line:SetPoint("TOPLEFT");row.line:SetPoint("TOPRIGHT");row.line:SetHeight(1)
+            row.line:SetColorTexture(unpack(colors.line))
+            row:RegisterForClicks("LeftButtonUp","RightButtonUp")
+            row:SetScript("OnClick",function(f,button)
+                if button=="RightButton" then A.UI:TrackerMenu(f)
+                elseif A.state.quests[f.questId] or IsModifiedClick and IsModifiedClick("CHATLINK") then A.UI:QuestClick(f.questId,button)
+                else A.UI.Chains:Focus(f.questId) end
+            end)
+            row:SetScript("OnLeave",function(f) f:SetBackdropColor(0,0,0,0);GameTooltip:Hide() end)
+            row:SetScript("OnEnter",function(f)
+                f:SetBackdropColor(unpack(colors.hover))
+                local task=f.task
+                GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(task.title)
+                GameTooltip:AddLine(task.status,unpack(tones[task.group]))
+                if task.reason then GameTooltip:AddLine(task.reason,1,0.8,0.5,true) end
+                if task.requireCheck then GameTooltip:AddLine("向任务发布者查看任务",0.8,0.8,0.8,true) end
+                if task.relation=="preparation" then GameTooltip:AddLine("入本前准备",0.8,0.8,0.8,true) end
+                if task.recipientName then GameTooltip:AddLine("交付给 "..task.recipientName,0.8,0.8,0.8,true) end
+                local active=A.state.quests[task.id]
+                for _,o in ipairs(active and active.objectives or {}) do if o.text then GameTooltip:AddLine(o.text,0.8,0.8,0.8,true) end end
+                if task.gear then GameTooltip:AddLine("装备提升："..itemLink(task.gear.item),1,0.8,0.5,true) end
+                if task.lowValue then GameTooltip:AddLine(task.lowValue.suggestion.." · "..task.lowValue.reason,0.8,0.8,0.8,true) end
+                GameTooltip:Show()
+            end)
+            view.rows[i]=row
+        end
+        row.task,row.questId=task,task.id
+        row.deferred=(A.state.skipped or {})[task.id] or (A.state.chainDeferred or {})[task.id]
+        row.revision=A.plan and A.plan.revision
+        row.text:SetWidth(292-64*(A.settings.fontScale or 1));row.text:SetText(task.title);row.text:SetTextColor(unpack(colors.blue))
+        row.icon:SetText(A.UI:Icon(task.group==1 and "turnin" or task.group==2 and "objective" or "accept",14))
+        row.status:SetWidth(64*(A.settings.fontScale or 1));row.status:SetText(task.group==4 and (task.preparation and "需前置" or "未解锁") or task.status)
+        row.status:SetTextColor(unpack(tones[task.group]))
+        local meta={}
+        if task.xp then meta[#meta+1]=color(gold,task.xp.." 经验") end
+        if task.gear then meta[#meta+1]="装备提升" end
+        if task.lowValue then meta[#meta+1]=task.lowValue.suggestion end
+        row.meta:SetText(table.concat(meta," · "))
+        local h=math.max(row.text:GetStringHeight(),row.status:GetStringHeight())+14
+        row.meta:ClearAllPoints();row.meta:SetPoint("TOPLEFT",24,-h)
+        h=h+(#meta>0 and row.meta:GetStringHeight() or 0)+10
+        row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y);row:SetSize(326,h);row:Show();y=y+h
+    end
+    for i=#e.tasks+1,#view.rows do view.rows[i]:Hide() end
+    local drops=A.Gear.DungeonBenefits and A.Gear.DungeonBenefits(e.dungeon,A.state,A.Data) or {}
+    view.loot:SetShown(#drops>0)
+    if #drops>0 then
+        view.loot.text:SetText(A.UI:Icon("turnin",14).." "..#drops.." 件副本装备可提升  ›")
+        view.loot:ClearAllPoints();view.loot:SetPoint("TOPLEFT",0,-y);y=y+34
+    end
+    view:SetHeight(y);self.infoChild:SetHeight(top+y+8)
+    local count=0
+    for _,button in ipairs(self.buttons) do if button:IsShown() then count=count+1 end end
+    local actionTop=490-count*33-8
+    self.info:SetHeight(actionTop-28)
+    for _,button in ipairs(self.buttons) do
+        if button:IsShown() then button:ClearAllPoints();button:SetPoint("TOPLEFT",430,-actionTop);actionTop=actionTop+33 end
+    end
 end
 
 function B:IndexMounts()

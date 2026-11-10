@@ -235,6 +235,18 @@ if A.previewTab then
     A.UI:Create();A.UI.frame:Hide();A.UI.details:Show();A.UI.details:ClearAllPoints();A.UI.details:SetPoint("TOPLEFT",40,-50)
     A.UI.Dungeon.selected=A.previewSelected
     A.UI:SelectTab(A.previewTab)
+    if dungeonPreview then
+        local browser=A.UI.Browser
+        local view=browser.dungeonDetail
+        assert(view:IsShown() and not browser.detail:IsShown())
+        assert(#view.rows==#browser.selected.tasks)
+        for i,task in ipairs(browser.selected.tasks) do
+            local row=view.rows[i]
+            assert(row.questId==task.id and row.text:GetText()==task.title)
+            assert(row.status:GetText()~="")
+        end
+        assert(view.tasks:GetText():find(tostring(browser.selected.rewards.count),1,true))
+    end
 end
 local function json(value)
     if type(value)=="string" then return '"'..value:gsub('[%z\1-\31\\"]',function(c) return string.format('\\u%04x',c:byte()) end)..'"' end
