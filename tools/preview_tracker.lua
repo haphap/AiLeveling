@@ -23,7 +23,8 @@ local function widget(kind,parent)
     function w:ClearAllPoints() self.points={} end
     function w:SetAllPoints(other) self.all=other or self.parent end
     function w:SetText(value) self.value=tostring(value or "") end;function w:GetText() return self.value or "" end
-    function w:SetFont(_,size) self.size=size end
+    function w:SetFont(_,size,flags) self.size,self.fontFlags=size,flags end
+    function w:GetEffectiveScale() return 1 end
     function w:GetStringHeight()
         local count=0
         for line in (clean(self.value).."\n"):gmatch("(.-)\n") do
@@ -63,6 +64,13 @@ local canvasWidth=dungeonPreview and 860 or 560
 local canvasHeight=dungeonPreview and 700 or arg[1]=="assist" and 240 or 1100
 UIParent=widget("Root");UIParent:SetSize(canvasWidth,canvasHeight)
 CreateFrame=function(kind,_,parent) return widget(kind,parent) end
+if not dungeonPreview and arg[1]~="assist" then
+    MinimapCluster=widget("Frame",UIParent);MinimapCluster:SetSize(280,160)
+    MinimapCluster:SetPoint("TOPRIGHT",UIParent,"TOPRIGHT",-100,-88)
+    MinimapCluster:SetBackdropColor(0.1,0.18,0.18,0.6)
+    local label=MinimapCluster:CreateFontString();label:SetFont("preview",14,"")
+    label:SetPoint("CENTER");label:SetText("小地图 · 对齐示意")
+end
 STANDARD_TEXT_FONT="preview"
 C_Map={GetMapInfo=function() return {name="艾尔文森林"} end}
 RAID_CLASS_COLORS={PALADIN={r=0.96,g=0.55,b=0.73}}
@@ -157,7 +165,6 @@ if dungeonPreview then
     text:SetText(table.concat(A.UI.Dungeon:Lines(),"\n\n"))
 else
 A.UI:CreateTracker();A.UI:RenderTracker();A.UI:SetTrackerNavigation(285,0.25,true)
-A.UI.frame:ClearAllPoints();A.UI.frame:SetPoint("TOPLEFT",UIParent,"TOPLEFT",100,-88)
 A.UI.navFrame:ClearAllPoints();A.UI.navFrame:SetPoint("TOP",A.UI.frame,"BOTTOM",0,-54)
 if arg[1]=="assist" then
     A.UI.frame:Hide();A.UI.navFrame:Hide()

@@ -11,9 +11,9 @@ function UI:Accent()
     return 1,1,1
 end
 
-function UI:RegisterFont(text,size,role)
-    self.fonts[#self.fonts+1]={text=text,size=size,role=role}
-    text:SetFont(STANDARD_TEXT_FONT,size*(A.settings.fontScale or 1),"")
+function UI:RegisterFont(text,size,role,flags)
+    self.fonts[#self.fonts+1]={text=text,size=size,role=role,flags=flags}
+    text:SetFont(STANDARD_TEXT_FONT,size*(A.settings.fontScale or 1),flags or "")
 end
 
 function UI:Icon(name,size)
@@ -50,9 +50,9 @@ function UI:Panel(name, parent, width, height)
     return f
 end
 
-function UI:Text(parent, size, color)
+function UI:Text(parent, size, color, flags)
     local text = parent:CreateFontString(nil, "OVERLAY")
-    self:RegisterFont(text,size,color=="accent" and "accent" or nil)
+    self:RegisterFont(text,size,color=="accent" and "accent" or nil,flags)
     if color=="accent" then text:SetTextColor(self:Accent()) else text:SetTextColor(unpack(color or {0.86, 0.9, 0.93})) end
     text:SetJustifyH("LEFT")
     text:SetJustifyV("TOP")
@@ -79,7 +79,12 @@ end
 
 function UI:Movable(frame,key)
     frame:SetMovable(true);frame:EnableMouse(true);frame:RegisterForDrag("LeftButton")
-    frame:SetScript("OnDragStart",function() if not A.settings.lockWindow then frame:StartMoving() end end)
+    frame:SetScript("OnDragStart",function()
+        if not A.settings.lockWindow then
+            if key=="position" then A.settings.trackerDocked=false end
+            frame:StartMoving()
+        end
+    end)
     frame:SetScript("OnDragStop",function()
         frame:StopMovingOrSizing()
         local point,_,relative,x,y=frame:GetPoint()
@@ -158,11 +163,11 @@ end
 function UI:ApplyStyle()
     if not self.frame then return end
     self.frame:SetScale(A.settings.scale)
-    self.frame:SetAlpha(A.settings.alpha)
+    self.frame:SetAlpha(1)
     self.details:SetScale(A.settings.scale)
     self.details:SetAlpha(A.settings.alpha)
     for _,entry in ipairs(self.fonts) do
-        entry.text:SetFont(STANDARD_TEXT_FONT,entry.size*(A.settings.fontScale or 1),"")
+        entry.text:SetFont(STANDARD_TEXT_FONT,entry.size*(A.settings.fontScale or 1),entry.flags or "")
         if entry.role=="accent" then entry.text:SetTextColor(self:Accent()) end
     end
     if self.accent then local r,g,b=self:Accent();self.accent:SetColorTexture(r,g,b,1) end

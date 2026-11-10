@@ -5,7 +5,7 @@ local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","
     "PlaySound","SOUNDKIT","NUM_CONTAINER_FRAMES","ContainerFrameCombinedBags","AiLeveling",
     "debugprofilestop","C_PlayerInteractionManager","UnitClassification","UnitName","UnitCanAttack","UnitIsDeadOrGhost","UnitOnTaxi","C_NamePlate","UIErrorsFrame","issecretvalue","canaccessvalue","Enum",
     "IsInGroup","IsInRaid","UnitIsGroupLeader","UnitIsConnected","FollowUnit",
-    "GetQuestLink","ChatFrameUtil","IsModifiedClick","QuestMapFrame_OpenToQuestDetails","GetRealmName","MenuUtil","GameTooltip",
+    "GetQuestLink","ChatFrameUtil","IsModifiedClick","QuestMapFrame_OpenToQuestDetails","GetRealmName","MenuUtil","GameTooltip","MinimapCluster","Minimap","ObjectiveTrackerFrame",
     "WorldMapFrame","UnitHealth","UnitHealthMax","GetMirrorTimerInfo","GetMirrorTimerProgress","FlashClientIcon","GetActionInfo","ActionButton1",
     "PlayerSpellsFrame","PlayerSpellsUtil","PlayerUtil","ExportUtil","C_Traits","C_ClassTalents","C_SpecializationInfo","GetNumSpecGroups"}
 local function widget()
@@ -19,6 +19,8 @@ local function widget()
     w.SetSize=function(self,x,y) self.width,self.height=x,y end
     w.SetWidth=function(self,x) self.width=x end;w.SetHeight=function(self,y) self.height=y end
     w.GetSize=function(self) return self.width,self.height end
+    w.GetEffectiveScale=function(self) return self.scale or 1 end
+    w.SetParent=function(self,parent) self.parent=parent end
     w.GetWidth=function(self) return self.width end;w.GetHeight=function(self) return self.height end
     w.SetText=function(self,v) self.value=v end;w.GetText=function(self) return self.value or "" end
     w.GetStringHeight=function(self) return self.measuredHeight or 30 end
@@ -52,6 +54,7 @@ local function setup(fullUI)
     local saved={};for _,name in ipairs(names) do saved[name]=_G[name] end
     local clock,combat=10,false
     UIParent=widget();STANDARD_TEXT_FONT="font";GameFontHighlight={};SlashCmdList={};NUM_CONTAINER_FRAMES=0;ContainerFrameCombinedBags=nil
+    MinimapCluster=widget();MinimapCluster:SetSize(280,280);ObjectiveTrackerFrame=widget()
     CreateFrame=function(kind,_,parent,template)
         local w=widget();w.kind,w.template=kind,template;if kind=="CheckButton" then w.Text=widget() end;return w
     end
@@ -177,7 +180,7 @@ end)
 test("配置迁移、复制、切换与恢复保留角色进度，并可刷新任务历史",function()
     local B=setup();local char=B.char
     char.turnIns[1]=1;char.locked=1;B.state.completed[1]=true
-    local db={scale=1.3,quantity=false,position={"RIGHT","RIGHT",-120,80}}
+    local db={scale=1.3,quantity=false,trackerDocked=false,position={"RIGHT","RIGHT",-120,80}}
     B:InitializeProfiles(db,char)
     eq(B.settings.scale,1.3);eq(B.settings.quantity,false);eq(db.scale,nil)
     local S=B.UI.Settings
@@ -366,10 +369,17 @@ test("天赋方案保存重载后在原生树预览并按前置载入，提交�
 end)
 test("窗口锁定阻止拖动且主详情分别保存位置并恢复",function()
     local B=setup();local U=B.UI
+    U:LayoutCard()
+    eq(U.frame.point[1],"TOPRIGHT");eq(U.frame.point[2],MinimapCluster);eq(U.frame.point[3],"BOTTOMRIGHT")
+    eq(ObjectiveTrackerFrame.parent,U.tracker.nativeHider);eq(U.tracker.nativeHider.shown,false)
+    ObjectiveTrackerFrame:Show();eq(ObjectiveTrackerFrame.parent.shown,false)
     U:Movable(U.frame,"position");U:Movable(U.details,"detailPosition")
     B.settings.lockWindow=true;U.frame.scripts.OnDragStart();eq(U.frame.moving,nil)
     B.settings.lockWindow=false;U.details.scripts.OnDragStart();eq(U.details.moving,true)
     U.details.scripts.OnDragStop();eq(B.settings.detailPosition[3],25)
+    U.frame.scripts.OnDragStart();U.frame.scripts.OnDragStop();eq(B.settings.trackerDocked,false)
+    U.frame.scripts.OnMouseUp(nil,"RightButton");B.menu["对齐小地图"].callback()
+    eq(B.settings.trackerDocked,true);eq(B.settings.position,nil);eq(U.frame.point[2],MinimapCluster)
     B.char.deferredChains[1]=true;B.state.completed[7]=true
     B:RestoreSettings();eq(B.settings.detailPosition,nil);eq(B.char.deferredChains[1],true);eq(B.state.completed[7],true)
     B.finish()

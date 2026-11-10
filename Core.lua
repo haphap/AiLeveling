@@ -5,7 +5,7 @@ A.version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata
 A.defaults = { minutes = 60, dungeons = true, role = "DAMAGER",
     scale = 1, alpha = 0.94, arrow = true, pins = true, items = true, highlight = true, worldHighlight = true, scanRares = true,
     combatFold = true, learn = true, waitMinutes = 10, damageStyle = "auto",
-    fontScale=1,density="normal",lockWindow=false,routes=true,minimapPins=true,waypointUI=true,maxSoulShards=100,
+    fontScale=1,density="normal",lockWindow=false,trackerDocked=true,routes=true,minimapPins=true,waypointUI=true,maxSoulShards=100,
     partySync=true,autoShareQuests=false,partyAnnouncements=false,dangerMap=true,emergency=true,
     distanceUnits="yards",transportHints=true,quantity=true,missingChecks=true,rewardAdvice=true,sound=false,gearPreference="nearby",autoAccept=true,autoTurnIn=true,autoGossip=true,autoTaxi=true,autoTrain=true,autoBind=true,autoSellJunk=false,targets=true,levelingStats=true }
 A.jobs, A.dirty, A.requestedItems = {}, false, {}
