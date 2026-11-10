@@ -174,7 +174,7 @@ return function(test,eq,F,plan)
         s.inInstance,s.instanceId=true,42
         B.Dungeon:EncounterEvent("ENCOUNTER_START",2732,"首领甲",1,5)
         B.Dungeon:EncounterEvent("ENCOUNTER_END",2732,"首领甲",1,5,1)
-        assert(table.concat(ui:Lines(),"\n"):find("本次进入已击败：首领甲",1,true))
+        local _,summary=ui:Lines();assert(table.concat(summary,"\n"):find("本次进入已击败：首领甲",1,true))
         eq(B.char.dungeon,nil);eq(B.Dungeon.runSample,nil);eq(next(B.char.samples),nil)
         s.instanceDifficultyId=2;eq(B.Dungeon.EncounterProgress(d,s),nil);s.instanceDifficultyId=1
         s.inInstance=false;eq(B.Dungeon.EncounterProgress(d,s),nil);s.inInstance=true
@@ -350,11 +350,11 @@ return function(test,eq,F,plan)
     test("副本界面通过同一接受与结束入口执行，空资料时关闭入口",function()
         local B,d,s,data=context()
         local create=CreateFrame
-        CreateFrame=function() return {SetPoint=function() end,SetSize=function() end,SetHeight=function() end,Hide=function() end} end
+        CreateFrame=function() return {SetPoint=function() end,SetSize=function() end,SetHeight=function() end,SetScrollChild=function() end,Hide=function() end} end
         B.UI={Accent=function() return 1,1,1 end,SelectTab=function() end,Text=function()
-            return {ClearAllPoints=function() end,SetPoint=function() end,SetWidth=function() end,SetHeight=function() end,SetText=function(self,v) self.value=v end}
+            return {ClearAllPoints=function() end,SetPoint=function() end,SetWidth=function() end,SetHeight=function() end,GetStringHeight=function() return 100 end,SetText=function(self,v) self.value=v end}
         end,Button=function(_,_,_,_,callback)
-            return {text={SetText=function(self,v) self.value=v end,SetWidth=function() end,SetMaxLines=function() end},ClearAllPoints=function() end,SetShown=function(self,v) self.shown=v end,SetPoint=function() end,SetEnabled=function(self,v) self.enabled=v end,click=callback}
+            return {text={SetText=function(self,v) self.value=v end,SetWidth=function() end,SetJustifyH=function() end,SetMaxLines=function() end},ClearAllPoints=function() end,SetShown=function(self,v) self.shown=v end,SetPoint=function() end,SetSize=function() end,SetEnabled=function(self,v) self.enabled=v end,click=callback}
         end}
         assert(loadfile("UI/Dungeon.lua"))("AiLeveling",B)
         local ui=B.UI.Dungeon
@@ -371,13 +371,13 @@ return function(test,eq,F,plan)
         local focused,locked
         B.UI.Chains={Focus=function(_,id) focused=id end}
         B.Selection={LockQuest=function(_,id) locked=id;return true end}
-        ui:Refresh();eq(ui.accept.enabled,false);eq(ui.taskGo.enabled,true);eq(ui.accept.shown,false);eq(ui.bodyTop,214)
+        ui:Refresh();eq(ui.accept.enabled,false);eq(ui.taskGo.enabled,true);eq(ui.accept.shown,false);eq(ui.bodyTop,136)
         eq(ui.retry.shown,false)
         s.instanceEntryError="实例次数受限";ui:Refresh()
-        eq(ui.retry.shown,true);eq(ui.retry.enabled,true);eq(ui.accept.shown,false);eq(ui.bodyTop,250)
-        eq(ui.status.value,s.instanceEntryError)
+        eq(ui.retry.shown,true);eq(ui.retry.enabled,true);eq(ui.accept.shown,false);eq(ui.bodyTop,136)
+        assert(ui.status.value:find(s.instanceEntryError,1,true))
         B.Instances={Retry=function() s.instanceEntryError=nil;return true end}
-        ui.retry.click();eq(ui.retry.shown,false);eq(ui.bodyTop,214)
+        ui.retry.click();eq(ui.retry.shown,false);eq(ui.bodyTop,136)
         assert(table.concat(ui:Lines(),"\n"):find("部分目标有其他来源",1,true))
         local started
         local startBatch=B.Dungeon.StartTaskBatch
@@ -385,7 +385,7 @@ return function(test,eq,F,plan)
         B.Selection.Automatic=function() B.char.taskBatch=nil;return true end
         eq(ui.taskBatch.enabled,true);ui.taskBatch.click();eq(started,"ref")
         eq(ui.taskBatch.text.value,"结束任务安排");assert(table.concat(ui:Lines(),"\n"):find("已安排",1,true))
-        eq(ui.ready.shown,true);eq(ui.ready.text.value,"等队做任务");eq(ui.bodyTop,250)
+        eq(ui.ready.shown,true);eq(ui.ready.text.value,"等队做任务");eq(ui.bodyTop,136)
         local waitRefresh=B.State.Refresh
         B.State.Refresh=function() end
         ui.ready.click();eq(B.char.taskBatch.waiting,true);eq(ui.ready.text.value,"出发去副本")
@@ -393,7 +393,7 @@ return function(test,eq,F,plan)
         ui.ready.click();eq(B.char.taskBatch.waiting,nil);eq(ui.ready.text.value,"等队做任务")
         B.State.Refresh=waitRefresh
         ui.taskBatch.click();eq(B.char.taskBatch,nil);eq(ui.taskBatch.text.value,"安排关联任务")
-        eq(ui.ready.shown,false);eq(ui.bodyTop,214)
+        eq(ui.ready.shown,false);eq(ui.bodyTop,136)
         B.Dungeon.StartTaskBatch=startBatch
         ui.taskChain.click();eq(focused,1)
         ui.taskGo.click();eq(locked,1)

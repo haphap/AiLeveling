@@ -153,6 +153,9 @@ end
 
 function UI:ShowText(text)
     self.details:Show(); self.Settings.frame:Hide(); self.scroll:Show()
+    self.details:SetSize(620,520)
+    self.scroll:SetPoint("BOTTOMRIGHT",-36,18);self.scrollChild:SetWidth(560)
+    self.detailText:SetWidth(552)
     self.Dungeon.frame:Hide()
     self.Gear.frame:Hide()
     self.Plan.frame:Hide()
@@ -173,7 +176,10 @@ function UI:SelectTab(index)
     self.copyBox:ClearFocus(); self.copyBox:Hide(); self.detailText:Show()
     if self.selectedTab~=index then self.scroll:SetVerticalScroll(0) end
     self.selectedTab = index
-    self.details:SetHeight(index==4 and 620 or 520)
+    self.details:SetSize(index==4 and 780 or 620,index==4 and 560 or 520)
+    self.scroll:SetPoint("BOTTOMRIGHT",index==4 and -286 or -36,18)
+    self.scrollChild:SetWidth(index==4 and 474 or 560)
+    self.detailText:SetWidth(index==4 and 466 or 552)
     self.Settings.frame:SetShown(index == 5)
     self.scroll:SetShown(index ~= 5 and index ~= 2)
     self.Dungeon.frame:SetShown(index==4)

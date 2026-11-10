@@ -5,9 +5,9 @@ local statusColors={"|cffffd474","|cff8cf2b8","|cff9dcfff","|cffd0d9e2","|cffd0d
 
 function UI:Create(parent)
     local frame = CreateFrame("Frame",nil,parent)
-    frame:SetPoint("TOPLEFT",18,-94); frame:SetSize(570,214)
+    frame:SetPoint("TOPLEFT",18,-94); frame:SetSize(744,448)
     self.frame = frame
-    self.selector = A.UI:Button(frame,"选择副本",392,function()
+    self.selector = A.UI:Button(frame,"选择副本",474,function()
         local ids = self:Ids()
         for index,id in ipairs(ids) do
             if id==self.selected then self.selected=ids[index%#ids+1]; break end
@@ -16,7 +16,7 @@ function UI:Create(parent)
         self:Refresh(); A.UI:SelectTab(4)
     end,14)
     self.selector:SetPoint("TOPLEFT")
-    self.selector.text:SetWidth(380);self.selector.text:SetMaxLines(1)
+    self.selector.text:SetWidth(462);self.selector.text:SetMaxLines(1)
     self.taskBatch=A.UI:Button(frame,"安排关联任务",160,function()
         local current=A.char.taskBatch
         local ok,why
@@ -25,8 +25,7 @@ function UI:Create(parent)
         self.message=not ok and why or nil
         self:Refresh();A.UI:SelectTab(4)
     end,14)
-    self.taskBatch:SetPoint("TOPLEFT",400,0)
-    local function control(label,column,event)
+    local function control(label,event)
         local button = A.UI:Button(frame,label,106,function()
             local ok,reason
             if event=="accept" then ok,reason=A.Dungeon:Accept(self.selected)
@@ -36,40 +35,39 @@ function UI:Create(parent)
             self.message = ok and nil or reason
             self:Refresh(); A.UI:SelectTab(4)
         end,14)
-        button:SetPoint("TOPLEFT",column*114,-36)
         return button
     end
-    self.accept = control("接受行程",0,"accept")
-    self.ready = control("队伍就绪",1,"ready")
-    self.finish = control("本轮结束",2,"finish")
-    self.again = control("再刷一轮",3,"again")
-    self.stop = control("结束行程",4,"stop")
+    self.accept = control("接受行程","accept")
+    self.ready = control("队伍就绪","ready")
+    self.finish = control("本轮结束","finish")
+    self.again = control("再刷一轮","again")
+    self.stop = control("结束行程","stop")
     self.confirmReset=A.UI:Button(frame,"确认已重置",170,function()
         local ok,reason=A.Instances:ConfirmReset(self.selected)
         self.message=ok and "已记录玩家确认；进入资格继续由客户端检查。" or reason
         self:Refresh();A.UI:SelectTab(4)
     end,14)
-    self.confirmReset:SetPoint("TOPLEFT",0,-72)
     self.retry=A.UI:Button(frame,"重新检查",170,function()
         local ok,reason=A.Instances:Retry()
         self.message=not ok and reason or nil
         self:Refresh();A.UI:SelectTab(4)
     end,14)
-    self.retry:SetPoint("TOPLEFT",180,-72)
-    self.status = A.UI:Text(frame,14,{0.85,0.9,0.96})
-    self.status:SetPoint("TOPLEFT",0,-110); self.status:SetWidth(558); self.status:SetHeight(60)
+    self.summaryScroll=CreateFrame("ScrollFrame",nil,frame,"UIPanelScrollFrameTemplate")
+    self.summaryScroll:SetPoint("TOPLEFT",514,0)
+    self.summaryChild=CreateFrame("Frame",nil,self.summaryScroll)
+    self.summaryChild:SetSize(200,280);self.summaryScroll:SetScrollChild(self.summaryChild)
+    self.status = A.UI:Text(self.summaryChild,14,{0.9,0.94,1})
+    self.status:SetPoint("TOPLEFT");self.status:SetWidth(200)
     self.taskSelector=A.UI:Button(frame,"关联任务",320,function()
         local rows=self.tasks or {}
         if #rows>0 then self.taskIndex=(self.taskIndex or 1)%#rows+1 end
         self:Refresh();A.UI:SelectTab(4)
     end,14)
-    self.taskSelector:SetPoint("TOPLEFT",0,-176)
     self.taskSelector.text:SetWidth(308);self.taskSelector.text:SetMaxLines(1)
     self.taskChain=A.UI:Button(frame,"查看任务链",108,function()
         local row=self.tasks and self.tasks[self.taskIndex or 1]
         if row then A.UI.Chains:Focus(row.id) end
     end,14)
-    self.taskChain:SetPoint("TOPLEFT",328,-176)
     self.taskGo=A.UI:Button(frame,"继续此任务",116,function()
         local d=self.entries and self.entries[self.selected]
         local row=self.tasks and self.tasks[self.taskIndex or 1]
@@ -79,7 +77,6 @@ function UI:Create(parent)
             self:Refresh();A.UI:SelectTab(4)
         end
     end,14)
-    self.taskGo:SetPoint("TOPLEFT",444,-176)
     frame:Hide()
 end
 
@@ -121,22 +118,13 @@ function UI:Refresh()
     local compact=d and d.reference and (not session or session.phase=="complete")
     for _,button in ipairs({self.accept,self.ready,self.finish,self.again,self.stop,self.confirmReset,self.retry}) do button:SetShown(not compact) end
     local entryError=not A.state.inInstance and A.state.instanceEntryError
-    local retryRow=compact and entryError and 36 or 0
-    local waitRow=compact and batch and batch.id==self.selected and not A.state.inInstance and 36 or 0
+    local waiting=compact and batch and batch.id==self.selected and not A.state.inInstance
     self.retry:SetShown(not compact or not not entryError)
-    self.retry:ClearAllPoints();self.retry:SetPoint("TOPLEFT",compact and 0 or 180,compact and -76 or -72)
-    self.bodyTop=compact and 214+retryRow+waitRow or 314
-    self.frame:SetHeight(compact and 114+retryRow+waitRow or 214)
-    self.status:ClearAllPoints();self.status:SetPoint("TOPLEFT",0,compact and -36 or -110)
-    self.status:SetHeight(compact and 32 or 60)
-    for _,entry in ipairs({{self.taskSelector,0},{self.taskChain,328},{self.taskGo,444}}) do
-        entry[1]:ClearAllPoints();entry[1]:SetPoint("TOPLEFT",entry[2],compact and -76-retryRow-waitRow or -176)
-    end
+    self.bodyTop=136
     self.accept:SetEnabled(candidate~=nil and (not session or session.phase=="complete"))
-    self.ready:SetShown(not compact or waitRow>0)
-    self.ready:ClearAllPoints();self.ready:SetPoint("TOPLEFT",compact and 0 or 114,compact and -76-retryRow or -36)
-    self.ready.text:SetText(waitRow>0 and (batch.waiting and "出发去副本" or "等队做任务") or "队伍就绪")
-    self.ready:SetEnabled(waitRow>0 and A.ready and not A.refreshAt or session~=nil and not session.settled and session.phase~="inside")
+    self.ready:SetShown(not compact or not not waiting)
+    self.ready.text:SetText(waiting and (batch.waiting and "出发去副本" or "等队做任务") or "队伍就绪")
+    self.ready:SetEnabled(waiting and A.ready and not A.refreshAt or session~=nil and not session.settled and session.phase~="inside")
     self.finish:SetEnabled(session~=nil and session.entered==true and not session.settled)
     local again
     if session and session.settled and not A.state.inInstance and A.ready then
@@ -158,15 +146,37 @@ function UI:Refresh()
         lines[#lines+1] = (active and active.title or ("#"..session.id)).." · 第 "..session.round.." 轮 · "..(A.Dungeon.phases[session.phase] or "准备中")
         lines[#lines+1] = string.format("行程预算剩余 %.1f 分钟；再刷时重新计算收益与往返成本",math.max(0,session.budget-session.elapsed)/60)
     elseif batch and batch.id==self.selected then
-        local count=0;for _ in pairs(batch.baselines) do count=count+1 end
         lines[#lines+1]=batch.returning and "任务已交齐，离开副本后继续练级。" or
-            batch.waiting and "等队时做附近任务；集合后点击「出发去副本」。" or
-            "已安排 "..count.." 项任务 · 接取 → 完成 → 交付"
+            batch.waiting and "等队时做附近任务；集合后点击「出发去副本」。" or nil
     elseif reason then lines[#lines+1]=reason
     else lines[#lines+1]="点击接受，开始副本行程。" end
     if entryError then lines={entryError}
     elseif self.message then lines[#lines+1]=self.message end
-    self.status:SetText(table.concat(lines,"\n"))
+    self.statusText=table.concat(lines,"\n")
+    local _,summary=self:Lines()
+    self.status:SetText(table.concat(summary,"\n\n"))
+    self.summaryChild:SetHeight(self.status:GetStringHeight()+8)
+    local controls={{self.taskBatch}}
+    if compact then
+        if waiting then controls[#controls+1]={self.ready} end
+        if entryError then controls[#controls+1]={self.retry} end
+    else
+        controls[#controls+1]={self.accept,self.ready}
+        controls[#controls+1]={self.finish,self.again}
+        controls[#controls+1]={self.stop,self.confirmReset}
+        controls[#controls+1]={self.retry}
+    end
+    controls[#controls+1]={self.taskSelector}
+    controls[#controls+1]={self.taskGo,self.taskChain}
+    for i,buttons in ipairs(controls) do
+        local width=#buttons==1 and 226 or 108
+        for j,button in ipairs(buttons) do
+            button:ClearAllPoints();button:SetPoint("TOPLEFT",514+(j-1)*118,-(448-#controls*32+(i-1)*32))
+            button:SetSize(width,26);button.text:SetWidth(width-10)
+            button.text:SetJustifyH(button==self.taskSelector and "LEFT" or "CENTER")
+        end
+    end
+    self.summaryScroll:SetSize(212,448-#controls*32-12)
 end
 
 function UI:RepeatText()
@@ -189,7 +199,7 @@ function UI:RepeatText()
 end
 
 function UI:Lines()
-    local lines={}
+    local lines,summary,shown={},{},{}
     local r,g,b=A.UI:Accent()
     local heading=string.format("|cff%02x%02x%02x",r*255,g*255,b*255)
     local selected=self.entries and self.entries[self.selected]
@@ -198,12 +208,13 @@ function UI:Lines()
         if (A.state.groupSize or 1)==1 and not A.state.inInstance then
             group=group.."\n先准备副本任务；组队后前往入口。"
         end
-        lines[#lines+1]=group
+        summary[#summary+1]=group:gsub(" · ","\n",1)
     end
+    if self.statusText and self.statusText~="" then summary[#summary+1]=self.statusText end
     local encounter=A.Dungeon.EncounterProgress(self.entries and self.entries[self.selected],A.state)
-    if encounter then lines[#lines+1]=encounter end
+    if encounter then summary[#summary+1]=encounter end
     local activity=A.Dungeon:TaskActivityText(self.selected)
-    if activity then lines[#lines+1]=activity end
+    if activity then summary[#summary+1]=activity end
     local batch=A.char.taskBatch
     local current=batch and batch.id==self.selected
     local plan=current and A.plan
@@ -211,15 +222,14 @@ function UI:Lines()
     local journey=choices and plan.taskBatch.journey
     if journey then
         local function phase(title,steps)
-            if #steps==0 then return end
-            lines[#lines+1]=heading..title.."|r"
             for _,step in ipairs(steps) do
                 local action=step.action
+                shown[action.questId]=true
                 local verb=action.kind=="accept" and "接取" or action.kind=="turnin" and "交付" or "完成"
                 local active=A.state.quests[action.questId]
                 local status=active and (active.ready and (statusColors[1].."可交付") or (statusColors[2].."已接")) or (statusColors[3].."未接")
                 local where=step.recipient and step.recipient.entityName or action.position and action.position.entityName or step.instance
-                local text=status.."|r  "..verb.."「"..action.title.."」"
+                local text=heading..title.."|r  "..status.."|r  "..verb.."「"..action.title.."」"
                 if action.kind=="objective" and action.text then text=text.."\n    "..action.text end
                 if where and where~=step.instance then text=text.."\n    |cffc7d6e3"..where.."|r" end
                 if step.preparingQuest then text=text.."\n    为「"..step.preparingQuest.title.."」准备前置，交付后接续。" end
@@ -227,22 +237,21 @@ function UI:Lines()
                 lines[#lines+1]=text
             end
         end
-        phase("出发前准备",journey.before)
+        phase("入本前",journey.before)
         if journey.entry then lines[#lines+1]=journey.entry.text end
-        phase("副本内任务",journey.inside)
-        if journey.leave then lines[#lines+1]=#journey.inside>0 and "本内目标完成后离开副本，继续剩余目标与交付。" or "离开副本，继续剩余目标与交付。" end
-        phase(journey.leave and "出本后接续与交付" or "剩余目标与交付",journey.after)
-        lines[#lines+1]=heading.."任务与奖励|r"
+        phase("副本内",journey.inside)
+        if journey.leave and #journey.after==0 then lines[#lines+1]="离开副本，继续练级。" end
+        phase(journey.leave and "出本后" or "接下来",journey.after)
     end
     local rewards=A.Dungeon.TaskRewards(self.tasks or {},current and batch.baselines or nil,choices)
     if rewards.count>0 then
-        lines[#lines+1]=string.format("%s %d 项 · 进行中 %d 项 · 可交付 %d 项",
-            current and "本次有效任务" or "可准备任务",rewards.count,rewards.active,rewards.ready)
-        if rewards.unknownXP==0 then lines[#lines+1]=string.format("交付经验：%d",rewards.xp) end
-        if rewards.prepare>0 then lines[#lines+1]="其中 "..rewards.prepare.." 项需先完成前置。" end
-        if rewards.upgrades>0 then lines[#lines+1]="其中 "..rewards.upgrades.." 项任务有装备提升。" end
+        summary[#summary+1]=string.format("%s %d 项\n进行中 %d · %s可交付 %d|r",
+            current and "已安排任务" or "可准备任务",rewards.count,rewards.active,statusColors[1],rewards.ready)
+        if rewards.unknownXP==0 then summary[#summary+1]=string.format("%s交付经验：%d|r",statusColors[1],rewards.xp) end
+        if rewards.prepare>0 then summary[#summary+1]=rewards.prepare.." 项需先完成前置。" end
+        if rewards.upgrades>0 then summary[#summary+1]=rewards.upgrades.." 项任务有装备提升。" end
     end
-    if rewards.excluded>0 then lines[#lines+1]="另有 "..rewards.excluded.." 项低收益任务。" end
+    if rewards.excluded>0 then summary[#summary+1]="另有 "..rewards.excluded.." 项低收益任务。" end
     local drops=selected and A.Gear.DungeonBenefits and A.Gear.DungeonBenefits(selected,A.state,A.Data) or {}
     if #drops>0 then
         lines[#lines+1]="|cffffd36b副本装备提升|r"
@@ -253,26 +262,25 @@ function UI:Lines()
         end
         lines[#lines+1]="可在装备页选择获取目标。"
     end
-    local headings={"可交付", "已接任务", "可接任务", "尚未满足条件", "已交付"}
-    local group
     for i,row in ipairs(self.tasks or {}) do
-        if group~=row.group then group=row.group;lines[#lines+1]=statusColors[group]..headings[group].."|r" end
-        local hint=row.relation=="preparation" and "入本准备" or row.relation=="alternative" and "部分目标有其他来源" or
-            row.relation=="inside" and "副本目标" or "关联任务"
-        local selected=A.char.taskBatch and A.char.taskBatch.id==self.selected and A.char.taskBatch.baselines[row.id]~=nil
-        if selected then hint=hint.." · 已安排" end
-        if row.lowValue then hint=hint.." · "..row.lowValue.suggestion end
-        if row.xp then hint=hint.." · "..row.xp.." 经验" end
-        local detail=row.requireCheck and "向任务发布者查看任务" or
-            not row.allowed and row.group~=5 and row.reason or row.recipientName
-        lines[#lines+1]=string.format("%s%02d  %s\n     |cffc7d6e3%s%s|r",i==self.taskIndex and "› " or "",i,row.title,hint,detail and (" · "..detail) or "")
-        if row.gear then
-            local reward=row.gear
-            lines[#lines+1]=string.format("     装备提升：%s · 属性评分 %+.1f",reward.item.link or reward.item.name or ("物品 #"..reward.item.id),reward.upgrade.delta)
+        if not shown[row.id] then
+            local hint=row.relation=="preparation" and "入本准备" or row.relation=="alternative" and "部分目标有其他来源" or
+                row.relation=="inside" and "副本目标" or "关联任务"
+            local selected=A.char.taskBatch and A.char.taskBatch.id==self.selected and A.char.taskBatch.baselines[row.id]~=nil
+            if selected then hint=hint.." · 已安排" end
+            if row.lowValue then hint=hint.." · "..row.lowValue.suggestion end
+            if row.xp then hint=hint.." · "..row.xp.." 经验" end
+            local detail=row.requireCheck and "向任务发布者查看任务" or
+                not row.allowed and row.group~=5 and row.reason or row.recipientName
+            lines[#lines+1]=string.format("%s%s%s|r  %s\n    |cffc7d6e3%s%s|r",i==self.taskIndex and "› " or "",statusColors[row.group],row.status,row.title,hint,detail and (" · "..detail) or "")
+            if row.gear then
+                local reward=row.gear
+                lines[#lines+1]=string.format("     装备提升：%s · 属性评分 %+.1f",reward.item.link or reward.item.name or ("物品 #"..reward.item.id),reward.upgrade.delta)
+            end
         end
     end
     if #lines==0 then lines[1]="当前角色暂无适用的关联任务。" end
     local text=self:RepeatText()
-    if text then lines[#lines+1]=text end
-    return lines
+    if text then summary[#summary+1]=text end
+    return lines,summary
 end

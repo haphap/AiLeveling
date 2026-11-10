@@ -56,8 +56,8 @@ local function widget(kind,parent)
     return w
 end
 local dungeonPreview=arg[1]=="dungeon"
-local canvasWidth=dungeonPreview and 700 or 560
-local canvasHeight=dungeonPreview and 760 or arg[1]=="assist" and 240 or 1100
+local canvasWidth=dungeonPreview and 860 or 560
+local canvasHeight=dungeonPreview and 700 or arg[1]=="assist" and 240 or 1100
 UIParent=widget("Root");UIParent:SetSize(canvasWidth,canvasHeight)
 CreateFrame=function(kind,_,parent) return widget(kind,parent) end
 STANDARD_TEXT_FONT="preview"
@@ -137,13 +137,13 @@ if dungeonPreview then
         selected="reference:389"
         A.state.items[272998]={id=272998,name="示例首领装备",usable=true,equipLoc="INVTYPE_HEAD",stats={ITEM_MOD_STRENGTH_SHORT=8}}
     end
-    local panel=A.UI:Panel(nil,UIParent,620,620);panel:SetPoint("TOPLEFT",40,-88)
+    local panel=A.UI:Panel(nil,UIParent,780,560);panel:SetPoint("TOPLEFT",40,-88)
     local title=A.UI:Text(panel,18);title:SetPoint("TOPLEFT",18,-16);title:SetText("AiLeveling · 副本任务")
     local tabs=A.UI:Text(panel,12);tabs:SetPoint("TOPLEFT",18,-57);tabs:SetText("行程       任务链       装备       副本       设置")
     A.UI.Dungeon:Create(panel);A.UI.Dungeon.selected=selected;A.UI.Dungeon:Refresh();A.UI.Dungeon.frame:Show()
-    local scroll=CreateFrame("ScrollFrame",nil,panel);scroll:SetPoint("TOPLEFT",18,-A.UI.Dungeon.bodyTop);scroll:SetSize(566,620-A.UI.Dungeon.bodyTop-18)
-    local child=CreateFrame("Frame",nil,scroll);child:SetSize(560,500);scroll:SetScrollChild(child)
-    local text=A.UI:Text(child,16,{0.97,0.98,1});text:SetPoint("TOPLEFT");text:SetWidth(552)
+    local scroll=CreateFrame("ScrollFrame",nil,panel);scroll:SetPoint("TOPLEFT",18,-A.UI.Dungeon.bodyTop);scroll:SetSize(476,560-A.UI.Dungeon.bodyTop-18)
+    local child=CreateFrame("Frame",nil,scroll);child:SetSize(474,500);scroll:SetScrollChild(child)
+    local text=A.UI:Text(child,16,{0.97,0.98,1});text:SetPoint("TOPLEFT");text:SetWidth(466)
     text:SetText(table.concat(A.UI.Dungeon:Lines(),"\n\n"))
 else
 A.UI:CreateTracker();A.UI:RenderTracker();A.UI:SetTrackerNavigation(285,0.25,true)
