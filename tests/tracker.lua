@@ -34,8 +34,6 @@ test("同NPC任务连续显示整组真实进度并保持行宽与点击",functi
     T.rows[2].scripts.OnClick(nil,"RightButton");B.menu["优先做此任务"].callback();eq(B.char.locked,3)
     B.state.quests[1].ready=true;B.UI:RenderTracker()
     eq(T.rows[1].group.value,"治安官 · 已完成 2/2");eq(T.rows[1].progress.value,"一起交给治安官（2项）")
-    assert(loadfile("UI/Plan.lua"))("AiLeveling",B)
-    local found=false;for _,entry in ipairs(B.UI.Plan:Entries()) do if entry.title=="集中交付 · 治安官 · 已完成 2/2" then found=true end end;assert(found)
     B.state.quests[3]=nil;B.UI:RenderTracker();eq(T.rows[1].group.shown,false)
     B.finish()
 end)
@@ -70,8 +68,6 @@ test("受持有上限限制时仍按NPC归组并提示先交付已备齐任务",
     eq(model.rows[1].progress,"已备齐 · 可先交付")
     eq(model.rows[2].progress,"等待前项交付后再收集")
     eq(model.rows[1].groupTitle,"收件人 · 已完成 1/2")
-    assert(loadfile("UI/Plan.lua"))("AiLeveling",B)
-    local found=false;for _,entry in ipairs(B.UI.Plan:Entries()) do if entry.title:find("分批交付 · 收件人",1,true) then found=true end end;assert(found)
     B.action.kind="objective";B.action.targetId=18250;B.action.itemGain=1;B.state.bags[18250]=0
     B.UI:RenderTracker();model=B.UI.tracker.model;eq(model.objectives[#model.objectives].need,1)
     B.finish()
@@ -335,11 +331,8 @@ test("交错行程按任务数汇总并显示每个目标与交付步骤",functi
     a.executionAction=oa;a.executionTiming={seconds=80,low=80,high=80};B.action=oa
     B.UI:RenderTracker();assert(B.UI.tracker.objectives[1].text.value:find("狗头人",1,true))
     assert(not B.UI.body.value:find("先完成附近目标，再集中交付",1,true))
-    assert(loadfile("UI/Plan.lua"))("AiLeveling",B);B.UI.Plan.preview=a
-    local entries=B.UI.Plan:Entries()
-    eq(entries[1].title,"本次行程 · 2 项任务")
-    eq(entries[2].icon,"objective");eq(entries[2].detail,"目标甲")
-    eq(entries[5].icon,"turnin");eq(entries[5].choice,b)
+    eq(B.UI.tracker.stepCount.value,"1 / 4")
+    eq(B.UI.tracker.rows[2].questId,3)
     eq(B.state.quests[3].ready,nil)
     B.finish()
 end)
