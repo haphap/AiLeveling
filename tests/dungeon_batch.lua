@@ -293,11 +293,11 @@ run("副本页显示当前任务行程及接取状态，状态过期不显示旧
     assert(B.Dungeon:StartTaskBatch("ref"));B.plan=plan(s,data,B.settings,B);B.plan.revision=7
     assert(loadfile("UI/Dungeon.lua"))("AiLeveling",B)
     local ui=B.UI.Dungeon;ui.selected="ref";ui.tasks=B.Dungeon.Tasks(B.Dungeon.Catalog(s,B.Content).ref,s,data)
-    local text=table.concat(ui:Lines(),"\n")
-    assert(text:find("已接 · 完成 · 测试任务 1",1,true));assert(text:find("未接 · 接取 · 测试任务 2",1,true))
+    local text=table.concat(ui:Lines(),"\n"):gsub("|c%x%x%x%x%x%x%x%x",""):gsub("|r","")
+    assert(text:find("已接  完成「测试任务 1」",1,true));assert(text:find("未接  接取「测试任务 2」",1,true))
     assert(text:find("出发前准备",1,true));assert(text:find("副本内任务",1,true));assert(text:find("出本后接续与交付",1,true))
     B.plan.revision=6;text=table.concat(ui:Lines(),"\n")
-    assert(not text:find("本次任务安排",1,true))
+    assert(not text:find("出发前准备",1,true))
 end)
 run("已就绪成员不会在门外先交付，同收件人未完成成员继续入本",function()
     local B,s,data=fixture();s.completed[3]=true

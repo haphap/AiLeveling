@@ -45,27 +45,36 @@ def main():
             d.line(tuple(v * SCALE for pt in [row['start'], row['finish']] for v in pt),
                    fill=color(row.get('color')), width=round(row['thickness'] * SCALE))
         if row.get('text'):
-            text = re.sub(r'\|c[0-9a-fA-F]{8}|\|r', '', row['text'])
             font = ImageFont.truetype(FONT, max(1, round(row['size'] * SCALE)))
-            lines = []
-            for paragraph in text.split('\n'):
-                line = ''
-                for char in paragraph:
-                    if line and d.textlength(line + char, font=font) > w:
-                        lines.append(line)
-                        line = char
-                    else:
-                        line += char
-                lines.append(line)
+            lines, line_width = [[]], 0
+            ink = color(row.get('color'))
+            for token in re.split(r'(\|c[0-9a-fA-F]{8}|\|r)', row['text']):
+                if token.startswith('|c'):
+                    ink = tuple(int(token[i:i+2], 16) for i in (4, 6, 8, 2))
+                    continue
+                if token == '|r':
+                    ink = color(row.get('color'))
+                    continue
+                for char in token:
+                    advance = 0 if char == '\n' else d.textlength(char, font=font)
+                    if char == '\n' or (lines[-1] and line_width + advance > w):
+                        lines.append([])
+                        line_width = 0
+                    if char != '\n':
+                        lines[-1].append((char, ink, advance))
+                        line_width += advance
             for i, line in enumerate(lines):
                 xx = x
+                line_width = sum(glyph[2] for glyph in line)
                 if row.get('justify') == 'RIGHT':
-                    xx += w - d.textlength(line, font=font)
+                    xx += w - line_width
                 elif row.get('justify') == 'CENTER':
-                    xx += (w - d.textlength(line, font=font)) / 2
+                    xx += (w - line_width) / 2
                 yy = y + i * (row['size'] + 4) * SCALE
-                d.text((xx, yy + row['size'] * SCALE), line, font=font, fill=color(row.get('color')), anchor='ls',
-                       stroke_width=1, stroke_fill=(0, 0, 0, 150))
+                for char, ink, advance in line:
+                    d.text((xx, yy + row['size'] * SCALE), char, font=font, fill=ink, anchor='ls',
+                           stroke_width=1, stroke_fill=(0, 0, 0, 150))
+                    xx += advance
         if row.get('clip'):
             c = row['clip']
             bounds = tuple(round(v * SCALE) for v in [c['x'], c['y'], c['x'] + c['w'], c['y'] + c['h']])

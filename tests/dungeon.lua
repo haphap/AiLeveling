@@ -168,7 +168,7 @@ return function(test,eq,F,plan)
     end)
     test("首领进度适用于参考目录并在重新进入清空，不借观察推断通关",function()
         local B,d,s=context();local native=GetInstanceInfo
-        d.reference=true;B.UI={};assert(loadfile("UI/Dungeon.lua"))("AiLeveling",B)
+        d.reference=true;B.UI={Accent=function() return 1,1,1 end};assert(loadfile("UI/Dungeon.lua"))("AiLeveling",B)
         local ui=B.UI.Dungeon;ui.entries={[1]=d};ui.selected=1;ui.tasks={}
         GetInstanceInfo=function() return "夹具副本","party",1,nil,nil,nil,nil,42 end
         s.inInstance,s.instanceId=true,42
@@ -351,7 +351,7 @@ return function(test,eq,F,plan)
         local B,d,s,data=context()
         local create=CreateFrame
         CreateFrame=function() return {SetPoint=function() end,SetSize=function() end,SetHeight=function() end,Hide=function() end} end
-        B.UI={SelectTab=function() end,Text=function()
+        B.UI={Accent=function() return 1,1,1 end,SelectTab=function() end,Text=function()
             return {ClearAllPoints=function() end,SetPoint=function() end,SetWidth=function() end,SetHeight=function() end,SetText=function(self,v) self.value=v end}
         end,Button=function(_,_,_,_,callback)
             return {text={SetText=function(self,v) self.value=v end,SetWidth=function() end,SetMaxLines=function() end},ClearAllPoints=function() end,SetShown=function(self,v) self.shown=v end,SetPoint=function() end,SetEnabled=function(self,v) self.enabled=v end,click=callback}
@@ -388,7 +388,7 @@ return function(test,eq,F,plan)
         eq(ui.ready.shown,true);eq(ui.ready.text.value,"等队做任务");eq(ui.bodyTop,250)
         local waitRefresh=B.State.Refresh
         B.State.Refresh=function() end
-        ui.ready.click();eq(B.char.taskBatch.waiting,true);eq(ui.ready.text.value,"队伍就绪")
+        ui.ready.click();eq(B.char.taskBatch.waiting,true);eq(ui.ready.text.value,"出发去副本")
         assert(ui.status.value:find("等队",1,true))
         ui.ready.click();eq(B.char.taskBatch.waiting,nil);eq(ui.ready.text.value,"等队做任务")
         B.State.Refresh=waitRefresh

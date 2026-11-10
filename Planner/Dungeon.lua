@@ -165,9 +165,10 @@ end
 function D.GroupStatus(d,state)
     local size,needed=state.groupSize or 1,d.groupSize or 5
     local g=state.group
-    local text=string.format("队伍 %d/%d",size,needed)
-    if not g then return false,text.." · 请确认队伍职责与就绪情况" end
-    if g.raid and needed<=5 then return false,text.." · 当前为团队，请先确认小队安排" end
+    local text=string.format("队伍 %d/%d 人",size,needed)
+    if size==1 and needed>1 then return false,text.." · 尚未组队" end
+    if not g then return false,text..(size<needed and (" · 还差 "..(needed-size).." 人") or " · 已满员") end
+    if g.raid and needed<=5 then return false,text.." · 当前为团队，请转为小队" end
     text=text..string.format(" · 坦克 %d · 治疗 %d · 输出 %d",g.tank,g.healer,g.damage)
     local hints={}
     if size<needed then hints[#hints+1]="还差 "..(needed-size).." 人" end
@@ -179,7 +180,8 @@ function D.GroupStatus(d,state)
         if g.healer==0 then hints[#hints+1]="需要治疗" end
     end
     local ready=g.online>=needed and g.unknown==0 and (needed~=5 or g.tank>0 and g.healer>0)
-    if #hints>0 then text=text.."\n"..table.concat(hints,"；") end
+    if #hints>0 then text=text.."\n"..table.concat(hints,"；")
+    elseif ready then text=text..(state.inInstance and "\n人员与职责齐备。" or "\n人员与职责齐备，可前往副本入口。") end
     return ready,text
 end
 
