@@ -52,8 +52,8 @@ local function setup(fullUI)
     local saved={};for _,name in ipairs(names) do saved[name]=_G[name] end
     local clock,combat=10,false
     UIParent=widget();STANDARD_TEXT_FONT="font";GameFontHighlight={};SlashCmdList={};NUM_CONTAINER_FRAMES=0;ContainerFrameCombinedBags=nil
-    CreateFrame=function(kind)
-        local w=widget();w.kind=kind;if kind=="CheckButton" then w.Text=widget() end;return w
+    CreateFrame=function(kind,_,parent,template)
+        local w=widget();w.kind,w.template=kind,template;if kind=="CheckButton" then w.Text=widget() end;return w
     end
     InCombatLockdown=function() return combat end;GetTime=function() return clock end
     debugprofilestop=function() return 0 end
@@ -604,6 +604,14 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     B.action={kind="service",npcId=30};B:SetOption("targets",false);eq(Q.targetButton.shown,false)
     B:SetOption("targets",true);eq(Q.targetButton.shown,true)
     B:TogglePause();eq(Q.targetButton.shown,false);B:TogglePause();eq(Q.targetButton.shown,true)
+    local close=Q.targetClose;eq(close.template,"SecureHandlerClickTemplate")
+    B.combat(true);writes=Q.targetButton.attributeWrites
+    assert(loadstring("local self=...;"..close._onclick))({GetParent=function() return Q.targetButton end})
+    close.scripts.PostClick();eq(B.settings.targets,false);eq(Q.targetButton.shown,false)
+    eq(Q.targetButton.attributeWrites,writes)
+    B:NormalizeSettings(B.settings);Q:Update();eq(Q.targetButton.shown,false)
+    B.combat(false);B.frame.scripts.OnEvent(nil,"PLAYER_REGEN_ENABLED");eq(Q.targetButton.shown,false)
+    B:SetOption("targets",true);eq(Q.targetButton.shown,true)
     for _,name in ipairs({"NPC\n/run bad()","NPC;bad","NPC[foo]","NPC/bar","NPC\\bar"," NPC","NPC "}) do
         entities[30]=name;Q:Update();eq(Q.targetButton.shown,false);eq(Q.targetButton.macrotext1,nil)
     end

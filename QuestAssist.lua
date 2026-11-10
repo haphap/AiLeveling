@@ -348,7 +348,7 @@ function Q:Create()
     target:SetAttribute("type1","macro")
     target:SetAttribute("type2","raidtarget");target:SetAttribute("unit2","target")
     target:SetAttribute("marker2",8);target:SetAttribute("action2","set-unmarked")
-    target.text=A.UI:Text(target,15);target.text:SetPoint("TOPLEFT",10,-8);target.text:SetWidth(320);target.text:SetMaxLines(1)
+    target.text=A.UI:Text(target,15);target.text:SetPoint("TOPLEFT",10,-8);target.text:SetWidth(290);target.text:SetMaxLines(1)
     target.status=A.UI:Text(target,11);target.status:SetPoint("TOPLEFT",10,-32);target.status:SetWidth(320);target.status:SetMaxLines(1)
     target:SetScript("OnEnter",function(b)
         if self.targetActive then
@@ -358,6 +358,18 @@ function Q:Create()
         end
     end)
     target:SetScript("OnLeave",function() GameTooltip:Hide() end)
+    local close=CreateFrame("Button",nil,target,"SecureHandlerClickTemplate")
+    self.targetClose=close
+    close:SetSize(28,28);close:SetPoint("TOPRIGHT",-4,-3);close:RegisterForClicks("LeftButtonUp")
+    close.text=A.UI:Text(close,18);close.text:SetPoint("CENTER");close.text:SetText("×")
+    -- The protected target button must be hidden by a secure click during combat.
+    close:SetAttribute("_onclick","self:GetParent():Hide()")
+    close:SetScript("PostClick",function() GameTooltip:Hide();A:SetOption("targets",false) end)
+    close:SetScript("OnEnter",function(b)
+        GameTooltip:SetOwner(b,"ANCHOR_RIGHT");GameTooltip:SetText("关闭目标辅助")
+        GameTooltip:AddLine("隐藏目标与队长按钮；可在设置 → 任务辅助中重新开启。",1,1,1,true);GameTooltip:Show()
+    end)
+    close:SetScript("OnLeave",function() GameTooltip:Hide() end)
     target:Hide()
     local follow=CreateFrame("Button","AiLevelingFollowLeader",UIParent,"SecureActionButtonTemplate,BackdropTemplate")
     self.followButton=follow
