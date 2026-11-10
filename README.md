@@ -1,6 +1,6 @@
 # AiLeveling
 
-[下载安装包](https://github.com/haphap/AiLeveling/releases) · Forever 练级助手 · 当前源码版本 `0.1.129-dev`
+[下载安装包](https://github.com/haphap/AiLeveling/releases) · Forever 练级助手 · 当前源码版本 `0.1.130-dev`
 
 根据当前任务、位置、等级和任务链自动衔接接取、目标与集中交付，以少跑路、多经验为目标。任务执行耗时视为相当，地面移动按直线距离÷跑速估算；任务进度使用游戏原生日志。完整首版按 [PLAN.md](https://github.com/haphap/AiLeveling/blob/main/PLAN.md) 推进，当前处于 C 覆盖与交付阶段。适用的 RestedXP 功能见 [功能对照](https://github.com/haphap/AiLeveling/blob/main/docs/RESTEDXP_PARITY.md)，装备扩展暂缓。
 
@@ -84,6 +84,8 @@
 ## 开发与验证
 
 全部开发完成后，在 GitHub Actions 的 Release 工作流选择开发分支，留空 `tag` 生成统一验收包。该模式运行构建检查并上传 Artifact，记录提交号和校验值。最终验收通过后，再统一更新版本并推送对应的 `v版本号` 标签发布 Release；填写已有标签可重跑该次发布。正式版本同时检查完整覆盖和实机验收记录。
+
+用户明确要求发布阶段成果时，集中发布带 `-dev` 后缀的开发版 Release，沿用同一 Actions 构建并提供安装 ZIP；正式首版仍按统一验收结果发布。
 
 ```sh
 python3 tools/build.py
