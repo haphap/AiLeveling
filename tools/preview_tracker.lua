@@ -1,5 +1,6 @@
 -- Executes the actual tracker UI on a small native-widget mock. Example data, never game state.
 local nodes={}
+local box,boxes
 local function clean(s) return (s or ""):gsub("|c%x%x%x%x%x%x%x%x",""):gsub("|r",""):gsub("|T.-|t","　") end
 local function width(s,size)
     local total=0
@@ -25,6 +26,10 @@ local function widget(kind,parent)
     function w:SetText(value) self.value=tostring(value or "") end;function w:GetText() return self.value or "" end
     function w:SetFont(_,size,flags) self.size,self.fontFlags=size,flags end
     function w:GetEffectiveScale() return 1 end
+    function w:GetCenter()
+        boxes={};local r=box(self)
+        return r.x+r.w/2,UIParent:GetHeight()-r.y-r.h/2
+    end
     function w:GetStringHeight()
         local count=0
         for line in (clean(self.value).."\n"):gmatch("(.-)\n") do
@@ -61,10 +66,10 @@ local function widget(kind,parent)
 end
 local dungeonPreview=arg[1]=="dungeon"
 local canvasWidth=dungeonPreview and 860 or 560
-local canvasHeight=dungeonPreview and 700 or arg[1]=="assist" and 240 or 1100
+local canvasHeight=dungeonPreview and 700 or 1100
 UIParent=widget("Root");UIParent:SetSize(canvasWidth,canvasHeight)
 CreateFrame=function(kind,_,parent) return widget(kind,parent) end
-if not dungeonPreview and arg[1]~="assist" then
+if not dungeonPreview then
     MinimapCluster=widget("Frame",UIParent);MinimapCluster:SetSize(280,160)
     MinimapCluster:SetPoint("TOPRIGHT",UIParent,"TOPRIGHT",-100,-88)
     MinimapCluster:SetBackdropColor(0.1,0.18,0.18,0.6)
@@ -103,6 +108,26 @@ A.plan.taskChoices[#A.plan.taskChoices+1]={lowValue={suggestion="建议跳过"},
 A.plan.taskQueue={stagePlan=true}
 assert(loadfile("UI/Main.lua"))("AiLeveling",A)
 assert(loadfile("UI/Tracker.lua"))("AiLeveling",A)
+local anchors={TOPLEFT={0,0},TOP={0.5,0},TOPRIGHT={1,0},LEFT={0,0.5},CENTER={0.5,0.5},RIGHT={1,0.5},BOTTOMLEFT={0,1},BOTTOM={0.5,1},BOTTOMRIGHT={1,1}}
+boxes={}
+box=function(w)
+    if boxes[w] then return boxes[w] end
+    if w==UIParent then return {x=0,y=0,w=canvasWidth,h=canvasHeight} end
+    if w.all then local value=box(w.all);boxes[w]=value;return value end
+    local ww,hh=w:GetWidth(),w:GetHeight()
+    local x,y=0,0
+    for i,p in ipairs(w.points) do
+        local relative=box(p.relative or UIParent)
+        local a,b=anchors[p.point],anchors[p.rpoint]
+        local rx,ry=relative.x+relative.w*b[1]+p.x,relative.y+relative.h*b[2]-p.y
+        if i==1 then x,y=rx-ww*a[1],ry-hh*a[2]
+        else
+            if a[1]==1 then ww=rx-x end
+            if a[2]==1 then hh=ry-y end
+        end
+    end
+    local value={x=x,y=y,w=ww,h=hh};boxes[w]=value;return value
+end
 if dungeonPreview then
     A.ready=true;A.Content={dungeons={}}
     if arg[2]=="entry-blocked" then A.state.instanceEntryError="客户端提示近期进入实例次数过多，待限制解除后重新检查" end
@@ -167,7 +192,7 @@ else
 A.UI:CreateTracker();A.UI:RenderTracker();A.UI:SetTrackerNavigation(285,0.25,true)
 A.UI.navFrame:ClearAllPoints();A.UI.navFrame:SetPoint("TOP",A.UI.frame,"BOTTOM",0,-54)
 if arg[1]=="assist" then
-    A.UI.frame:Hide();A.UI.navFrame:Hide()
+    A.UI.navFrame:Hide()
     InCombatLockdown=function() return false end
     action.objectiveIndex=1
     action.position.entityKind,action.position.entityId="npc",10
@@ -178,28 +203,8 @@ if arg[1]=="assist" then
     A.state.bags={}
     assert(loadfile("QuestAssist.lua"))("AiLeveling",A)
     A.QuestAssist:Create();A.QuestAssist:Update()
-    A.QuestAssist.targetButton:ClearAllPoints();A.QuestAssist.targetButton:SetPoint("TOPLEFT",110,-100)
+    A.UI:RenderTracker()
 end
-end
-local anchors={TOPLEFT={0,0},TOP={0.5,0},TOPRIGHT={1,0},LEFT={0,0.5},CENTER={0.5,0.5},RIGHT={1,0.5},BOTTOMLEFT={0,1},BOTTOM={0.5,1},BOTTOMRIGHT={1,1}}
-local boxes={}
-local function box(w)
-    if boxes[w] then return boxes[w] end
-    if w==UIParent then return {x=0,y=0,w=canvasWidth,h=canvasHeight} end
-    if w.all then local value=box(w.all);boxes[w]=value;return value end
-    local ww,hh=w:GetWidth(),w:GetHeight()
-    local x,y=0,0
-    for i,p in ipairs(w.points) do
-        local relative=box(p.relative or UIParent)
-        local a,b=anchors[p.point],anchors[p.rpoint]
-        local rx,ry=relative.x+relative.w*b[1]+p.x,relative.y+relative.h*b[2]-p.y
-        if i==1 then x,y=rx-ww*a[1],ry-hh*a[2]
-        else
-            if a[1]==1 then ww=rx-x end
-            if a[2]==1 then hh=ry-y end
-        end
-    end
-    local value={x=x,y=y,w=ww,h=hh};boxes[w]=value;return value
 end
 local function json(value)
     if type(value)=="string" then return '"'..value:gsub('[%z\1-\31\\"]',function(c) return string.format('\\u%04x',c:byte()) end)..'"' end
@@ -210,6 +215,7 @@ local function json(value)
     for k,v in pairs(value) do parts[#parts+1]=json(k)..':'..json(v) end
     return '{'..table.concat(parts,',')..'}'
 end
+boxes={}
 local records={}
 local function visit(w,visible,clip)
     visible=visible and w.shown

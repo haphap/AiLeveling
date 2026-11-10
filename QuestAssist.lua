@@ -82,7 +82,7 @@ function Q:TargetStatus()
     local target=self.targetActive
     local count=#(self.targetActiveChoices or {})
     local prefix=count>1 and (self.targetActiveIndex.."/"..count.." · ") or ""
-    self.targetButton.text:SetText(target and (prefix.."选中 "..target.name) or "")
+    self.targetTitle=target and (prefix.."选中 "..target.name) or ""
     local status=count>1 and "滚轮／中键切换 · 右键标记" or "右键：为当前选中的目标加骷髅标记"
     if self.targetQueued then status="战斗结束后更新目标"
     elseif target and UnitGUID then
@@ -96,7 +96,26 @@ function Q:TargetStatus()
             end
         end
     end
-    self.targetButton.status:SetText(status)
+    self.targetStatus=status
+end
+
+function Q:LayoutTarget()
+    local button,T=self.targetButton,A.UI.tracker
+    if not button or not T then return end
+    if not InCombatLockdown() then
+        local x,y=T.stepIcon:GetCenter()
+        local visible=self.targetActive~=nil and A.UI.frame:IsShown() and x~=nil and y~=nil
+        if visible then
+            -- Screen coordinates keep the secure button separate from the resizable tracker.
+            local scale=A.UI.frame:GetEffectiveScale()/UIParent:GetEffectiveScale()
+            local size=T.stepIcon:GetWidth()*scale
+            button:ClearAllPoints();button:SetPoint("CENTER",UIParent,"BOTTOMLEFT",x*scale,y*scale)
+            button:SetSize(size+6*scale,size+6*scale);button.icon:SetSize(size,size)
+            button.icon:SetVertexColor(A.UI:Accent())
+        end
+        button:SetShown(visible)
+    end
+    T.stepIcon:SetShown(not button:IsShown())
 end
 
 function Q:ApplyTarget()
@@ -110,8 +129,7 @@ function Q:ApplyTarget()
     self.targetActive=target
     self.targetActiveChoices,self.targetActiveIndex,self.targetActiveKey=self.targetChoices,self.targetIndex,self.targetKey
     self.targetButton:SetAttribute("macrotext1",target and ("/targetexact "..target.name) or nil)
-    self.targetButton:SetShown(target~=nil)
-    self.targetButton:SetScale(A.settings.scale or 1)
+    self:LayoutTarget()
     self:TargetStatus()
 end
 
@@ -130,7 +148,7 @@ function Q:ApplyFollow()
         self.followQueued=nil;self.followActive=wanted
         self.followButton:SetAttribute("macrotext1",wanted and ("/follow "..wanted.fullName) or nil)
         self.followButton:ClearAllPoints()
-        self.followButton:SetPoint("TOP",self.targetActive and self.targetButton or self.info,"BOTTOM",0,-8)
+        self.followButton:SetPoint("TOP",self.info,"BOTTOM",0,-8)
         self.followButton:SetShown(wanted~=nil);self.followButton:SetScale(A.settings.scale or 1)
     end
     local active=self.followActive
@@ -336,11 +354,11 @@ function Q:Create()
         self:Update()
     end)
     self.next:SetPoint("TOPLEFT",0,-80)
-    local target=CreateFrame("Button","AiLevelingTarget",UIParent,"SecureActionButtonTemplate,BackdropTemplate")
+    local target=CreateFrame("Button","AiLevelingTarget",UIParent,"SecureActionButtonTemplate")
     self.targetButton=target
-    target:SetSize(340,54);target:SetPoint("TOP",self.info,"BOTTOM",0,-8)
-    target:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1})
-    target:SetBackdropColor(0.035,0.05,0.065,0.96);target:SetBackdropBorderColor(A.UI:Accent())
+    target:SetSize(24,24)
+    target.icon=target:CreateTexture(nil,"ARTWORK");target.icon:SetPoint("CENTER")
+    target.icon:SetTexture("Interface\\AddOns\\AiLeveling\\Media\\target.tga")
     target:RegisterForClicks("AnyUp","AnyDown")
     target:EnableMouseWheel(true)
     target:SetScript("OnMouseWheel",function(_,delta) self:CycleTarget(delta>0 and -1 or 1) end)
@@ -348,28 +366,15 @@ function Q:Create()
     target:SetAttribute("type1","macro")
     target:SetAttribute("type2","raidtarget");target:SetAttribute("unit2","target")
     target:SetAttribute("marker2",8);target:SetAttribute("action2","set-unmarked")
-    target.text=A.UI:Text(target,15);target.text:SetPoint("TOPLEFT",10,-8);target.text:SetWidth(290);target.text:SetMaxLines(1)
-    target.status=A.UI:Text(target,11);target.status:SetPoint("TOPLEFT",10,-32);target.status:SetWidth(320);target.status:SetMaxLines(1)
     target:SetScript("OnEnter",function(b)
         if self.targetActive then
-            GameTooltip:SetOwner(b,"ANCHOR_RIGHT");GameTooltip:SetText("当前任务目标")
-            for index,npc in ipairs(self.targetActiveChoices or {}) do GameTooltip:AddLine(index.." · "..npc.name,1,1,1,true) end
-            GameTooltip:AddLine("左键选中；右键标记；战斗外滚轮或中键切换。",1,1,1,true);GameTooltip:Show()
+            GameTooltip:SetOwner(b,"ANCHOR_LEFT");GameTooltip:SetText(self.targetTitle)
+            GameTooltip:AddLine(self.targetStatus,1,1,1,true)
+            GameTooltip:AddLine("左键选中；右键标记；战斗外滚轮或中键切换。",1,1,1,true)
+            GameTooltip:AddLine("标题栏右键可隐藏目标辅助。",0.75,0.8,0.85,true);GameTooltip:Show()
         end
     end)
     target:SetScript("OnLeave",function() GameTooltip:Hide() end)
-    local close=CreateFrame("Button",nil,target,"SecureHandlerClickTemplate")
-    self.targetClose=close
-    close:SetSize(28,28);close:SetPoint("TOPRIGHT",-4,-3);close:RegisterForClicks("LeftButtonUp")
-    close.text=A.UI:Text(close,18);close.text:SetPoint("CENTER");close.text:SetText("×")
-    -- The protected target button must be hidden by a secure click during combat.
-    close:SetAttribute("_onclick","self:GetParent():Hide()")
-    close:SetScript("PostClick",function() GameTooltip:Hide();A:SetOption("targets",false) end)
-    close:SetScript("OnEnter",function(b)
-        GameTooltip:SetOwner(b,"ANCHOR_RIGHT");GameTooltip:SetText("关闭目标辅助")
-        GameTooltip:AddLine("隐藏目标与队长按钮；可在设置 → 任务辅助中重新开启。",1,1,1,true);GameTooltip:Show()
-    end)
-    close:SetScript("OnLeave",function() GameTooltip:Hide() end)
     target:Hide()
     local follow=CreateFrame("Button","AiLevelingFollowLeader",UIParent,"SecureActionButtonTemplate,BackdropTemplate")
     self.followButton=follow

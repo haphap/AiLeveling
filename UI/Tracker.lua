@@ -319,6 +319,9 @@ function UI:TrackerMenu(owner)
         if owner==self.frame or not id then
             menu:CreateButton(A.char.paused and "继续引导" or "暂停引导",function() A:TogglePause() end)
             menu:CreateButton("详细面板",function() self:ToggleDetails() end)
+            menu:CreateButton(A.settings.targets~=false and "隐藏目标辅助" or "显示目标辅助",function()
+                A:SetOption("targets",A.settings.targets==false)
+            end)
             menu:CreateButton("对齐小地图",function()
                 A.settings.trackerDocked=true;A.settings.position=nil;self:LayoutCard()
             end)
@@ -584,6 +587,7 @@ function UI:LayoutTracker()
     local bottom=34+T.card:GetHeight()+4
     if not collapsed and queueHeight>0 then bottom=queueTop+20*scale+visible+8 end
     self.frame:SetHeight(bottom)
+    if A.QuestAssist then A.QuestAssist:LayoutTarget() end
 end
 
 function UI:SetTrackerNavigation(distance,angle,unverified)

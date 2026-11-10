@@ -20,8 +20,9 @@ local function widget()
     w.SetWidth=function(self,x) self.width=x end;w.SetHeight=function(self,y) self.height=y end
     w.GetSize=function(self) return self.width,self.height end
     w.GetEffectiveScale=function(self) return self.scale or 1 end
+    w.GetCenter=function(self) return self.centerX or 300,self.centerY or 400 end
     w.SetParent=function(self,parent) self.parent=parent end
-    w.GetWidth=function(self) return self.width end;w.GetHeight=function(self) return self.height end
+    w.GetWidth=function(self) return self.width or 18 end;w.GetHeight=function(self) return self.height end
     w.SetText=function(self,v) self.value=v end;w.GetText=function(self) return self.value or "" end
     w.GetStringHeight=function(self) return self.measuredHeight or 30 end
     w.SetFont=function(self,face,size,flags)
@@ -56,7 +57,7 @@ local function setup(fullUI)
     UIParent=widget();STANDARD_TEXT_FONT="font";GameFontHighlight={};SlashCmdList={};NUM_CONTAINER_FRAMES=0;ContainerFrameCombinedBags=nil
     MinimapCluster=widget();MinimapCluster:SetSize(280,280);ObjectiveTrackerFrame=widget()
     CreateFrame=function(kind,_,parent,template)
-        local w=widget();w.kind,w.template=kind,template;if kind=="CheckButton" then w.Text=widget() end;return w
+        local w=widget();w.kind,w.template,w.parent=kind,template,parent;if kind=="CheckButton" then w.Text=widget() end;return w
     end
     InCombatLockdown=function() return combat end;GetTime=function() return clock end
     debugprofilestop=function() return 0 end
@@ -563,18 +564,32 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     eq(Q.targetButton.type1,"macro");eq(Q.targetButton.type2,"raidtarget")
     eq(Q.targetButton.action2,"set-unmarked");eq(Q.targetButton.unit2,"target");eq(Q.targetButton.marker2,8)
     eq(Q.targetButton.shown,true)
+    eq(Q.targetButton.parent,UIParent);eq(Q.targetButton.text,nil);eq(Q.targetButton.status,nil)
+    eq(Q.targetButton.template,"SecureActionButtonTemplate")
+    local anchor=B.UI.tracker.stepIcon
+    anchor.centerX,anchor.centerY=500,600;anchor:SetSize(18,18);B.UI.frame.scale=1.5
+    Q:LayoutTarget();eq(Q.targetButton.point[2],UIParent)
+    eq(Q.targetButton.point[4],750);eq(Q.targetButton.point[5],900);eq(Q.targetButton.width,36)
+    eq(anchor.shown,false)
+    B.combat(true);anchor.centerX=700;Q:LayoutTarget();eq(Q.targetButton.point[4],750)
+    B.combat(false);B.UI.frame.scripts.OnDragStop();eq(Q.targetButton.point[4],1050)
+    local tip={};GameTooltip.SetOwner=function(_,owner) tip.owner=owner end
+    GameTooltip.SetText=function(_,value) tip.title=value end
+    GameTooltip.AddLine=function(_,value) tip[#tip+1]=value end;GameTooltip.Show=function() end
+    Q.targetButton.scripts.OnEnter(Q.targetButton);eq(tip.owner,Q.targetButton)
+    assert(tip.title:find("矿工约翰",1,true));assert(tip[1]:find("右键",1,true))
     UnitGUID=function() return "Creature-0-1-2-3-10-0000" end
     B.refreshAt=nil;B.frame.scripts.OnEvent(nil,"PLAYER_TARGET_CHANGED")
-    assert(Q.targetButton.status.value:find("已选中",1,true));eq(B.refreshAt,nil)
+    assert(Q.targetStatus:find("已选中",1,true));eq(B.refreshAt,nil)
     B.frame.scripts.OnEvent(nil,"UNIT_SPEED","target");eq(B.refreshAt,nil)
     B.frame.scripts.OnEvent(nil,"UNIT_SPEED","player");assert(B.refreshAt)
     UnitGUID=function() return "Player-0-1-2-3-10-0000" end
-    Q:TargetStatus();eq(Q.targetButton.status.value:find("已选中",1,true),nil)
+    Q:TargetStatus();eq(Q.targetStatus:find("已选中",1,true),nil)
     B.action={kind="objective",questId=1,objectiveIndex=1,targetKind="npc",targetId=20}
     B.state.quests[1].objectives={{finished=false}}
     B.combat(true);local writes=Q.targetButton.attributeWrites
     Q:Update();eq(Q.targetActive.id,10);eq(Q.targetWanted.id,20);eq(Q.targetButton.attributeWrites,writes)
-    assert(Q.targetButton.status.value:find("战斗结束",1,true))
+    assert(Q.targetStatus:find("战斗结束",1,true))
     B.combat(false);B.frame.scripts.OnEvent(nil,"PLAYER_REGEN_ENABLED")
     eq(Q.targetActive.id,20);eq(Q.targetButton.macrotext1,"/targetexact 森林蜘蛛")
     B.state.quests[1].objectives[1].finished=true;Q:Update();eq(Q.targetButton.shown,false)
@@ -592,10 +607,10 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     Q:Update();eq(#Q.targetChoices,3);eq(Q.targetActive.id,20)
     local wheel=assert(Q.targetButton.scripts.OnMouseWheel)
     wheel(nil,-1);eq(Q.targetActive.id,21);eq(Q.targetButton.macrotext1,"/targetexact 黑熊")
-    assert(Q.targetButton.text.value:find("2/3",1,true))
+    assert(Q.targetTitle:find("2/3",1,true))
     Q:Update();eq(Q.targetActive.id,21)
     UnitGUID=function() return "Creature-0-1-2-3-22-0000" end
-    Q:TargetStatus();assert(Q.targetButton.status.value:find("已选中 · 林间居民",1,true))
+    Q:TargetStatus();assert(Q.targetStatus:find("已选中 · 林间居民",1,true))
     Q.targetButton.scripts.PostClick(nil,"MiddleButton",true);eq(Q.targetActive.id,21)
     Q.targetButton.scripts.PostClick(nil,"MiddleButton",false);eq(Q.targetActive.id,22)
     wheel(nil,1);eq(Q.targetActive.id,21)
@@ -614,14 +629,13 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     B.action={kind="service",npcId=30};B:SetOption("targets",false);eq(Q.targetButton.shown,false)
     B:SetOption("targets",true);eq(Q.targetButton.shown,true)
     B:TogglePause();eq(Q.targetButton.shown,false);B:TogglePause();eq(Q.targetButton.shown,true)
-    local close=Q.targetClose;eq(close.template,"SecureHandlerClickTemplate")
+    B.UI:TrackerMenu(B.UI.frame)
     B.combat(true);writes=Q.targetButton.attributeWrites
-    assert(loadstring("local self=...;"..close._onclick))({GetParent=function() return Q.targetButton end})
-    close.scripts.PostClick();eq(B.settings.targets,false);eq(Q.targetButton.shown,false)
+    B.menu["隐藏目标辅助"].callback();eq(B.settings.targets,false)
     eq(Q.targetButton.attributeWrites,writes)
-    B:NormalizeSettings(B.settings);Q:Update();eq(Q.targetButton.shown,false)
+    B:NormalizeSettings(B.settings);Q:Update()
     B.combat(false);B.frame.scripts.OnEvent(nil,"PLAYER_REGEN_ENABLED");eq(Q.targetButton.shown,false)
-    B:SetOption("targets",true);eq(Q.targetButton.shown,true)
+    B.UI:TrackerMenu(B.UI.frame);B.menu["显示目标辅助"].callback();eq(Q.targetButton.shown,true)
     for _,name in ipairs({"NPC\n/run bad()","NPC;bad","NPC[foo]","NPC/bar","NPC\\bar"," NPC","NPC "}) do
         entities[30]=name;Q:Update();eq(Q.targetButton.shown,false);eq(Q.targetButton.macrotext1,nil)
     end

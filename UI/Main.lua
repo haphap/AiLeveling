@@ -89,6 +89,7 @@ function UI:Movable(frame,key)
         frame:StopMovingOrSizing()
         local point,_,relative,x,y=frame:GetPoint()
         A.settings[key]={point,relative,x,y}
+        if key=="position" and A.QuestAssist then A.QuestAssist:LayoutTarget() end
     end)
 end
 

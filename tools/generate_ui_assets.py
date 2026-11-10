@@ -64,8 +64,13 @@ icon('compass', (255, 255, 255, 255), lambda line, circle, poly: (
     poly([(22, 8), (18, 18), (8, 24), (13, 13)]),
     line([(3, 16), (6, 16)], 1.5), line([(26, 16), (29, 16)], 1.5),
 ))
+icon('target', (255, 255, 255, 255), lambda line, circle, poly: (
+    circle((7, 7, 25, 25)), circle((14, 14, 18, 18), fill=(255, 255, 255, 255), outline=None),
+    line([(16, 3), (16, 9)]), line([(16, 23), (16, 29)]),
+    line([(3, 16), (9, 16)]), line([(23, 16), (29, 16)]),
+))
 
 corner = Image.new('RGBA', (32*S, 32*S))
 ImageDraw.Draw(corner).ellipse((0, 0, 64*S-1, 64*S-1), fill='white')
 corner.resize((32, 32), Image.Resampling.LANCZOS).save(OUT / 'corner.tga')
-print('Generated 8 RGBA textures in Media/')
+print('Generated 9 RGBA textures in Media/')
