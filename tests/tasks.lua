@@ -10,18 +10,18 @@ local function fixture()
     end
     return s,d,quests
 end
-test("空自有内容仍列出本区资格通过的真实任务目标且不伪造经验率",function()
+test("全量资格通过任务保留跨区和缺位置候选且不伪造经验率",function()
     local s,d,q=fixture();q[2].requiredLevel=99;q[3].requiredRaces=2
     s.completed[4]=true;s.skipped[5]=true;s.chainDeferred={[6]=1}
     local p=plan(s,d)
-    eq(#p.alternatives,0);eq(p.best,nil);eq(#p.taskChoices,1)
+    eq(#p.alternatives,0);eq(p.best,nil);eq(#p.taskChoices,3)
     eq(p.taskChoices[1].questId,1);eq(p.taskChoices[1].rate,nil);eq(p.taskChoices[1].seconds,nil)
     eq(p.fallback.kind,"accept");eq(p.fallback.position.map,1)
 end)
 test("日志任务含无坐标和数据库未收录任务且交付优先",function()
     local s,d=fixture();s.quests={[7]={title="无位置",objectives={}},[99]={title="原生新增任务",ready=true,objectives={}}}
     d.Target=function(_,q) if q.id==99 then return {map=2,x=0.5,y=0.5} end end
-    local p=plan(s,d);eq(#p.taskChoices,2);eq(p.taskChoices[1].questId,99)
+    local p=plan(s,d);eq(#p.taskChoices,9);eq(p.taskChoices[1].questId,99)
     eq(p.fallback.kind,"turnin");eq(p.taskChoices[2].questId,7)
 end)
 test("任务入口只接受当前对象并经原有锁定入口保存和实际交付解除",function()
@@ -70,11 +70,11 @@ test("NPC 实际接取列表避开不可接任务并保留其他发布者与已�
         if id~=1 then return end
         if key=="startedBy" or key=="finishedBy" then return sources end
     end}}
-    d.cache={[1]=q};d.byLevel={[20]={1}}
+    d.cache={[1]=q};d.ids={1}
     local s=F.State();s.position={map=1,x=0,y=0.5}
     eq(plan(s,d).fallback.questId,1)
     B.State:QuestOffersEvent("GOSSIP_SHOW");s.questOffers=B.State.questOffers
-    eq(d:Target(q,s),nil);eq(#plan(s,d).taskChoices,0)
+    eq(d:Target(q,s),nil);eq(#plan(s,d).taskChoices,1);eq(plan(s,d).taskChoices[1].requireCheck,true);eq(plan(s,d).fallback,nil)
     local snapshot,revision=s.questOffers,B.State.questOffersRevision
     B.State:QuestOffersEvent("GOSSIP_SHOW");eq(B.State.questOffersRevision,revision)
     for _,invalid in ipairs({false,{{questID=0}},{{questID="1"}}}) do
@@ -101,8 +101,8 @@ test("NPC 实际接取列表避开不可接任务并保留其他发布者与已�
     eq(d:Target(q,s).entityId,11);eq(next(s.questOffers),nil)
     npc=nil;UnitGUID=function() return "Player-1-123" end
     B.State:QuestOffersEvent("GOSSIP_SHOW");eq(next(B.State.questOffers),nil)
-    q.questLevel=0;d.byLevel={[0]={1}};sources={{11,12}}
-    eq(d:Target(q,s),nil);eq(#plan(s,d).taskChoices,0)
+    q.questLevel=0;d.ids={1};sources={{11,12}}
+    eq(d:Target(q,s),nil);eq(#plan(s,d).taskChoices,1);eq(plan(s,d).taskChoices[1].requireCheck,true);eq(plan(s,d).fallback,nil)
     sources={};eq(d:Target(q,s),nil);sources={{11,12}}
     s.locked=1;eq(plan(s,d).fallback.questId,1);s.locked=nil
     npc=12;UnitGUID=function() return "Creature-0-1-2-3-"..npc.."-00000001" end
@@ -180,7 +180,7 @@ test("接交点目标分布与物品来源按跨区域直线距离选择",functi
     assert(resumes>1);eq(result[3].entityId,499);eq(result[3].x,0.005)
     eq(B.Data:ObjectiveTargets({id=1},s)[3].entityId,499)
     eq(s.quests[1].ready,nil);eq(s.completed[1],nil)
-    s.quests={};s.bags[21]=1;sources={{},{},{21}};B.Data.byLevel={}
+    s.quests={};s.bags[21]=1;sources={{},{},{21}};B.Data.ids={}
     eq(B.Data:Candidates(s)[1],1)
     local starter=B.Data:Target({id=1},s)
     eq(starter.startItemId,21);eq(starter.map,s.position.map);eq(starter.x,s.position.x)

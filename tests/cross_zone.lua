@@ -30,7 +30,7 @@ test("跨区未接任务按完整移动收益比较并从接取衔接到交付�
     local B,s,d,q=fixture()
     local p=plan(s,d,nil,B)
     eq(p.fallback.questId,2);eq(p.fallback.kind,"accept");eq(p.fallback.position.map,2)
-    assert(choice(p,1));assert(choice(p,2));eq(choice(p,3),nil)
+    assert(choice(p,1));assert(choice(p,2));assert(choice(p,3));eq(choice(p,3).timing.seconds,nil)
     assert(choice(p,2).timing.seconds<choice(p,1).timing.seconds)
     eq(s.completed[2],nil);eq(s.quests[2],nil)
     s.position=p.fallback.position
@@ -40,15 +40,15 @@ test("跨区未接任务按完整移动收益比较并从接取衔接到交付�
     s.quests[2].ready=true;p=plan(s,d,nil,B);eq(p.fallback.kind,"turnin")
     s.quests[2]=nil;s.completed[2]=true
     p=plan(s,d,nil,B);eq(p.fallback.questId,1);eq(p.fallback.position.map,1)
-    q[1].preQuestGroup={4};p=plan(s,d,nil,B);eq(p.fallback,nil)
+    q[1].preQuestGroup={4};p=plan(s,d,nil,B);assert(choice(p,3));eq(choice(p,1),nil)
     s.level=30;s.quests={};s.completed={};q[1].preQuestGroup=nil
     q[2].questLevel=10;q[2].preQuestGroup={1};q[3].questLevel=40;q[3].requiredLevel=40;q[3].preQuestGroup={2}
-    d.byLevel={[20]={1},[10]={2},[40]={3}};d.chainIndex=B.Chains.NewIndex()
+    d.ids={1,2,3};d.chainIndex=B.Chains.NewIndex()
     for _,quest in pairs(q) do B.Chains.IndexQuest(d.chainIndex,quest,d) end
     local indexed={Chains=B.Chains};assert(loadfile("Data/Questie.lua"))("AiLeveling",indexed)
     d.Candidates=indexed.Data.Candidates
     d.Target=function(_,quest) return {map=2,x=quest.id/10,y=0,objectiveIndex=1} end
-    eq(plan(s,d,nil,B).fallback,nil)
+    eq(plan(s,d,nil,B).fallback.questId,1)
     s.completed[1]=true;p=plan(s,d,nil,B);eq(p.fallback.questId,2);eq(p.fallback.kind,"accept")
     s.quests[2]={objectives={{text="后续目标",numRequired=1,numFulfilled=0}}}
     p=plan(s,d,nil,B);eq(p.fallback.kind,"objective");eq(s.completed[2],nil)
@@ -146,12 +146,12 @@ test("跨区低价值任务退出推荐且已接任务和手动选择继续优�
     s.skipped[2]=true;p=plan(s,d,nil,B);eq(choice(p,2),nil)
 end)
 
-test("未知跨区距离不自动导航且无位置或速度时保留已接及手动任务",function()
+test("未知跨区距离和人物位置仍保留全部合格候选",function()
     local B,s,d=fixture()
-    local p=plan(s,d,nil,B);eq(choice(p,3),nil)
+    local p=plan(s,d,nil,B);assert(choice(p,3));eq(choice(p,3).timing.seconds,nil)
     s.locked=3;p=plan(s,d,nil,B);eq(p.fallback.questId,3)
-    s.locked=nil;s.runSpeed=nil;p=plan(s,d,nil,B);eq(choice(p,2),nil);assert(choice(p,1))
-    s.position=nil;p=plan(s,d,nil,B);eq(#p.taskChoices,0)
+    s.locked=nil;s.runSpeed=nil;p=plan(s,d,nil,B);assert(choice(p,2));assert(choice(p,1))
+    s.position=nil;p=plan(s,d,nil,B);eq(#p.taskChoices,3)
     s.quests[2]={ready=true,objectives={}};p=plan(s,d,nil,B);eq(p.fallback.questId,2)
 end)
 
@@ -159,10 +159,10 @@ test("跨区扩展不自动带入其他副本且实例内保持当前实例任�
     local B,s,d=fixture()
     B.Dungeon={};for k,v in pairs(A.Dungeon) do B.Dungeon[k]=v end
     B.Dungeon.TaskInstance=function(pos) if pos and pos.map==2 then return {instanceId=22} end end
-    local p=plan(s,d,nil,B);eq(choice(p,2),nil);eq(p.fallback.questId,1)
+    local p=plan(s,d,nil,B);assert(choice(p,2).entryBlocked);eq(p.fallback.questId,1)
     s.inInstance=true;s.instanceId=22
     p=plan(s,d,nil,B);assert(choice(p,2));eq(p.fallback.questId,2)
-    s.instanceId=11;p=plan(s,d,nil,B);eq(choice(p,2),nil)
+    s.instanceId=11;p=plan(s,d,nil,B);assert(choice(p,2).entryBlocked)
 end)
 test("副本与室外共用地图时按实体原始区域区分且原生野外目标不进本",function()
     local B,s,d=fixture()

@@ -1,5 +1,5 @@
 local _, A = ...
-A.Data = { byLevel = {}, cache = {}, count = 0 }
+A.Data = { ids = {}, cache = {}, count = 0 }
 local D = A.Data
 local fields = { "name", "requiredLevel", "questLevel", "requiredRaces", "requiredClasses",
     "preQuestGroup", "preQuestSingle", "exclusiveTo", "parentQuest", "nextQuestInChain",
@@ -47,15 +47,11 @@ function D:Connect(db)
 end
 
 function D:BuildIndex()
-    self.byLevel, self.byArea, self.count = {}, {}, 0
+    self.byArea, self.count = {}, 0
     self.requirements = {skills = {}, reputations = {}, spells = {}, specializations = {}}
     local chainIndex=A.Chains.NewIndex()
     for i, id in ipairs(self.ids) do
         local q=self:GetQuest(id)
-        local level = q and q.questLevel==-1 and -1 or math.max(0, q and q.questLevel or 0)
-        level = math.floor(level)
-        self.byLevel[level] = self.byLevel[level] or {}
-        table.insert(self.byLevel[level], id)
         if q and q.zoneOrSort and q.zoneOrSort>0 then
             self.byArea[q.zoneOrSort]=self.byArea[q.zoneOrSort] or {}
             table.insert(self.byArea[q.zoneOrSort],id)
@@ -232,21 +228,10 @@ function D:Candidates(snapshot)
             if id and id>0 then add(id) end
         end
     end
-    local minimum=math.max(0,snapshot.level-8)
-    if self.chainIndex then
-        for _,id in ipairs(A.Chains.Followups(snapshot,self.chainIndex)) do
-            local q=self:GetQuest(id)
-            if q and (q.questLevel or 0)<minimum and (not (snapshot.completed or {})[id] or q.repeatable) then add(id) end
-        end
-    end
-    for _,id in ipairs(self.byLevel[-1] or {}) do add(id) end
-    for level,quests in pairs(self.byLevel) do
-        if level>=minimum then
-            for _,id in ipairs(quests) do
-                local q=self:GetQuest(id)
-                if q and (q.requiredLevel or 0)<=snapshot.level then add(id) end
-            end
-        end
+    for _,id in ipairs(self.ids) do
+        local q=self:GetQuest(id)
+        if q and (q.requiredLevel or 0)<=snapshot.level and
+            (not (snapshot.completed or {})[id] or q.repeatable) then add(id) end
     end
     if snapshot.locked then add(snapshot.locked) end
     table.sort(ids)
@@ -392,7 +377,7 @@ function D:Target(q, state)
         local point=nativeWaypoint(q.id)
         if point then return point end
     end
-    if (sourceCount>0 or offeredOnly) and unavailable==sourceCount then return end
+    if (sourceCount>0 or offeredOnly) and unavailable==sourceCount then return nil,true end
     if self:UnmappedTargetArea(q,state) then return end
     local point=status=="ready" and self:QuestAreaTarget(q,state) or self:AreaTarget(q)
     -- A known sole recipient remains the same recipient even when its placement is missing.

@@ -28,10 +28,21 @@ local s={revision=1,level=1,quests={},completed={},skipped={},completionKnown=tr
 local choices=run(function() return A.Planner.TaskChoices(s,A.Data,A.Data:Candidates(s)) end)
 assert(#choices>0,"new level-one character has no task choices")
 print(faction.." level 1: "..#choices.." actual database task choices")
+local selected,eligible={},0
 for i,c in ipairs(choices) do
-    assert(c.status=="accept" and not c.rate and not c.seconds and c.actions[1].position.map==s.position.map)
+    assert(c.status=="accept" and not c.rate and not c.seconds and not selected[c.questId])
+    selected[c.questId]=true
     if i<=5 then print(c.questId.." "..c.title) end
 end
+for _,qid in ipairs(A.Data.ids) do
+    local quest=A.Data:GetQuest(qid)
+    if quest and A.Eligibility.Check(quest,s,A.Data) then
+        eligible=eligible+1
+        assert(selected[qid],"eligible quest missing from analysis: "..qid)
+    end
+end
+assert(#choices==eligible,"candidate list differs from eligible database tasks")
+print("full database: "..#A.Data.ids.." tasks, "..eligible.." eligible, none omitted")
 local id=faction=="Alliance" and 7 or 788
 local rows=db.Quest.Get(id,"objectives")
 local name=db.Npc.Get(rows[1][1][1],"name")

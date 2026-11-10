@@ -1,6 +1,7 @@
 local _, A = ...
 A.Planner = {}
 local P = A.Planner
+local clock=debugprofilestop or function() return os.clock()*1000 end
 
 local function copy(map)
     local result = {}
@@ -18,6 +19,8 @@ end
 -- Task ordering depends on destinations and movement, not execution-time estimates.
 function P.TaskChoices(state,data,ids,onlySelected,options)
     local choices,seen={},{}
+    local thread,isMain=coroutine.running()
+    local deadline=clock()+1
     local function add(id)
         if seen[id] then return end
         seen[id]=true
@@ -25,21 +28,12 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         local q=data:GetQuest(id,state)
         if not q and active then q={id=id,title=active.title or ("任务 #"..id),questLevel=active.level} end
         if not q or not A.Eligibility.Check(q,state,data) then return end
-        local position=data:Target(q,state)
+        local position,unavailable=data:Target(q,state)
         local areaId,objectiveIndex
         if not position and data.UnmappedTargetArea then areaId,objectiveIndex=data:UnmappedTargetArea(q,state) end
         local instance=A.Dungeon and A.Dungeon.TaskInstance and A.Dungeon.TaskInstance(position,state,data,areaId) or
             A.Dungeon and A.Dungeon.TaskPvP and A.Dungeon.TaskPvP(position,state,data,areaId)
         local currentInstance=state.inInstance and instance and instance.instanceId==state.instanceId or false
-        if not active and id~=state.locked and not state.preparingQuest and not currentInstance then
-            if not position or not state.position then return end
-            -- Adjacent zones share world coordinates; a UI map boundary is not a travel barrier.
-            if position.map~=state.position.map then
-                if state.inInstance or instance or not A.Travel then return end
-                if A.Travel.Walk(state.position,position,state,A.Navigation)==nil and
-                    (not A.Flights or not A.Flights.Routes(state.position,position,state,A.Navigation)) then return end
-            end
-        end
         local kind=active and (active.ready and "turnin" or "objective") or "accept"
         local action={kind=kind,questId=id,title=active and active.title or q.title,position=position,
             areaId=areaId,objectiveIndex=position and position.objectiveIndex or objectiveIndex,
@@ -52,6 +46,7 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         end
         local choice={id="task:"..id,kind="task",questId=id,title=action.title,actions={action},
             status=kind,level=q.questLevel,referenceXP=q.referenceXP,
+            requireCheck=not active and (unavailable or not position and not areaId) or nil,
             distance=position and A.Navigation and A.Navigation.Distance and A.Navigation:Distance(state.position,position)}
         if state.inInstance then choice.currentInstance=currentInstance end
         if A.TaskGuide then
@@ -73,16 +68,20 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
             choice.rewards,choice.groupReference=facts.rewards,facts.group
             if not active then
                 local offers=position and position.entityKind=="npc" and state.questOffers and state.questOffers[position.entityId]
-                choice.requireCheck=facts.hidden and not (offers and offers[id])
-                if choice.requireCheck then
-                    choice.stagesComplete=false
-                    action.text="向任务发布者查看此任务。"
-                end
+                choice.requireCheck=choice.requireCheck or facts.hidden and not (offers and offers[id])
             end
+        end
+        if choice.requireCheck then
+            choice.stagesComplete=false
+            action.text="向任务发布者查看此任务。"
         end
         if A.TaskGuide then choice.timing=A.TaskGuide.Timing(state.position,choice,state,A.Navigation) end
         if A.Dungeon and A.Dungeon.TaskEntryIssue then
             choice.entryBlocked=A.Dungeon.TaskEntryIssue(choice,state,data,options)
+        end
+        if not active and instance and not currentInstance and id~=state.locked and
+            not state.preparingQuest and not state.taskBatch then
+            choice.entryBlocked=choice.entryBlocked or "任务在副本内接取，可在副本页安排。"
         end
         if A.TaskGuide then choice.lowValue=A.TaskGuide.LowValue(q,state,data,choice) end
         if A.Gear and A.Gear.TaskBenefits then A.Gear.TaskBenefits(choice,q,state,data) end
@@ -92,9 +91,9 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         for id in pairs(state.quests) do add(id) end
         if state.locked then add(state.locked) end
     end
-    for i,id in ipairs(ids) do
+    for _,id in ipairs(ids) do
         add(id)
-        if i%(A.TaskGuide and 5 or 25)==0 then coroutine.yield() end
+        if thread and not isMain and clock()>=deadline then coroutine.yield();deadline=clock()+1 end
     end
     local unknownXP={}
     for _,choice in ipairs(choices) do
@@ -258,27 +257,6 @@ function P.Build(state, data, options)
     local batchChoices,batch
     if state.taskBatch and A.Dungeon.TaskBatchChoices then batchChoices,batch=A.Dungeon.TaskBatchChoices(state,data) end
     local ids=batch and {} or data:Candidates(state)
-    -- Include eligible prerequisites outside the current level index.
-    local seen = {}
-    local function prerequisites(id, depth)
-        if seen[id] or depth > 32 then return end
-        seen[id] = true
-        local q = data:GetQuest(id)
-        if not q then return end
-        for _, list in ipairs({q.preQuestGroup or {}, q.preQuestSingle or {}}) do
-            for _, required in ipairs(list) do
-                prerequisites(math.abs(required), depth + 1)
-                if required > 0 and list == q.preQuestGroup then
-                    local pre = data:GetQuest(required)
-                    for _, alternative in ipairs(pre and pre.exclusiveTo or {}) do prerequisites(alternative, depth + 1) end
-                end
-            end
-        end
-    end
-    for _, id in ipairs(ids) do prerequisites(id, 0) end
-    ids = {}
-    for id in pairs(seen) do ids[#ids + 1] = id end
-    table.sort(ids)
     local alternatives={}
     for _,dungeon in pairs(not batch and data.content.dungeons or {}) do
         local candidate=A.Dungeon.Evaluate(dungeon,state,options,data)
