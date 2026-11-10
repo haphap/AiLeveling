@@ -1,7 +1,8 @@
 local _, A = ...
 A.UI = {fonts={}}
 local UI = A.UI
-local colors = { bg = {0.035, 0.05, 0.065, 0.96}, border = {0.13, 0.2, 0.24, 1} }
+local colors = { bg = {0.065,0.078,0.105,0.96}, button = {0.12,0.145,0.19,0.9} }
+local media="Interface\\AddOns\\AiLeveling\\Media\\"
 function UI:Accent()
     local class=A.state and A.state.class
     if not class and UnitClass then local _,playerClass=UnitClass("player");class=playerClass end
@@ -15,12 +16,37 @@ function UI:RegisterFont(text,size,role)
     text:SetFont(STANDARD_TEXT_FONT,size*(A.settings.fontScale or 1),"")
 end
 
+function UI:Icon(name,size)
+    size=math.floor((size or 20)*(A.settings.fontScale or 1)+0.5)
+    return "|T"..media..name..".tga:"..size..":"..size..":0:0|t"
+end
+
+function UI:Rounded(frame,radius)
+    frame.surface={}
+    local function texture()
+        local t=frame:CreateTexture(nil,"BACKGROUND",nil,-7)
+        t:SetTexture("Interface\\Buttons\\WHITE8X8")
+        frame.surface[#frame.surface+1]=t
+        return t
+    end
+    for _,corner in ipairs({{"TOPLEFT",0,1,0,1},{"TOPRIGHT",1,0,0,1},
+        {"BOTTOMLEFT",0,1,1,0},{"BOTTOMRIGHT",1,0,1,0}}) do
+        local t=texture();t:SetSize(radius,radius);t:SetPoint(corner[1])
+        t:SetTexture(media.."corner.tga");t:SetTexCoord(unpack(corner,2))
+    end
+    local center=texture();center:SetPoint("TOPLEFT",radius,0);center:SetPoint("BOTTOMRIGHT",-radius,0)
+    local left=texture();left:SetPoint("TOPLEFT",0,-radius);left:SetPoint("BOTTOMRIGHT",frame,"BOTTOMLEFT",radius,radius)
+    local right=texture();right:SetPoint("TOPLEFT",frame,"TOPRIGHT",-radius,-radius);right:SetPoint("BOTTOMRIGHT",0,radius)
+    frame.SetBackdropColor=function(self,...)
+        for _,t in ipairs(self.surface) do t:SetVertexColor(...) end
+    end
+end
+
 function UI:Panel(name, parent, width, height)
     local f = CreateFrame("Frame", name, parent or UIParent, "BackdropTemplate")
     f:SetSize(width, height)
-    f:SetBackdrop({bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1})
+    self:Rounded(f,12)
     f:SetBackdropColor(unpack(colors.bg))
-    f:SetBackdropBorderColor(unpack(colors.border))
     return f
 end
 
@@ -36,14 +62,14 @@ end
 function UI:Button(parent, label, width, callback, fontSize)
     local b = CreateFrame("Button", nil, parent, "BackdropTemplate")
     b:SetSize(width, 26)
-    b:SetBackdrop({bgFile = "Interface\\Buttons\\WHITE8X8"})
-    b:SetBackdropColor(0.09, 0.14, 0.18, 1)
+    self:Rounded(b,7)
+    b:SetBackdropColor(unpack(colors.button))
     b.text = self:Text(b, fontSize or 12)
     b.text:SetPoint("CENTER")
     b.text:SetText(label)
     b:SetScript("OnClick", callback)
     b:SetScript("OnEnter", function() local r,g,blue=UI:Accent();b:SetBackdropColor(r*0.35,g*0.35,blue*0.35,1) end)
-    b:SetScript("OnLeave", function() b:SetBackdropColor(0.09, 0.14, 0.18, 1) end)
+    b:SetScript("OnLeave", function() b:SetBackdropColor(unpack(b.baseColor or colors.button)) end)
     return b
 end
 
@@ -97,8 +123,10 @@ function UI:Create()
         b:SetPoint("TOPLEFT", 16 + (i - 1) * 78, -52)
         self.tabs[i] = b
     end
-    local heading = self:Text(self.details, 20)
-    heading:SetPoint("TOPLEFT", 18, -18); heading:SetText("规划与角色详情")
+    self.detailMark=self.details:CreateTexture(nil,"ARTWORK")
+    self.detailMark:SetTexture(media.."compass.tga");self.detailMark:SetSize(28,28);self.detailMark:SetPoint("TOPLEFT",18,-12)
+    self.detailHeading = self:Text(self.details, 20)
+    self.detailHeading:SetPoint("TOPLEFT", 54, -16);self.detailHeading:SetText("AiLeveling")
     self.scroll = CreateFrame("ScrollFrame", nil, self.details, "UIPanelScrollFrameTemplate")
     self.scroll:SetPoint("TOPLEFT", 18, -96); self.scroll:SetPoint("BOTTOMRIGHT", -36, 18)
     self.scrollChild = CreateFrame("Frame", nil, self.scroll)
@@ -134,6 +162,7 @@ function UI:ApplyStyle()
         if entry.role=="accent" then entry.text:SetTextColor(self:Accent()) end
     end
     if self.accent then local r,g,b=self:Accent();self.accent:SetColorTexture(r,g,b,1) end
+    if self.detailMark then self.detailMark:SetVertexColor(self:Accent()) end
     if A.settings.lockWindow then self.frame:StopMovingOrSizing();self.details:StopMovingOrSizing() end
     if self.navFrame then
         self.navFrame:SetScale(A.settings.scale);self.navFrame:SetAlpha(A.settings.alpha)
@@ -176,6 +205,13 @@ function UI:SelectTab(index)
     self.copyBox:ClearFocus(); self.copyBox:Hide(); self.detailText:Show()
     if self.selectedTab~=index then self.scroll:SetVerticalScroll(0) end
     self.selectedTab = index
+    local r,g,b=self:Accent()
+    for i,tab in ipairs(self.tabs or {}) do
+        tab.baseColor=i==index and {r*0.24,g*0.24,b*0.24,1} or {0,0,0,0}
+        tab:SetBackdropColor(unpack(tab.baseColor))
+        if i==index then tab.text:SetTextColor(r,g,b) else tab.text:SetTextColor(0.74,0.79,0.86) end
+    end
+    if self.detailHeading then self.detailHeading:SetText("AiLeveling · "..({"任务行程","任务链","装备","副本任务","设置","数据","服务"})[index]) end
     self.details:SetSize(index==4 and 780 or 620,index==4 and 560 or 520)
     self.scroll:SetPoint("BOTTOMRIGHT",index==4 and -286 or -36,18)
     self.scrollChild:SetWidth(index==4 and 474 or 560)

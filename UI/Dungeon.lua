@@ -7,6 +7,8 @@ function UI:Create(parent)
     local frame = CreateFrame("Frame",nil,parent)
     frame:SetPoint("TOPLEFT",18,-94); frame:SetSize(744,448)
     self.frame = frame
+    local side=A.UI:Panel(nil,frame,254,464)
+    side:SetPoint("TOPLEFT",500,8);side:SetBackdropColor(0.085,0.105,0.145,0.92)
     self.selector = A.UI:Button(frame,"选择副本",474,function()
         local ids = self:Ids()
         for index,id in ipairs(ids) do
@@ -93,7 +95,7 @@ function UI:Refresh()
     if not self.selected or not self.entries[self.selected] then self.selected=ids[1] end
     local d = self.selected and self.entries[self.selected]
     if self.taskDungeon~=self.selected then self.taskIndex,self.taskDungeon=1,self.selected end
-    self.selector.text:SetText(d and ("当前查看："..d.title.."（点击切换）") or "当前构建没有副本任务目录")
+    self.selector.text:SetText(d and (A.UI:Icon("entry").."  "..d.title.."  ·  点击切换") or "当前构建没有副本任务目录")
     self.selector:SetEnabled(#ids>0)
     local candidate,reason
     if d and A.ready then
@@ -208,7 +210,7 @@ function UI:Lines()
         if (A.state.groupSize or 1)==1 and not A.state.inInstance then
             group=group.."\n先准备副本任务；组队后前往入口。"
         end
-        summary[#summary+1]=group:gsub(" · ","\n",1)
+        summary[#summary+1]=A.UI:Icon("party").."  "..group:gsub(" · ","\n",1)
     end
     if self.statusText and self.statusText~="" then summary[#summary+1]=self.statusText end
     local encounter=A.Dungeon.EncounterProgress(self.entries and self.entries[self.selected],A.state)
@@ -229,7 +231,8 @@ function UI:Lines()
                 local active=A.state.quests[action.questId]
                 local status=active and (active.ready and (statusColors[1].."可交付") or (statusColors[2].."已接")) or (statusColors[3].."未接")
                 local where=step.recipient and step.recipient.entityName or action.position and action.position.entityName or step.instance
-                local text=heading..title.."|r  "..status.."|r  "..verb.."「"..action.title.."」"
+                local symbol=action.kind=="accept" and "accept" or action.kind=="turnin" and "turnin" or "objective"
+                local text=A.UI:Icon(symbol).."  "..heading..title.."|r  "..status.."|r  "..verb.."「"..action.title.."」"
                 if action.kind=="objective" and action.text then text=text.."\n    "..action.text end
                 if where and where~=step.instance then text=text.."\n    |cffc7d6e3"..where.."|r" end
                 if step.preparingQuest then text=text.."\n    为「"..step.preparingQuest.title.."」准备前置，交付后接续。" end
@@ -238,7 +241,7 @@ function UI:Lines()
             end
         end
         phase("入本前",journey.before)
-        if journey.entry then lines[#lines+1]=journey.entry.text end
+        if journey.entry then lines[#lines+1]=A.UI:Icon("entry").."  "..journey.entry.text end
         phase("副本内",journey.inside)
         if journey.leave and #journey.after==0 then lines[#lines+1]="离开副本，继续练级。" end
         phase(journey.leave and "出本后" or "接下来",journey.after)
@@ -247,7 +250,7 @@ function UI:Lines()
     if rewards.count>0 then
         summary[#summary+1]=string.format("%s %d 项\n进行中 %d · %s可交付 %d|r",
             current and "已安排任务" or "可准备任务",rewards.count,rewards.active,statusColors[1],rewards.ready)
-        if rewards.unknownXP==0 then summary[#summary+1]=string.format("%s交付经验：%d|r",statusColors[1],rewards.xp) end
+        if rewards.unknownXP==0 then summary[#summary+1]=A.UI:Icon("xp").."  "..string.format("%s交付经验：%d|r",statusColors[1],rewards.xp) end
         if rewards.prepare>0 then summary[#summary+1]=rewards.prepare.." 项需先完成前置。" end
         if rewards.upgrades>0 then summary[#summary+1]=rewards.upgrades.." 项任务有装备提升。" end
     end
@@ -272,7 +275,8 @@ function UI:Lines()
             if row.xp then hint=hint.." · "..row.xp.." 经验" end
             local detail=row.requireCheck and "向任务发布者查看任务" or
                 not row.allowed and row.group~=5 and row.reason or row.recipientName
-            lines[#lines+1]=string.format("%s%s%s|r  %s\n    |cffc7d6e3%s%s|r",i==self.taskIndex and "› " or "",statusColors[row.group],row.status,row.title,hint,detail and (" · "..detail) or "")
+            local symbol=row.group==1 and "turnin" or row.group==2 and "objective" or "accept"
+            lines[#lines+1]=A.UI:Icon(symbol).."  "..string.format("%s%s%s|r  %s\n    |cffc7d6e3%s%s|r",i==self.taskIndex and "› " or "",statusColors[row.group],row.status,row.title,hint,detail and (" · "..detail) or "")
             if row.gear then
                 local reward=row.gear
                 lines[#lines+1]=string.format("     装备提升：%s · 属性评分 %+.1f",reward.item.link or reward.item.name or ("物品 #"..reward.item.id),reward.upgrade.delta)

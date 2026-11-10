@@ -57,7 +57,7 @@ test("同构建首领掉落进入比较与手选导航，击败不当作拿到�
     B.Dungeon.encounterVisit={instanceId=389,difficulty=1,kills={[2732]="奥格弗林特"}}
     p=plan(s,d,balanced,B);assert(p.fallback.text:find("已击败",1,true))
     B.Gear:SyncTarget(s);eq(s.gearTarget,id);eq(s.gearAcquired,nil)
-    B.plan=p;B.UI={};assert(loadfile("UI/Gear.lua"))("AiLeveling",B)
+    B.plan=p;B.UI={Accent=function() return 1,1,1 end,Icon=function() return "" end};assert(loadfile("UI/Gear.lua"))("AiLeveling",B)
     local ui=B.UI.Gear;ui.selected=id
     ui.selector={text={SetText=function() end},SetEnabled=function() end};ui.choose={SetEnabled=function() end}
     local lines=table.concat(ui:Lines(),"\n")

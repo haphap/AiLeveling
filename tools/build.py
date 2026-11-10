@@ -48,6 +48,7 @@ def main():
         'CLICK AiLevelingTarget:LeftButton', 'CLICK AiLevelingTarget:RightButton',
         'CLICK AiLevelingFollowLeader:LeftButton', 'AILEVELING_TARGET_NEXT']
     entries.append(bindings)
+    entries.extend((ROOT / 'Media').glob('*.tga'))
     output = ROOT / 'dist' / f'AiLeveling-{version}.zip'
     output.parent.mkdir(exist_ok=True)
     manifest = []

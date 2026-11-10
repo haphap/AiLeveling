@@ -5,7 +5,7 @@ import sys
 import re
 import subprocess
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageChops
 
 ROOT = Path(__file__).resolve().parents[1]
 SCALE = 2
@@ -30,6 +30,19 @@ def main():
             return default
         return tuple(round(v * 255) for v in (value + [1])[:4])
 
+    def texture(path, width, height, tint=None, uv=None):
+        path = ROOT / path.replace('\\', '/').removeprefix('Interface/AddOns/AiLeveling/')
+        asset = Image.open(path).convert('RGBA')
+        if uv:
+            if uv[0] > uv[1]:
+                asset = asset.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+            if uv[2] > uv[3]:
+                asset = asset.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+        asset = asset.resize((max(1, round(width)), max(1, round(height))), Image.Resampling.LANCZOS)
+        if tint:
+            asset = ImageChops.multiply(asset, Image.new('RGBA', asset.size, color(tint)))
+        return asset
+
     for row in records:
         overlay = Image.new('RGBA', canvas.size)
         d = ImageDraw.Draw(overlay)
@@ -40,7 +53,11 @@ def main():
         if row.get('border'):
             d.rectangle((x, y, x + w, y + h), outline=color(row['border']), width=1)
         if row['kind'] == 'Texture':
-            d.rectangle((x, y, x + w, y + h), fill=color(row.get('color')))
+            if row.get('texture', '').startswith('Interface\\AddOns\\AiLeveling\\Media\\'):
+                asset = texture(row['texture'], w, h, row.get('color'), row.get('uv'))
+                overlay.alpha_composite(asset, (round(x), round(y)))
+            else:
+                d.rectangle((x, y, x + w, y + h), fill=color(row.get('color')))
         if row['kind'] == 'Line':
             d.line(tuple(v * SCALE for pt in [row['start'], row['finish']] for v in pt),
                    fill=color(row.get('color')), width=round(row['thickness'] * SCALE))
@@ -48,15 +65,19 @@ def main():
             font = ImageFont.truetype(FONT, max(1, round(row['size'] * SCALE)))
             lines, line_width = [[]], 0
             ink = color(row.get('color'))
-            for token in re.split(r'(\|c[0-9a-fA-F]{8}|\|r)', row['text']):
+            for token in re.split(r'(\|c[0-9a-fA-F]{8}|\|r|\|T[^|]+\|t)', row['text']):
                 if token.startswith('|c'):
                     ink = tuple(int(token[i:i+2], 16) for i in (4, 6, 8, 2))
                     continue
                 if token == '|r':
                     ink = color(row.get('color'))
                     continue
-                for char in token:
-                    advance = 0 if char == '\n' else d.textlength(char, font=font)
+                glyphs = token
+                if token.startswith('|T'):
+                    path, height, width, *_ = token[2:-2].split(':')
+                    glyphs = [texture(path, float(width)*SCALE, float(height)*SCALE)]
+                for char in glyphs:
+                    advance = char.width if isinstance(char, Image.Image) else 0 if char == '\n' else d.textlength(char, font=font)
                     if char == '\n' or (lines[-1] and line_width + advance > w):
                         lines.append([])
                         line_width = 0
@@ -72,8 +93,11 @@ def main():
                     xx += (w - line_width) / 2
                 yy = y + i * (row['size'] + 4) * SCALE
                 for char, ink, advance in line:
-                    d.text((xx, yy + row['size'] * SCALE), char, font=font, fill=ink, anchor='ls',
-                           stroke_width=1, stroke_fill=(0, 0, 0, 150))
+                    if isinstance(char, Image.Image):
+                        overlay.alpha_composite(char, (round(xx), round(yy+(row['size']*SCALE-char.height)/2)))
+                    else:
+                        d.text((xx, yy + row['size'] * SCALE), char, font=font, fill=ink, anchor='ls',
+                               stroke_width=1, stroke_fill=(0, 0, 0, 150))
                     xx += advance
         if row.get('clip'):
             c = row['clip']

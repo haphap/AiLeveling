@@ -11,7 +11,7 @@ local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
     for _,key in ipairs({"SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag",
-        "RegisterForClicks","SetAllPoints","SetTexture","SetBlendMode","SetVertexColor","SetMaxLines","SetFontObject","SetMultiLine",
+        "RegisterForClicks","SetAllPoints","SetTexture","SetTexCoord","SetBlendMode","SetMaxLines","SetFontObject","SetMultiLine",
         "SetMaxLetters","SetShadowColor","SetShadowOffset","SetAutoFocus","ClearFocus","SetFocus","HighlightText","SetFrameStrata","SetCooldown","Clear"}) do w[key]=function() end end
     w.SetPoint=function(self,...) self.point={...} end
     w.GetPoint=function(self) return "CENTER",UIParent,"CENTER",25,-30 end
@@ -29,6 +29,7 @@ local function widget()
     end
     w.SetAtlas=function(self,atlas) self.atlas=atlas end
     w.SetTextColor=function(self,...) self.color={...} end;w.SetColorTexture=w.SetTextColor
+    w.SetVertexColor=w.SetTextColor
     w.SetBackdropColor=w.SetTextColor
     w.SetScale=function(self,v) self.scale=v end;w.SetAlpha=function(self,v) self.alpha=v end
     w.SetScript=function(self,event,callback) self.scripts[event]=callback end

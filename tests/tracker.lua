@@ -100,7 +100,7 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     assert(T.rows[1].metrics.value:find("经验 0",1,true));assert(T.rows[1].metrics.value:find("路程 0秒",1,true))
     assert(T.rows[2].metrics.value:find("路程 1小时01分",1,true))
     assert(T.rows[1].title.fontSize>=15);assert(T.rows[1].progress.fontSize>=13)
-    assert(T.rows[1].progress.color[1]>=0.75);assert(T.queuePanel.color[4]>=0.9)
+    assert(T.rows[1].progress.color[1]>=0.75);assert(T.queuePanel.surface[1].color[4]>=0.9)
     eq(T.rows[2].progress.value,"物品 2/4");eq(T.rows[1].enabled,true)
     B.state.quests[3].objectives[1].text="收集物品";B.UI:RenderTracker()
     eq(T.rows[2].progress.value,"收集物品 · 2/4")

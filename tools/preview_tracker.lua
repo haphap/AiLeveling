@@ -1,6 +1,6 @@
 -- Executes the actual tracker UI on a small native-widget mock. Example data, never game state.
 local nodes={}
-local function clean(s) return (s or ""):gsub("|c%x%x%x%x%x%x%x%x",""):gsub("|r","") end
+local function clean(s) return (s or ""):gsub("|c%x%x%x%x%x%x%x%x",""):gsub("|r",""):gsub("|T.-|t","　") end
 local function width(s,size)
     local total=0
     for c in clean(s):gmatch("[%z\1-\127\194-\244][\128-\191]*") do total=total+(#c>1 and size or size*0.55) end
@@ -38,6 +38,9 @@ local function widget(kind,parent)
         return count*(self.size+4)
     end
     function w:SetTextColor(...) self.color={...} end;w.SetColorTexture=w.SetTextColor
+    w.SetVertexColor=w.SetTextColor
+    function w:SetTexture(path) self.texture=path end
+    function w:SetTexCoord(...) self.uv={...} end
     function w:SetBackdropColor(...) self.background={...} end
     function w:SetBackdropBorderColor(...) self.border={...} end
     function w:SetJustifyH(value) self.justify=value end
@@ -52,7 +55,7 @@ local function widget(kind,parent)
     function w:SetStartPoint(point,relative,x,y) self.start={point=point,relative=relative,x=x,y=y} end
     function w:SetEndPoint(point,relative,x,y) self.finish={point=point,relative=relative,x=x,y=y} end
     for _,name in ipairs({"SetJustifyV","SetBackdrop","SetShadowColor","SetShadowOffset","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag","SetMaxLines",
-        "RegisterForClicks","SetAttribute","SetScale","SetTexture","SetDesaturated","SetCooldown","Clear"}) do w[name]=function() end end
+        "RegisterForClicks","SetAttribute","SetScale","SetDesaturated","SetCooldown","Clear"}) do w[name]=function() end end
     return w
 end
 local dungeonPreview=arg[1]=="dungeon"
@@ -138,8 +141,15 @@ if dungeonPreview then
         A.state.items[272998]={id=272998,name="示例首领装备",usable=true,equipLoc="INVTYPE_HEAD",stats={ITEM_MOD_STRENGTH_SHORT=8}}
     end
     local panel=A.UI:Panel(nil,UIParent,780,560);panel:SetPoint("TOPLEFT",40,-88)
-    local title=A.UI:Text(panel,18);title:SetPoint("TOPLEFT",18,-16);title:SetText("AiLeveling · 副本任务")
-    local tabs=A.UI:Text(panel,12);tabs:SetPoint("TOPLEFT",18,-57);tabs:SetText("行程       任务链       装备       副本       设置")
+    local mark=panel:CreateTexture(nil,"ARTWORK");mark:SetTexture("Interface\\AddOns\\AiLeveling\\Media\\compass.tga")
+    mark:SetSize(28,28);mark:SetPoint("TOPLEFT",18,-12);mark:SetVertexColor(A.UI:Accent())
+    local title=A.UI:Text(panel,20);title:SetPoint("TOPLEFT",54,-16);title:SetText("AiLeveling · 副本任务")
+    local close=A.UI:Button(panel,"关闭",50,function() end);close:SetPoint("TOPRIGHT",-12,-12)
+    for i,label in ipairs({"行程","任务链","装备","副本","设置","数据","服务"}) do
+        local tab=A.UI:Button(panel,label,72,function() end);tab:SetPoint("TOPLEFT",16+(i-1)*78,-52)
+        if i==4 then local r,g,b=A.UI:Accent();tab:SetBackdropColor(r*0.24,g*0.24,b*0.24,1);tab.text:SetTextColor(r,g,b)
+        else tab:SetBackdropColor(0,0,0,0);tab.text:SetTextColor(0.74,0.79,0.86) end
+    end
     A.UI.Dungeon:Create(panel);A.UI.Dungeon.selected=selected;A.UI.Dungeon:Refresh();A.UI.Dungeon.frame:Show()
     local scroll=CreateFrame("ScrollFrame",nil,panel);scroll:SetPoint("TOPLEFT",18,-A.UI.Dungeon.bodyTop);scroll:SetSize(476,560-A.UI.Dungeon.bodyTop-18)
     local child=CreateFrame("Frame",nil,scroll);child:SetSize(474,500);scroll:SetScrollChild(child)
@@ -177,7 +187,10 @@ local function box(w)
         local a,b=anchors[p.point],anchors[p.rpoint]
         local rx,ry=relative.x+relative.w*b[1]+p.x,relative.y+relative.h*b[2]-p.y
         if i==1 then x,y=rx-ww*a[1],ry-hh*a[2]
-        elseif a[2]==1 then hh=ry-y end
+        else
+            if a[1]==1 then ww=rx-x end
+            if a[2]==1 then hh=ry-y end
+        end
     end
     local value={x=x,y=y,w=ww,h=hh};boxes[w]=value;return value
 end
@@ -195,7 +208,7 @@ local function visit(w,visible,clip)
     visible=visible and w.shown
     if not visible then return end
     local rect=box(w)
-    local record={kind=w.kind,rect=rect,text=w.value,size=w.size,color=w.color,background=w.background,border=w.border,justify=w.justify,clip=clip,layer=w.layer}
+    local record={kind=w.kind,rect=rect,text=w.value,size=w.size,color=w.color,background=w.background,border=w.border,justify=w.justify,clip=clip,layer=w.layer,texture=w.texture,uv=w.uv}
     if w.kind=="Line" then
         local function point(p)
             local r=box(p.relative);local a=anchors[p.point]
