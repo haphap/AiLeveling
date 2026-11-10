@@ -9,4 +9,6 @@ A.PublicTransitData={clientVersion="1.60.1",build=70862,interface=16001,legs={
     {key="public:301:1",kind="zeppelin",from={map=1420,x=0.619213033,y=0.589178751},to={map=1434,x=0.314827918,y=0.291041915},fromName="幽暗城飞艇塔",toName="格罗姆高飞艇塔",seconds=278.0,low=105,high=451,faction="Horde"},
     {key="public:302:0",kind="zeppelin",from={map=1411,x=0.509796158,y=0.139071335},to={map=1420,x=0.606436576,y=0.589252743},fromName="奥格瑞玛南飞艇塔",toName="幽暗城飞艇塔",seconds=325.0,low=140,high=510,faction="Horde"},
     {key="public:302:1",kind="zeppelin",from={map=1420,x=0.606436576,y=0.589252743},to={map=1411,x=0.509796158,y=0.139071335},fromName="幽暗城飞艇塔",toName="奥格瑞玛南飞艇塔",seconds=295.0,low=110,high=480,faction="Horde"},
+    {key="public:tram:0",kind="tram",from={map=1453,x=0.695761859,y=0.302700389},to={map=1455,x=0.780229037,y=0.513677941},fromName="暴风城地铁入口",toName="铁炉堡地铁入口",seconds=130.299,low=58.633,high=201.966,faction="Alliance"},
+    {key="public:tram:1",kind="tram",from={map=1455,x=0.780229037,y=0.513677941},to={map=1453,x=0.695761859,y=0.302700389},fromName="铁炉堡地铁入口",toName="暴风城地铁入口",seconds=130.299,low=58.633,high=201.966,faction="Alliance"},
 }}

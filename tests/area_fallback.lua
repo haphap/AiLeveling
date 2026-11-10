@@ -595,6 +595,16 @@ test("缺地图接交与未接任务的未来目标优先保留各自实际区�
     eq(s.quests[1],nil)
     s.quests[1]={ready=true,objectives={}};eq(d:Target(q,s),nil)
     npcs[9].spawns={[12]={{10,20}}};eq(d:Target(q,s).x,0.1)
+    s.quests={};rows.startedBy={nil,nil,{100}}
+    d.db.Item.Get=function(_,key) if key=="objectDrops" then return {200} end end
+    d.db.Object.Get=function(_,key) if key=="spawns" then return {[98]={{-1,-1}}} end end
+    eq(d:Target(q,s),nil);eq(d:UnmappedTargetArea(q,s),98)
+    s.bags[100]=1;eq(d:Target(q,s).startItemId,100);eq(d:UnmappedTargetArea(q,s),nil)
+    s.bags[100]=nil;rows.startedBy={};rows.finishedBy={}
+    s.clientVersion,s.clientBuild="1.60.1","70862"
+    B.DungeonCatalog={version="1.60.1",build="70862",objectiveAreas={[1]={accept=98,turnin=98}}}
+    eq(d:UnmappedTargetArea(q,s),98);s.quests[1]={ready=true};eq(d:UnmappedTargetArea(q,s),98)
+
 end)
 test("缺地图的物品来源保留友好商人并拒绝跨区域歧义",function()
     local B,q,s,rows,npcs=fixture();local d=B.Data;q.zoneOrSort=-1

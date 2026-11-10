@@ -13,6 +13,7 @@ function UI.Rows(plan)
         local key=UI.Key(candidate)
         if key and not seen[key] then rows[#rows+1]=candidate;seen[key]=true end
     end
+    add(plan and plan.suggestedDungeon)
     add(plan and plan.best)
     for _,candidate in ipairs(plan and plan.alternatives or {}) do add(candidate) end
     for _,candidate in ipairs(plan and plan.taskChoices or {}) do add(candidate) end
@@ -32,7 +33,10 @@ function UI:Create(parent)
         local ok,reason
         if self.preview and self.preview.requiresAcceptance then
             ok,reason=A.Selection.CanChoose(self.preview,self.revision)
-            if ok then ok,reason=A.Dungeon:Accept(self.preview.dungeonId) end
+            if ok then
+                if self.preview.reference then ok,reason=A.Dungeon:StartTaskBatch(self.preview.dungeonId)
+                else ok,reason=A.Dungeon:Accept(self.preview.dungeonId) end
+            end
         else ok,reason=A.Selection:Lock(self.preview,self.revision) end
         self.message=ok and (self.preview and self.preview.kind=="task" and "已锁定任务目标。" or "已保存所选行程。") or reason
         A.UI:SelectTab(1)
@@ -139,7 +143,8 @@ function UI:Entries()
         table.insert(entries,1,selected);table.insert(entries,1,{title="选中任务",heading=true})
     elseif candidate and candidate.kind~="task" then
         local detail=candidate.requiresAcceptance and "接受后开始副本行程" or "本轮副本行程进行中"
-        if candidate.requiresAcceptance and candidate.xp then detail=detail..string.format(" · 经验 %.0f",candidate.xp) end
+        if candidate.requiresAcceptance and (candidate.remainingXP or candidate.xp) then detail=detail..string.format(" · 经验 %.0f",candidate.remainingXP or candidate.xp) end
+        if candidate.reference then detail=string.format("%d 项任务 · 安排整组任务后开始",candidate.rewards.count)..(candidate.remainingXP and string.format(" · 经验 %.0f",candidate.remainingXP) or "") end
         heading(candidate.title,detail)
     end
     if A.char.paused then heading("引导已暂停") end

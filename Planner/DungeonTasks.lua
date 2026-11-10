@@ -293,6 +293,42 @@ function D.TaskRewards(rows,baselines,choices)
     return result
 end
 
+-- Recommend a task group before the player opens the dungeon tab.
+function D.SuggestTaskBatch(state,data,options)
+    if not options.dungeons or state.inInstance or state.taskBatch or state.gearTarget or
+        state.dungeon and state.dungeon.phase~="complete" then return end
+    local best
+    for _,d in pairs(D.Catalog(state,data.content)) do
+        if d.reference and (not d.minLevel or state.level>=d.minLevel) and (not d.maxLevel or state.level<=d.maxLevel) then
+            local entry=D.TaskApproach({kind="dungeonEnter",title=d.title,areaId=d.areas[1]},state,data)
+            local seconds
+            if entry.position then
+                if A.Flights then
+                    for _,route in ipairs(A.Flights.Routes(state.position,entry.position,state,A.Navigation) or {}) do
+                        if not seconds or route.seconds<seconds then seconds=route.seconds end
+                    end
+                else seconds=A.Travel.Walk(state.position,entry.position,state,A.Navigation) end
+            end
+            if seconds then
+                local rows=D.Tasks(d,state,data)
+                local rewards=D.TaskRewards(rows)
+                if rewards.count>rewards.ready then
+                    local xp=rewards.unknownXP==0 and rewards.xp or nil
+                    local rate=xp and A.TaskGuide.MovementRate(seconds,xp)
+                    local candidate={id=d.id,kind="dungeon",reference=true,dungeonId=d.id,title=d.title,
+                        requiresAcceptance=true,actions={entry},rewards=rewards,remainingXP=xp,
+                        timing={seconds=seconds},rate=rate}
+                    if not best or rate and best.rate and rate>best.rate or
+                        (not rate or not best.rate or rate==best.rate) and (seconds<best.timing.seconds or
+                        seconds==best.timing.seconds and tostring(d.id)<tostring(best.id)) then best=candidate end
+                end
+            end
+        end
+        coroutine.yield()
+    end
+    return best
+end
+
 function D:ContinueTask(d,id)
     if not A.ready or A.refreshAt then return false,"任务状态正在更新" end
     for _,row in ipairs(D.Tasks(d,A.state,A.Data)) do

@@ -15,6 +15,7 @@ def render():
     maps = census['maps'] + census['supplementalMaps']
     preparation = {row['mapId']: row.get('preparationQuests', {})
                    for row in census['announcedLevelingDungeons']['entries'] if row['mapId']}
+    announced = {row['mapId']: row for row in census['announcedLevelingDungeons']['entries']}
     datasets = {}
     for ds in evidence['datasets']:
         for faction, _ in ds['personas']:
@@ -28,12 +29,14 @@ def render():
             continue
         areas = ','.join(str(area) for area in m['aliases'])
         entrances = ','.join('{'+','.join(str(value) for value in point)+'}' for point in m['entrances'])
+        levels = announced.get(m['mapId'], {}).get('levels')
+        level_text = f'minLevel={levels[0]},maxLevel={levels[1]},' if levels else ''
         entry = f'entryArea={m["entryArea"]},entryHint={json.dumps(m["entryHint"],ensure_ascii=False)},' if m.get('entryArea') else ''
-        lines.append(f'    ["reference:{m["mapId"]}"]={{id="reference:{m["mapId"]}",reference=true,instanceId={m["mapId"]},title={json.dumps(m["name"],ensure_ascii=False)},areas={{{areas}}},entrances={{{entrances}}},{entry}quests={{')
+        lines.append(f'    ["reference:{m["mapId"]}"]={{id="reference:{m["mapId"]}",reference=true,{level_text}instanceId={m["mapId"]},title={json.dumps(m["name"],ensure_ascii=False)},areas={{{areas}}},entrances={{{entrances}}},{entry}quests={{')
         for faction, ds in sorted(datasets.items()):
             refs = {qid: 'category' for qid in m['categoryQuestIds']}
             for target in ds['targets']:
-                if target['phase'] != 'objective':
+                if target['phase'] not in ('objective', 'accept'):
                     continue
                 rows = target['sources']
                 inside = any(m['mapId'] in row['instanceMapIds'] for row in rows)
@@ -41,18 +44,21 @@ def render():
                 qid = target['questId']
                 if inside and not other:
                     refs[qid] = 'inside'
-                elif inside and qid in refs and refs[qid] != 'inside' and any(row['areaId'] > 0 and m['mapId'] not in row['instanceMapIds'] for row in rows):
+                elif target['phase'] == 'objective' and inside and qid in refs and refs[qid] != 'inside' and any(row['areaId'] > 0 and m['mapId'] not in row['instanceMapIds'] for row in rows):
                     refs[qid] = 'alternative'
+            for qid in announced.get(m['mapId'], {}).get('objectiveAreas', {}):
+                refs[int(qid)] = 'inside'
             for qid in preparation.get(m['mapId'], {}).get(faction, []):
                 refs[qid] = 'preparation'
             pairs = ','.join(f'[{qid}]="{kind}"' for qid, kind in sorted(refs.items()))
             lines.append(f'        {faction}={{{pairs}}},')
         lines.append('    }},')
     lines.append('}}')
-    lines.append('-- Only objectives explicitly located inside by server quest text or checked task facts.')
+    lines.append('-- Destinations explicitly located inside by server quest text or checked task facts.')
     lines.append('A.DungeonCatalog.objectiveAreas={')
-    for m in census['supplementalMaps']:
-        for qid, targets in sorted(m['objectiveAreas'].items(), key=lambda row: int(row[0])):
+    for m in maps:
+        areas = m.get('objectiveAreas', announced.get(m['mapId'], {}).get('objectiveAreas', {}))
+        for qid, targets in sorted(areas.items(), key=lambda row: int(row[0])):
             pairs = ','.join(f'[{json.dumps(key)}]={area}' for key, area in sorted(targets.items()))
             lines.append(f'    [{qid}]={{{pairs}}},')
     lines.append('}')

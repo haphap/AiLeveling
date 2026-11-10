@@ -39,6 +39,10 @@ test("公共交通与炉石比较并给出具体上下船指引",function()
     eq(actions[1].kind,"transit");eq(actions[1].mode,"boat");eq(actions[1].departure,legs[1].from)
     assert(actions[1].text:find("出发码头",1,true));assert(actions[1].text:find("到达码头",1,true))
     assert(not actions[1].text:find("分钟",1,true));eq(actions[#actions],action)
+    legs[1].kind="tram";legs[1].fromName="暴风城地铁入口";legs[1].toName="铁炉堡地铁入口"
+    actions=B.Flights.Actions(routes[2],action,B.Navigation)
+    eq(actions[1].mode,"tram");eq(actions[1].publicTransit,true)
+    assert(actions[1].text:find("乘坐开往铁炉堡地铁入口的地铁",1,true))
 end)
 test("跨大陆未接任务进入完整收益比较并保留真实接交事件",function()
     local B,s=fixture();local q=F.Quest(1);q.verified=false;q.questLevel=s.level

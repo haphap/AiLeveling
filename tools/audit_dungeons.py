@@ -18,7 +18,9 @@ PINS = {
 # Official announced leveling scope, including entries the readable Map table cannot identify yet.
 ANNOUNCEMENT = 'https://news.blizzard.com/en-us/article/24301455/explore-the-new-dungeons-of-world-of-warcraft-forever'
 ANNOUNCED = [
-    {'name':'Hall of Thanes','levels':[13,18],'location':'Dun Morogh','mapId':3065},
+    {'name':'Hall of Thanes','levels':[13,18],'location':'Dun Morogh','mapId':3065,
+     # QuestieDB foreverQuestTraces[96395]: giver, target and return are in the Hall of Thanes.
+     'objectiveAreas':{'96395':{'accept':16919,'npc:261306':16919,'turnin':16919}}},
     {'name':'Ruins of Lordaeron','levels':[15,20],'location':'Tirisfal Glades','mapId':2999},
     {'name':'Excavation Site','levels':[24,29],'location':'Wetlands','mapId':2998},
     {'name':'City of Dalaran','levels':[28,33],'location':'Alterac Mountains','mapId':2959,

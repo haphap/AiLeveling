@@ -733,7 +733,14 @@ function D:UnmappedTargetArea(q,state,objectiveIndex)
         local sources=self.db.Quest.Get(q.id,active and "finishedBy" or "startedBy") or {}
         local lists={}
         for kind=1,2 do for _,id in ipairs(sources[kind] or {}) do add(lists,kind==1 and self.db.Npc or self.db.Object,id) end end
-        return areaOf(lists)
+        if not active then
+            for _,item in ipairs(sources[3] or {}) do
+                if (state.bags or {})[item] and state.bags[item]>0 then return end
+                for _,id in ipairs(self.db.Item.Get(item,"npcDrops") or {}) do add(lists,self.db.Npc,id) end
+                for _,id in ipairs(self.db.Item.Get(item,"objectDrops") or {}) do add(lists,self.db.Object,id) end
+            end
+        end
+        return areaOf(lists) or #lists==0 and objectiveAreas and objectiveAreas[active and "turnin" or "accept"] or nil
     end
     local trigger=self.db.Quest.Get(q.id,"triggerEnd")
     local eventIndex,eventCount=nil,0

@@ -299,6 +299,13 @@ function UI.TrackerModel(state,plan,action,paused)
         elseif not A.indexReady then model.title="正在整理任务";model.instruction="任务数据加载后显示当前步骤。"
         else model.title="选择下一项任务";model.instruction="右键任务可选择优先做，左键查看详情。" end
     end
+    local suggestion=not paused and not A.error and plan.suggestedDungeon
+    if suggestion and suggestion.reference then
+        table.insert(model.rows,1,{dungeonId=suggestion.dungeonId,title=suggestion.title,kind="dungeon",status="副本",
+            progress=string.format("%d 项任务 · %s",suggestion.rewards.count,
+                suggestion.rewards.prepare>0 and "含前置准备" or "可一起安排"),
+            metrics=metrics(suggestion):gsub("路程 ","到入口 "),candidate=suggestion})
+    end
     if paused then model.instruction="引导已暂停，右键标题栏可继续引导。";model.hint=nil;model.deliverySummary=nil end
     if A.error then model.title="需要处理";model.instruction=A.error;model.hint=nil;model.deliverySummary=nil end
     return model
@@ -312,6 +319,10 @@ end
 
 local function questTooltip(owner)
     GameTooltip:SetOwner(owner,"ANCHOR_RIGHT")
+    if owner.dungeonId then
+        GameTooltip:SetText("左键：查看副本任务")
+        GameTooltip:AddLine("右键：安排整组任务",1,1,1,true);GameTooltip:Show();return
+    end
     GameTooltip:SetText(owner.questId and "左键：查看任务详情" or "右键：当前步骤操作")
     if owner.questId then GameTooltip:AddLine("右键：任务操作\nShift+左键：插入任务链接",1,1,1,true) end
     GameTooltip:Show()
@@ -322,7 +333,13 @@ function UI:TrackerMenu(owner)
     local action=owner==self.tracker.questTitle and self.tracker.action
     GameTooltip:Hide()
     MenuUtil.CreateContextMenu(owner,function(_,menu)
-        if action and action.kind=="manual" then
+        if owner.dungeonId then
+            menu:CreateButton("安排整组任务",function()
+                local ok,why=A.Selection.CanChoose(candidate,revision)
+                if ok then ok,why=A.Dungeon:StartTaskBatch(owner.dungeonId) end
+                if not ok then A:Message(why) end
+            end)
+        elseif action and action.kind=="manual" then
             menu:CreateButton("返回任务",function() A.Navigation:ClearManual() end)
         elseif action and action.kind=="service" and action.serviceKind=="repair" then
             menu:CreateButton("忽略维修",function() A.Supplies:IgnoreRepair() end)
@@ -342,7 +359,7 @@ function UI:TrackerMenu(owner)
                 local ok,why=A.Selection:Automatic();if not ok then A:Message(why) end
             end)
         end
-        if owner==self.frame or not id then
+        if owner==self.frame or not id and not owner.dungeonId then
             menu:CreateButton(A.char.paused and "继续引导" or "暂停引导",function() A:TogglePause() end)
             menu:CreateButton("详细面板",function() self:ToggleDetails() end)
             menu:CreateButton(A.settings.targets~=false and "隐藏目标辅助" or "显示目标辅助",function()
@@ -440,6 +457,7 @@ function UI:TrackerRow(index)
     row:SetScript("OnLeave",function() row:SetBackdropColor(0,0,0,0);GameTooltip:Hide() end)
     row:SetScript("OnClick",function(_,button)
         if button=="RightButton" then self:TrackerMenu(row)
+        elseif row.dungeonId then self.Dungeon.selected=row.dungeonId;self.details:Show();self:SelectTab(4)
         else self:QuestClick(row.questId,button) end
     end)
     T.rows[index]=row
@@ -507,21 +525,23 @@ function UI:RenderTracker()
         row:Show()
     end
     for i=#model.objectives+1,#T.objectives do T.objectives[i]:Hide() end
+    local number=model.includesCurrent and 0 or 1
     for i,item in ipairs(model.rows) do
+        if not item.dungeonId then number=number+1 end
         local row=self:TrackerRow(i)
         row.group:SetText(item.groupTitle or "");row.group:SetShown(item.groupTitle~=nil)
-        row.number:SetText(string.format("%02d",i+(model.includesCurrent and 0 or 1)));row.title:SetText(item.title)
+        row.number:SetText(item.dungeonId and "" or string.format("%02d",number));row.title:SetText(item.title)
         row.title:SetTextColor(unpack(item.deferred and palette.muted or palette.white))
         row.status:SetText(item.deferred and (item.accepted and "已接·暂缓" or "未接·暂缓") or item.status)
         local color=item.deferred and palette.muted or
             (item.status=="可交付" and palette.gold or item.accepted and palette.green or palette.blue)
         row.status:SetTextColor(unpack(color));row.statusBack:SetBackdropColor(color[1],color[2],color[3],0.12)
-        row.statusIcon:SetTexture(media..(item.kind=="turnin" and "turnin" or item.accepted and "objective" or "accept")..".tga")
+        row.statusIcon:SetTexture(media..(item.dungeonId and "entry" or item.kind=="turnin" and "turnin" or item.accepted and "objective" or "accept")..".tga")
         row.progress:SetText(item.delivery or item.progress)
         if item.shared then row.progress:SetTextColor(self:Accent()) else row.progress:SetTextColor(unpack(palette.muted)) end
         row.metrics:SetText(self:Icon("xp",14).." "..item.metrics)
         row.candidate,row.revision,row.questId=item.candidate,plan.revision,item.questId
-        row.deferred=item.deferred
+        row.deferred,row.dungeonId=item.deferred,item.dungeonId
         row:SetEnabled(true);row:Show()
     end
     for i=#model.rows+1,#T.rows do T.rows[i]:Hide() end

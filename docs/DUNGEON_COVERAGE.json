@@ -4205,7 +4205,14 @@
           18
         ],
         "location": "Dun Morogh",
-        "mapId": 3065
+        "mapId": 3065,
+        "objectiveAreas": {
+          "96395": {
+            "accept": 16919,
+            "npc:261306": 16919,
+            "turnin": 16919
+          }
+        }
       },
       {
         "name": "Ruins of Lordaeron",

@@ -183,6 +183,17 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     eq(T.rows[3].status.value,"已接取");eq(T.rows[3].progress.value,"收集 1/5")
     eq(T.model.acceptedCount,3);eq(T.model.unacceptedCount,0)
     B.state.quests[4].ready=true;B.UI:RenderTracker();eq(T.rows[3].status.value,"可交付")
+    local suggestion={id="reference:3065",dungeonId="reference:3065",kind="dungeon",reference=true,requiresAcceptance=true,
+        title="领主大厅",rewards={count=5,prepare=1},remainingXP=13300,timing={seconds=150}}
+    B.refreshAt=nil;B.plan.revision=B.state.revision;B.plan.suggestedDungeon=suggestion;B.UI:RenderTracker()
+    eq(T.rows[1].dungeonId,suggestion.dungeonId);eq(T.rows[1].status.value,"副本")
+    eq(T.rows[1].progress.value,"5 项任务 · 含前置准备");eq(T.model.questId,1)
+    local selectedTab,started
+    B.UI.Dungeon={};B.UI.SelectTab=function(_,index) selectedTab=index end
+    T.rows[1].scripts.OnClick(nil,"LeftButton");eq(B.UI.Dungeon.selected,suggestion.dungeonId);eq(selectedTab,4)
+    B.Dungeon={StartTaskBatch=function(_,id) started=id;return true end}
+    T.rows[1].scripts.OnClick(nil,"RightButton");local valid,why=B.Selection.CanChoose(suggestion,B.plan.revision);assert(valid,why);B.menu["安排整组任务"].callback();eq(started,suggestion.dungeonId)
+    B.plan.suggestedDungeon=nil;B.UI:RenderTracker();eq(T.rows[1].dungeonId,nil)
     B.finish()
 end)
 test("未来行动中的交付预期不能把未接任务显示成已接或可交付",function()

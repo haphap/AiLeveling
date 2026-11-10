@@ -3,12 +3,13 @@
   "inputs": {
     ".dependencies/TaxiPathNode-1.60.1.70862.csv": "f83f8d8e5bbeae889214f48af477dd51a4c1771ff3c3b53c3fa2cacf2cba7cdb",
     ".dependencies/UiMapAssignment-1.60.1.70862.csv": "79267e8be8034e47daab14350411b3acc0b1f64e86efc9d821a217497254ca0a",
-    ".dependencies/eg-link-156f29c9/1.60.1.70862/object_details.enUS.json": "63ea8fe2112516932c2633f7cb5507f99211390549c9d2a37d6b63214d906f19"
+    ".dependencies/eg-link-156f29c9/1.60.1.70862/object_details.enUS.json": "63ea8fe2112516932c2633f7cb5507f99211390549c9d2a37d6b63214d906f19",
+    ".dependencies/SPF-Data-Transports.lua": "dc874e86cb197bbedd90c417b74b7cacbb403c17789c61b9221fbef7dbe4cce0"
   },
   "source": "https://github.com/JIVESCORP/eg-link-output-wowf/tree/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862",
   "attribution": "Efficient Games, CC BY 4.0; Blizzard client tables via Wago",
   "clientVerified": false,
-  "scope": "Four server-observed transport templates, eight directed legs. Dock geography and faction access are curated. Not a complete transport census.",
+  "scope": "Four server-observed boat/zeppelin templates and the client-table Deeprun Tram; ten directed legs. Dock geography and faction access are curated.",
   "estimation": "Client polyline / server speed + speed / acceleration. Mean wait is half estimated cycle. No load-screen delay or live schedule. Ground travel remains straight distance / player speed.",
   "excluded": "Other legacy client routes lack matching current-build server observations; newer Skycutters need access-condition evidence.",
   "routes": [
@@ -119,6 +120,26 @@
         110
       ],
       "cycleSeconds": 370
+    },
+    {
+      "name": "Deeprun Tram",
+      "ports": [
+        {
+          "map": 1453,
+          "x": 0.695761859,
+          "y": 0.302700389,
+          "name": "暴风城地铁入口"
+        },
+        {
+          "map": 1455,
+          "x": 0.780229037,
+          "y": 0.513677941,
+          "name": "铁炉堡地铁入口"
+        }
+      ],
+      "rideSeconds": 58.633,
+      "cycleSeconds": 143.333,
+      "source": "https://github.com/cjber/shortest-path-forever/blob/06a819ef3be7920b373b99da377adb7c0e91b125/Data/Transports.lua"
     }
   ]
 }

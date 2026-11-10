@@ -237,6 +237,9 @@ run("副本任务行程随前置、接取、本内完成和交付更新",functio
     data.ReferenceObjectiveTargets=function(_,q)
         return {{text="参考目标",numRequired=1,numFulfilled=0}},data:ObjectiveTargets(q)
     end
+    local suggested=plan(s,data,B.settings,B).suggestedDungeon
+    eq(suggested.dungeonId,"ref");eq(suggested.rewards.prepare,1);eq(s.taskBatch,nil)
+    B.settings.dungeons=false;eq(plan(s,data,B.settings,B).suggestedDungeon,nil);B.settings.dungeons=true
     assert(B.Dungeon:StartTaskBatch("ref"))
     local p=plan(s,data,B.settings,B)
     local j=p.taskBatch.journey

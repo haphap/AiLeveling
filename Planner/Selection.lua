@@ -24,7 +24,7 @@ function S.CanChoose(candidate,revision)
     if not candidate then return false,"当前没有可选择的完整方案" end
     local origin,pos=plan.origin,A.state.position
     if not origin or not pos or origin.map~=pos.map or origin.node~=pos.node then return false,"位置已改变，等待当前位置的行程结果" end
-    local found=plan.best==candidate
+    local found=plan.best==candidate or plan.suggestedDungeon==candidate
     for _,c in ipairs(plan.alternatives or {}) do if c==candidate then found=true;break end end
     for _,c in ipairs(plan.taskChoices or {}) do if c==candidate then found=true;break end end
     if not candidate or not found then return false,"该备选已失效，请重新选择" end
