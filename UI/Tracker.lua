@@ -227,7 +227,7 @@ function UI.TrackerModel(state,plan,action,paused)
         end
     end
     for _,choice in ipairs(plan.taskOrder or plan.taskChoices or {}) do
-        if quests[choice.questId] or not next(quests) then add(choice.questId,choice.actions[1]) end
+        add(choice.questId,choice.executionAction or choice.actions[1])
     end
     local rest={}
     for id in pairs(quests) do if not seen[id] then rest[#rest+1]=id end end

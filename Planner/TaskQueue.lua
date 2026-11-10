@@ -262,18 +262,22 @@ function Q.Interleave(order,state,navigation,data,cache)
         local improved=false
         for index=first+1,#stages do
             local moving=stages[index]
-            local crossed,count={},0
             local nextOrder,nextBest=stages,best
-            for target=index-1,first,-1 do
-                local id=stages[target].questId
-                if id==moving.questId then break end
-                if not crossed[id] then crossed[id]=true;count=count+1 end
-                if count>2 then break end
-                local trial={};for i,entry in ipairs(stages) do trial[i]=entry end
-                table.remove(trial,index);table.insert(trial,target,moving)
-                if batched then trial=batchStages(trial,byQuest) end
-                local candidate=Q.Evaluate(trial,state,navigation,data,cache)
-                if better(candidate,nextBest,state) then nextOrder,nextBest=trial,candidate end
+            -- Move later as well: a city hand-in can wait until all nearby objectives are done.
+            for _,direction in ipairs({-1,1}) do
+                local crossed,count={},0
+                local last=direction<0 and first or #stages
+                for target=index+direction,last,direction do
+                    local id=stages[target].questId
+                    if id==moving.questId then break end
+                    if not crossed[id] then crossed[id]=true;count=count+1 end
+                    if count>2 then break end
+                    local trial={};for i,entry in ipairs(stages) do trial[i]=entry end
+                    table.remove(trial,index);table.insert(trial,target,moving)
+                    if batched then trial=batchStages(trial,byQuest) end
+                    local candidate=Q.Evaluate(trial,state,navigation,data,cache)
+                    if better(candidate,nextBest,state) then nextOrder,nextBest=trial,candidate end
+                end
             end
             if nextOrder~=stages then stages,best=nextOrder,nextBest;changed,improved=true,true end
         end
@@ -350,16 +354,13 @@ function Q.Solve(order,state,navigation,data)
     return result,best
 end
 
--- Add one useful pickup on the current leg, comparing its objectives and hand-in too.
+-- Compare every eligible pickup against the complete trip, including objectives and hand-in.
 function Q.Pickup(order,choices,state,navigation,data,queue)
     if not data or not navigation or not navigation.Distance or #order==0 or state.locked or
         state.taskBatch or state.gearTarget or state.inInstance or state.dungeon and state.dungeon.phase~="complete" then return end
     local base=queue or Q.Evaluate(order,state,navigation,data)
-    if not base or (base.remaining or 0)>0 then return end
-    local first=order[1].executionAction or order[1].actions[1]
-    local direct=navigation:Distance(state.position,first.position)
-    if not direct then return end
-    local best,bestQueue,tried=nil,base,0
+    if not base then return end
+    local best,bestQueue=nil,base
     local candidates={}
     for _,choice in ipairs(choices) do
         if choice.questId==state.currentTask then table.insert(candidates,1,choice)
@@ -368,26 +369,21 @@ function Q.Pickup(order,choices,state,navigation,data,queue)
     for _,choice in ipairs(candidates) do
         if choice.status=="accept" and not choice.lowValue and not choice.acceptBlocked and not choice.entryBlocked and
             not choice.requireCheck and choice.stagesComplete and (choice.remainingXP==nil or choice.remainingXP>0) then
-            local point=choice.actions[1].position
-            local approach=navigation:Distance(state.position,point)
-            local onward=navigation:Distance(point,first.position)
-            if approach and onward and approach+onward<=direct*1.1 then
-                local trial={copy(choice)}
-                for _,existing in ipairs(order) do trial[#trial+1]=copy(existing) end
-                local proposed,path=Q.Solve(trial,state,navigation,data)
-                local step=path and path.steps[1]
-                local action=step and (step.stage or step.choice.stages[1])
-                if action and action.kind=="accept" and action.questId==choice.questId and
-                    (path.remaining or 0)==0 and better(path,bestQueue,state) then best,bestQueue=proposed,path end
-                tried=tried+1
-                -- shortcut: evaluate the first three on-route candidates; widen only after route evidence warrants it.
-                if tried==3 then break end
+            local trial={copy(choice)}
+            for _,existing in ipairs(order) do trial[#trial+1]=copy(existing) end
+            local proposed,path=Q.Solve(trial,state,navigation,data)
+            if path and (path.remaining or 0)<=(base.remaining or 0) and better(path,bestQueue,state) then
+                best,bestQueue=proposed,path
             end
+            checkpoint()
         end
     end
     if best then
-        best[1].executionAction=copy(best[1].executionAction or best[1].stages[1])
-        best[1].executionAction.pickupResume=order[1].title
+        local action=best[1].executionAction or best[1].stages[1]
+        if action.kind=="accept" then
+            best[1].executionAction=copy(action)
+            best[1].executionAction.pickupResume=order[1].title
+        end
         return best,bestQueue
     end
 end

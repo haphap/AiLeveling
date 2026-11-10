@@ -464,6 +464,18 @@ test("当前目标完成后继续附近任务而非被旧任务稳定规则带�
     eq(s.completed[1],nil);eq(s.quests[2].ready,nil)
     s.position={map=1,x=0.9,y=0};s.quests[2].ready=true;s.quests[2].objectives[1].finished=true
     result=plan(s,d,nil,B);eq(result.fallback.kind,"turnin");eq(result.taskQueue.seconds,90)
+    -- Finish both outdoor objectives before returning to the city for the new quest.
+    local a,b
+    B,s,nav,O,a,b=stagedFixture();s.currentTask=nil
+    a.stages={{kind="objective",questId=1,position={map=1,x=0.65,y=0}},
+        {kind="objective",questId=1,position={map=1,x=0.8,y=0}},
+        {kind="turnin",questId=1,position={map=1,x=0.85,y=0}}}
+    b.stages={{kind="accept",questId=2,position={map=1,x=0.01,y=0}},
+        {kind="objective",questId=2,position={map=1,x=0.6,y=0}},
+        {kind="turnin",questId=2,position=O}}
+    local _,queue=B.TaskQueue.Solve({b,a},s,nav,d)
+    eq(queue.seconds,170);eq(queue.steps[#queue.steps].stage.questId,2)
+    eq(queue.steps[#queue.steps].stage.kind,"turnin")
 end)
 test("同一NPC五项任务全部目标完成后才连续集中交付",function()
     local B,s,nav,O=stagedFixture()

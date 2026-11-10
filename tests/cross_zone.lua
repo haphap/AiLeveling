@@ -86,6 +86,31 @@ test("自动行程顺路接取合算任务并按原生进度继续整组交付",
         if stage.kind=="objective" then objective=index elseif stage.kind=="turnin" then delivery=math.min(delivery,index) end
     end
     assert(objective<delivery)
+    -- A worthwhile city pickup may be away from the first leg to the questing area.
+    local cityTarget=d.Target
+    d.Target=function(self,quest,context)
+        local point=cityTarget(self,quest,context)
+        if quest.id==2 and not context.quests[2] then point.x=-0.1 end
+        return point
+    end
+    p=plan(s,d,nil,B);eq(p.fallback.questId,2);eq(p.fallback.kind,"accept")
+    d.Target=cityTarget
+    -- Compare candidates past the former three-item cutoff as well.
+    local candidates,original2,original3={},q[2],q[3]
+    for id=2,5 do
+        local c={};for k,v in pairs(choice(p,2)) do c[k]=v end
+        c.questId=id;c.stages={};c.actions={}
+        for i,original in ipairs(choice(p,2).stages) do
+            local stage={};for k,v in pairs(original) do stage[k]=v end
+            stage.questId=id;c.stages[i]=stage
+        end
+        c.actions[1]=c.stages[1];c.remainingXP=id==5 and 2000 or 1000
+        q[id]=F.Quest(id);q[id].taskFacts={level=20,xp={{1,c.remainingXP}}}
+        candidates[#candidates+1]=c
+    end
+    local picked=B.TaskQueue.Pickup({choice(p,1)},candidates,s,B.Navigation,d)
+    eq(picked[1].questId,5)
+    q[2],q[3],q[4],q[5]=original2,original3,nil,nil
     third=true;s.currentTask=2;q[3].taskFacts.xp={{1,1050}}
     eq(plan(s,d,nil,B).fallback.questId,2)
     q[3].taskFacts.xp={{1,2000}};eq(plan(s,d,nil,B).fallback.questId,3)
