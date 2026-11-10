@@ -349,7 +349,7 @@ return function(test,eq,F,plan)
     end)
     test("副本界面通过同一接受与结束入口执行，空资料时关闭入口",function()
         local B,d,s,data=context()
-        local create=CreateFrame
+        local create,menuUtil=CreateFrame,MenuUtil
         CreateFrame=function() return {SetPoint=function() end,SetSize=function() end,SetHeight=function() end,SetScrollChild=function() end,Hide=function() end} end
         B.UI={Accent=function() return 1,1,1 end,Icon=function() return "" end,
         Panel=function() return {SetPoint=function() end,SetBackdropColor=function() end} end,SelectTab=function() end,Text=function()
@@ -360,6 +360,18 @@ return function(test,eq,F,plan)
         assert(loadfile("UI/Dungeon.lua"))("AiLeveling",B)
         local ui=B.UI.Dungeon
         ui:Create({}); B.ready=true; ui:Refresh()
+        local menu,scroll={}
+        B.UI.scroll={SetVerticalScroll=function(_,value) scroll=value end}
+        MenuUtil={CreateContextMenu=function(owner,generate)
+            eq(owner,ui.selector)
+            generate(owner,{SetScrollMode=function(_,height) assert(height>0) end,
+                CreateRadio=function(_,label,selected,choose) menu[#menu+1]={label=label,selected=selected,choose=choose} end})
+        end}
+        local other={};for k,v in pairs(d) do other[k]=v end
+        other.id,other.title=2,"另一个副本";data.content.dungeons[2]=other
+        ui.selector.click();eq(ui.selected,1);eq(#menu,2);assert(menu[1].selected());assert(not menu[2].selected())
+        menu[2].choose();eq(ui.selected,2);eq(scroll,0);assert(menu[2].selected());eq(B.char.dungeon,nil)
+        menu[1].choose();eq(ui.selected,1);data.content.dungeons[2]=nil
         eq(ui.accept.enabled,true);eq(ui.stop.enabled,false)
         ui.accept.click();eq(B.char.dungeon.id,1);eq(ui.stop.enabled,true)
         ui.ready.click();eq(B.char.dungeon.phase,"travel")
@@ -417,7 +429,7 @@ return function(test,eq,F,plan)
         s.skipped[1]=true;ui:Refresh();eq(ui.taskGo.enabled,false)
         ui.taskGo.click();eq(ui.message,"已暂缓")
         s.clientBuild="different";ui:Refresh();eq(ui.selector.enabled,false);eq(ui.taskGo.enabled,false)
-        CreateFrame=create
+        CreateFrame,MenuUtil=create,menuUtil
     end)
     test("副本任务目录按构建隔离且已验证行程覆盖同实例参考",function()
         local B,d,s,data=context()

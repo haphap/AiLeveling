@@ -11,11 +11,19 @@ function UI:Create(parent)
     side:SetPoint("TOPLEFT",500,8);side:SetBackdropColor(0.085,0.105,0.145,0.92)
     self.selector = A.UI:Button(frame,"选择副本",474,function()
         local ids = self:Ids()
-        for index,id in ipairs(ids) do
-            if id==self.selected then self.selected=ids[index%#ids+1]; break end
-        end
-        self.message=nil
-        self:Refresh(); A.UI:SelectTab(4)
+        MenuUtil.CreateContextMenu(self.selector,function(_,menu)
+            menu:SetScrollMode(320)
+            for _,id in ipairs(ids) do
+                local d=self.entries[id]
+                local label=d.title
+                if d.minLevel and d.maxLevel then label=label..string.format("  ·  %d—%d级",d.minLevel,d.maxLevel) end
+                menu:CreateRadio(label,function() return self.selected==id end,function()
+                    self.selected=id;self.message=nil
+                    A.UI.scroll:SetVerticalScroll(0)
+                    self:Refresh();A.UI:SelectTab(4)
+                end)
+            end
+        end)
     end,14)
     self.selector:SetPoint("TOPLEFT")
     self.selector.text:SetWidth(462);self.selector.text:SetMaxLines(1)
@@ -95,7 +103,7 @@ function UI:Refresh()
     if not self.selected or not self.entries[self.selected] then self.selected=ids[1] end
     local d = self.selected and self.entries[self.selected]
     if self.taskDungeon~=self.selected then self.taskIndex,self.taskDungeon=1,self.selected end
-    self.selector.text:SetText(d and (A.UI:Icon("entry").."  "..d.title.."  ·  点击切换") or "当前构建没有副本任务目录")
+    self.selector.text:SetText(d and (A.UI:Icon("entry").."  "..d.title.."  ▾") or "当前构建没有副本任务目录")
     self.selector:SetEnabled(#ids>0)
     local candidate,reason
     if d and A.ready then
