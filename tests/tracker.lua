@@ -184,6 +184,21 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.refreshAt=nil;B.plan.revision=B.state.revision;B.plan.suggestedDungeon=suggestion;B.UI:RenderTracker()
     eq(T.rows[1].dungeonId,suggestion.dungeonId);eq(T.rows[1].status.value,"副本")
     eq(T.rows[1].progress.value,"5 项任务 · 含前置准备");eq(T.model.questId,1)
+    -- The browser keeps the same current recommendation as navigation, ahead of dungeon options.
+    B.UI.Plan.key=nil;B.UI:SelectTab(1)
+    local browser=B.UI.Browser
+    eq(browser.entries[1].questId,1);eq(browser.selected.questId,1)
+    assert(browser.entries[1].sub:find("推荐先做",1,true))
+    eq(browser.entries[2].dungeonCandidate,suggestion)
+    local previous=B.action
+    B.action=B.plan.taskChoices[4].actions[1];browser:Refresh(1)
+    eq(browser.entries[1].questId,4);eq(browser.selected.questId,4)
+    browser.rows[3].scripts.OnClick(browser.rows[3],"LeftButton")
+    eq(browser.selected.questId,1);eq(B.char.locked,nil)
+    browser:Refresh(1);eq(browser.entries[1].questId,4);eq(browser.selected.questId,1)
+    B.char.locked=4;browser:Refresh(1);assert(browser.entries[1].sub:find("已锁定",1,true))
+    B.char.paused=true;browser:Refresh(1);assert(browser.entries[1].sub:find("已暂停",1,true))
+    B.char.locked=nil;B.char.paused=nil;B.action=previous;B.UI.Plan.key=nil
     local selectedTab,started
     B.UI.Dungeon={};B.UI.SelectTab=function(_,index) selectedTab=index end
     T.rows[1].scripts.OnClick(nil,"LeftButton");eq(B.UI.Dungeon.selected,suggestion.dungeonId);eq(selectedTab,4)

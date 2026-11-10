@@ -85,6 +85,10 @@ end
 function B:TaskRows(mode)
     local rows,seen={},{}
     local state=A.state
+    local action=mode==1 and A.Navigation:Current()
+    local currentId=action and action.questId
+    local currentLabel=A.char.paused and "已暂停" or A.char.locked and "已锁定" or
+        A.char.taskBatch and "整组指引" or "推荐先做"
     local function add(choice,q)
         local id=choice.questId
         if seen[id] or (state.completed or {})[id] and not state.quests[id] then return end
@@ -95,6 +99,7 @@ function B:TaskRows(mode)
         if not allowed and status=="未接取" then status=why end
         local c=status=="可交付" and gold or state.quests[id] and green or allowed and blue or muted
         local meta={color(c,status)}
+        if id==currentId then table.insert(meta,1,color(gold,currentLabel)) end
         if q and q.requiredLevel then meta[#meta+1]="接取 "..q.requiredLevel.."级" end
         if choice.remainingXP then meta[#meta+1]=color(gold,choice.remainingXP.." 经验") end
         if q and q.requiredSkill then
@@ -102,13 +107,14 @@ function B:TaskRows(mode)
         end
         rows[#rows+1]={key="q:"..id,title=choice.title or q and q.title or "任务 #"..id,sub=table.concat(meta," · "),
             icon=status=="可交付" and "turnin" or state.quests[id] and "objective" or "accept",tone=c,
-            choice=choice,q=q,allowed=allowed,reason=why,prerequisite=pre,questId=id}
+            choice=choice,q=q,allowed=allowed,reason=why,prerequisite=pre,questId=id,current=id==currentId}
     end
     local choices={}
     for _,c in ipairs(A.plan and A.plan.taskChoices or {}) do choices[c.questId]=c end
     if mode==1 then
+        if choices[currentId] then add(choices[currentId]) end
         for _,c in ipairs(A.UI.Plan.Rows(A.plan)) do
-            if not c.questId then rows[#rows+1]={key=c.id,title=c.title,sub="地下城 · "..(c.requiresAcceptance and "可安排" or "进行中"),icon="entry",dungeonCandidate=c} end
+            if not c.questId then rows[#rows+1]={key=c.id,title=c.title,sub="地下城 · "..(c.requiresAcceptance and "可选建议" or "进行中"),icon="entry",dungeonCandidate=c} end
         end
         for _,c in ipairs(A.plan and A.plan.taskOrder or {}) do add(c) end
         for _,c in ipairs(A.plan and A.plan.taskChoices or {}) do add(c) end
@@ -220,9 +226,11 @@ function B:Refresh(mode)
         rows=filtered
     end
     local key=self.selection[mode]
-    if mode==1 and A.UI.Plan.key then
-        local id=A.UI.Plan.key:match("task:(%d+)")
-        key=id and "q:"..id or A.UI.Plan.key
+    if mode==1 then
+        key=A.UI.Plan.key
+        local id=key and key:match("task:(%d+)")
+        if id then key="q:"..id end
+        if not key then for _,row in ipairs(rows) do if row.current then key=row.key;break end end end
     end
     if mode==4 and A.UI.Dungeon.selected then key=A.UI.Dungeon.selected end
     local selected
@@ -230,7 +238,15 @@ function B:Refresh(mode)
     self.selected=selected or rows[1]
     self.selection[mode]=self.selected and self.selected.key
     if mode==1 then A.UI.Plan.preview=self.selected and self.selected.choice end
-    self.summary:SetText(#rows..(mode==10 and " 个练级区域" or mode==4 and " 个地下城" or mode==3 and " 件装备" or " 项任务").." · 点击查看详情")
+    local summary=#rows..(mode==10 and " 个练级区域" or mode==4 and " 个地下城" or mode==3 and " 件装备" or " 项任务").." · 点击查看详情"
+    if mode==1 then
+        local status=A.char.paused and "引导已暂停" or A.char.locked and "单任务锁定" or
+            A.Navigation.manual and "手动导航" or A.char.taskBatch and "副本任务安排" or
+            A.char.dungeon and A.char.dungeon.phase~="complete" and "副本行程" or
+            A.char.gearTarget and "装备目标" or "自动安排"
+        summary=status.." · "..#rows.." 项可查看"
+    end
+    self.summary:SetText(summary)
     local y,scale=0,A.settings.fontScale or 1
     for i,entry in ipairs(rows) do
         local row=self.rows[i]
