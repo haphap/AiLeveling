@@ -72,7 +72,7 @@ def main():
                 if token == '|r':
                     ink = color(row.get('color'))
                     continue
-                glyphs = token
+                glyphs = re.findall(r'[0-9]+/[0-9]+|.', token, re.S) if row.get('nonSpaceWrap') is False else token
                 if token.startswith('|T'):
                     path, height, width, *_ = token[2:-2].split(':')
                     glyphs = [texture(path, float(width)*SCALE, float(height)*SCALE)]

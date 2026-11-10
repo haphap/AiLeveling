@@ -8,6 +8,7 @@ import subprocess
 import zipfile
 from pathlib import Path
 from import_cache_xp import load as load_cache_xp
+from import_item_effects import read as read_effects, PINS as EFFECT_PINS
 
 ROOT = Path(__file__).resolve().parents[1]
 SHA = '5da5f5b968521d60fc1f17ca6884118e2c41053a4d2aeb96440416662044e30b'
@@ -26,6 +27,32 @@ def lua(value):
     if isinstance(value, list):
         return '{' + ','.join(lua(v) for v in value) + '}'
     return '{' + ','.join('[' + (k if k.isdigit() else lua(k)) + ']=' + lua(v) for k, v in sorted(value.items())) + '}'
+
+
+def mount_rewards(quests):
+    spells = read_effects('SpellEffect')
+    mounts = {int(r['SpellID']): int(r['SpellID']) for r in spells.values()
+              if int(r['Effect']) == 6 and int(r['EffectAura']) == 78}
+    learning = [r for r in spells.values() if int(r['Effect']) in (36, 64)]
+    changed = True
+    while changed:
+        changed = False
+        for r in learning:
+            ident, target = int(r['SpellID']), int(r['EffectTriggerSpell'])
+            if target in mounts and ident not in mounts:
+                mounts[ident] = mounts[target]; changed = True
+    effects = read_effects('ItemEffect')
+    items = {}
+    for r in read_effects('ItemXItemEffect').values():
+        effect = effects.get(int(r['ItemEffectID']))
+        if effect and int(effect['SpellID']) in mounts:
+            items[int(r['ItemID'])] = mounts[int(effect['SpellID'])]
+    for q in quests.values():
+        reward = q.get('rewards', {})
+        found = [mounts[reward[k]] for k in ('spell', 'spellCast') if reward.get(k) in mounts]
+        found += [items[i['id']] for k in ('items', 'choices') for i in reward.get(k, []) if i['id'] in items]
+        if found:
+            q['mountReward'] = found[0]
 
 
 def main():
@@ -98,6 +125,7 @@ io.write(json(result))
             for key in ['items', 'choices']:
                 if row['rewards'][key] == {}:
                     row['rewards'][key] = []
+    mount_rewards(data['quests'])
     data.update(source='LibQuestDB-0.1.0-Forever', clientVerified=False)
     data['cacheXP'], cache_report = load_cache_xp()
     generated = ('local _,A=...\n-- Generated LibQuestDB facts (MIT) and Efficient Games XP/objectives (CC BY 4.0).\n'
@@ -113,6 +141,7 @@ io.write(json(result))
               'xpRows': sum('xp' in r for r in data['quests'].values()),
               'objectives': sum(len(r['objectives']) for r in data['quests'].values()),
               'itemDropRows': len(data['drops']), 'sourceFiles': {}}
+    report['mountRewards'] = {'quests': sum('mountReward' in q for q in data['quests'].values()), 'build': '1.60.1.70862', 'effectTables': EFFECT_PINS}
     report['missingQuestLevels']=sorted(int(id) for id,row in data['quests'].items() if 'level' not in row)
     for name in ['LibQuestDB-1.0.lua', *['Data/Forever/_core/' + n + '.lua' for n in ['Quests', 'Rewards', 'QuestXP', 'Drops']]]:
         report['sourceFiles'][name] = hashlib.sha256((package / name).read_bytes()).hexdigest()

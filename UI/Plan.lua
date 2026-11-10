@@ -21,40 +21,14 @@ function UI.Rows(plan)
     return rows
 end
 
-function UI:Create(parent)
-    self.frame=CreateFrame("Frame",nil,parent)
-    self.frame:SetPoint("TOPLEFT",18,-94);self.frame:SetSize(570,72)
-    self.previous=A.UI:Button(self.frame,"上一方案",88,function() self:Move(-1) end)
-    self.previous:SetPoint("TOPLEFT")
-    self.label=A.UI:Text(self.frame,12)
-    self.label:SetPoint("TOPLEFT",100,-7);self.label:SetWidth(360)
-    self.next=A.UI:Button(self.frame,"下一方案",88,function() self:Move(1) end)
-    self.next:SetPoint("TOPLEFT",474,0)
-    self.choose=A.UI:Button(self.frame,"选择任务",200,function()
-        local ok,reason
-        if self.preview and self.preview.requiresAcceptance then
-            ok,reason=A.Selection.CanChoose(self.preview,self.revision)
-            if ok then
-                if self.preview.reference then ok,reason=A.Dungeon:StartTaskBatch(self.preview.dungeonId)
-                else ok,reason=A.Dungeon:Accept(self.preview.dungeonId) end
-            end
-        else ok,reason=A.Selection:Lock(self.preview,self.revision) end
-        self.message=ok and (self.preview and self.preview.kind=="task" and "已锁定任务目标。" or "已保存所选行程。") or reason
-        A.UI:SelectTab(1)
-    end)
-    self.choose:SetPoint("TOPLEFT",0,-36)
-    self.automatic=A.UI:Button(self.frame,"恢复自动选择",170,function()
-        local ok,reason=A.Selection:Automatic()
-        self.message=ok and "已恢复自动选择。" or reason
-        A.UI:SelectTab(1)
-    end)
-    self.automatic:SetPoint("TOPLEFT",210,-36)
-    self.recalculate=A.UI:Button(self.frame,"重新计算",170,function()
-        if A.ready then A:Replan() end
-        A.UI:SelectTab(1)
-    end)
-    self.recalculate:SetPoint("TOPLEFT",390,-36)
-    self.frame:Hide()
+function UI:Choose(candidate,revision)
+    local ok,reason=A.Selection.CanChoose(candidate,revision)
+    if not ok then return false,reason end
+    if candidate.requiresAcceptance then
+        if candidate.reference then return A.Dungeon:StartTaskBatch(candidate.dungeonId) end
+        return A.Dungeon:Accept(candidate.dungeonId)
+    end
+    return A.Selection:Lock(candidate,revision)
 end
 
 local tones={accept="8cccff",objective="8cf2b8",turnin="ffd473",muted="b4c1cd"}
@@ -156,100 +130,6 @@ function UI:Entries()
         heading(plan.complete and "升级目标已完成" or plan.sessionActive and "副本行程进行中 · 在副本页查看" or "当前暂无推荐任务")
     end
     return entries
-end
-
-function UI:Render()
-    if not self.content then
-        self.content=CreateFrame("Frame",nil,A.UI.scrollChild)
-        self.content:SetPoint("TOPLEFT");self.content:SetWidth(552)
-        self.cards={}
-    end
-    self.content:Show();A.UI.detailText:Hide()
-    for _,row in ipairs(self.cards) do row:Hide() end
-    local y,scale=0,A.settings.fontScale or 1
-    for i,entry in ipairs(self:Entries()) do
-        local row=self.cards[i]
-        if not row then
-            row=CreateFrame("Frame",nil,self.content);row:SetWidth(552);row:EnableMouse(true);A.UI:Rounded(row,7)
-            row:SetHyperlinksEnabled(true)
-            row.title=A.UI:Text(row,16,{0.97,0.98,1});row.title:SetPoint("TOPLEFT",34,-8);row.title:SetWidth(398)
-            row.status=A.UI:Text(row,12);row.status:SetPoint("TOPRIGHT",-4,-10);row.status:SetWidth(110);row.status:SetJustifyH("RIGHT")
-            row.detail=A.UI:Text(row,13,{0.78,0.84,0.89});row.detail:SetWidth(250)
-            row.metrics=A.UI:Text(row,13);row.metrics:SetWidth(248);row.metrics:SetJustifyH("RIGHT")
-            row.icon=A.UI:Text(row,16);row.icon:SetPoint("TOPLEFT",0,-8)
-            row.line=row:CreateTexture(nil,"BACKGROUND");row.line:SetColorTexture(0.6,0.7,0.8,0.12)
-            row.line:SetPoint("BOTTOMLEFT");row.line:SetPoint("BOTTOMRIGHT");row.line:SetHeight(1)
-            row:SetScript("OnHyperlinkClick",function(f,_,_,button)
-                if button=="RightButton" then A.UI:TrackerMenu(f)
-                else
-                    self.key=UI.Key(f.candidate);self.message=nil
-                    A.UI:QuestClick(f.questId,button)
-                    A.UI:SelectTab(1)
-                end
-            end)
-            row:SetScript("OnHyperlinkEnter",function(f)
-                GameTooltip:SetOwner(f,"ANCHOR_RIGHT")
-                GameTooltip:SetText(f.candidate.title or "任务详情")
-                GameTooltip:AddLine(verbs[f.stepKind] or "任务",1,0.83,0.45)
-                for n,line in ipairs(self:Lines(f.candidate)) do if n>1 then GameTooltip:AddLine(line,0.9,0.94,1,true) end end
-                GameTooltip:AddLine("左键：任务详情  ·  右键：任务操作",1,0.83,0.45,true);GameTooltip:Show()
-            end)
-            row:SetScript("OnHyperlinkLeave",function() GameTooltip:Hide() end)
-            row:SetScript("OnHide",function() GameTooltip:Hide() end)
-            self.cards[i]=row
-        end
-        row.candidate,row.questId,row.revision=entry.choice,entry.choice and entry.choice.questId,A.plan and A.plan.revision
-        row.stepKind=entry.icon
-        row.deferred=row.questId and ((A.state.skipped or {})[row.questId] or (A.state.chainDeferred or {})[row.questId])
-        local r,g,b=A.UI:Accent()
-        row:SetBackdropColor(r*0.2,g*0.2,b*0.2,entry.choice and entry.choice==self.preview and 0.6 or 0)
-        row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y)
-        row.title:ClearAllPoints();row.title:SetPoint("TOPLEFT",entry.heading and 0 or 34,-8)
-        row.title:SetWidth(entry.heading and 552 or 424-100*scale)
-        row.title:SetText(entry.title)
-        if entry.heading then row.title:SetTextColor(A.UI:Accent()) else row.title:SetTextColor(0.97,0.98,1) end
-        row.icon:SetText(entry.icon and A.UI:Icon(entry.icon,20) or "")
-        row.status:SetText(entry.status or "")
-        local top=math.max(row.title:GetStringHeight(),20*scale)+14
-        row.detail:ClearAllPoints();row.detail:SetPoint("TOPLEFT",entry.heading and 0 or 34,-top)
-        row.detail:SetWidth(entry.heading and 552 or 250);row.detail:SetMaxLines(entry.heading and 0 or 1);row.detail:SetText(entry.detail or "")
-        row.metrics:ClearAllPoints();row.metrics:SetPoint("TOPRIGHT",-4,-top);row.metrics:SetText(entry.metrics or "")
-        local bottom=math.max(entry.detail and row.detail:GetStringHeight() or 0,entry.metrics and entry.metrics~="" and row.metrics:GetStringHeight() or 0)
-        row:SetHeight(top+bottom+12);row.line:SetShown(not entry.heading);row:Show()
-        y=y+row:GetHeight()+4
-    end
-    self.content:SetHeight(y);A.UI.scrollChild:SetHeight(math.max(1,y))
-end
-
-function UI:Move(delta)
-    local rows=UI.Rows(A.plan)
-    if #rows==0 then return end
-    local index=1
-    for i,c in ipairs(rows) do if UI.Key(c)==self.key then index=i;break end end
-    self.key=UI.Key(rows[(index-1+delta)%#rows+1])
-    self.message=nil
-    A.UI.scroll:SetVerticalScroll(0)
-    A.UI:SelectTab(1)
-end
-
-function UI:Refresh()
-    local rows=UI.Rows(A.plan)
-    local index=1
-    for i,c in ipairs(rows) do if UI.Key(c)==self.key then index=i;break end end
-    self.preview,self.revision=rows[index],A.plan and A.plan.revision
-    self.key=UI.Key(self.preview)
-    self.label:SetText(#rows>0 and string.format("%s %d / %d · %s",self.preview.kind=="task" and "任务" or "方案",index,#rows,
-        self.preview==A.plan.best and "当前规划" or "备选预览") or "当前没有符合条件的任务或行程")
-    self.previous:SetEnabled(#rows>1);self.next:SetEnabled(#rows>1)
-    self.recalculate:SetEnabled(A.ready==true and not (A.Transport and A.Transport:InFlight()))
-    local can,why=A.Selection.CanChoose(self.preview,self.revision)
-    self.choose:SetEnabled(can==true)
-    self.choose.text:SetText(self.preview and (self.preview.kind=="task" and (self.preview.acceptBlocked and "保留任务，空位后继续" or "导航并锁定此任务") or
-        (self.preview.requiresAcceptance and "接受副本行程")) or "选择任务")
-    self.blocked=not can and why or nil
-    local origin,pos=A.plan and A.plan.origin,A.state.position
-    if origin and pos and (origin.map~=pos.map or origin.node~=pos.node) and A.ready and A.jobs and not A.jobs.plan and
-        not A.refreshAt and not (A.Transport and A.Transport:InFlight()) then A:Replan() end
 end
 
 function UI:Lines(candidate)

@@ -179,6 +179,29 @@ A.DungeonCatalog.objectiveAreas={
     [97173]={["item:276893"]=16554},
     [95928]={["item:271894"]=16667,["item:271898"]=16667,["item:271902"]=16667,["item:271912"]=16667},
 }
+-- Client entrance minimums; distinct from recommended quest levels.
+A.DungeonCatalog.entryLevels={
+    [33]=11,
+    [34]=15,
+    [36]=10,
+    [43]=10,
+    [47]=25,
+    [48]=15,
+    [70]=30,
+    [90]=19,
+    [109]=45,
+    [129]=35,
+    [189]=20,
+    [209]=39,
+    [229]=48,
+    [230]=42,
+    [269]=65,
+    [289]=33,
+    [329]=37,
+    [349]=25,
+    [389]=10,
+    [429]=31,
+}
 -- Encounter identities only; optional bosses and separate wings are not completion requirements.
 A.DungeonCatalog.encounters={
     [227]={instanceId=230,difficultyId=0,title="审讯官格斯塔恩"},

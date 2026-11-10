@@ -58,10 +58,11 @@ test("同构建首领掉落进入比较与手选导航，击败不当作拿到�
     p=plan(s,d,balanced,B);assert(p.fallback.text:find("已击败",1,true))
     B.Gear:SyncTarget(s);eq(s.gearTarget,id);eq(s.gearAcquired,nil)
     B.plan=p;B.UI={Accent=function() return 1,1,1 end,Icon=function() return "" end};assert(loadfile("UI/Gear.lua"))("AiLeveling",B)
-    local ui=B.UI.Gear;ui.selected=id
-    ui.selector={text={SetText=function() end},SetEnabled=function() end};ui.choose={SetEnabled=function() end}
-    local lines=table.concat(ui:Lines(),"\n")
-    assert(lines:find("获得概率区间 0%—100%",1,true));assert(not lines:find("交付任务",1,true));assert(not lines:find("预计刷取",1,true))
+    assert(loadfile("UI/Browser.lua"))("AiLeveling",B)
+    local rows=B.UI.Browser:GearRows();local found
+    for _,row in ipairs(rows) do if row.sourceId==id then found=row end end
+    assert(found);eq(found.source.kind,"dungeon");eq(found.comparison.delta,7)
+    local lines
     assert(loadfile("UI/Dungeon.lua"))("AiLeveling",B)
     B.UI.Dungeon.entries={[dungeon.id]=dungeon};B.UI.Dungeon.selected=dungeon.id;B.UI.Dungeon.tasks={}
     lines=table.concat(B.UI.Dungeon:Lines(),"\n");assert(lines:find("副本装备提升",1,true))
@@ -139,16 +140,16 @@ test("装备页从当前真实奖励提供选择并在任务详情显示装备�
     assert(loadfile("UI/Main.lua"))("AiLeveling",B)
     assert(loadfile("UI/Gear.lua"))("AiLeveling",B)
     assert(loadfile("UI/Plan.lua"))("AiLeveling",B)
-    local gear=B.UI.Gear
-    gear.selector={text={SetText=function(_,v) gear.title=v end},SetEnabled=function() end}
-    gear.choose={SetEnabled=function(_,v) gear.enabled=v end}
-    local ids=gear:Ids();eq(#ids,2);gear.selected="reward:2:101"
-    local lines=table.concat(gear:Lines(),"\n");assert(gear.enabled);assert(lines:find("交付任务时选择此奖励",1,true))
-    assert(not lines:find("获得概率区间",1,true));assert(not lines:find("分钟",1,true))
+    assert(loadfile("UI/Browser.lua"))("AiLeveling",B)
+    local gear=B.UI.Gear;eq(#gear:Ids(),2)
+    local rows=B.UI.Browser:GearRows();local selected
+    for _,row in ipairs(rows) do if row.sourceId=="reward:2:101" then selected=row end end
+    assert(selected);eq(selected.source.choice,true);eq(selected.comparison.delta,7)
     B.UI.Plan.preview=find(B.plan,2)
-    lines=table.concat(B.UI.Plan:Lines(),"\n");assert(lines:find("属性评分提升 +7.0",1,true))
-    eq(B.Gear:SetTarget(gear.selected),true);B.plan={taskChoices={}}
-    eq(#gear:Ids(),1);gear:Lines();eq(gear.selected,"reward:2:101")
+    local lines=table.concat(B.UI.Plan:Lines(),"\n");assert(lines:find("属性评分提升 +7.0",1,true))
+    eq(B.Gear:SetTarget(selected.sourceId),true);B.plan={taskChoices={}}
+    eq(#gear:Ids(),1);eq(B.UI.Browser:GearRows()[1].sourceId,selected.sourceId)
+
 end)
 test("远处低价值奖励任务退出整组而有效装备和手选目标保留",function()
     local B,s,d,q=fixture()
@@ -203,12 +204,13 @@ test("低属性套装奖励保留效果比较与手动任务接续，不自动�
     assert(table.concat(c.gearSources[id].upgrade.notes,"\n"):find("获得 2 件套效果",1,true))
     B.plan=p;B.UI={};B.Navigation.Current=function() end
     for _,file in ipairs({"UI/Main.lua","UI/Gear.lua","UI/Plan.lua"}) do assert(loadfile(file))("AiLeveling",B) end
-    local gear=B.UI.Gear;gear.selector={text={SetText=function() end},SetEnabled=function() end}
-    gear.choose={SetEnabled=function() end};gear.selected=id
+    assert(loadfile("UI/Browser.lua"))("AiLeveling",B)
+    local gear=B.UI.Gear
     s.bagEquipment={s.items[10399]}
-    local lines=table.concat(gear:Lines(),"\n")
-    assert(lines:find("属性评分变化 -3.0",1,true));assert(lines:find("获得 2 件套效果",1,true))
+    local row=B.UI.Browser:GearRows()[1]
+    eq(row.comparison.delta,-3);assert(table.concat(row.comparison.notes,"\n"):find("获得 2 件套效果",1,true))
     eq(#gear:Ids(),1)
+    local lines
     B.UI.Plan.preview=c;lines=table.concat(B.UI.Plan:Lines(),"\n")
     assert(lines:find("属性评分变化 -3.0",1,true));assert(lines:find("获得 2 件套效果",1,true))
     eq(B.Gear:SetTarget(id),true);eq(plan(s,d,balanced,B).fallback.questId,2)

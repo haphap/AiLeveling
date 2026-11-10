@@ -1,7 +1,7 @@
 local _, A = ...
 A.QuestAssist = { buttons = {}, highlights = {} }
 local Q = A.QuestAssist
-BINDING_HEADER_AILEVELING = "AiLeveling"
+BINDING_HEADER_AILEVELING = "AILeveling"
 for i=1,4 do _G["BINDING_NAME_CLICK AiLevelingItem"..i..":LeftButton"] = "使用当前任务物品 "..i end
 _G["BINDING_NAME_CLICK AiLevelingTarget:LeftButton"]="选中当前任务目标"
 _G["BINDING_NAME_CLICK AiLevelingTarget:RightButton"]="标记当前选中的目标"

@@ -46,64 +46,23 @@ test("恢复自动与任务暂缓清理旧锁定并保留副本控制",function(
     B.char.dungeon=nil;B.char.serviceStop={};assert(B.Selection:Automatic());eq(B.char.itinerary,nil);eq(B.char.paused,false);eq(B.char.serviceStop,nil)
 end)
 
-local function widget()
-    return {SetPoint=function() end,SetSize=function() end,Hide=function() end,SetWidth=function() end,
-        SetText=function(self,value) self.value=value end,SetEnabled=function(self,value) self.enabled=value end}
-end
-local function uiFixture()
+test("列表选中真实任务后统一检查时效，副本须明确接受",function()
     local B=fixture();assert(loadfile("UI/Main.lua"))("AiLeveling",B)
-    B.UI.scroll={SetVerticalScroll=function() end}
-    B.UI.Text=function() return widget() end
-    B.UI.Button=function(_,parent,label,width,callback)
-        local w=widget();w.text=widget();w.text.value=label;w.callback=callback;return w
-    end
     assert(loadfile("UI/Plan.lua"))("AiLeveling",B)
-    B.UI.SelectTab=function() B.UI.Plan:Refresh();B.lines=B.UI.Plan:Lines() end
-    local saved=CreateFrame;CreateFrame=function() return widget() end
-    B.UI.Plan:Create({});CreateFrame=saved
-    B.UI:SelectTab(1)
-    return B
-end
-test("任务浏览展示真实候选并通过同一入口锁定",function()
-    local B=uiFixture();local rows=B.UI.Plan.Rows(B.plan)
-    eq(#rows,3);eq(rows[1],B.plan.taskChoices[1])
-    local count=#rows
-    B.UI.Plan.previous.callback()
-    eq(B.UI.Plan.preview,rows[count]);assert(B.UI.Plan.label.value:find("/ "..count,1,true))
-    local text=table.concat(B.lines,"\n")
-    assert(text:find("未接取",1,true));assert(text:find(B.UI.Plan.preview.title,1,true))
-    local candidate=B.UI.Plan.preview
-    B.UI.Plan.choose.callback();eq(B.char.locked,candidate.questId);eq(B.refreshes,1)
-    eq(B.UI.Plan.choose.enabled,false)
-end)
-test("已显示但失效的方案点击被拒绝且副本须明确接受",function()
-    local B=uiFixture();B.state.revision=B.state.revision+1
-    B.UI.Plan.choose.callback();eq(B.char.itinerary,nil);eq(B.refreshes,0)
+    local rows=B.UI.Plan.Rows(B.plan);eq(#rows,3)
+    local candidate=rows[#rows]
+    B.UI.Plan.preview=candidate
+    local text=table.concat(B.UI.Plan:Lines(),"\n")
+    assert(text:find("未接取",1,true));assert(text:find(candidate.title,1,true))
+    B.state.revision=B.state.revision+1
+    eq(B.UI.Plan:Choose(candidate,B.plan.revision),false);eq(B.refreshes,0)
     B.state.revision=B.plan.revision
-    local candidate={id="dungeon:7",kind="dungeon",dungeonId=7,title="测试副本",requiresAcceptance=true,
-        actions={},seconds=600,xp=1000,rate=1000/600}
-    B.plan.alternatives={candidate};B.plan.best=candidate;B.plan.taskChoices={}
+    assert(B.UI.Plan:Choose(candidate,B.plan.revision));eq(B.char.locked,candidate.questId)
+    local d={id="dungeon:7",kind="dungeon",dungeonId=7,title="测试副本",requiresAcceptance=true,actions={}}
+    B.plan={revision=B.state.revision,origin=B.state.position,alternatives={d},best=d,taskChoices={}}
     local accepted=0;B.Dungeon={Accept=function(_,id) eq(id,7);accepted=accepted+1;return true end}
-    B.UI:SelectTab(1);eq(B.UI.Plan.choose.text.value,"接受副本行程")
-    B.UI.Plan.choose.callback();eq(accepted,1);eq(B.char.itinerary,nil)
-end)
-test("行程页起点变化时重新估价且不重复排队或在空中计算",function()
-    local B=uiFixture();B.jobs={};B.replans=0
-    B.Replan=function(self) self.replans=self.replans+1 end
-    B.state.position.node="near";B.UI:SelectTab(1)
-    eq(B.replans,1);eq(B.UI.Plan.choose.enabled,false)
-    B.jobs.plan=true;B.UI:SelectTab(1);eq(B.replans,1)
-    B.jobs.plan=nil;B.Transport.flying=true;B.UI:SelectTab(1)
-    eq(B.replans,1);eq(B.UI.Plan.recalculate.enabled,false)
-end)
-test("进行中的副本剩余估计未知时不显示零分钟完成",function()
-    local B=uiFixture()
-    B.plan.best={id="accepted:7:1",kind="dungeon",title="当前副本",seconds=0,xp=0,rate=0,actions={}}
-    B.plan.alternatives={};B.plan.taskChoices={};B.char.dungeon={phase="running"}
-    B.UI:SelectTab(1)
-    local text=table.concat(B.lines,"\n")
-    assert(text:find("本轮副本行程进行中",1,true));eq(text:find("预计 0.0 分钟",1,true),nil)
-    eq(B.UI.Plan.choose.enabled,false)
+    eq(B.UI.Plan.Rows(B.plan)[1],d);eq(accepted,0)
+    assert(B.UI.Plan:Choose(d,B.plan.revision));eq(accepted,1)
 end)
 test("单任务锁定在实际非重复任务交付后解除",function()
     local B=fixture();B.char.locked=1;B.state.locked=1;B.state.completed[1]=true

@@ -104,7 +104,7 @@ function UI:ShowStartupError(message)
         f:SetPoint("CENTER");f:SetFrameStrata("DIALOG")
         -- Use native fonts directly, even if custom text creation caused the failure.
         local title=f:CreateFontString(nil,"OVERLAY","GameFontNormalLarge")
-        title:SetPoint("TOPLEFT",16,-16);title:SetText("AiLeveling 加载失败")
+        title:SetPoint("TOPLEFT",16,-16);title:SetText("AILeveling 加载失败")
         local close=CreateFrame("Button",nil,f,"UIPanelCloseButton")
         close:SetPoint("TOPRIGHT");close:SetScript("OnClick",function() f:Hide() end)
         f.copy=CreateFrame("EditBox",nil,f)
@@ -118,7 +118,7 @@ end
 
 function UI:Create()
     self:CreateTracker()
-    self.details = self:Panel("AiLevelingDetails", UIParent, 620, 520)
+    self.details = self:Panel("AiLevelingDetails", UIParent, 1000, 600)
     self.details:SetPoint("CENTER")
     local p=A.settings.detailPosition
     if p then self.details:ClearAllPoints();self.details:SetPoint(p[1],UIParent,p[2],p[3],p[4]) end
@@ -128,15 +128,24 @@ function UI:Create()
     local close = self:Button(self.details, "关闭", 50, function() self.details:Hide() end)
     close:SetPoint("TOPRIGHT", -12, -12)
     self.tabs = {}
-    for i, label in ipairs({"行程", "任务链", "装备", "副本", "设置", "数据", "服务"}) do
-        local b = self:Button(self.details, label, 72, function() self:SelectTab(i) end)
-        b:SetPoint("TOPLEFT", 16 + (i - 1) * 78, -52)
-        self.tabs[i] = b
+    local side=self:Panel(nil,self.details,164,584)
+    side:SetPoint("TOPLEFT",8,-8);side:SetBackdropColor(0.055,0.065,0.09,1)
+    self.detailMark=side:CreateTexture(nil,"ARTWORK")
+    self.detailMark:SetTexture(media.."compass.tga");self.detailMark:SetSize(24,24);self.detailMark:SetPoint("TOPLEFT",12,-16)
+    local brand=self:Text(side,18);brand:SetPoint("TOPLEFT",42,-18);brand:SetText("AILeveling")
+    local subtitle=self:Text(side,12,{0.6,0.66,0.75});subtitle:SetPoint("TOPLEFT",12,-50);subtitle:SetText("少跑路 · 多经验")
+    local labels={"任务行程","任务链","装备","地下城","设置","数据","服务","专业任务","职业任务","练级区域","坐骑任务"}
+    local icons={"compass","objective","turnin","entry","compass","xp","accept","objective","party","entry","compass"}
+    for n,i in ipairs({1,10,9,8,11,4,3,2,7,5,6}) do
+        local b=self:Button(side,self:Icon(icons[i],16).."  "..labels[i],148,function() self:SelectTab(i) end,14)
+        b:SetPoint("TOPLEFT",8,-84-(n-1)*40);b:SetHeight(32)
+        b.text:ClearAllPoints();b.text:SetPoint("LEFT",10,0);b.text:SetJustifyH("LEFT")
+        self.tabs[i]=b
     end
-    self.detailMark=self.details:CreateTexture(nil,"ARTWORK")
-    self.detailMark:SetTexture(media.."compass.tga");self.detailMark:SetSize(28,28);self.detailMark:SetPoint("TOPLEFT",18,-12)
-    self.detailHeading = self:Text(self.details, 20)
-    self.detailHeading:SetPoint("TOPLEFT", 54, -16);self.detailHeading:SetText("AiLeveling")
+    self.detailHeading=self:Text(self.details,23)
+    self.detailHeading:SetPoint("TOPLEFT",194,-22);self.detailHeading:SetText("任务行程")
+    self.detailSubtitle=self:Text(self.details,13,{0.65,0.71,0.8})
+    self.detailSubtitle:SetPoint("TOPLEFT",194,-54)
     self.scroll = CreateFrame("ScrollFrame", nil, self.details, "UIPanelScrollFrameTemplate")
     self.scroll:SetPoint("TOPLEFT", 18, -96); self.scroll:SetPoint("BOTTOMRIGHT", -36, 18)
     self.scrollChild = CreateFrame("Frame", nil, self.scroll)
@@ -152,10 +161,9 @@ function UI:Create()
     self.copyBox:Hide()
     self.Settings:Create(self.details)
     self.Dungeon:Create(self.details)
-    self.Gear:Create(self.details)
-    self.Plan:Create(self.details)
     self.Chains:Create(self.details)
     self.Services:Create(self.details)
+    self.Browser:Create(self.details)
     self.selectedTab = 1
     self.inCombat=InCombatLockdown()
     self:ApplyStyle()
@@ -192,16 +200,14 @@ end
 
 function UI:ShowText(text)
     self.details:Show(); self.Settings.frame:Hide(); self.scroll:Show()
-    self.details:SetSize(620,520)
+    self.details:SetSize(1000,600)
+    self.Browser.frame:Hide()
     self.scroll:SetPoint("BOTTOMRIGHT",-36,18);self.scrollChild:SetWidth(560)
     self.detailText:SetWidth(552)
     self.Dungeon.frame:Hide()
-    self.Gear.frame:Hide()
-    self.Plan.frame:Hide()
-    if self.Plan.content then self.Plan.content:Hide() end
     self.Chains.frame:Hide()
     self.Services.frame:Hide()
-    self.scroll:SetPoint("TOPLEFT",18,-96)
+    self.scroll:SetPoint("TOPLEFT",194,-96)
     self.exporting = true
     self.detailText:SetText(text)
     local height = math.max(380, self.detailText:GetStringHeight() + 20)
@@ -222,35 +228,29 @@ function UI:SelectTab(index)
         tab:SetBackdropColor(unpack(tab.baseColor))
         if i==index then tab.text:SetTextColor(r,g,b) else tab.text:SetTextColor(0.74,0.79,0.86) end
     end
-    if self.detailHeading then self.detailHeading:SetText("AiLeveling · "..({"任务行程","任务链","装备","副本任务","设置","数据","服务"})[index]) end
-    self.details:SetSize(index==4 and 780 or 620,index==4 and 560 or 520)
-    self.scroll:SetPoint("BOTTOMRIGHT",index==4 and -286 or -36,18)
-    self.scrollChild:SetWidth(index==4 and 474 or 560)
-    self.detailText:SetWidth(index==4 and 466 or 552)
-    self.Settings.frame:SetShown(index == 5)
-    self.scroll:SetShown(index ~= 5 and index ~= 2)
-    self.Dungeon.frame:SetShown(index==4)
-    self.Gear.frame:SetShown(index==3)
-    self.Plan.frame:SetShown(index==1)
-    if self.Plan.content then self.Plan.content:SetShown(index==1) end
+    local names={"任务行程","任务链","装备情况","地下城","设置","运行数据","附近服务","专业任务","职业任务","练级区域","坐骑任务"}
+    self.detailHeading:SetText(names[index])
+    self.detailSubtitle:SetText(({[1]="当前安排与可选任务",[3]="当前装备、背包提升与任务奖励",[4]="选择副本，查看等级和任务安排",
+        [8]="按专业查看条件、奖励与前置",[9]="当前职业的任务与解锁奖励",[10]="比较适合当前等级的任务区域",[11]="坐骑奖励及其前置任务"})[index] or "")
+    self.details:SetSize(1000,600)
+    self.scroll:SetPoint("BOTTOMRIGHT",-36,18);self.scrollChild:SetWidth(750);self.detailText:SetWidth(742)
+    self.Settings.frame:SetShown(index==5)
     self.Chains.frame:SetShown(index==2)
     self.Services.frame:SetShown(index==7)
-    self.scroll:SetPoint("TOPLEFT",18,index==4 and -314 or (index==3 or index==1 or index==7) and -178 or -96)
+    for _,panel in ipairs({self.Settings.frame,self.Chains.frame,self.Services.frame}) do
+        panel:ClearAllPoints();panel:SetPoint("TOPLEFT",194,-94);panel:SetPoint("BOTTOMRIGHT",-18,18)
+    end
+    self.Dungeon.frame:Hide()
+    local browse=index==1 or index==3 or index==4 or index>=8
+    self.Browser.frame:SetShown(browse)
+    self.scroll:SetShown(not browse and index~=5 and index~=2)
+    self.scroll:SetPoint("TOPLEFT",194,index==7 and -178 or -96)
+    if browse then self.Browser:Refresh(index);return end
     if index == 5 then self.Settings:Refresh(); return end
     if index == 2 then self.Chains:Refresh();return end
-    local lines = {}
-    if index == 1 then
-        self.Plan:Refresh()
-        self.Plan:Render();return
-    elseif index == 3 then
-        lines=self.Gear:Lines()
-    elseif index == 4 then
-        self.Dungeon:Refresh()
-        self.scroll:SetPoint("TOPLEFT",18,-self.Dungeon.bodyTop)
-        lines=self.Dungeon:Lines()
-    elseif index==7 then
-        self.Services:Refresh();lines=self.Services:Lines()
-    else lines[1] = A:Diagnostics(); lines[2] = "运行 /ail audit 生成当前安装数据库的实际覆盖盘点。" end
+    local lines={}
+    if index==7 then self.Services:Refresh();lines=self.Services:Lines()
+    else lines[1]=A:Diagnostics();lines[2]="运行 /ail audit 查看数据库覆盖情况。" end
     self.detailText:SetText(table.concat(lines, "\n\n"))
     self.scrollChild:SetHeight(math.max(380, self.detailText:GetStringHeight() + 20))
 end

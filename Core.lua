@@ -158,7 +158,7 @@ function A:QuestHistory()
 end
 
 function A:Message(text)
-    DEFAULT_CHAT_FRAME:AddMessage("|cff53d6c7AiLeveling|r  " .. text)
+    DEFAULT_CHAT_FRAME:AddMessage("|cff53d6c7AILeveling|r  " .. text)
 end
 
 function A:Queue(key, callback)
@@ -266,7 +266,7 @@ function A:TogglePause()
 end
 
 function A:Diagnostics()
-    local lines = { "AiLeveling " .. self.version, "Interface: " .. tostring(self.interface),
+    local lines = { "AILeveling " .. self.version, "Interface: " .. tostring(self.interface),
         "客户端构建: " .. tostring(self.build),
         "QuestieDB: " .. tostring(C_AddOns.GetAddOnMetadata("QuestieDB", "Version")),
         "QuestieDB contract: " .. tostring(LibQuestieDB and LibQuestieDB.contractVersion),

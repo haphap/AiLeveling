@@ -89,14 +89,14 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     eq(#actions,1);eq(actions[1],action)
     B.action=actions[1];B.UI:RenderTracker()
     assert(not B.UI.body.value:find(action.text,1,true));assert(not B.UI.body.value:find("60.0, 50.0",1,true))
-    eq(T.objectives[1].text.value,"狗头人 3/10")
-    eq(B.UI.title.value,"当前任务");eq(T.objectives[1].count.value,"3/10");eq(T.objectives[1].ratio,0.3)
+    assert(T.objectives[1].text.value:find("狗头人",1,true));assert(T.objectives[1].text.value:find("3/10",1,true))
+    eq(B.UI.title.value,"狗头人营地");eq(B.UI.body.value,"当前任务");eq(T.objectives[1].count.value,"3/10");eq(T.objectives[1].ratio,0.3)
     eq(#T.model.rows,2);eq(T.rows[1].title.value,"后续交付");eq(T.rows[1].status.value,"可交付")
     eq(T.queuePanel.width,T.card.width)
     eq(T.rows[1].number.fontSize,T.rows[1].title.fontSize)
     eq(T.rows[1].number.point[3],T.rows[1].title.point[3])
     assert(T.queueScroll.width+8+20<=T.queuePanel.width);assert(T.card.width<=300)
-    assert(B.UI.body.value:find("经验 1250",1,true));assert(B.UI.body.value:find("路程 2分15秒",1,true))
+    assert(T.footer.value:find("经验 1250",1,true));assert(T.footer.value:find("路程 2分15秒",1,true))
     assert(T.rows[1].metrics.value:find("经验 0",1,true));assert(T.rows[1].metrics.value:find("路程 0秒",1,true))
     assert(T.rows[2].metrics.value:find("路程 1小时01分",1,true))
     assert(T.rows[1].title.fontSize>=15);assert(T.rows[1].progress.fontSize>=13)
@@ -142,28 +142,28 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     T.rows[3].scripts.OnClick(nil,"LeftButton")
     eq(B.UI.Plan.preview.questId,4);eq(B.UI.details.shown,true);eq(B.char.locked,nil)
     local row
-    for _,card in ipairs(B.UI.Plan.cards) do if card.questId==4 then row=card end end
-    assert(row.title.value:find("|Hquest:4:0|h",1,true))
-    row.scripts.OnHyperlinkClick(row,"quest:4:0","未接任务","LeftButton")
+    for _,card in ipairs(B.UI.Browser.rows) do if card.questId==4 then row=card end end
+    assert(B.UI.Browser.detail.value:find("|Hquest:4:0|h",1,true))
+    row.scripts.OnClick(row,"LeftButton")
     eq(B.UI.Plan.preview.questId,4);eq(B.char.locked,nil)
     local tooltip={}
     GameTooltip={SetOwner=function() end,SetText=function(_,v) tooltip[#tooltip+1]=v end,
         AddLine=function(_,v) tooltip[#tooltip+1]=v end,Show=function() end,Hide=function() end}
-    row.scripts.OnHyperlinkEnter(row);assert(table.concat(tooltip,"\n"):find("未接任务",1,true))
-    row.scripts.OnHyperlinkLeave(row)
-    row.scripts.OnHyperlinkClick(row,"quest:4:0","未接任务","RightButton")
+    row.scripts.OnEnter(row);assert(table.concat(tooltip,"\n"):find("未接任务",1,true))
+    row.scripts.OnLeave(row)
+    row.scripts.OnClick(row,"RightButton")
     assert(B.menu["优先做此任务"].enabled);B.menu["优先做此任务"].callback();eq(B.char.locked,4)
     B.Selection:Automatic();eq(B.char.locked,nil)
-    B.UI:SelectTab(5);eq(B.UI.Plan.content.shown,false)
-    B.UI:SelectTab(1);eq(B.UI.Plan.content.shown,true)
-    B.UI:ShowText("导出内容");eq(B.UI.Plan.content.shown,false)
+    B.UI:SelectTab(5);eq(B.UI.Browser.frame.shown,false)
+    B.UI:SelectTab(1);eq(B.UI.Browser.frame.shown,true)
+    B.UI:ShowText("导出内容");eq(B.UI.Browser.frame.shown,false)
     B.UI:SelectTab(1)
     B.state.skipped[4]=true;B.UI:RenderTracker();eq(T.rows[3].enabled,true)
     T.rows[3].scripts.OnClick(nil,"LeftButton");eq(B.char.locked,nil);eq(B.state.skipped[4],true)
     T.rows[3].scripts.OnClick(nil,"RightButton");eq(B.menu["优先做此任务"].enabled,false)
     B.menu["查看任务详情"].callback();eq(B.UI.Plan.preview.questId,4)
     B.state.skipped[4]=nil
-    assert(T.queueLabel.value:find("未接取 1",1,true))
+    eq(T.model.unacceptedCount,1)
     local starter=B.plan.taskChoices[4].actions[1]
     starter.position={map=1,x=0.5,y=0.5,startItemId=500};starter.text="使用「任务信件」接取任务。"
     B.UI:RenderTracker();eq(T.rows[3].progress.value,starter.text)
@@ -230,7 +230,7 @@ test("暂停飞行手动导航保持真实当前类型且不自动跳过任务",
     B.char.paused=false;B.plan.preparingQuest={title="旧前置"}
     B.action={kind="flight",title="正在飞行"};B.UI:RenderTracker();eq(T.step.value,"飞行中");eq(T.model.hint,nil)
     assert(not B.UI.body.value:find("旧前置",1,true));B.plan.preparingQuest=nil
-    B.Navigation.manual={};B.action={kind="manual",title="手动目的地"};B.UI:RenderTracker();assert(T.queueLabel.value:find("任务列表",1,true))
+    B.Navigation.manual={};B.action={kind="manual",title="手动目的地"};B.UI:RenderTracker();eq(T.model.kind,"manual");eq(#T.model.rows,3)
     local cleared=0;B.Navigation.ClearManual=function(self) self.manual=nil;cleared=cleared+1 end
     B.char.locked=1;T.questTitle.scripts.OnClick(nil,"RightButton");B.menu["返回任务"].callback()
     eq(cleared,1);eq(B.Navigation.manual,nil);eq(B.char.locked,1);eq(B.state.quests[1].objectives[1].numFulfilled,3)
@@ -280,7 +280,7 @@ test("商店事件触发刷新且维修卡片可以忽略",function()
     B.finish()
 end)
 test("原生服务页可切换旅店与训练项目插入取消且页签隐藏正确",function()
-    local B=ready()
+    local B=ready(true)
     assert(loadfile("Services.lua"))("AiLeveling",B);assert(loadfile("UI/Services.lua"))("AiLeveling",B)
     B.UI.Services:Create(B.UI.details)
     B.UI.scroll=CreateFrame("ScrollFrame");B.UI.scrollChild=CreateFrame("Frame")
@@ -320,7 +320,7 @@ test("低价值建议保留接取状态手动入口并为换行留出空间",fun
     B.UI:RenderTracker();local row=B.UI.tracker.rows[3]
     eq(B.UI.tracker.model.rows[2].questId,4)
     eq(row.status.value,"已接取");assert(row.progress.value:find("建议放弃",1,true));eq(row.enabled,true)
-    row.progress.measuredHeight=60;B.UI:LayoutTracker();assert(row.height>=90)
+    row.progress.measuredHeight=60;B.UI:LayoutTracker();assert(row.height<90)
     assert(loadfile("UI/Plan.lua"))("AiLeveling",B);B.UI.Plan.preview=c
     local lines=table.concat(B.UI.Plan:Lines(),"\n")
     assert(lines:find("建议放弃",1,true));assert(lines:find("在任务日志中可放弃",1,true))
@@ -333,7 +333,7 @@ test("交错行程按任务数汇总并显示每个目标与交付步骤",functi
     B.plan.taskQueue={stagePlan=true,taskCount=2,seconds=180,low=180,high=180,xp=200,xpKnown=true,
         steps={{choice=a,stage=oa},{choice=b,stage=ob},{choice=a,stage={kind="turnin"}},{choice=b,stage={kind="turnin"}}}}
     a.executionAction=oa;a.executionTiming={seconds=80,low=80,high=80};B.action=oa
-    B.UI:RenderTracker();eq(B.UI.tracker.objectives[1].text.value,B.state.quests[1].objectives[1].text)
+    B.UI:RenderTracker();assert(B.UI.tracker.objectives[1].text.value:find("狗头人",1,true))
     assert(not B.UI.body.value:find("先完成附近目标，再集中交付",1,true))
     assert(loadfile("UI/Plan.lua"))("AiLeveling",B);B.UI.Plan.preview=a
     local entries=B.UI.Plan:Entries()

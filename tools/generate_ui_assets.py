@@ -70,7 +70,18 @@ icon('target', (255, 255, 255, 255), lambda line, circle, poly: (
     line([(3, 16), (9, 16)]), line([(23, 16), (29, 16)]),
 ))
 
+icon('collect', (203, 188, 235, 255), lambda line, circle, poly: (
+    poly([(11, 5), (22, 5), (19, 11), (13, 11)]),
+    circle((7, 12, 26, 28), fill=(203, 188, 235, 255), outline=None),
+    line([(12, 11), (21, 11)], 2.2),
+))
+icon('location', (187, 203, 226, 255), lambda line, circle, poly: (
+    circle((7, 3, 25, 21), fill=(187, 203, 226, 255), outline=None),
+    poly([(8, 16), (16, 30), (24, 16)]),
+    circle((12, 8, 20, 16), fill=(32, 42, 57, 255), outline=None),
+))
+
 corner = Image.new('RGBA', (32*S, 32*S))
 ImageDraw.Draw(corner).ellipse((0, 0, 64*S-1, 64*S-1), fill='white')
 corner.resize((32, 32), Image.Resampling.LANCZOS).save(OUT / 'corner.tga')
-print('Generated 9 RGBA textures in Media/')
+print('Generated 11 RGBA textures in Media/')

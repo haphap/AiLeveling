@@ -52,8 +52,15 @@ local function widget(kind,parent)
     function w:SetJustifyH(value) self.justify=value end
     function w:SetShown(value) self.shown=value end;function w:IsShown() return self.shown end
     function w:Hide() self.shown=false end;function w:Show() self.shown=true end
+    function w:IsEnabled() return self.enabled~=false end
+    function w:Click() if self.enabled~=false and self.scripts and self.scripts.OnClick then self.scripts.OnClick(self,"LeftButton") end end
+    function w:SetParent(parent)
+        for i,child in ipairs(self.parent and self.parent.children or {}) do if child==self then table.remove(self.parent.children,i);break end end
+        self.parent=parent;parent.children[#parent.children+1]=self
+    end
     function w:SetMaxLines(value) self.maxLines=value end
-    function w:SetScript() end;function w:SetEnabled(value) self.enabled=value end
+    function w:SetNonSpaceWrap(value) self.nonSpaceWrap=value end
+    function w:SetScript(event,fn) self.scripts=self.scripts or {};self.scripts[event]=fn end;function w:SetEnabled(value) self.enabled=value end
     function w:SetScrollChild(child) self.scrollChild=child;child:SetPoint("TOPLEFT",self,"TOPLEFT",0,0) end
     function w:CreateTexture(_,layer) local n=widget("Texture",self);n.layer=layer;return n end
     function w:CreateFontString(_,layer) local n=widget("Text",self);n.layer=layer;return n end
@@ -62,13 +69,13 @@ local function widget(kind,parent)
     function w:SetStartPoint(point,relative,x,y) self.start={point=point,relative=relative,x=x,y=y} end
     function w:SetEndPoint(point,relative,x,y) self.finish={point=point,relative=relative,x=x,y=y} end
     for _,name in ipairs({"SetJustifyV","SetBackdrop","SetShadowColor","SetShadowOffset","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag","SetHyperlinksEnabled",
-        "RegisterForClicks","SetAttribute","SetScale","SetDesaturated","SetCooldown","Clear"}) do w[name]=function() end end
+        "SetFrameStrata","SetAlpha","SetVerticalScroll","SetFontObject","SetMultiLine","SetAutoFocus","SetMaxLetters","ClearFocus","SetFocus","HighlightText","RegisterForClicks","SetAttribute","SetScale","SetDesaturated","SetCooldown","Clear"}) do w[name]=function() end end
     return w
 end
 local dungeonPreview=arg[1]=="dungeon"
 local planPreview=arg[1]=="plan"
-local canvasWidth=dungeonPreview and 860 or planPreview and 700 or 560
-local canvasHeight=(dungeonPreview or planPreview) and 660 or 1100
+local canvasWidth=(dungeonPreview or planPreview) and 1080 or 560
+local canvasHeight=(dungeonPreview or planPreview) and 700 or 1100
 UIParent=widget("Root");UIParent:SetSize(canvasWidth,canvasHeight)
 CreateFrame=function(kind,_,parent) return widget(kind,parent) end
 if not dungeonPreview and not planPreview then
@@ -79,17 +86,20 @@ if not dungeonPreview and not planPreview then
     label:SetPoint("CENTER");label:SetText("小地图 · 对齐示意")
 end
 STANDARD_TEXT_FONT="preview"
+InCombatLockdown=function() return false end
+GameFontHighlight={}
+GameTooltip={Hide=function() end}
 C_Map={GetMapInfo=function() return {name="艾尔文森林"} end}
 RAID_CLASS_COLORS={PALADIN={r=0.96,g=0.55,b=0.73}}
 local A={settings={fontScale=1,density="normal",arrow=true,distanceUnits="meters"},char={},indexReady=true,
     state={class="PALADIN",level=8,xp=3200,maxXP=5040,position={map=1429},quests={
         [7]={title="狗头人的威胁",objectives={{text="消灭狗头人歹徒",numFulfilled=6,numRequired=10}}},
-        [33]={title="林中的群狼",objectives={{text="收集狼肉",numFulfilled=3,numRequired=8}}},
+        [33]={title="林中的群狼",objectives={{type="item",text="收集狼肉",numFulfilled=3,numRequired=8}}},
         [18]={title="矿工归来",ready=true,objectives={}},
-        [47]={title="把收集的金砂交给治安官",objectives={{numFulfilled=5,numRequired=10}}},
+        [47]={title="把收集的金砂交给治安官",objectives={{type="item",text="收集金砂",numFulfilled=5,numRequired=10}}},
     }},Selection={CanChoose=function() return true end}}
-if not dungeonPreview and arg[2]=="large" then A.settings.fontScale=1.2 end
-local action={kind="objective",questId=7,title="狗头人的威胁",text="清理矿洞外的狗头人，完成后返回北郡修道院。",position={map=1429,x=0.5,y=0.5}}
+if arg[2]=="large" then A.settings.fontScale=1.2 end
+local action={kind="objective",questId=7,title="狗头人的威胁",text="清理矿洞外的狗头人，完成后返回北郡修道院。",position={map=1429,x=0.5,y=0.5,entityName="北郡矿洞"}}
 assert(loadfile("Navigation.lua"))("AiLeveling",A)
 A.Navigation.Current=function() return action end
 A.plan={revision=1,unverified=true,taskChoices={},taskOrder={}}
@@ -107,7 +117,8 @@ end
 assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",A)
 A.plan.taskChoices[#A.plan.taskChoices+1]={lowValue={suggestion="建议跳过"},questId=62,title="西泉要塞的委托",kind="task",
     actions={{kind="accept",title="西泉要塞的委托"}}}
-A.plan.taskQueue={stagePlan=true}
+A.plan.taskQueue={stagePlan=true,steps={{choice=A.plan.taskChoices[1],stage=action}}}
+for _,choice in ipairs(A.plan.taskOrder) do A.plan.taskQueue.steps[#A.plan.taskQueue.steps+1]={choice=choice,stage=choice.stages[1]} end
 assert(loadfile("UI/Main.lua"))("AiLeveling",A)
 assert(loadfile("UI/Tracker.lua"))("AiLeveling",A)
 local anchors={TOPLEFT={0,0},TOP={0.5,0},TOPRIGHT={1,0},LEFT={0,0.5},CENTER={0.5,0.5},RIGHT={1,0.5},BOTTOMLEFT={0,1},BOTTOM={0.5,1},BOTTOMRIGHT={1,1}}
@@ -175,21 +186,7 @@ if dungeonPreview then
         selected="reference:389"
         A.state.items[272998]={id=272998,name="示例首领装备",usable=true,equipLoc="INVTYPE_HEAD",stats={ITEM_MOD_STRENGTH_SHORT=8}}
     end
-    local panel=A.UI:Panel(nil,UIParent,780,560);panel:SetPoint("TOPLEFT",40,-88)
-    local mark=panel:CreateTexture(nil,"ARTWORK");mark:SetTexture("Interface\\AddOns\\AiLeveling\\Media\\compass.tga")
-    mark:SetSize(28,28);mark:SetPoint("TOPLEFT",18,-12);mark:SetVertexColor(A.UI:Accent())
-    local title=A.UI:Text(panel,20);title:SetPoint("TOPLEFT",54,-16);title:SetText("AiLeveling · 副本任务")
-    local close=A.UI:Button(panel,"关闭",50,function() end);close:SetPoint("TOPRIGHT",-12,-12)
-    for i,label in ipairs({"行程","任务链","装备","副本","设置","数据","服务"}) do
-        local tab=A.UI:Button(panel,label,72,function() end);tab:SetPoint("TOPLEFT",16+(i-1)*78,-52)
-        if i==4 then local r,g,b=A.UI:Accent();tab:SetBackdropColor(r*0.24,g*0.24,b*0.24,1);tab.text:SetTextColor(r,g,b)
-        else tab:SetBackdropColor(0,0,0,0);tab.text:SetTextColor(0.74,0.79,0.86) end
-    end
-    A.UI.Dungeon:Create(panel);A.UI.Dungeon.selected=selected;A.UI.Dungeon:Refresh();A.UI.Dungeon.frame:Show()
-    local scroll=CreateFrame("ScrollFrame",nil,panel);scroll:SetPoint("TOPLEFT",18,-A.UI.Dungeon.bodyTop);scroll:SetSize(476,560-A.UI.Dungeon.bodyTop-18)
-    local child=CreateFrame("Frame",nil,scroll);child:SetSize(474,500);scroll:SetScrollChild(child)
-    local text=A.UI:Text(child,16,{0.97,0.98,1});text:SetPoint("TOPLEFT");text:SetWidth(466)
-    text:SetText(table.concat(A.UI.Dungeon:Lines(),"\n\n"))
+    A.previewTab=4;A.previewSelected=selected
 elseif planPreview then
     assert(loadfile("UI/Plan.lua"))("AiLeveling",A)
     A.state.revision=1
@@ -207,20 +204,9 @@ elseif planPreview then
     A.plan.best=A.plan.taskChoices[1]
     A.plan.taskQueue={taskCount=3,xpKnown=true,xp=3275,steps={}}
     for _,c in ipairs(A.plan.taskOrder) do A.plan.taskQueue.steps[#A.plan.taskQueue.steps+1]={choice=c,stage=c.actions[1]} end
-    local panel=A.UI:Panel(nil,UIParent,620,520);panel:SetPoint("TOPLEFT",40,-88)
-    local mark=panel:CreateTexture(nil,"ARTWORK");mark:SetTexture("Interface\\AddOns\\AiLeveling\\Media\\compass.tga")
-    mark:SetSize(28,28);mark:SetPoint("TOPLEFT",18,-12);mark:SetVertexColor(A.UI:Accent())
-    local title=A.UI:Text(panel,20);title:SetPoint("TOPLEFT",54,-16);title:SetText("AiLeveling · 任务行程")
-    local close=A.UI:Button(panel,"关闭",50,function() end);close:SetPoint("TOPRIGHT",-12,-12)
-    for i,label in ipairs({"行程","任务链","装备","副本","设置","数据","服务"}) do
-        local tab=A.UI:Button(panel,label,72,function() end);tab:SetPoint("TOPLEFT",16+(i-1)*78,-52)
-        if i==1 then local r,g,b=A.UI:Accent();tab:SetBackdropColor(r*0.24,g*0.24,b*0.24,1);tab.text:SetTextColor(r,g,b)
-        else tab:SetBackdropColor(0,0,0,0);tab.text:SetTextColor(0.74,0.79,0.86) end
-    end
-    A.UI.scroll=CreateFrame("ScrollFrame",nil,panel);A.UI.scroll:SetPoint("TOPLEFT",18,-178);A.UI.scroll:SetSize(566,324)
-    A.UI.scrollChild=CreateFrame("Frame",nil,A.UI.scroll);A.UI.scrollChild:SetSize(560,380);A.UI.scroll:SetScrollChild(A.UI.scrollChild)
-    A.UI.detailText=A.UI:Text(A.UI.scrollChild,16)
-    A.UI.Plan:Create(panel);A.UI.Plan:Refresh();A.UI.Plan.frame:Show();A.UI.Plan:Render()
+    A.Data={GetQuest=function(_,id) return {id=id,title=(A.state.quests[id] or {}).title} end}
+    A.previewTab=1
+
 else
 A.UI:CreateTracker();A.UI:RenderTracker();A.UI:SetTrackerNavigation(285,0.25,true)
 A.UI.navFrame:ClearAllPoints();A.UI.navFrame:SetPoint("TOP",A.UI.frame,"BOTTOM",0,-54)
@@ -239,6 +225,17 @@ if arg[1]=="assist" then
     A.UI:RenderTracker()
 end
 end
+if A.previewTab then
+    for _,file in ipairs({"Plan","Gear","Chains","Services","Browser"}) do assert(loadfile("UI/"..file..".lua"))("AiLeveling",A) end
+    if not A.UI.Dungeon then
+        A.UI.Dungeon={Create=function(self,parent) self.frame=CreateFrame("Frame",nil,parent);self.frame:Hide() end}
+    end
+    A.UI.Settings={Create=function(self,parent) self.frame=CreateFrame("Frame",nil,parent);self.frame:Hide() end}
+    A.settings.scale,A.settings.alpha=1,1
+    A.UI:Create();A.UI.frame:Hide();A.UI.details:Show();A.UI.details:ClearAllPoints();A.UI.details:SetPoint("TOPLEFT",40,-50)
+    A.UI.Dungeon.selected=A.previewSelected
+    A.UI:SelectTab(A.previewTab)
+end
 local function json(value)
     if type(value)=="string" then return '"'..value:gsub('[%z\1-\31\\"]',function(c) return string.format('\\u%04x',c:byte()) end)..'"' end
     if type(value)=="number" or type(value)=="boolean" then return tostring(value) end
@@ -254,7 +251,7 @@ local function visit(w,visible,clip)
     visible=visible and w.shown
     if not visible then return end
     local rect=box(w)
-    local record={kind=w.kind,rect=rect,text=w.value,size=w.size,color=w.color,background=w.background,border=w.border,justify=w.justify,maxLines=w.maxLines,clip=clip,layer=w.layer,texture=w.texture,uv=w.uv}
+    local record={kind=w.kind,rect=rect,text=w.value,size=w.size,color=w.color,background=w.background,border=w.border,justify=w.justify,maxLines=w.maxLines,nonSpaceWrap=w.nonSpaceWrap,clip=clip,layer=w.layer,texture=w.texture,uv=w.uv}
     if w.kind=="Line" then
         local function point(p)
             local r=box(p.relative);local a=anchors[p.point]

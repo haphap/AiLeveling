@@ -1,5 +1,5 @@
 ## Interface: 16001
-## Title: AiLeveling
+## Title: AILeveling
 ## Title-zhCN: AiLeveling 智能练级
 ## Notes-zhCN: 根据角色状态衔接任务、导航与任务物品。开发构建。
 ## Notes: Adaptive leveling assistant (development build).
@@ -63,3 +63,4 @@ UI/Chains.lua
 UI/Dungeon.lua
 UI/Gear.lua
 UI/Settings.lua
+UI/Browser.lua

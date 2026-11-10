@@ -11,7 +11,7 @@ local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
     for _,key in ipairs({"SetHyperlinksEnabled","SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag",
-        "RegisterForClicks","SetAllPoints","SetTexture","SetTexCoord","SetBlendMode","SetMaxLines","SetFontObject","SetMultiLine",
+        "RegisterForClicks","SetAllPoints","SetTexture","SetTexCoord","SetBlendMode","SetMaxLines","SetNonSpaceWrap","SetFontObject","SetMultiLine",
         "SetMaxLetters","SetShadowColor","SetShadowOffset","SetAutoFocus","ClearFocus","SetFocus","HighlightText","SetFrameStrata","SetCooldown","Clear"}) do w[key]=function() end end
     w.SetPoint=function(self,...) self.point={...} end
     w.GetPoint=function(self) return "CENTER",UIParent,"CENTER",25,-30 end
@@ -42,6 +42,8 @@ local function widget()
     w.Show=function(self) self.shown=true end;w.Hide=function(self) self.shown=false end
     w.SetShown=function(self,v) self.shown=v end;w.IsShown=function(self) return self.shown end
     w.SetEnabled=function(self,v) self.enabled=v end
+    w.IsEnabled=function(self) return self.enabled~=false end
+    w.Click=function(self) if self.enabled~=false and self.scripts.OnClick then self.scripts.OnClick(self,"LeftButton") end end
     w.GetChecked=function(self) return self.checked end;w.SetChecked=function(self,v) self.checked=v end
     w.SetAttribute=function(self,k,v) assert(not InCombatLockdown(),"战斗中修改了受保护按钮");self.attributeWrites=self.attributeWrites+1;self[k]=v end
     w.SetDesaturated=function() end
@@ -110,7 +112,7 @@ local function setup(fullUI)
     assert(loadfile("UI/Settings.lua"))("AiLeveling",B)
     local U=B.UI
     if fullUI then
-        for _,name in ipairs({"Dungeon","Gear","Plan","Chains","Services"}) do
+        for _,name in ipairs({"Dungeon","Gear","Plan","Chains","Services","Browser"}) do
             assert(loadfile("UI/"..name..".lua"))("AiLeveling",B)
         end
         U:Create()
@@ -136,7 +138,7 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     assert(B.UI.title:GetText()~="")
     B.UI:ToggleDetails()
     assert(B.UI.details:IsShown())
-    assert(B.UI.Plan.content:IsShown());assert(B.UI.Plan.cards[1].title:GetText()~="")
+    assert(B.UI.Browser.frame:IsShown());assert(B.UI.Browser.rows[1].text:GetText()~="")
     B.UI.frame.scripts.OnMouseUp(nil,"RightButton");B.menu["详细面板"].callback()
     eq(B.UI.details:IsShown(),false)
     B.menu["暂停引导"].callback();eq(B.char.paused,true)

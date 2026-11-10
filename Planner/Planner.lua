@@ -226,6 +226,64 @@ function P.TaskOrder(state,choices,data)
     return order
 end
 
+-- Region suggestions use the same eligible tasks and straight-line travel model.
+function P.TaskRegions(state,plan,data)
+    plan=plan or {}
+    local regions,byMap={},{}
+    for _,c in ipairs(plan.taskChoices or {}) do
+        local q=data:GetQuest(c.questId)
+        local level=c.level or q and q.questLevel or state.level
+        local action=c.actions and c.actions[1]
+        local map=q and q.zoneOrSort and data.maps and data.maps[q.zoneOrSort] or action and action.position and action.position.map
+        if map and level>=state.level-4 and level<=state.level+3 and not c.lowValue and not c.entryBlocked and
+            not (q and (q.requiredSkill or q.requiredRanks)) and not (state.quests[c.questId] or {}).ready then
+            local r=byMap[map]
+            if not r then
+                local info=C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(map)
+                r={map=map,title=info and info.name or "区域 #"..map,choices={},xp=0,unknownXP=0,
+                    minLevel=level,maxLevel=level,current=state.position and state.position.map==map}
+                byMap[map]=r;regions[#regions+1]=r
+            end
+            r.choices[#r.choices+1]=c;r.xp=r.xp+(c.remainingXP or 0)
+            if not c.remainingXP then r.unknownXP=r.unknownXP+1 end
+            r.minLevel=math.min(r.minLevel,level);r.maxLevel=math.max(r.maxLevel,level)
+        end
+    end
+    for _,r in ipairs(regions) do
+        table.sort(r.choices,function(a,b)
+            local at,bt=a.timing and a.timing.seconds,b.timing and b.timing.seconds
+            if at and bt and at~=bt then return at<bt end
+            if (at~=nil)~=(bt~=nil) then return at~=nil end
+            if (a.remainingXP or 0)~=(b.remainingXP or 0) then return (a.remainingXP or 0)>(b.remainingXP or 0) end
+            return a.questId<b.questId
+        end)
+        local origin=state.position
+        local total,known=0,true
+        for _,c in ipairs(r.choices) do
+            local timing=A.TaskGuide and A.TaskGuide.Timing(origin,c,state,A.Navigation)
+            if timing and timing.seconds then total=total+timing.seconds else known=false end
+            local last=c.stages and c.stages[#c.stages]
+            origin=last and last.position or origin
+            if not r.first and not c.requireCheck and c.actions and c.actions[1] and c.actions[1].position then r.first=c end
+        end
+        r.first=r.first or r.choices[1]
+        local point=r.first and r.first.actions and r.first.actions[1] and r.first.actions[1].position
+        if point and A.Flights then
+            local routes=A.Flights.Routes(state.position,point,state,A.Navigation)
+            r.seconds=routes and routes[1] and routes[1].seconds
+        elseif point and A.Travel then r.seconds=A.Travel.Walk(state.position,point,state,A.Navigation) end
+        r.travelSeconds=known and total or nil
+        r.rate=known and r.unknownXP==0 and A.TaskGuide.MovementRate(total,r.xp) or nil
+    end
+    table.sort(regions,function(a,b)
+        if a.rate and b.rate and a.rate~=b.rate then return a.rate>b.rate end
+        if (a.rate~=nil)~=(b.rate~=nil) then return a.rate~=nil end
+        if a.xp~=b.xp then return a.xp>b.xp end
+        return a.map<b.map
+    end)
+    return regions
+end
+
 function P.Build(state, data, options)
     if state.level >= 60 and (not state.dungeon or state.dungeon.phase=="complete") then return { revision = state.revision, complete = true, alternatives = {} } end
     local gearSource=state.gearTarget and A.Gear.GetSource and A.Gear.GetSource(state.gearTarget,data,state)
@@ -404,5 +462,6 @@ function P.Build(state, data, options)
             result.referenceJourney,result.referenceFlight=stop.referenceJourney,stop.referenceFlight
         end
     end
+    if not state.inInstance then result.regions=P.TaskRegions(state,result,data) end
     return result
 end

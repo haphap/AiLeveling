@@ -4,6 +4,7 @@ import argparse
 import csv
 import hashlib
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -66,6 +67,16 @@ def render():
         for qid, targets in sorted(areas.items(), key=lambda row: int(row[0])):
             pairs = ','.join(f'[{json.dumps(key)}]={area}' for key, area in sorted(targets.items()))
             lines.append(f'    [{qid}]={{{pairs}}},')
+    lines.append('}')
+    admission = json.loads((ROOT / 'docs/DUNGEON_ADMISSION.json').read_text())
+    lines.append('-- Client entrance minimums; distinct from recommended quest levels.')
+    lines.append('A.DungeonCatalog.entryLevels={')
+    for m in admission['maps']:
+        for difficulty in m['difficulties']:
+            record = difficulty['record']
+            match = re.search(r'至少(\d+)级', record.get('Message_lang', ''))
+            if record['DifficultyID'] == '1' and match:
+                lines.append(f'    [{m["mapId"]}]={match.group(1)},')
     lines.append('}')
     encounters = ROOT / '.dependencies/DungeonEncounter-1.60.1.70862-zhCN.csv'
     assert hashlib.sha256(encounters.read_bytes()).hexdigest() == '13c1a984836ccd90fc0adb56d7a52aeacab794b7276e836f30e18a80725e8677'
