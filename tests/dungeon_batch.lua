@@ -307,6 +307,12 @@ run("副本页显示当前任务行程及接取状态，状态过期不显示旧
     assert(text:find("入本前",1,true));assert(text:find("副本内",1,true));assert(text:find("出本后",1,true))
     B.plan.revision=6;text=table.concat(ui:Lines(),"\n")
     assert(not text:find("入本前",1,true))
+    local rows={};for _,row in ipairs(ui.tasks) do rows[row.id]=row end
+    assert(ui:TaskDirection(rows[2]):find("接取：任务区域 · 任务NPC",1,true))
+    assert(ui:TaskDirection(rows[1]):find("测试副本入口",1,true))
+    s.completed[3]=nil;s.quests[1]=nil
+    for _,row in ipairs(B.Dungeon.Tasks(B.Dungeon.Catalog(s,B.Content).ref,s,data)) do rows[row.id]=row end
+    assert(ui:TaskDirection(rows[1]):find("前置 · 接取：任务区域 · 任务NPC",1,true))
 end)
 run("已就绪成员不会在门外先交付，同收件人未完成成员继续入本",function()
     local B,s,data=fixture();s.completed[3]=true

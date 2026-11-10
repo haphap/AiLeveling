@@ -158,9 +158,16 @@ if dungeonPreview then
     A.state.items={[100]={id=100,name="示例任务奖励",usable=true,equipLoc="INVTYPE_HEAD",stats={ITEM_MOD_STRENGTH_SHORT=7}}}
     for _,quest in pairs(quests) do quest.taskFacts={level=quest.questLevel,xp={{1,1500}},rewards={}} end
     quests[166].taskFacts.rewards.choices={{id=100,count=1}}
-    A.Data={content=A.Content,GetQuest=function(_,id) return quests[id] end,
-        Target=function(_,q) return {map=1429,x=0.5,y=0.5,entityKind="npc",entityId=q.id,entityName="任务交付人"} end}
-    for _,file in ipairs({"State.lua","Data/Dungeons.lua","Planner/Eligibility.lua","Planner/Dungeon.lua","Planner/DungeonTasks.lua","Planner/Gear.lua","Planner/TaskGuide.lua","UI/Dungeon.lua"}) do
+    A.state.position={map=1453,x=0.5,y=0.5};A.state.runSpeed=7
+    C_Map.GetMapInfo=function(id) return {name=({[1453]="暴风城",[1436]="西部荒野",[9999]="死亡矿井"})[id] or "任务区域",mapType=id==9999 and 4 or 3} end
+    A.Navigation.Distance=function() return 1400 end
+    A.Data={content=A.Content,maps={[40]=1436,[1581]=9999},GetQuest=function(_,id) return quests[id] end,
+        Target=function(_,q,state)
+            local active=state.quests[q.id]
+            return {map=active and not active.ready and 9999 or 1453,x=0.6,y=0.5,entityKind="npc",entityId=q.id,
+                entityName=active and (active.ready and "示例交付人" or "副本目标") or "示例接取人"}
+        end}
+    for _,file in ipairs({"State.lua","Data/Dungeons.lua","Planner/Eligibility.lua","Planner/Travel.lua","Planner/Dungeon.lua","Planner/DungeonTasks.lua","Planner/Gear.lua","Planner/TaskGuide.lua","UI/Dungeon.lua"}) do
         assert(loadfile(file))("AiLeveling",A)
     end
     if arg[2]=="journey" then
@@ -240,12 +247,23 @@ if A.previewTab then
         local view=browser.dungeonDetail
         assert(view:IsShown() and not browser.detail:IsShown())
         assert(#view.rows==#browser.selected.tasks)
-        for i,task in ipairs(browser.selected.tasks) do
-            local row=view.rows[i]
-            assert(row.questId==task.id and row.text:GetText()==task.title)
+        local tasks={};for _,task in ipairs(browser.selected.tasks) do tasks[task.id]=task end
+        for _,row in ipairs(view.rows) do
+            assert(tasks[row.questId] and row.text:GetText()==tasks[row.questId].title)
             assert(row.status:GetText()~="")
         end
         assert(view.tasks:GetText():find(tostring(browser.selected.rewards.count),1,true))
+        if arg[2]~="loot" then
+            local pickup
+            for _,row in ipairs(view.rows) do if row.questId==168 then pickup=row end end
+            assert(view.rows[1]==pickup)
+            assert(pickup.route.text:GetText():find("接取：暴风城 · 示例接取人",1,true))
+            local navigate=A.Dungeon.ContinueTask
+            local chosen
+            A.Dungeon.ContinueTask=function(_,d,id) chosen=id;return true end
+            pickup.route:Click();assert(chosen==168)
+            A.Dungeon.ContinueTask=navigate
+        end
     end
 end
 local function json(value)

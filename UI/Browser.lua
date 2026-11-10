@@ -335,7 +335,7 @@ function B:Detail()
     elseif e.dungeon then
         A.UI.Dungeon.selected=e.key;A.UI.Dungeon:Refresh()
         local d=A.UI.Dungeon
-        self:Action(1,d.taskBatch.text:GetText(),function() d.taskBatch:Click() end,d.taskBatch:IsEnabled())
+        self:Action(1,A.char.taskBatch and A.char.taskBatch.id==e.key and "结束整组指引" or "开始整组指引",function() d.taskBatch:Click() end,d.taskBatch:IsEnabled())
         local batch=A.char.taskBatch
         if batch and batch.id==e.key then self:Action(2,d.ready.text:GetText(),function() d.ready:Click() end,d.ready:IsEnabled()) end
         self:Action(3,"副本控制…",function()
@@ -454,7 +454,11 @@ function B:DungeonDetail(e)
         view.tip[#view.tip+1]=line
     end
     local tones={colors.gold,colors.green,colors.blue,colors.muted,colors.muted}
-    for i,task in ipairs(e.tasks) do
+    local tasks={}
+    -- Put pickup prompts first without changing the planner's task order.
+    for _,task in ipairs(e.tasks) do if task.group==3 or task.preparation then tasks[#tasks+1]=task end end
+    for _,task in ipairs(e.tasks) do if task.group~=3 and not task.preparation then tasks[#tasks+1]=task end end
+    for i,task in ipairs(tasks) do
         local row=view.rows[i]
         if not row then
             row=A.UI:Button(view,"",326,function() end,14)
@@ -490,20 +494,48 @@ function B:DungeonDetail(e)
             view.rows[i]=row
         end
         row.task,row.questId=task,task.id
+        if not row.route then
+            row.route=A.UI:Button(row,"",302,function()
+                GameTooltip:Hide()
+                local ok,why=A.Dungeon:ContinueTask(self.selected.dungeon,row.questId)
+                self.message=not ok and why or nil;self:Refresh(self.mode)
+            end,12)
+            row.route.baseColor={0,0,0,0};row.route:SetBackdropColor(0,0,0,0)
+            row.route.text:ClearAllPoints();row.route.text:SetPoint("TOPLEFT");row.route.text:SetWidth(302)
+            row.route.text:SetMaxLines(2);row.route.text:SetJustifyH("LEFT");row.route.text:SetTextColor(unpack(colors.blue))
+            row.route:SetScript("OnEnter",function(f)
+                GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(row.direction or "任务指引")
+                GameTooltip:AddLine("点击单独导航；接取后继续引导任务目标。",0.9,0.85,0.8,true);GameTooltip:Show()
+            end)
+            row.route:SetScript("OnLeave",function() GameTooltip:Hide() end)
+        end
         row.deferred=(A.state.skipped or {})[task.id] or (A.state.chainDeferred or {})[task.id]
         row.revision=A.plan and A.plan.revision
         row.text:SetWidth(292-64*(A.settings.fontScale or 1));row.text:SetText(task.title);row.text:SetTextColor(unpack(colors.blue))
         row.icon:SetText(A.UI:Icon(task.group==1 and "turnin" or task.group==2 and "objective" or "accept",14))
         row.status:SetWidth(64*(A.settings.fontScale or 1));row.status:SetText(task.group==4 and (task.preparation and "需前置" or "未解锁") or task.status)
         row.status:SetTextColor(unpack(tones[task.group]))
+        local direction,seconds=d:TaskDirection(task)
+        row.direction=direction
         local meta={}
         if task.xp then meta[#meta+1]=color(gold,task.xp.." 经验") end
+        if seconds then meta[#meta+1]="路程 "..time(seconds) end
         if task.gear then meta[#meta+1]="装备提升" end
         if task.lowValue then meta[#meta+1]=task.lowValue.suggestion end
         row.meta:SetText(table.concat(meta," · "))
         local h=math.max(row.text:GetStringHeight(),row.status:GetStringHeight())+14
         row.meta:ClearAllPoints();row.meta:SetPoint("TOPLEFT",24,-h)
-        h=h+(#meta>0 and row.meta:GetStringHeight() or 0)+10
+        h=h+(#meta>0 and row.meta:GetStringHeight() or 0)+4
+        row.route:SetShown(direction~=nil)
+        local canGuide=A.Dungeon.CanContinueTask(task) and not A.refreshAt
+        row.route:SetEnabled(canGuide)
+        row.route.text:SetTextColor(unpack(canGuide and colors.blue or colors.muted))
+        if direction then
+            row.route.text:SetText(A.UI:Icon("location",12).." "..direction..(canGuide and "  ›" or ""))
+            row.route:ClearAllPoints();row.route:SetPoint("TOPLEFT",24,-h)
+            row.route:SetHeight(row.route.text:GetStringHeight()+4);h=h+row.route:GetHeight()
+        end
+        h=h+8
         row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y);row:SetSize(326,h);row:Show();y=y+h
     end
     for i=#e.tasks+1,#view.rows do view.rows[i]:Hide() end
