@@ -36,7 +36,7 @@ test("任务入口只接受当前对象并经原有锁定入口保存和实际�
     B.char.locked=99;s.locked=99;s.completed[99]=true
     B.Selection:Snapshot(s);eq(B.char.locked,nil);eq(s.locked,nil)
 end)
-test("任务行程页显示真实进度位置和导航入口且不输出零耗时方案",function()
+test("任务行程详情保留真实进度和副本目的地并去掉坐标",function()
     local s,d=fixture();s.quests[1]={title="进行中任务",objectives={{text="目标 1/3",finished=false}}}
     local B={Planner=A.Planner,UI={},char={},state=s,Navigation={Current=function() end}}
     assert(loadfile("UI/Main.lua"))("AiLeveling",B)
@@ -44,7 +44,7 @@ test("任务行程页显示真实进度位置和导航入口且不输出零耗�
     B.plan=plan(s,d);local rows=B.UI.Plan.Rows(B.plan);assert(#rows>0)
     B.UI.Plan.preview=rows[1]
     local text=table.concat(B.UI.Plan:Lines(),"\n")
-    assert(text:find("目标 1/3",1,true));assert(text:find("10.0, 50.0",1,true))
+    assert(text:find("目标 1/3",1,true));assert(not text:find("10.0, 50.0",1,true))
     assert(not text:find("预计 0.0",1,true));assert(text:find("任务日志",1,true))
     B.Dungeon={TaskInstance=function(_,_,_,area) if area==96 then return {title="测试副本"} end end}
     B.UI.Plan.preview.stages={{kind="objective",text="收集目标",areaId=96},{kind="turnin",text="返回交付",position={map=1,x=0.1,y=0.2}}}

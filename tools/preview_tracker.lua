@@ -1,7 +1,7 @@
 -- Executes the actual tracker UI on a small native-widget mock. Example data, never game state.
 local nodes={}
 local box,boxes
-local function clean(s) return (s or ""):gsub("|c%x%x%x%x%x%x%x%x",""):gsub("|r",""):gsub("|T.-|t","　") end
+local function clean(s) return (s or ""):gsub("|c%x%x%x%x%x%x%x%x",""):gsub("|r",""):gsub("|T.-|t","　"):gsub("|H.-|h(.-)|h","%1") end
 local function width(s,size)
     local total=0
     for c in clean(s):gmatch("[%z\1-\127\194-\244][\128-\191]*") do total=total+(#c>1 and size or size*0.55) end
@@ -41,7 +41,7 @@ local function widget(kind,parent)
                 used=used+length
             end
         end
-        return count*(self.size+4)
+        return (self.maxLines and self.maxLines>0 and math.min(count,self.maxLines) or count)*(self.size+4)
     end
     function w:SetTextColor(...) self.color={...} end;w.SetColorTexture=w.SetTextColor
     w.SetVertexColor=w.SetTextColor
@@ -52,6 +52,7 @@ local function widget(kind,parent)
     function w:SetJustifyH(value) self.justify=value end
     function w:SetShown(value) self.shown=value end;function w:IsShown() return self.shown end
     function w:Hide() self.shown=false end;function w:Show() self.shown=true end
+    function w:SetMaxLines(value) self.maxLines=value end
     function w:SetScript() end;function w:SetEnabled(value) self.enabled=value end
     function w:SetScrollChild(child) self.scrollChild=child;child:SetPoint("TOPLEFT",self,"TOPLEFT",0,0) end
     function w:CreateTexture(_,layer) local n=widget("Texture",self);n.layer=layer;return n end
@@ -60,16 +61,17 @@ local function widget(kind,parent)
     function w:SetThickness(value) self.thickness=value end
     function w:SetStartPoint(point,relative,x,y) self.start={point=point,relative=relative,x=x,y=y} end
     function w:SetEndPoint(point,relative,x,y) self.finish={point=point,relative=relative,x=x,y=y} end
-    for _,name in ipairs({"SetJustifyV","SetBackdrop","SetShadowColor","SetShadowOffset","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag","SetMaxLines",
+    for _,name in ipairs({"SetJustifyV","SetBackdrop","SetShadowColor","SetShadowOffset","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag","SetHyperlinksEnabled",
         "RegisterForClicks","SetAttribute","SetScale","SetDesaturated","SetCooldown","Clear"}) do w[name]=function() end end
     return w
 end
 local dungeonPreview=arg[1]=="dungeon"
-local canvasWidth=dungeonPreview and 860 or 560
-local canvasHeight=dungeonPreview and 700 or 1100
+local planPreview=arg[1]=="plan"
+local canvasWidth=dungeonPreview and 860 or planPreview and 700 or 560
+local canvasHeight=(dungeonPreview or planPreview) and 660 or 1100
 UIParent=widget("Root");UIParent:SetSize(canvasWidth,canvasHeight)
 CreateFrame=function(kind,_,parent) return widget(kind,parent) end
-if not dungeonPreview then
+if not dungeonPreview and not planPreview then
     MinimapCluster=widget("Frame",UIParent);MinimapCluster:SetSize(280,160)
     MinimapCluster:SetPoint("TOPRIGHT",UIParent,"TOPRIGHT",-100,-88)
     MinimapCluster:SetBackdropColor(0.1,0.18,0.18,0.6)
@@ -188,6 +190,37 @@ if dungeonPreview then
     local child=CreateFrame("Frame",nil,scroll);child:SetSize(474,500);scroll:SetScrollChild(child)
     local text=A.UI:Text(child,16,{0.97,0.98,1});text:SetPoint("TOPLEFT");text:SetWidth(466)
     text:SetText(table.concat(A.UI.Dungeon:Lines(),"\n\n"))
+elseif planPreview then
+    assert(loadfile("UI/Plan.lua"))("AiLeveling",A)
+    A.state.revision=1
+    A.state.quests={
+        [7]={title="西部荒野人民军",objectives={{text="迪菲亚抢劫者 8/15",numFulfilled=8,numRequired=15}}},
+        [18]={title="迪菲亚兄弟会",ready=true,objectives={}},
+        [33]={title="雷矛的包裹",ready=true,objectives={}}}
+    A.plan.taskChoices={};A.plan.taskOrder={}
+    for i,id in ipairs({7,18,33}) do
+        local q=A.state.quests[id]
+        local stage={kind=q.ready and "turnin" or "objective",questId=id,position={entityKind="npc",entityId=id==33 and 200 or 100,entityName=id==33 and "巡山人卡尔·雷矛" or "格里安·斯托曼"}}
+        local c={id="task:"..id,questId=id,title=q.title,kind="task",actions={stage},stages={{kind="turnin",position=stage.position}},remainingXP=({975,1350,950})[i],timing={seconds=({85,52,174})[i]}}
+        A.plan.taskChoices[i]=c;A.plan.taskOrder[i]=c
+    end
+    A.plan.best=A.plan.taskChoices[1]
+    A.plan.taskQueue={taskCount=3,xpKnown=true,xp=3275,steps={}}
+    for _,c in ipairs(A.plan.taskOrder) do A.plan.taskQueue.steps[#A.plan.taskQueue.steps+1]={choice=c,stage=c.actions[1]} end
+    local panel=A.UI:Panel(nil,UIParent,620,520);panel:SetPoint("TOPLEFT",40,-88)
+    local mark=panel:CreateTexture(nil,"ARTWORK");mark:SetTexture("Interface\\AddOns\\AiLeveling\\Media\\compass.tga")
+    mark:SetSize(28,28);mark:SetPoint("TOPLEFT",18,-12);mark:SetVertexColor(A.UI:Accent())
+    local title=A.UI:Text(panel,20);title:SetPoint("TOPLEFT",54,-16);title:SetText("AiLeveling · 任务行程")
+    local close=A.UI:Button(panel,"关闭",50,function() end);close:SetPoint("TOPRIGHT",-12,-12)
+    for i,label in ipairs({"行程","任务链","装备","副本","设置","数据","服务"}) do
+        local tab=A.UI:Button(panel,label,72,function() end);tab:SetPoint("TOPLEFT",16+(i-1)*78,-52)
+        if i==1 then local r,g,b=A.UI:Accent();tab:SetBackdropColor(r*0.24,g*0.24,b*0.24,1);tab.text:SetTextColor(r,g,b)
+        else tab:SetBackdropColor(0,0,0,0);tab.text:SetTextColor(0.74,0.79,0.86) end
+    end
+    A.UI.scroll=CreateFrame("ScrollFrame",nil,panel);A.UI.scroll:SetPoint("TOPLEFT",18,-178);A.UI.scroll:SetSize(566,324)
+    A.UI.scrollChild=CreateFrame("Frame",nil,A.UI.scroll);A.UI.scrollChild:SetSize(560,380);A.UI.scroll:SetScrollChild(A.UI.scrollChild)
+    A.UI.detailText=A.UI:Text(A.UI.scrollChild,16)
+    A.UI.Plan:Create(panel);A.UI.Plan:Refresh();A.UI.Plan.frame:Show();A.UI.Plan:Render()
 else
 A.UI:CreateTracker();A.UI:RenderTracker();A.UI:SetTrackerNavigation(285,0.25,true)
 A.UI.navFrame:ClearAllPoints();A.UI.navFrame:SetPoint("TOP",A.UI.frame,"BOTTOM",0,-54)
@@ -221,7 +254,7 @@ local function visit(w,visible,clip)
     visible=visible and w.shown
     if not visible then return end
     local rect=box(w)
-    local record={kind=w.kind,rect=rect,text=w.value,size=w.size,color=w.color,background=w.background,border=w.border,justify=w.justify,clip=clip,layer=w.layer,texture=w.texture,uv=w.uv}
+    local record={kind=w.kind,rect=rect,text=w.value,size=w.size,color=w.color,background=w.background,border=w.border,justify=w.justify,maxLines=w.maxLines,clip=clip,layer=w.layer,texture=w.texture,uv=w.uv}
     if w.kind=="Line" then
         local function point(p)
             local r=box(p.relative);local a=anchors[p.point]

@@ -13,7 +13,7 @@ FONT = '/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc'
 
 
 def main():
-    mode = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] in ('dungeon', 'assist') else 'tracker'
+    mode = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] in ('dungeon', 'assist', 'plan') else 'tracker'
     blocked = mode == 'dungeon' and 'entry-blocked' in sys.argv[2:]
     journey = mode == 'dungeon' and 'journey' in sys.argv[2:]
     loot = mode == 'dungeon' and 'loot' in sys.argv[2:]
@@ -65,7 +65,7 @@ def main():
             font = ImageFont.truetype(FONT, max(1, round(row['size'] * SCALE)))
             lines, line_width = [[]], 0
             ink = color(row.get('color'))
-            for token in re.split(r'(\|c[0-9a-fA-F]{8}|\|r|\|T[^|]+\|t)', row['text']):
+            for token in re.split(r'(\|c[0-9a-fA-F]{8}|\|r|\|T[^|]+\|t)', re.sub(r'\|H[^|]+\|h(.*?)\|h', r'\1', row['text'])):
                 if token.startswith('|c'):
                     ink = tuple(int(token[i:i+2], 16) for i in (4, 6, 8, 2))
                     continue
@@ -84,7 +84,7 @@ def main():
                     if char != '\n':
                         lines[-1].append((char, ink, advance))
                         line_width += advance
-            for i, line in enumerate(lines):
+            for i, line in enumerate(lines[:row.get('maxLines') or len(lines)]):
                 xx = x
                 line_width = sum(glyph[2] for glyph in line)
                 if row.get('justify') == 'RIGHT':

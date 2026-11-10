@@ -35,7 +35,7 @@ test("同NPC任务连续显示整组真实进度并保持行宽与点击",functi
     B.state.quests[1].ready=true;B.UI:RenderTracker()
     eq(T.rows[1].group.value,"治安官 · 已完成 2/2");eq(T.rows[1].progress.value,"一起交给治安官（2项）")
     assert(loadfile("UI/Plan.lua"))("AiLeveling",B)
-    local lines=table.concat(B.UI.Plan:Lines(),"\n");assert(lines:find("集中交付 · 治安官 · 已完成 2/2",1,true))
+    local found=false;for _,entry in ipairs(B.UI.Plan:Entries()) do if entry.title=="集中交付 · 治安官 · 已完成 2/2" then found=true end end;assert(found)
     B.state.quests[3]=nil;B.UI:RenderTracker();eq(T.rows[1].group.shown,false)
     B.finish()
 end)
@@ -71,7 +71,7 @@ test("受持有上限限制时仍按NPC归组并提示先交付已备齐任务",
     eq(model.rows[2].progress,"等待前项交付后再收集")
     eq(model.rows[1].groupTitle,"收件人 · 已完成 1/2")
     assert(loadfile("UI/Plan.lua"))("AiLeveling",B)
-    assert(table.concat(B.UI.Plan:Lines(),"\n"):find("分批交付 · 收件人",1,true))
+    local found=false;for _,entry in ipairs(B.UI.Plan:Entries()) do if entry.title:find("分批交付 · 收件人",1,true) then found=true end end;assert(found)
     B.action.kind="objective";B.action.targetId=18250;B.action.itemGain=1;B.state.bags[18250]=0
     B.UI:RenderTracker();model=B.UI.tracker.model;eq(model.objectives[#model.objectives].need,1)
     B.finish()
@@ -141,6 +141,23 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     eq(T.model.acceptedCount,2);eq(T.model.unacceptedCount,1)
     T.rows[3].scripts.OnClick(nil,"LeftButton")
     eq(B.UI.Plan.preview.questId,4);eq(B.UI.details.shown,true);eq(B.char.locked,nil)
+    local row
+    for _,card in ipairs(B.UI.Plan.cards) do if card.questId==4 then row=card end end
+    assert(row.title.value:find("|Hquest:4:0|h",1,true))
+    row.scripts.OnHyperlinkClick(row,"quest:4:0","未接任务","LeftButton")
+    eq(B.UI.Plan.preview.questId,4);eq(B.char.locked,nil)
+    local tooltip={}
+    GameTooltip={SetOwner=function() end,SetText=function(_,v) tooltip[#tooltip+1]=v end,
+        AddLine=function(_,v) tooltip[#tooltip+1]=v end,Show=function() end,Hide=function() end}
+    row.scripts.OnHyperlinkEnter(row);assert(table.concat(tooltip,"\n"):find("未接任务",1,true))
+    row.scripts.OnHyperlinkLeave(row)
+    row.scripts.OnHyperlinkClick(row,"quest:4:0","未接任务","RightButton")
+    assert(B.menu["优先做此任务"].enabled);B.menu["优先做此任务"].callback();eq(B.char.locked,4)
+    B.Selection:Automatic();eq(B.char.locked,nil)
+    B.UI:SelectTab(5);eq(B.UI.Plan.content.shown,false)
+    B.UI:SelectTab(1);eq(B.UI.Plan.content.shown,true)
+    B.UI:ShowText("导出内容");eq(B.UI.Plan.content.shown,false)
+    B.UI:SelectTab(1)
     B.state.skipped[4]=true;B.UI:RenderTracker();eq(T.rows[3].enabled,true)
     T.rows[3].scripts.OnClick(nil,"LeftButton");eq(B.char.locked,nil);eq(B.state.skipped[4],true)
     T.rows[3].scripts.OnClick(nil,"RightButton");eq(B.menu["优先做此任务"].enabled,false)
@@ -296,10 +313,11 @@ test("交错行程按任务数汇总并显示每个目标与交付步骤",functi
     B.UI:RenderTracker();eq(B.UI.tracker.objectives[1].text.value,B.state.quests[1].objectives[1].text)
     assert(not B.UI.body.value:find("先完成附近目标，再集中交付",1,true))
     assert(loadfile("UI/Plan.lua"))("AiLeveling",B);B.UI.Plan.preview=a
-    local text=table.concat(B.UI.Plan:Lines(),"\n")
-    assert(text:find("本次行程 · 2 项任务",1,true))
-    assert(text:find("01  完成目标",1,true));assert(text:find("04  交付",1,true))
-    assert(not text:find("估时",1,true));eq(B.state.quests[3].ready,nil)
+    local entries=B.UI.Plan:Entries()
+    eq(entries[1].title,"本次行程 · 2 项任务")
+    eq(entries[2].icon,"objective");eq(entries[2].detail,"目标甲")
+    eq(entries[5].icon,"turnin");eq(entries[5].choice,b)
+    eq(B.state.quests[3].ready,nil)
     B.finish()
 end)
 

@@ -198,6 +198,7 @@ function UI:ShowText(text)
     self.Dungeon.frame:Hide()
     self.Gear.frame:Hide()
     self.Plan.frame:Hide()
+    if self.Plan.content then self.Plan.content:Hide() end
     self.Chains.frame:Hide()
     self.Services.frame:Hide()
     self.scroll:SetPoint("TOPLEFT",18,-96)
@@ -231,6 +232,7 @@ function UI:SelectTab(index)
     self.Dungeon.frame:SetShown(index==4)
     self.Gear.frame:SetShown(index==3)
     self.Plan.frame:SetShown(index==1)
+    if self.Plan.content then self.Plan.content:SetShown(index==1) end
     self.Chains.frame:SetShown(index==2)
     self.Services.frame:SetShown(index==7)
     self.scroll:SetPoint("TOPLEFT",18,index==4 and -314 or (index==3 or index==1 or index==7) and -178 or -96)
@@ -239,7 +241,7 @@ function UI:SelectTab(index)
     local lines = {}
     if index == 1 then
         self.Plan:Refresh()
-        lines=self.Plan:Lines()
+        self.Plan:Render();return
     elseif index == 3 then
         lines=self.Gear:Lines()
     elseif index == 4 then

@@ -25,7 +25,7 @@ function UI:Create(parent)
     self.previous=A.UI:Button(self.frame,"上一方案",88,function() self:Move(-1) end)
     self.previous:SetPoint("TOPLEFT")
     self.label=A.UI:Text(self.frame,12)
-    self.label:SetPoint("TOPLEFT",100,-7);self.label:SetWidth(358)
+    self.label:SetPoint("TOPLEFT",100,-7);self.label:SetWidth(360)
     self.next=A.UI:Button(self.frame,"下一方案",88,function() self:Move(1) end)
     self.next:SetPoint("TOPLEFT",474,0)
     self.choose=A.UI:Button(self.frame,"选择任务",200,function()
@@ -50,6 +50,169 @@ function UI:Create(parent)
     end)
     self.recalculate:SetPoint("TOPLEFT",390,-36)
     self.frame:Hide()
+end
+
+local tones={accept="8cccff",objective="8cf2b8",turnin="ffd473",muted="b4c1cd"}
+local verbs={accept="接取",objective="完成目标",turnin="交付"}
+local function tint(color,text) return "|cff"..color..text.."|r" end
+local function link(id,title) return "|Hquest:"..id..":0|h["..title.."]|h" end
+
+function UI:Entries()
+    local plan,state=A.plan or {},A.state or {}
+    local entries,seen={},{}
+    local queue=plan.taskQueue
+    local fresh=not plan.revision or plan.revision==state.revision
+    local function heading(title,detail)
+        entries[#entries+1]={title=title,detail=detail,heading=true}
+    end
+    local function task(choice,stage,number)
+        local id=choice.questId
+        local status=A.UI.QuestStatus(state,id,plan)
+        if status=="已交付" then return end
+        local active=(state.quests or {})[id]
+        local kind=stage and stage.kind or (status=="未接取" and "accept" or status=="可交付" and "turnin" or "objective")
+        local color=tones[status=="未接取" and "accept" or status=="可交付" and "turnin" or "objective"]
+        local deferred=(state.skipped or {})[id] or (state.chainDeferred or {})[id]
+        local title=active and active.title or choice.title or ("任务 #"..id)
+        local detail
+        if kind=="objective" then
+            detail=stage and stage.text
+            for _,objective in ipairs(active and active.objectives or {}) do
+                if not detail and not objective.finished and objective.text then detail=objective.text;break end
+            end
+        end
+        local action=stage or choice.executionAction or (choice.actions or {})[1]
+        local point=action and (action.recipient or action.position)
+        detail=detail or point and point.entityName
+        if not detail and kind=="turnin" then
+            local last=choice.stages and choice.stages[#choice.stages]
+            local recipient=last and (last.recipient or last.position)
+            detail=recipient and recipient.entityName
+        end
+        if choice.lowValue then detail=choice.lowValue.suggestion
+        elseif choice.acceptBlocked then detail=choice.acceptBlocked
+        elseif choice.entryBlocked then detail=choice.entryBlocked end
+        local timing=choice.executionTiming or choice.timing
+        local metrics={}
+        if choice.remainingXP then metrics[#metrics+1]=A.UI:Icon("xp",14).." "..tint(tones.turnin,string.format("%.0f",choice.remainingXP)) end
+        if timing and timing.seconds then
+            local seconds=math.ceil(timing.seconds)
+            metrics[#metrics+1]=tint(tones.muted,string.format("路程 %d分%02d秒",math.floor(seconds/60),seconds%60))
+        end
+        entries[#entries+1]={title=(number and tint(tones.muted,string.format("%02d  ",number)) or "")..tint(color,link(id,title)),detail=detail,
+            status=tint(deferred and tones.muted or color,deferred and "已暂缓" or status),
+            icon=tones[kind] and kind or "objective",metrics=table.concat(metrics,"  "),choice=choice}
+        seen[id]=true
+    end
+    if not fresh then heading("正在更新行程")
+    else
+        local count=queue and queue.taskCount or #(plan.taskOrder or {})
+        heading("本次行程 · "..count.." 项任务",queue and queue.xpKnown and (A.UI:Icon("xp",16).." "..tint(tones.turnin,string.format("交付经验 %.0f",queue.xp))) or nil)
+        for i,step in ipairs(queue and queue.steps or {}) do task(step.choice,step.stage,i) end
+        if not queue or not queue.steps or #queue.steps==0 then
+            for i,choice in ipairs(plan.taskOrder or {}) do task(choice,nil,i) end
+        end
+    end
+    local groups=A.TaskGuide and A.TaskGuide.DeliveryGroups(plan.taskChoices,state,plan.taskOrder) or {}
+    for _,group in ipairs(groups) do
+        heading(string.format("%s · %s · 已完成 %d/%d",group.splitDelivery and "分批交付" or "集中交付",group.title,group.ready,#group.choices),
+            group.splitDelivery and "先交已备齐任务" or group.ready==#group.choices and "现在一起交" or "做完同组剩余任务再一起交")
+    end
+    local other=false
+    for _,choice in ipairs(plan.taskChoices or {}) do
+        if not seen[choice.questId] and (state.quests or {})[choice.questId] then
+            if not other then heading("其他已接任务");other=true end
+            task(choice)
+        end
+    end
+    local missing={}
+    for id in pairs(state.quests or {}) do if not seen[id] then missing[#missing+1]=id end end
+    table.sort(missing)
+    for _,id in ipairs(missing) do
+        if not other then heading("其他已接任务");other=true end
+        task({id="task:"..id,questId=id,kind="task",title=state.quests[id].title,actions={}})
+    end
+    local candidate=self.preview
+    if candidate and candidate.questId and not seen[candidate.questId] and A.UI.QuestStatus(state,candidate.questId,plan)~="已交付" then
+        task(candidate)
+        local selected=table.remove(entries)
+        table.insert(entries,1,selected);table.insert(entries,1,{title="选中任务",heading=true})
+    elseif candidate and candidate.kind~="task" then
+        local detail=candidate.requiresAcceptance and "接受后开始副本行程" or "本轮副本行程进行中"
+        if candidate.requiresAcceptance and candidate.xp then detail=detail..string.format(" · 经验 %.0f",candidate.xp) end
+        heading(candidate.title,detail)
+    end
+    if A.char.paused then heading("引导已暂停") end
+    if A.Navigation.manual then heading("正在导航到手动目的地") end
+    local message=self.message or plan.selectionBlocked or self.blocked
+    if message and not plan.complete then heading(message) end
+    if not candidate and #entries==1 then
+        heading(plan.complete and "升级目标已完成" or plan.sessionActive and "副本行程进行中 · 在副本页查看" or "当前暂无推荐任务")
+    end
+    return entries
+end
+
+function UI:Render()
+    if not self.content then
+        self.content=CreateFrame("Frame",nil,A.UI.scrollChild)
+        self.content:SetPoint("TOPLEFT");self.content:SetWidth(552)
+        self.cards={}
+    end
+    self.content:Show();A.UI.detailText:Hide()
+    for _,row in ipairs(self.cards) do row:Hide() end
+    local y,scale=0,A.settings.fontScale or 1
+    for i,entry in ipairs(self:Entries()) do
+        local row=self.cards[i]
+        if not row then
+            row=CreateFrame("Frame",nil,self.content);row:SetWidth(552);row:EnableMouse(true);A.UI:Rounded(row,7)
+            row:SetHyperlinksEnabled(true)
+            row.title=A.UI:Text(row,16,{0.97,0.98,1});row.title:SetPoint("TOPLEFT",34,-8);row.title:SetWidth(398)
+            row.status=A.UI:Text(row,12);row.status:SetPoint("TOPRIGHT",-4,-10);row.status:SetWidth(110);row.status:SetJustifyH("RIGHT")
+            row.detail=A.UI:Text(row,13,{0.78,0.84,0.89});row.detail:SetWidth(250)
+            row.metrics=A.UI:Text(row,13);row.metrics:SetWidth(248);row.metrics:SetJustifyH("RIGHT")
+            row.icon=A.UI:Text(row,16);row.icon:SetPoint("TOPLEFT",0,-8)
+            row.line=row:CreateTexture(nil,"BACKGROUND");row.line:SetColorTexture(0.6,0.7,0.8,0.12)
+            row.line:SetPoint("BOTTOMLEFT");row.line:SetPoint("BOTTOMRIGHT");row.line:SetHeight(1)
+            row:SetScript("OnHyperlinkClick",function(f,_,_,button)
+                if button=="RightButton" then A.UI:TrackerMenu(f)
+                else
+                    self.key=UI.Key(f.candidate);self.message=nil
+                    A.UI:QuestClick(f.questId,button)
+                    A.UI:SelectTab(1)
+                end
+            end)
+            row:SetScript("OnHyperlinkEnter",function(f)
+                GameTooltip:SetOwner(f,"ANCHOR_RIGHT")
+                GameTooltip:SetText(f.candidate.title or "任务详情")
+                GameTooltip:AddLine(verbs[f.stepKind] or "任务",1,0.83,0.45)
+                for n,line in ipairs(self:Lines(f.candidate)) do if n>1 then GameTooltip:AddLine(line,0.9,0.94,1,true) end end
+                GameTooltip:AddLine("左键：任务详情  ·  右键：任务操作",1,0.83,0.45,true);GameTooltip:Show()
+            end)
+            row:SetScript("OnHyperlinkLeave",function() GameTooltip:Hide() end)
+            row:SetScript("OnHide",function() GameTooltip:Hide() end)
+            self.cards[i]=row
+        end
+        row.candidate,row.questId,row.revision=entry.choice,entry.choice and entry.choice.questId,A.plan and A.plan.revision
+        row.stepKind=entry.icon
+        row.deferred=row.questId and ((A.state.skipped or {})[row.questId] or (A.state.chainDeferred or {})[row.questId])
+        local r,g,b=A.UI:Accent()
+        row:SetBackdropColor(r*0.2,g*0.2,b*0.2,entry.choice and entry.choice==self.preview and 0.6 or 0)
+        row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y)
+        row.title:ClearAllPoints();row.title:SetPoint("TOPLEFT",entry.heading and 0 or 34,-8)
+        row.title:SetWidth(entry.heading and 552 or 424-100*scale)
+        row.title:SetText(entry.title)
+        if entry.heading then row.title:SetTextColor(A.UI:Accent()) else row.title:SetTextColor(0.97,0.98,1) end
+        row.icon:SetText(entry.icon and A.UI:Icon(entry.icon,20) or "")
+        row.status:SetText(entry.status or "")
+        local top=math.max(row.title:GetStringHeight(),20*scale)+14
+        row.detail:ClearAllPoints();row.detail:SetPoint("TOPLEFT",entry.heading and 0 or 34,-top)
+        row.detail:SetWidth(entry.heading and 552 or 250);row.detail:SetMaxLines(entry.heading and 0 or 1);row.detail:SetText(entry.detail or "")
+        row.metrics:ClearAllPoints();row.metrics:SetPoint("TOPRIGHT",-4,-top);row.metrics:SetText(entry.metrics or "")
+        local bottom=math.max(entry.detail and row.detail:GetStringHeight() or 0,entry.metrics and entry.metrics~="" and row.metrics:GetStringHeight() or 0)
+        row:SetHeight(top+bottom+12);row.line:SetShown(not entry.heading);row:Show()
+        y=y+row:GetHeight()+4
+    end
+    self.content:SetHeight(y);A.UI.scrollChild:SetHeight(math.max(1,y))
 end
 
 function UI:Move(delta)
@@ -83,80 +246,21 @@ function UI:Refresh()
         not A.refreshAt and not (A.Transport and A.Transport:InFlight()) then A:Replan() end
 end
 
-local function ongoing(candidate)
-    return candidate and candidate.kind=="dungeon" and not candidate.requiresAcceptance and (candidate.seconds or 0)<=0
-end
-
-local function breakdown(candidate)
-    local walking,transport,execution=0,0,0
-    for _,action in ipairs(candidate.actions or {}) do
-        if action.kind=="move" then walking=walking+(action.travelSeconds or action.seconds or 0)
-        elseif action.kind=="transit" then transport=transport+(action.travelSeconds or 0)
-        else execution=execution+(action.seconds or 0) end
-    end
-    return walking,transport,execution,math.max(0,(candidate.seconds or 0)-walking-transport-execution)
-end
-
-function UI:Lines()
-    local plan,candidate=A.plan or {},self.preview
-    if candidate and candidate.questId and A.UI.QuestStatus(A.state or {},candidate.questId,plan)=="已交付" then candidate=nil end
-    local lines={}
-    local groups=A.TaskGuide and A.TaskGuide.DeliveryGroups(plan.taskChoices,A.state or {},plan.taskOrder) or {}
-    for _,group in ipairs(groups) do
-        lines[#lines+1]=string.format("%s · %s · 已完成 %d/%d",group.splitDelivery and "分批交付" or "集中交付",group.title,group.ready,#group.choices)
-        lines[#lines+1]=group.splitDelivery and "物品持有上限限制，先交付已备齐任务，再继续收集。" or group.ready==#group.choices and "整组已完成，一次交付。" or "先完成同组剩余目标，再一起返回交付。"
-        for _,choice in ipairs(group.choices) do
-            lines[#lines+1]="  ["..A.UI.QuestStatus(A.state,choice.questId,plan).."] "..(choice.title or ("任务 #"..choice.questId))
-        end
-    end
-    if plan.taskQueue and (not plan.revision or plan.revision==(A.state or {}).revision) then
-        local queue=plan.taskQueue
-        lines[#lines+1]=string.format("本次行程 · %d 项任务",queue.taskCount or #queue.steps)
-        if queue.stagePlan then
-            lines[#lines+1]="行动顺序："
-            for i,step in ipairs(queue.steps) do
-                local stage=step.stage
-                local label=({accept="接取",objective="完成目标",turnin="交付"})[stage.kind] or stage.kind
-                lines[#lines+1]=string.format("%02d  %s · %s%s",i,label,step.choice.title or ("任务 #"..step.choice.questId),
-                    stage.kind=="objective" and stage.text and ("："..stage.text) or "")
-            end
-        end
-        if queue.xpKnown then lines[#lines+1]=string.format("预计交付经验：%.0f",queue.xp) end
-        if (queue.remaining or 0)>0 then lines[#lines+1]="另有 "..queue.remaining.." 项任务位置待确认，仍保留在建议列表。" end
-        if (queue.optional or 0)>0 then lines[#lines+1]="另有 "..queue.optional.." 项任务暂未计入自动行程。" end
-    end
-    if A.char.paused then lines[#lines+1]="规划提示已暂停；执行所选行程会恢复提示。" end
-    if A.Navigation.manual then lines[#lines+1]="当前导航到手动目的地；执行所选行程会解除手动导航。" end
-    if A.char.locked then lines[#lines+1]="当前锁定任务 #"..A.char.locked.."。" end
-    if plan.selectionBlocked then lines[#lines+1]="当前目标暂不可执行："..plan.selectionBlocked end
-    if A.UI.TaskLines then
-        for _,line in ipairs(A.UI:TaskLines()) do lines[#lines+1]=line end
-    end
-    if self.message then lines[#lines+1]=self.message end
-    if self.blocked and not plan.complete then lines[#lines+1]=self.blocked end
-    if not candidate then
-        if plan.complete then lines[#lines+1]="已达到 60 级，本次升级规划目标已完成。"
-        elseif plan.revision and plan.revision~=(A.state or {}).revision then lines[#lines+1]="正在更新行程。"
-        elseif plan.sessionActive then lines[#lines+1]=plan.fallback and plan.fallback.text or "当前副本行程等待处理，可在副本页查看。"
-        else lines[#lines+1]="当前暂无推荐任务。" end
-        return lines
-    end
-    lines[#lines+1]=candidate.title
+function UI:Lines(candidate)
+    local plan=A.plan or {}
+    candidate=candidate or self.preview
+    if not candidate or candidate.questId and A.UI.QuestStatus(A.state or {},candidate.questId,plan)=="已交付" then return {} end
+    local lines={candidate.title or "任务详情"}
     if candidate.kind=="task" then
         local status=A.UI.QuestStatus(A.state,candidate.questId,plan)
         lines[#lines+1]="["..status.."] "..(status=="未接取" and (candidate.acceptBlocked or "先向任务发布者接取，再推进目标。") or
             (status=="可交付" and "目标已完成，前往交付。" or "继续任务日志中的目标。"))
         if candidate.level then lines[#lines+1]="任务等级："..candidate.level end
-        local action=candidate.actions[1]
-        if not candidate.acceptBlocked then lines[#lines+1]=action.text end
+        local action=candidate.executionAction or (candidate.actions or {})[1]
+        if action and not candidate.acceptBlocked then lines[#lines+1]=action.text end
         if plan.referenceFlight and plan.fallback and plan.fallback.questId==candidate.questId then
             lines[#lines+1]="当前飞行接续："..plan.referenceFlight.actions[1].text
         end
-        local pos=action.position
-        if pos then
-            local map=C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(pos.map)
-            lines[#lines+1]=string.format("%s · %.1f, %.1f",map and map.name or ("地图 #"..pos.map),pos.x*100,pos.y*100)
-        else lines[#lines+1]="按下列任务目标继续。" end
         for _,objective in ipairs((A.state.quests[candidate.questId] or {}).objectives or {}) do
             if objective.text then lines[#lines+1]=(objective.finished and "[已完成] " or "[进行中] ")..objective.text end
         end
@@ -190,11 +294,9 @@ function UI:Lines()
             lines[#lines+1]="剩余任务步骤："
             for index,stage in ipairs(candidate.stages) do
                 local names={accept="接取",objective="目标",turnin="交付"}
-                local p=stage.position
-                lines[#lines+1]=string.format("%d. [%s] %s%s",index,names[stage.kind] or stage.kind,stage.text or stage.title,
+                lines[#lines+1]=string.format("%d. [%s] %s%s",index,names[stage.kind] or stage.kind,stage.text or stage.title or candidate.title,
                     stage.need and (" · 要求 "..stage.need) or "")
-                if p then lines[#lines+1]=string.format("地图 #%d · %.1f, %.1f",p.map,p.x*100,p.y*100)
-                elseif stage.areaId then
+                if stage.areaId then
                     local instance=A.Dungeon and A.Dungeon.TaskInstance and A.Dungeon.TaskInstance(nil,A.state,A.Data,stage.areaId)
                     local name=instance and instance.title or C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(stage.areaId)
                     if name then lines[#lines+1]="目的地："..name end
@@ -219,43 +321,6 @@ function UI:Lines()
         end
         return lines
     end
-    if ongoing(candidate) then lines[#lines+1]="本轮副本行程进行中。"
-    else
-        lines[#lines+1]=string.format("预计 %.1f 分钟 · %.0f 经验 · %.0f 经验／小时",candidate.seconds/60,candidate.xp,candidate.rate*3600)
-        local walk,transit,execute,other=breakdown(candidate)
-        lines[#lines+1]=string.format("步行 %.1f 分钟；交通／等待 %.1f 分钟；执行／服务 %.1f 分钟；其他预留／未拆分 %.1f 分钟",walk/60,transit/60,execute/60,other/60)
-    end
-    local current=plan.best
-    if current and current~=candidate and not ongoing(current) and not ongoing(candidate) then
-        lines[#lines+1]=string.format("与当前规划方案相比：耗时 %+.1f 分钟；经验 %+.0f；经验率 %+.0f／小时",
-            (candidate.seconds-current.seconds)/60,candidate.xp-current.xp,(candidate.rate-current.rate)*3600)
-    end
-    if candidate.resources then
-        local r=candidate.resources
-        if r.hearthReady then
-            local seconds=math.max(0,r.hearthReady-(r.now or 0))
-            lines[#lines+1]=seconds==0 and "行程结束时炉石可用" or string.format("行程结束时炉石仍冷却 %.1f 分钟",seconds/60)
-        end
-    end
-    if candidate.forecast and not candidate.forecast.uncertain then
-        lines[#lines+1]="交付后等级："..candidate.forecast.level
-    end
-    if candidate.gear then
-        local g=candidate.gear
-        lines[#lines+1]=string.format("装备评分提升 %+.1f；获得概率 %.0f%%—%.0f%%",g.upgrade.delta,g.chanceLow*100,g.chanceHigh*100)
-    end
-    if candidate.requiresAcceptance then lines[#lines+1]="此方案包含副本；点击接受后进入准备、等队与实际进入流程。" end
-    lines[#lines+1]="完整行动预览："
-    local names={move="移动",transit="交通",accept="接取",objective="目标",turnin="交付",service="服务",
-        dungeonWait="等队",dungeonEnter="进入副本",dungeonRun="本轮副本",dungeonEnd="返程／结束"}
-    for i,action in ipairs(candidate.actions or {}) do
-        local duration=action.travelSeconds or action.seconds
-        local node=action.node and A.Content.nodes[action.node]
-        lines[#lines+1]=string.format("%d. [%s] %s%s%s",i,names[action.kind] or action.kind,
-            action.title or (action.questId and ("任务 #"..action.questId)) or "继续当前阶段",
-            node and node.label and (" · "..node.label) or "",duration and string.format(" · %.1f 分钟",duration/60) or "")
-        if action.text then lines[#lines+1]=action.text end
-    end
-    if plan.gearTargetBlocked then lines[#lines+1]=plan.gearTargetBlocked end
+    lines[#lines+1]=candidate.requiresAcceptance and "接受后开始副本行程" or "本轮副本行程进行中"
     return lines
 end

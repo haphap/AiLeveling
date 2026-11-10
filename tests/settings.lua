@@ -10,7 +10,7 @@ local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","
     "PlayerSpellsFrame","PlayerSpellsUtil","PlayerUtil","ExportUtil","C_Traits","C_ClassTalents","C_SpecializationInfo","GetNumSpecGroups"}
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
-    for _,key in ipairs({"SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag",
+    for _,key in ipairs({"SetHyperlinksEnabled","SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag",
         "RegisterForClicks","SetAllPoints","SetTexture","SetTexCoord","SetBlendMode","SetMaxLines","SetFontObject","SetMultiLine",
         "SetMaxLetters","SetShadowColor","SetShadowOffset","SetAutoFocus","ClearFocus","SetFocus","HighlightText","SetFrameStrata","SetCooldown","Clear"}) do w[key]=function() end end
     w.SetPoint=function(self,...) self.point={...} end
@@ -136,7 +136,7 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     assert(B.UI.title:GetText()~="")
     B.UI:ToggleDetails()
     assert(B.UI.details:IsShown())
-    assert(B.UI.detailText:GetText()~="")
+    assert(B.UI.Plan.content:IsShown());assert(B.UI.Plan.cards[1].title:GetText()~="")
     B.UI.frame.scripts.OnMouseUp(nil,"RightButton");B.menu["详细面板"].callback()
     eq(B.UI.details:IsShown(),false)
     B.menu["暂停引导"].callback();eq(B.char.paused,true)
