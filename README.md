@@ -1,6 +1,6 @@
 # AiLeveling
 
-[下载安装包](https://github.com/haphap/AiLeveling/releases) · Forever 练级助手 · 当前源码版本 `0.1.130-dev`
+[下载安装包](https://github.com/haphap/AiLeveling/releases) · Forever 练级助手 · 当前源码版本 `0.1.131-dev`
 
 根据当前任务、位置、等级和任务链自动衔接接取、目标与集中交付，以少跑路、多经验为目标。任务执行耗时视为相当，地面移动按直线距离÷跑速估算；任务进度使用游戏原生日志。完整首版按 [PLAN.md](https://github.com/haphap/AiLeveling/blob/main/PLAN.md) 推进，当前处于 C 覆盖与交付阶段。适用的 RestedXP 功能见 [功能对照](https://github.com/haphap/AiLeveling/blob/main/docs/RESTEDXP_PARITY.md)，装备扩展暂缓。
 
