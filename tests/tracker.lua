@@ -218,7 +218,7 @@ test("商店事件触发刷新且维修卡片可以忽略",function()
     B.action.questId=1
     T.skip.scripts.OnClick();eq(B.char.ignoreRepair,true);assert(B.refreshAt)
     eq(B.char.skipped[1],nil);eq(B.state.quests[1].objectives[1].finished,nil)
-    B.action={kind="objective",questId=1,title="当前任务"};B.UI:RenderTracker();eq(T.skip.text.value,"暂缓")
+    B.action={kind="objective",questId=1,title="当前任务"};B.UI:RenderTracker();eq(T.skip.text.value,"暂缓任务")
     local event=B.frame.scripts.OnEvent
     event(nil,"MERCHANT_SHOW");eq(B.Merchant.open,true);assert(B.refreshAt)
     local saleRefresh

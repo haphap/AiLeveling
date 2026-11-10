@@ -334,19 +334,20 @@ function UI:CreateTracker()
     T.rows={}
     T.tools=CreateFrame("Frame",nil,f);T.tools:SetSize(360,26)
     local actions={
-        {"暂停",function() A:TogglePause() end},
-        {"锁定",function() local action=A.Navigation:Current();local ok,why=A.Selection:LockQuest(action and action.questId);if not ok then A:Message(why) end end},
-        {"暂缓",function()
+        {"暂停引导",function() A:TogglePause() end},
+        {"锁定任务",function() local action=A.Navigation:Current();local ok,why=A.Selection:LockQuest(action and action.questId);if not ok then A:Message(why) end end,
+            "固定当前任务为优先目标。要恢复自动安排，在详细面板中点击「恢复自动选择」。"},
+        {"暂缓任务",function()
             local action=A.Navigation:Current()
             if action and action.kind=="manual" then A.Navigation:ClearManual()
             elseif action and action.kind=="service" and action.serviceKind=="repair" then A.Supplies:IgnoreRepair()
             elseif action and action.questId then A.Selection:Skip(action.questId) end
         end},
-        {"详情",function() self:ToggleDetails() end},
-        {"收起",function() self.folded=not self.folded;self:LayoutCard() end},
+        {"详细面板",function() self:ToggleDetails() end,"打开或关闭详细面板，查看完整规划、任务链、副本与设置。"},
+        {"精简显示",function() self.folded=not self.folded;self:LayoutCard() end},
     }
     for i,spec in ipairs(actions) do
-        local b=self:Button(T.tools,spec[1],60,spec[2]);b:SetPoint("TOPLEFT",(i-1)*72,0)
+        local b=self:Button(T.tools,spec[1],68,spec[2]);b:SetPoint("TOPLEFT",(i-1)*73,0);b.tooltip=spec[3]
         b.baseColor={0.10,0.12,0.16,0.88};b:SetBackdropColor(unpack(b.baseColor));b.text:SetTextColor(unpack(palette.white))
         if i==1 then T.pause=b elseif i==3 then T.skip=b elseif i==5 then self.fold=b end
     end
@@ -413,9 +414,13 @@ function UI:RenderTracker()
     T.step:SetText(A.char.paused and "已暂停" or serviceLabel or (verbs[model.kind] or "当前步骤"))
     T.stepIcon:SetTexture(media..(({accept="accept",objective="objective",turnin="turnin",
         dungeonEnter="entry",dungeonRun="objective",dungeonWait="party"})[model.kind] or "compass")..".tga")
-    T.pause.text:SetText(A.char.paused and "继续" or "暂停")
+    T.pause.text:SetText(A.char.paused and "继续引导" or "暂停引导")
+    T.pause.tooltip=A.char.paused and "恢复任务引导和导航。" or "暂停任务引导和导航，保留任务列表。点击「继续引导」恢复。"
     T.skip.text:SetText(action and action.kind=="manual" and "返回任务"
-        or action and action.kind=="service" and action.serviceKind=="repair" and "忽略维修" or "暂缓")
+        or action and action.kind=="service" and action.serviceKind=="repair" and "忽略维修" or "暂缓任务")
+    T.skip.tooltip=action and action.kind=="manual" and "取消手动目的地，回到任务引导。"
+        or action and action.kind=="service" and action.serviceKind=="repair" and "忽略维修提醒，继续安排任务。"
+        or "将当前任务暂时排除出规划，先安排其他任务。任务仍保留在游戏任务日志中。"
     self.title:SetText(model.title)
     local instruction=model.instruction
     if model.kind=="objective" and #model.objectives>0 and not A.char.paused and not A.error and
@@ -545,7 +550,9 @@ function UI:LayoutTracker()
     local bottom=collapsed and (42+T.card:GetHeight()+10) or queueTop+(queueHeight>0 and 46+visible or 0)+8
     T.tools:ClearAllPoints();T.tools:SetPoint("TOPLEFT",0,-bottom)
     self.frame:SetHeight(bottom+28)
-    self.fold.text:SetText(self.folded and "展开" or "收起")
+    self.fold.text:SetText(self.folded and "完整显示" or "精简显示")
+    self.fold.tooltip=self.folded and "展开当前任务的目标进度和后续任务列表。"
+        or "收起目标进度和后续任务列表，保留当前任务标题。"
 end
 
 function UI:SetTrackerNavigation(distance,angle,unverified)

@@ -68,8 +68,17 @@ function UI:Button(parent, label, width, callback, fontSize)
     b.text:SetPoint("CENTER")
     b.text:SetText(label)
     b:SetScript("OnClick", callback)
-    b:SetScript("OnEnter", function() local r,g,blue=UI:Accent();b:SetBackdropColor(r*0.35,g*0.35,blue*0.35,1) end)
-    b:SetScript("OnLeave", function() b:SetBackdropColor(unpack(b.baseColor or colors.button)) end)
+    b:SetScript("OnEnter", function()
+        local r,g,blue=UI:Accent();b:SetBackdropColor(r*0.35,g*0.35,blue*0.35,1)
+        if b.tooltip then
+            GameTooltip:SetOwner(b,"ANCHOR_TOP");GameTooltip:SetText(b.text:GetText())
+            GameTooltip:AddLine(b.tooltip,0.9,0.94,1,true);GameTooltip:Show()
+        end
+    end)
+    b:SetScript("OnLeave", function()
+        b:SetBackdropColor(unpack(b.baseColor or colors.button))
+        if b.tooltip then GameTooltip:Hide() end
+    end)
     return b
 end
 
