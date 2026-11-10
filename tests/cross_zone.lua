@@ -42,7 +42,7 @@ test("跨区未接任务按完整移动收益比较并从接取衔接到交付�
     p=plan(s,d,nil,B);eq(p.fallback.questId,1);eq(p.fallback.position.map,1)
     q[1].preQuestGroup={4};p=plan(s,d,nil,B);eq(p.fallback,nil)
     s.level=30;s.quests={};s.completed={};q[1].preQuestGroup=nil
-    q[2].questLevel=10;q[2].preQuestGroup={1};q[3].questLevel=40;q[3].preQuestGroup={2}
+    q[2].questLevel=10;q[2].preQuestGroup={1};q[3].questLevel=40;q[3].requiredLevel=40;q[3].preQuestGroup={2}
     d.byLevel={[20]={1},[10]={2},[40]={3}};d.chainIndex=B.Chains.NewIndex()
     for _,quest in pairs(q) do B.Chains.IndexQuest(d.chainIndex,quest,d) end
     local indexed={Chains=B.Chains};assert(loadfile("Data/Questie.lua"))("AiLeveling",indexed)

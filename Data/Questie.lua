@@ -236,8 +236,13 @@ function D:Candidates(snapshot)
         end
     end
     for _,id in ipairs(self.byLevel[-1] or {}) do add(id) end
-    for level = minimum, snapshot.level + 2 do
-        for _, id in ipairs(self.byLevel[level] or {}) do add(id) end
+    for level,quests in pairs(self.byLevel) do
+        if level>=minimum then
+            for _,id in ipairs(quests) do
+                local q=self:GetQuest(id)
+                if q and (q.requiredLevel or 0)<=snapshot.level then add(id) end
+            end
+        end
     end
     if snapshot.locked then add(snapshot.locked) end
     table.sort(ids)

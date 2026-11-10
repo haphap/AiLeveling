@@ -171,6 +171,13 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.plan.taskOrder={B.plan.taskChoices[1],B.plan.taskChoices[4],B.plan.taskChoices[2],B.plan.taskChoices[3]}
     B.UI:RenderTracker();eq(T.model.rows[1].questId,4);eq(T.rows[1].status.value,"未接取")
     B.plan.taskOrder=nil
+    local distance=B.Navigation.Distance
+    B.Navigation.Distance=function(_,a,b) if a and b and a.map==b.map then return math.abs(a.x-b.x)*700 end end
+    starter.position={map=1,x=0.55,y=0.5,entityKind="object",entityName="焦焚残骸"};starter.text=nil
+    B.state.locked=1;B.UI:RenderTracker()
+    eq(T.model.rows[1].questId,4);eq(T.rows[1].progress.value,"沿途可接 · 焦焚残骸")
+    eq(T.model.questId,1);eq(B.state.locked,1)
+    B.state.locked=nil;B.Navigation.Distance=distance;starter.position=nil
     B.state.quests[4]={title="真实接取的任务",objectives={{text="收集 1/5",numFulfilled=1,numRequired=5}}}
     B.UI:RenderTracker()
     eq(T.rows[3].status.value,"已接取");eq(T.rows[3].progress.value,"收集 1/5")

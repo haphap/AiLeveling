@@ -99,6 +99,11 @@ test("自有新增任务进入等级资格和关系索引且不改上游 ID 表"
     local co=coroutine.create(function() B.Data:BuildIndex() end)
     repeat local ok,why=coroutine.resume(co);assert(ok,why) until coroutine.status(co)=="dead"
     eq(B.Data.count,3);eq(B.Data.byLevel[21][1],2);eq(B.Data.requirements.skills[123],true)
+    -- The displayed quest level is not its minimum acceptance level.
+    source.questLevel,source.requiredLevel=22,14;B.Data.cache={};B.Data.byLevel={[22]={1}}
+    eq(table.concat(B.Data:Candidates({level=14,quests={}}),","),"1")
+    eq(#B.Data:Candidates({level=13,quests={}}),0)
+    source.questLevel,source.requiredLevel=20,1;B.Data.cache={};B.Data.byLevel={[20]={1},[21]={2},[-1]={3}}
     local candidates=B.Data:Candidates({level=30,quests={}});eq(#candidates,1);eq(candidates[1],3)
     candidates=B.Data:Candidates({level=30,quests={},completed={[1]=true}});eq(table.concat(candidates,","),"2,3")
     candidates=B.Data:Candidates({level=30,quests={[1]={}},completed={}});eq(table.concat(candidates,","),"1,3")

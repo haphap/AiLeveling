@@ -226,6 +226,32 @@ function UI.TrackerModel(state,plan,action,paused)
             if step.kind~="move" then add(step.questId,step) end
         end
     end
+    -- Surface a nearby pickup even when its later completion is outside this trip.
+    local nearby,nearbyDistance
+    local navigation=A.Navigation
+    local direct=not paused and action and action.questId and navigation and navigation.Distance and
+        navigation:Distance(state.position,action.position)
+    if direct and direct>0 then
+        for _,choice in ipairs(plan.taskChoices or {}) do
+            local id=choice.questId
+            local point=choice.actions[1].position
+            if not quests[id] and not seen[id] and not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] and
+                not choice.lowValue and not choice.acceptBlocked and not choice.entryBlocked and not choice.requireCheck and point then
+                local approach=navigation:Distance(state.position,point)
+                local onward=navigation:Distance(point,action.position)
+                if approach and onward and approach<=direct and onward<=direct and
+                    (not nearbyDistance or approach<nearbyDistance) then nearby,nearbyDistance=choice,approach end
+            end
+        end
+    end
+    if nearby then
+        add(nearby.questId,nearby.actions[1])
+        local row=model.rows[#model.rows]
+        if row and row.questId==nearby.questId then
+            local name=nearby.actions[1].position.entityName
+            row.progress="沿途可接"..(name and (" · "..name) or "")
+        end
+    end
     for _,choice in ipairs(plan.taskOrder or plan.taskChoices or {}) do
         add(choice.questId,choice.executionAction or choice.actions[1])
     end
