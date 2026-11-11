@@ -11,7 +11,7 @@ local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
     for _,key in ipairs({"SetHyperlinksEnabled","SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag",
-        "RegisterForClicks","SetAllPoints","SetTexture","SetTexCoord","SetBlendMode","SetMaxLines","SetNonSpaceWrap","SetFontObject","SetMultiLine",
+        "RegisterForClicks","SetAllPoints","SetTexture","SetTexCoord","SetHorizTile","SetVertTile","SetBlendMode","SetMaxLines","SetNonSpaceWrap","SetFontObject","SetMultiLine",
         "SetMaxLetters","SetShadowColor","SetShadowOffset","SetAutoFocus","SetTextInsets","ClearFocus","SetFocus","HighlightText","SetFrameStrata","SetCooldown","Clear"}) do w[key]=function() end end
     w.SetPoint=function(self,...) self.point={...} end
     w.GetPoint=function(self) return "CENTER",UIParent,"CENTER",25,-30 end
@@ -31,6 +31,7 @@ local function widget()
         return true
     end
     w.SetAtlas=function(self,atlas) self.atlas=atlas end
+    w.SetHighlightTexture=function(self,texture) self.highlight=texture;texture:Hide() end
     w.SetTextColor=function(self,...) self.color={...} end;w.SetColorTexture=w.SetTextColor
     w.SetVertexColor=w.SetTextColor
     w.SetBackdropColor=w.SetTextColor

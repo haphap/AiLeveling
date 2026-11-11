@@ -46,6 +46,9 @@ local function widget(kind,parent)
     function w:SetTextColor(...) self.color={...} end;w.SetColorTexture=w.SetTextColor
     w.SetVertexColor=w.SetTextColor
     function w:SetTexture(path) self.texture=path end
+    function w:SetHorizTile(value) self.tileX=value end
+    function w:SetVertTile(value) self.tileY=value end
+    function w:SetHighlightTexture(texture) texture:Hide() end
     function w:SetTexCoord(...) self.uv={...} end
     function w:SetBackdropColor(...) self.background={...} end
     function w:SetBackdropBorderColor(...) self.border={...} end
@@ -301,7 +304,7 @@ local function visit(w,visible,clip)
     visible=visible and w.shown
     if not visible then return end
     local rect=box(w)
-    local record={kind=w.kind,rect=rect,text=w.value,size=w.size,color=w.color,background=w.background,border=w.border,justify=w.justify,maxLines=w.maxLines,nonSpaceWrap=w.nonSpaceWrap,clip=clip,layer=w.layer,texture=w.texture,uv=w.uv}
+    local record={kind=w.kind,rect=rect,text=w.value,size=w.size,color=w.color,background=w.background,border=w.border,justify=w.justify,maxLines=w.maxLines,nonSpaceWrap=w.nonSpaceWrap,clip=clip,layer=w.layer,texture=w.texture,uv=w.uv,tileX=w.tileX,tileY=w.tileY}
     if w.kind=="Line" then
         local function point(p)
             local r=box(p.relative);local a=anchors[p.point]

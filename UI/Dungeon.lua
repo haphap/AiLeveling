@@ -8,7 +8,7 @@ function UI:Create(parent)
     frame:SetPoint("TOPLEFT",18,-94); frame:SetSize(744,448)
     self.frame = frame
     local side=A.UI:Panel(nil,frame,254,464)
-    side:SetPoint("TOPLEFT",500,8);side:SetBackdropColor(0.14,0.10,0.06,0.35)
+    side:SetPoint("TOPLEFT",500,8);side:SetBackdropColor(unpack(A.UI.colors.panel))
     self.selector = A.UI:Button(frame,"选择副本",474,function()
         local ids = self:Ids()
         MenuUtil.CreateContextMenu(self.selector,function(_,menu)

@@ -141,6 +141,25 @@
       },
       "scope": "Feature inventory only. Independent automation based on native quest and gossip API; no program, guide, art or configuration copied into the addon. Complete parity remains unverified.",
       "audit": "docs/RESTEDXP_PARITY.md"
+    },
+    {
+      "name": "The War Within shared native UI materials",
+      "url": "https://github.com/Gethe/wow-ui-source/blob/11.2.7/Interface/AddOns/Blizzard_SharedXML/Mainline/SharedUIPanelTemplates.xml",
+      "compatibility_reference": "https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_SharedXML/Mainline/SharedUIPanelTemplates.xml",
+      "border_reference": "https://github.com/Gethe/wow-ui-source/blob/11.2.7/Interface/AddOns/Blizzard_SharedXML/Mainline/NineSliceLayouts.lua",
+      "retrieved": "2026-11-11",
+      "scope": "Runtime references to native rock/marble backgrounds, SimpleMetal edge strips and panel-button highlight used by the 11.2.7 and Forever shared UI. Warm tint and rounded layout are AILeveling code. Native art remains in the client; no Blizzard or LumensUI artwork is packaged.",
+      "preview_reference": "https://github.com/Gethe/wow-ui-textures/tree/d23deaf8f44a7d280dc974a5c9d5321c013db59b",
+      "preview_scope": "Five shared texture PNGs cached locally for offline layout previews. This mirror is 9.2.7; material names are checked against 11.2.7 and Forever source, not claimed as expansion-exclusive artwork.",
+      "preview_files": {
+        "Buttons/UI-Panel-Button-Highlight.PNG": "518de2bdf5cb18f146fe96465d25e2e74f90f1548c93dcc539bfa7eced88215f",
+        "FrameGeneral/UI-Background-Marble.PNG": "2e7c499394bf6d14af68addf5a8961debfd6729e43bb27c9a6714c7b3e4f61ca",
+        "FrameGeneral/UI-Background-Rock.PNG": "226df00ae2fc4419c7c3cf2965324e7cc6f459bc77e3bdeb75b06b7c9c0ee212",
+        "FrameGeneral/UIFrameSimpleMetal.PNG": "f727397dc939916057ecd8cc09624970b72b301fc6b00c3ce5962f9c1f0d4706",
+        "FrameGeneral/UIFrameSimpleMetalVertical.PNG": "805434d45c3bc25ffd5fc37b325455e87da4fac256622435af69dd1babb81844"
+      },
+      "code_copied": false,
+      "client_verified": false
     }
   ],
   "api_references": [

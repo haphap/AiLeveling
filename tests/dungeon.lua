@@ -351,7 +351,7 @@ return function(test,eq,F,plan)
         local B,d,s,data=context()
         local create,menuUtil=CreateFrame,MenuUtil
         CreateFrame=function() return {SetPoint=function() end,SetSize=function() end,SetHeight=function() end,SetScrollChild=function() end,Hide=function() end} end
-        B.UI={Accent=function() return 1,1,1 end,Icon=function() return "" end,
+        B.UI={colors={panel={0,0,0,1}},Accent=function() return 1,1,1 end,Icon=function() return "" end,
         Panel=function() return {SetPoint=function() end,SetBackdropColor=function() end} end,SelectTab=function() end,Text=function()
             return {ClearAllPoints=function() end,SetPoint=function() end,SetWidth=function() end,SetHeight=function() end,GetStringHeight=function() return 100 end,SetText=function(self,v) self.value=v end}
         end,Button=function(_,_,_,_,callback)

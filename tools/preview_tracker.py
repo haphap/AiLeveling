@@ -5,11 +5,18 @@ import sys
 import re
 import subprocess
 from pathlib import Path
+from urllib.request import urlretrieve
 from PIL import Image, ImageDraw, ImageFont, ImageChops
 
 ROOT = Path(__file__).resolve().parents[1]
 SCALE = 2
 FONT = '/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc'
+NATIVE_TEXTURES = {
+    'FrameGeneral/UI-Background-Rock', 'FrameGeneral/UI-Background-Marble',
+    'FrameGeneral/UIFrameSimpleMetal', 'FrameGeneral/UIFrameSimpleMetalVertical',
+    'Buttons/UI-Panel-Button-Highlight',
+}
+TEXTURE_SOURCE = 'https://raw.githubusercontent.com/Gethe/wow-ui-textures/d23deaf8f44a7d280dc974a5c9d5321c013db59b/'
 
 
 def main():
@@ -30,15 +37,32 @@ def main():
             return default
         return tuple(round(v * 255) for v in (value + [1])[:4])
 
-    def texture(path, width, height, tint=None, uv=None):
-        path = ROOT / path.replace('\\', '/').removeprefix('Interface/AddOns/AiLeveling/')
+    def texture(path, width, height, tint=None, uv=None, tile_x=False, tile_y=False):
+        path = path.replace('\\', '/')
+        native = path.removeprefix('Interface/')
+        if native in NATIVE_TEXTURES:
+            path = ROOT / '.dependencies/ui-textures' / (native + '.PNG')
+            if not path.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                urlretrieve(TEXTURE_SOURCE + native + '.PNG', path)
+        else:
+            path = ROOT / path.removeprefix('Interface/AddOns/AiLeveling/')
         asset = Image.open(path).convert('RGBA')
         if uv:
+            asset = asset.crop((round(min(uv[:2]) * asset.width), round(min(uv[2:]) * asset.height),
+                                round(max(uv[:2]) * asset.width), round(max(uv[2:]) * asset.height)))
             if uv[0] > uv[1]:
                 asset = asset.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
             if uv[2] > uv[3]:
                 asset = asset.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
-        asset = asset.resize((max(1, round(width)), max(1, round(height))), Image.Resampling.LANCZOS)
+        size = (max(1, round(width)), max(1, round(height)))
+        asset = asset.resize((asset.width*SCALE if tile_x else size[0], asset.height*SCALE if tile_y else size[1]), Image.Resampling.LANCZOS)
+        if tile_x or tile_y:
+            tiled = Image.new('RGBA', size)
+            for yy in range(0, size[1], asset.height):
+                for xx in range(0, size[0], asset.width):
+                    tiled.paste(asset, (xx, yy))
+            asset = tiled
         if tint:
             asset = ImageChops.multiply(asset, Image.new('RGBA', asset.size, color(tint)))
         return asset
@@ -53,8 +77,9 @@ def main():
         if row.get('border'):
             d.rectangle((x, y, x + w, y + h), outline=color(row['border']), width=1)
         if row['kind'] == 'Texture':
-            if row.get('texture', '').startswith('Interface\\AddOns\\AiLeveling\\Media\\'):
-                asset = texture(row['texture'], w, h, row.get('color'), row.get('uv'))
+            path = row.get('texture', '').replace('\\', '/')
+            if path.startswith('Interface/AddOns/AiLeveling/Media/') or path.removeprefix('Interface/') in NATIVE_TEXTURES:
+                asset = texture(row['texture'], w, h, row.get('color'), row.get('uv'), row.get('tileX'), row.get('tileY'))
                 overlay.alpha_composite(asset, (round(x), round(y)))
             else:
                 d.rectangle((x, y, x + w, y + h), fill=color(row.get('color')))

@@ -451,7 +451,7 @@ function UI:CreateTracker()
         GameTooltip:AddLine("左键拖动面板\n右键：暂停、收起与详细面板",1,1,1,true);GameTooltip:Show()
     end)
     f:SetScript("OnLeave",function() GameTooltip:Hide() end)
-    self:Rounded(f,8);f:SetBackdropColor(0.045,0.050,0.060,0.32)
+    self:Rounded(f,8);f:SetBackdropColor(0.065,0.052,0.043,0.32)
     local T=self.tracker
     T.content=CreateFrame("Frame",nil,f);T.content:SetPoint("TOPLEFT",10,-10)
     T.zone=text(T.content,14,palette.gold);T.zone:SetPoint("TOPLEFT",0,0)
