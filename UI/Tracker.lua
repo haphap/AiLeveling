@@ -391,11 +391,14 @@ function UI:CreateTracker()
         GameTooltip:AddLine("左键拖动面板\n右键：暂停、收起与详细面板",1,1,1,true);GameTooltip:Show()
     end)
     f:SetScript("OnLeave",function() GameTooltip:Hide() end)
-    self:Rounded(f,18);f:SetBackdropColor(0.14,0.10,0.08,0.58)
+    self:Rounded(f,8);f:SetBackdropColor(0.045,0.050,0.060,0.55)
     local T=self.tracker
     T.content=CreateFrame("Frame",nil,f);T.content:SetPoint("TOPLEFT",10,-10)
+    local cap=f:CreateTexture(nil,"BACKGROUND")
+    cap:SetPoint("TOPLEFT",8,-1);cap:SetPoint("TOPRIGHT",-8,-1);cap:SetHeight(1)
+    cap:SetColorTexture(unpack(palette.border))
     T.showCompleted=true
-    T.zone=text(T.content,14,palette.white);T.zone:SetPoint("TOPLEFT",2,-2);T.zone:SetMaxLines(1)
+    T.zone=text(T.content,14,palette.gold);T.zone:SetPoint("TOPLEFT",2,-2);T.zone:SetMaxLines(1)
     T.experience=text(T.content,12,palette.muted);T.experience:SetJustifyH("RIGHT")
     T.headerButtons={}
     for i,spec in ipairs({{label="专业",tab=8},{label="职业",tab=9},{label="+",tab=1}}) do
@@ -417,7 +420,7 @@ function UI:CreateTracker()
     T.menu=self:Button(T.content,"···",26,function() self:TrackerMenu(T.questTitle) end,16)
     for _,button in ipairs({T.previous,T.next,T.skip,T.menu}) do button.baseColor={0,0,0,0};button:SetBackdropColor(0,0,0,0) end
     T.divider=T.content:CreateTexture(nil,"BACKGROUND");T.divider:SetColorTexture(unpack(palette.line))
-    T.xpBack=T.content:CreateTexture(nil,"BACKGROUND");T.xpBack:SetColorTexture(0.75,0.57,0.44,0.16)
+    T.xpBack=T.content:CreateTexture(nil,"BACKGROUND");T.xpBack:SetColorTexture(unpack(palette.line))
     T.xpBack:SetPoint("TOPLEFT",0,-23);T.xpBack:SetSize(280,2)
     T.xpFill=T.content:CreateTexture(nil,"ARTWORK");T.xpFill:SetPoint("TOPLEFT",0,-23);T.xpFill:SetSize(1,2)
     T.card=CreateFrame("Frame",nil,T.content)
@@ -426,7 +429,7 @@ function UI:CreateTracker()
     T.stepIcon=T.card:CreateTexture(nil,"ARTWORK")
     T.stepIcon:SetPoint("TOPLEFT",8,-2)
     T.step=text(T.card,12,"accent");T.step:SetPoint("TOPRIGHT",-4,-5);T.step:SetJustifyH("RIGHT")
-    self.title=text(T.card,17)
+    self.title=text(T.card,17,palette.gold)
     T.questTitle=CreateFrame("Button",nil,T.card);T.questTitle:SetAllPoints(self.title)
     T.questTitle:RegisterForClicks("LeftButtonUp","RightButtonUp")
     T.questTitle:SetScript("OnClick",function(_,mouse)
@@ -482,7 +485,7 @@ function UI:TrackerRow(index)
     local T=self.tracker
     if T.rows[index] then return T.rows[index] end
     local row=CreateFrame("Button",nil,T.queueChild,"BackdropTemplate")
-    row:SetWidth(302);self:Rounded(row,7);row:SetBackdropColor(0,0,0,0)
+    row:SetWidth(302);self:Rounded(row,4);row:SetBackdropColor(0,0,0,0)
     row.group=text(row,13,palette.gold);row.group:SetPoint("TOPLEFT",0,-6);row.group:SetWidth(302)
     row.number=text(row,15,palette.muted);row.number:SetPoint("TOPLEFT",0,-8);row.number:SetWidth(24)
     row.number:SetJustifyH("RIGHT");row.number:SetMaxLines(1)
@@ -499,7 +502,7 @@ function UI:TrackerRow(index)
     row.separator=row:CreateTexture(nil,"BACKGROUND");row.separator:SetColorTexture(unpack(palette.line))
     row.separator:SetPoint("BOTTOMLEFT",0,0);row.separator:SetSize(302,1)
     row:RegisterForClicks("LeftButtonUp","RightButtonUp")
-    row:SetScript("OnEnter",function() row:SetBackdropColor(0.36,0.23,0.17,0.40);questTooltip(row) end)
+    row:SetScript("OnEnter",function() row:SetBackdropColor(unpack(palette.hover));questTooltip(row) end)
     row:SetScript("OnLeave",function() row:SetBackdropColor(0,0,0,0);GameTooltip:Hide() end)
     row:SetScript("OnClick",function(_,button)
         if button=="RightButton" then self:TrackerMenu(row)
@@ -603,7 +606,7 @@ function UI:RenderTracker()
         local native=(state.quests[model.questId] or {}).objectives and state.quests[model.questId].objectives[i]
         local symbol=native and native.type=="item" and "collect" or "objective"
         local count=type(objective.need)=="number" and objective.need>0 and string.format(" %d/%d",objective.have or 0,objective.need) or ""
-        row.text:SetText(self:Icon(objective.done and "turnin" or symbol,14).." "..label.."|cfff5ebdb"..count.."|r")
+        row.text:SetText(self:Icon(objective.done and "turnin" or symbol,14).." "..label.."|cfff0e8d4"..count.."|r")
         row.check:SetText(objective.done and "✓" or "□");row.check:SetTextColor(unpack(objective.done and palette.green or palette.muted))
         row.text:SetTextColor(unpack(objective.done and palette.muted or symbol=="collect" and palette.purple or palette.blue))
         row.done=objective.done
@@ -634,7 +637,7 @@ function UI:RenderTracker()
             for _,objective in ipairs(native and native.objectives or {}) do
                 local label=(objective.text or item.title):gsub("%s*%d+%s*/%s*%d+",""):gsub("^%s+","")
                 local count=objective.numRequired and objective.numRequired>0 and string.format(" %d/%d",objective.numFulfilled or 0,objective.numRequired) or ""
-                goals[#goals+1]=(objective.finished and "|cffc7b8a8" or objective.type=="item" and "|cffcaadd4" or "|cffadc9d1")..label.."|r|cfff5ebdb"..count.."|r"
+                goals[#goals+1]=(objective.finished and "|cffc4bfad" or objective.type=="item" and "|cffc4b0de" or "|cff9ec9de")..label.."|r|cfff0e8d4"..count.."|r"
             end
             if #goals>0 then goal=table.concat(goals,"\n") end
             if native and native.objectives and native.objectives[1] and native.objectives[1].type=="item" then row.statusIcon:SetTexture(media.."collect.tga") end

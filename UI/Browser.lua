@@ -2,7 +2,7 @@ local _,A=...
 -- The main window: one list and one detail pane, backed by the existing task models.
 A.UI.Browser={selection={}}
 local B=A.UI.Browser
-local gold,blue,green,muted="f2bd7a","adc9d1","9cc9a6","c7b8a8"
+local gold,blue,green,muted="e8c47d","9ec9de","96cc9c","c4bfad"
 local colors=A.UI.colors
 local function color(c,s) return "|cff"..c..tostring(s).."|r" end
 local function questLink(id,title) return color(blue,"|Hquest:"..id..":0|h["..title.."]|h") end
@@ -43,15 +43,17 @@ end
 
 function B:Create(parent)
     self.frame=CreateFrame("Frame",nil,parent);self.frame:SetPoint("TOPLEFT",194,-88);self.frame:SetSize(784,490)
-    local listSurface=A.UI:Panel(nil,self.frame,402,432)
-    listSurface:SetPoint("TOPLEFT",-8,-66);listSurface:SetBackdropColor(unpack(colors.panel))
-    local detailSurface=A.UI:Panel(nil,self.frame,362,490)
-    detailSurface:SetPoint("TOPLEFT",418,0);detailSurface:SetBackdropColor(unpack(colors.panel))
+    local divider=self.frame:CreateTexture(nil,"BACKGROUND")
+    divider:SetPoint("TOPLEFT",410,0);divider:SetPoint("BOTTOMLEFT",410,0);divider:SetWidth(1)
+    divider:SetColorTexture(unpack(colors.line))
     self.summary=A.UI:Text(self.frame,13,colors.muted);self.summary:SetPoint("TOPLEFT");self.summary:SetWidth(392)
-    self.search=CreateFrame("EditBox",nil,self.frame,"InputBoxTemplate")
-    self.search:SetPoint("TOPLEFT",8,-36);self.search:SetSize(370,24);self.search:SetAutoFocus(false)
+    self.search=CreateFrame("EditBox",nil,self.frame,"BackdropTemplate")
+    self.search:SetPoint("TOPLEFT",0,-32);self.search:SetSize(392,28);self.search:SetAutoFocus(false)
+    self.search:SetTextInsets(10,10,0,0)
+    A.UI:Rounded(self.search,4,colors.border);self.search:SetBackdropColor(unpack(colors.button))
     A.UI:RegisterFont(self.search,13)
-    self.searchHint=A.UI:Text(self.frame,12,colors.muted);self.searchHint:SetPoint("TOPLEFT",12,-40);self.searchHint:SetText("搜索名称或任务编号")
+    self.search:SetTextColor(unpack(colors.white))
+    self.searchHint=A.UI:Text(self.frame,12,colors.muted);self.searchHint:SetPoint("TOPLEFT",10,-38);self.searchHint:SetText("搜索名称或任务编号")
     self.search:SetScript("OnEscapePressed",function(box) box:SetText("");box:ClearFocus() end)
     self.search:SetScript("OnTextChanged",function(box)
         self.query=box:GetText():lower();self.searchHint:SetShown(self.query=="")
@@ -72,7 +74,7 @@ function B:Create(parent)
         GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetHyperlink(link);GameTooltip:Show()
     end)
     self.infoChild:SetScript("OnHyperlinkLeave",function() GameTooltip:Hide() end)
-    self.title=A.UI:Text(self.infoChild,21);self.title:SetPoint("TOPLEFT");self.title:SetWidth(326)
+    self.title=A.UI:Text(self.infoChild,20,colors.gold);self.title:SetPoint("TOPLEFT");self.title:SetWidth(326)
     self.detail=A.UI:Text(self.infoChild,14,colors.white);self.detail:SetWidth(326)
     self.buttons={}
     for i=1,3 do
@@ -275,12 +277,12 @@ function B:Refresh(mode)
         end
         row.entry,row.questId,row.candidate,row.revision=entry,entry.questId,entry.choice,A.plan and A.plan.revision
         row.deferred=entry.questId and ((A.state.skipped or {})[entry.questId] or (A.state.chainDeferred or {})[entry.questId])
-        row.text:SetText(entry.title);row.text:SetTextColor(unpack(colors.white))
+        row.text:SetText(entry.title);row.text:SetTextColor(unpack(entry==self.selected and colors.gold or colors.white))
         row.icon:SetText(A.UI:Icon(entry.icon,16));row.sub:SetText(entry.sub or "")
         row.sub:ClearAllPoints();row.sub:SetPoint("TOPLEFT",28,-(12+18*scale))
         local h=18*scale+row.sub:GetStringHeight()+22
         row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y);row:SetSize(382,h);row:Show();y=y+h+2
-        local r,g,b=unpack(colors.accent);row.baseColor=entry==self.selected and colors.selected or {0,0,0,0}
+        local r,g,b=unpack(colors.accent);row.baseColor=entry==self.selected and colors.selected or colors.panel
         row:SetBackdropColor(unpack(row.baseColor));row.marker:SetColorTexture(r,g,b,1);row.marker:SetShown(entry==self.selected)
     end
     for i=#rows+1,#self.rows do self.rows[i]:Hide() end
@@ -289,6 +291,8 @@ end
 
 function B:Action(index,label,run,enabled)
     local b=self.buttons[index];b.text:SetText(label);b.run=run;b:SetEnabled(enabled~=false);b:Show()
+    b.baseColor=index==1 and colors.selected or colors.button;b:SetBackdropColor(unpack(b.baseColor))
+    b.text:SetTextColor(unpack(enabled==false and colors.muted or index==1 and colors.gold or colors.white))
 end
 
 function B:Detail()
@@ -424,7 +428,7 @@ function B:DungeonDetail(e)
             GameTooltip:Show()
         end)
         view.note:SetScript("OnLeave",function() GameTooltip:Hide() end)
-        view.heading=A.UI:Text(view,12,colors.muted);view.heading:SetWidth(326)
+        view.heading=A.UI:Text(view,13,colors.gold);view.heading:SetWidth(326)
         view.loot=A.UI:Button(view,"",326,function() A.UI:SelectTab(3) end,13)
         view.loot.baseColor={0,0,0,0};view.loot:SetBackdropColor(0,0,0,0)
     end

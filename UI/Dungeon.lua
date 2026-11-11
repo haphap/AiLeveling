@@ -1,14 +1,14 @@
 local _, A = ...
 A.UI.Dungeon = {}
 local UI = A.UI.Dungeon
-local statusColors={"|cfff2bd7a","|cff9cc9a6","|cffadc9d1","|cffc7b8a8","|cffc7b8a8"}
+local statusColors={"|cffe8c47d","|cff96cc9c","|cff9ec9de","|cffc4bfad","|cffc4bfad"}
 
 function UI:Create(parent)
     local frame = CreateFrame("Frame",nil,parent)
     frame:SetPoint("TOPLEFT",18,-94); frame:SetSize(744,448)
     self.frame = frame
     local side=A.UI:Panel(nil,frame,254,464)
-    side:SetPoint("TOPLEFT",500,8);side:SetBackdropColor(0.18,0.14,0.12,0.70)
+    side:SetPoint("TOPLEFT",500,8);side:SetBackdropColor(0.14,0.10,0.06,0.35)
     self.selector = A.UI:Button(frame,"选择副本",474,function()
         local ids = self:Ids()
         MenuUtil.CreateContextMenu(self.selector,function(_,menu)
@@ -276,7 +276,7 @@ function UI:Lines()
                 local symbol=action.kind=="accept" and "accept" or action.kind=="turnin" and "turnin" or "objective"
                 local text=A.UI:Icon(symbol).."  "..heading..title.."|r  "..status.."|r  "..verb.."「"..action.title.."」"
                 if action.kind=="objective" and action.text then text=text.."\n    "..action.text end
-                if where and where~=step.instance then text=text.."\n    |cffc7b8a8"..where.."|r" end
+                if where and where~=step.instance then text=text.."\n    |cffc4bfad"..where.."|r" end
                 if step.preparingQuest then text=text.."\n    为「"..step.preparingQuest.title.."」准备前置，交付后接续。" end
                 if step.blocked then text=text.."\n    "..step.blocked end
                 lines[#lines+1]=text
@@ -318,7 +318,7 @@ function UI:Lines()
             local detail=row.requireCheck and "向任务发布者查看任务" or
                 not row.allowed and row.group~=5 and row.reason or row.recipientName
             local symbol=row.group==1 and "turnin" or row.group==2 and "objective" or "accept"
-            lines[#lines+1]=A.UI:Icon(symbol).."  "..string.format("%s%s%s|r  %s\n    |cffc7b8a8%s%s|r",i==self.taskIndex and "› " or "",statusColors[row.group],row.status,row.title,hint,detail and (" · "..detail) or "")
+            lines[#lines+1]=A.UI:Icon(symbol).."  "..string.format("%s%s%s|r  %s\n    |cffc4bfad%s%s|r",i==self.taskIndex and "› " or "",statusColors[row.group],row.status,row.title,hint,detail and (" · "..detail) or "")
             if row.gear then
                 local reward=row.gear
                 lines[#lines+1]=string.format("     装备提升：%s · 属性评分 %+.1f",reward.item.link or reward.item.name or ("物品 #"..reward.item.id),reward.upgrade.delta)

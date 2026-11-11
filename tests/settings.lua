@@ -12,7 +12,7 @@ local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
     for _,key in ipairs({"SetHyperlinksEnabled","SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag",
         "RegisterForClicks","SetAllPoints","SetTexture","SetTexCoord","SetBlendMode","SetMaxLines","SetNonSpaceWrap","SetFontObject","SetMultiLine",
-        "SetMaxLetters","SetShadowColor","SetShadowOffset","SetAutoFocus","ClearFocus","SetFocus","HighlightText","SetFrameStrata","SetCooldown","Clear"}) do w[key]=function() end end
+        "SetMaxLetters","SetShadowColor","SetShadowOffset","SetAutoFocus","SetTextInsets","ClearFocus","SetFocus","HighlightText","SetFrameStrata","SetCooldown","Clear"}) do w[key]=function() end end
     w.SetPoint=function(self,...) self.point={...} end
     w.GetPoint=function(self) return "CENTER",UIParent,"CENTER",25,-30 end
     w.ClearAllPoints=function(self) self.point=nil end

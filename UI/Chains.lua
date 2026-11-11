@@ -138,7 +138,7 @@ function UI:Draw(graph)
         card:ClearAllPoints();card:SetPoint("TOPLEFT",self.canvas,"TOPLEFT",node.x,-node.y)
         card.text:SetText("#"..node.id.." · "..(node.deferredRoot and "整链暂缓" or node.skipped and "已暂缓" or status[node.status]))
         card.title:SetText(node.title)
-        card:SetBackdropColor(node.id==self.focus and 0.08 or 0.05,node.id==self.focus and 0.28 or 0.12,0.16,1)
+        card:SetBackdropColor(node.id==self.focus and 0.23 or 0.14,node.id==self.focus and 0.16 or 0.10,0.06,1)
         card:Show()
     end
     for i,edge in ipairs(graph.edges) do
