@@ -95,7 +95,7 @@ GameTooltip={Hide=function() end}
 C_Map={GetMapInfo=function() return {name="艾尔文森林"} end}
 RAID_CLASS_COLORS={PALADIN={r=0.96,g=0.55,b=0.73}}
 local A={settings={fontScale=1,density="normal",arrow=true,distanceUnits="meters"},char={},indexReady=true,
-    state={class="PALADIN",level=8,xp=3200,maxXP=5040,position={map=1429},quests={
+    state={class="PALADIN",level=8,xp=3200,maxXP=5040,runSpeed=7,position={map=1429,x=0.46,y=0.42},quests={
         [7]={title="狗头人的威胁",level=8,objectives={{text="消灭狗头人歹徒",numFulfilled=6,numRequired=10},{text="消灭狗头人苦力",numFulfilled=4,numRequired=4,finished=true}}},
         [33]={title="林中的群狼",level=9,objectives={{type="item",text="收集狼肉",numFulfilled=3,numRequired=8}}},
         [18]={title="矿工归来",level=10,ready=true,objectives={}},
@@ -105,6 +105,9 @@ if arg[2]=="large" then A.settings.fontScale=1.2 end
 local action={kind="objective",questId=7,title="狗头人的威胁",text="清理矿洞外的狗头人，完成后返回北郡修道院。",position={map=1429,x=0.5,y=0.5,entityName="北郡矿洞"}}
 assert(loadfile("Navigation.lua"))("AiLeveling",A)
 A.Navigation.Current=function() return action end
+A.Navigation.Distance=function(_,a,b)
+    if a and b and a.map==b.map and a.x and b.x then return math.sqrt((a.x-b.x)^2+(a.y-b.y)^2)*4000 end
+end
 A.plan={revision=1,unverified=true,taskChoices={},taskOrder={}}
 for _,id in ipairs({7,18,33,47}) do
     local q=A.state.quests[id]

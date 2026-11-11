@@ -232,7 +232,7 @@ test("任务总览仅按确认的共享目标建议一起推进且飞行时不�
     B.plan=plan(s,d,nil,B)
     assert(table.concat(B.UI:TaskLines(),"\n"):find("可一起推进：任务甲、任务乙",1,true))
     local model=B.UI.TrackerModel(s,B.plan,B.plan.fallback,false)
-    assert(model.hint:find("任务乙",1,true));eq(model.rows[1].questId,2);eq(model.rows[1].shared,true);eq(model.rows[1].atStop,true);eq(model.rows[1].sharedObjective,1)
+    assert(model.hint:find("任务乙",1,true));eq(model.rows[1].questId,2);eq(model.rows[1].shared,true);eq(model.rows[1].atStop,false);eq(model.rows[1].along,true);eq(model.rows[1].sharedObjective,1)
     assert(model.rows[1].progress:find("一起推进",1,true));eq(model.rows[2].shared,nil)
     alias=true;B.plan=plan(s,d,nil,B);assert(table.concat(B.UI:TaskLines(),"\n"):find("可一起推进：任务甲、任务乙",1,true))
     ids[3]=200;B.plan=plan(s,d,nil,B);s.quests[1].objectives[1].finished=true
@@ -293,7 +293,7 @@ test("满日志提示同步到主列表总览与预览，未接状态保持真�
     local B={state=s,char={},plan=p,Navigation={Current=function() return p.fallback end},Planner=A.Planner,settings={}}
     for _,file in ipairs({"UI/Main.lua","UI/Tracker.lua","UI/Plan.lua"}) do assert(loadfile(file))("AiLeveling",B) end
     local model=B.UI.TrackerModel(s,p,p.fallback,false)
-    assert(model.rows[1].progress:find("任务日志已满",1,true));eq(model.rows[1].accepted,false)
+    eq(#model.rows,0);eq(model.unacceptedCount,#p.taskChoices)
     local summary=table.concat(B.UI:TaskLines(),"\n")
     assert(summary:find("未接取任务",1,true));assert(summary:find("任务日志已满",1,true))
     B.UI.Plan.preview=p.taskChoices[1]

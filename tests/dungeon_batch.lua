@@ -116,7 +116,7 @@ run("关闭副本建议排除自动进本且不拖住同收件人的野外交付
     eq(#B.TaskGuide.DeliveryGroups(p.taskChoices,s),0)
     local model=B.UI.TrackerModel(s,p,p.fallback,false)
     local row;for _,r in ipairs(model.rows) do if r.questId==1 then row=r end end
-    assert(row.progress:find("已关闭副本建议",1,true));eq(s.completed[1],nil)
+    eq(row,nil);eq(s.completed[1],nil)
     B.settings.dungeons=true;p=plan(s,data,B.settings,B)
     eq(p.fallback.questId,1);eq(p.fallback.kind,"dungeonEnter")
 end)

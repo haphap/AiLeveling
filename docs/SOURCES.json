@@ -160,6 +160,19 @@
       },
       "code_copied": false,
       "client_verified": false
+    },
+    {
+      "name": "Polestar current step, Along the way and While here",
+      "url": "https://github.com/fitzforge/polestar/tree/0df6f58ab8eeabb248153fdd889e64211177e279/addon/Polestar",
+      "checked": "2026-11-11",
+      "files": [
+        "Core/Engine.lua",
+        "UI/GuideFrame.lua",
+        "UI/WhileHere.lua"
+      ],
+      "scope": "Focused destination/goals, optional parallel goals, nearby pickups/work/turn-ins and a separate next action. Independent presentation uses existing AILeveling task queue and shared objectives; nearby actions use straight-line extra walking time, with existing eligibility and batch delivery constraints. No guide scripts, route engine, notification system or assets copied.",
+      "code_copied": false,
+      "assets_copied": false
     }
   ],
   "api_references": [

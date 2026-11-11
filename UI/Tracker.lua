@@ -31,12 +31,12 @@ local function nextAction(action,plan,state,rows)
     if not action or action.kind=="manual" then return end
     local function listed(stage,id)
         for _,row in ipairs(rows) do
-            if row.atStop and row.questId==id and row.kind==stage.kind and
-                (stage.kind=="turnin" or stage.objectiveIndex==row.sharedObjective) then return true end
+            if (row.atStop or row.along) and row.questId==id and row.kind==stage.kind and
+                (stage.kind~="objective" or stage.objectiveIndex==(row.sharedObjective or row.sideAction and row.sideAction.objectiveIndex)) then return true end
         end
     end
     local navigation=A.Navigation
-    if navigation.actions and navigation.actions[navigation.index]==action then
+    if navigation and navigation.actions and navigation.actions[navigation.index]==action then
         for i=navigation.index+1,#navigation.actions do
             local stage=navigation.actions[i]
             if stage.kind~="move" and not listed(stage,stage.questId) then return stage,stage.questId,stage.title end
@@ -223,9 +223,9 @@ function UI.TrackerModel(state,plan,action,paused)
         model.hint=(model.hint and (model.hint.."\n") or "")..summary
     end
     local planned={}
-    for _,step in ipairs(plan.taskQueue and plan.taskQueue.steps or plan.taskOrder or {}) do
+    for i,step in ipairs(plan.taskQueue and plan.taskQueue.steps or plan.taskOrder or {}) do
         local choice=step.choice or step
-        if choice.questId then planned[choice.questId]=true end
+        if choice.questId and not planned[choice.questId] then planned[choice.questId]=i end
     end
     local seen={}
     if action and action.questId and not currentGroup then seen[action.questId]=true end
@@ -244,8 +244,8 @@ function UI.TrackerModel(state,plan,action,paused)
         end
         local pickupPlace=not q and destination(pickup)
         local counts={}
-        for _,objective in ipairs(q and q.objectives or {}) do
-            if objective.numRequired and objective.numRequired>0 then
+        for index,objective in ipairs(q and q.objectives or {}) do
+            if (not sharedByQuest[id] or sharedByQuest[id]==index) and objective.numRequired and objective.numRequired>0 then
                 local count=string.format("%d/%d",objective.numFulfilled or 0,objective.numRequired)
                 local label=objective.text
                 counts[#counts+1]=label and label~="" and (label:find("%d+%s*/%s*%d+") and label or label.." · "..count) or count
@@ -257,8 +257,6 @@ function UI.TrackerModel(state,plan,action,paused)
             progress=q and (q.ready and "目标已完成，前往交付" or (#counts>0 and table.concat(counts," · ") or "查看任务日志中的目标")) or
                 (candidate and candidate.acceptBlocked or candidate and candidate.requireCheck and "先确认任务当前是否开放" or
                     pickup.position and pickup.position.startItemId and pickup.text or pickupPlace and ("接取："..pickupPlace) or "先接取，再推进任务目标"),deferred=deferred,candidate=candidate,
-            pendingPickup=not q and planned[id] and not deferred and not (candidate and
-                (candidate.lowValue or candidate.acceptBlocked or candidate.entryBlocked or candidate.requireCheck)),
             shared=sharedByQuest[id] and true,sharedObjective=sharedByQuest[id]}
         if sharedByQuest[id] then
             local row=model.rows[#model.rows]
@@ -275,35 +273,44 @@ function UI.TrackerModel(state,plan,action,paused)
     if plan.best then
         for i=A.Navigation and A.Navigation.index or 1,#(plan.best.actions or {}) do
             local step=plan.best.actions[i]
-            if step.kind=="accept" and step.questId then planned[step.questId]=true end
+            if step.questId then planned[step.questId]=planned[step.questId] or i end
             if step.kind~="move" then add(step.questId,step) end
         end
     end
-    -- Surface a nearby pickup even when its later completion is outside this trip.
-    local nearby,nearbyDistance
+    -- Nearby work is optional: compare the extra straight-line walk without changing navigation.
+    local along={}
     local navigation=A.Navigation
-    local direct=not paused and action and action.questId and navigation and navigation.Distance and
-        navigation:Distance(state.position,action.position)
-    if direct and direct>0 then
+    local target=action and (navigation and navigation.Target and navigation.Target(action) or action.position)
+    local direct=not paused and not A.error and action and action.questId and
+        (action.kind=="accept" or action.kind=="objective" or action.kind=="turnin") and navigation and navigation.Distance and
+        navigation:Distance(state.position,target)
+    local speed=state.runSpeed
+    if direct and speed and speed>0 then
         for _,choice in ipairs(plan.taskChoices or {}) do
             local id=choice.questId
-            local point=choice.actions[1].position
-            if not quests[id] and not seen[id] and not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] and
-                not choice.lowValue and not choice.acceptBlocked and not choice.entryBlocked and not choice.requireCheck and point then
-                local approach=navigation:Distance(state.position,point)
-                local onward=navigation:Distance(point,action.position)
-                if approach and onward and approach<=direct and onward<=direct and
-                    (not nearbyDistance or approach<nearbyDistance) then nearby,nearbyDistance=choice,approach end
+            local q=quests[id]
+            if id~=model.questId and not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] and
+                not choice.lowValue and not choice.acceptBlocked and not choice.entryBlocked and not choice.requireCheck then
+                local kind=not q and "accept" or q.ready and not choice.itemShortage and "turnin" or "objective"
+                local step=choice.executionAction or (choice.actions or {})[1]
+                for _,stage in ipairs(choice.stages or {}) do
+                    local objective=q and stage.objectiveIndex and (q.objectives or {})[stage.objectiveIndex]
+                    if stage.kind==kind and (not (objective and objective.finished) or stage.itemGain and stage.itemGain>0) then step=stage;break end
+                end
+                local group=byQuest[id]
+                local waiting=kind=="turnin" and group and not group.splitDelivery and group.ready<#group.choices
+                local objective=q and step and step.objectiveIndex and (q.objectives or {})[step.objectiveIndex]
+                if step and step.kind==kind and step.position and not waiting and
+                    (not (objective and objective.finished) or step.itemGain and step.itemGain>0) then
+                    local approach=navigation:Distance(state.position,step.position)
+                    local onward=navigation:Distance(step.position,target)
+                    if approach and onward and approach<=math.max(direct,180) and onward<=math.max(direct,180) and
+                        (kind~="objective" or approach<=180) and math.max(0,approach+onward-direct)/speed<=20 then
+                        along[id]={action=step,distance=approach}
+                        add(id,step)
+                    end
+                end
             end
-        end
-    end
-    if nearby then
-        add(nearby.questId,nearby.actions[1])
-        local row=model.rows[#model.rows]
-        if row and row.questId==nearby.questId then
-            local place=destination(nearby.actions[1])
-            row.progress="沿途可接"..(place and (" · "..place) or "")
-            row.pendingPickup=true
         end
     end
     for _,choice in ipairs(plan.taskOrder or plan.taskChoices or {}) do
@@ -348,22 +355,45 @@ function UI.TrackerModel(state,plan,action,paused)
     for _,row in ipairs(model.rows) do
         row.delivery=deliveries[row.questId]
         row.atStop=not paused and not A.error and not state.locked and not row.deferred and
-            (model.kind=="objective" and row.shared or model.kind=="turnin" and row.kind=="turnin" and
-                currentGroup~=nil and byQuest[row.questId]==currentGroup and not (row.candidate and row.candidate.itemShortage))
+            model.kind=="turnin" and row.kind=="turnin" and currentGroup~=nil and byQuest[row.questId]==currentGroup and
+            not (row.candidate and row.candidate.itemShortage)
+        local side=along[row.questId]
+        row.along=not paused and not A.error and not row.deferred and row.questId~=model.questId and not row.atStop and
+            (row.shared or side~=nil) or false
+        row.sideAction=side and side.action
+        if row.along and side then row.kind=side.action.kind end
+        row.alongDistance=row.shared and 0 or side and side.distance
+        row.planOrder=planned[row.questId]
     end
+    if action and not paused and not A.error then
+        model.nextStep,model.nextId,model.nextTitle=nextAction(action,plan,state,model.rows)
+    end
+    local visible={}
+    for _,row in ipairs(model.rows) do
+        local candidate=row.candidate or {}
+        local eligible=not row.deferred and not candidate.lowValue and not candidate.acceptBlocked and
+            not candidate.entryBlocked and not candidate.requireCheck
+        if row.questId==model.questId or row.atStop or row.along or eligible and row.planOrder and row.questId~=model.nextId then
+            visible[#visible+1]=row
+        end
+    end
+    table.sort(visible,function(a,b)
+        local function order(row)
+            return row.questId==model.questId and 0 or row.atStop and 1 or row.along and 2 or 3
+        end
+        local ar,br=order(a),order(b)
+        if ar~=br then return ar<br end
+        if ar==2 and a.alongDistance~=b.alongDistance then return (a.alongDistance or 0)<(b.alongDistance or 0) end
+        if a.planOrder~=b.planOrder then return (a.planOrder or math.huge)<(b.planOrder or math.huge) end
+        return a.questId<b.questId
+    end)
+    model.rows=visible
     if not action then
         if plan.complete then model.title="已达到 60 级";model.instruction="本次升级目标已完成。"
         elseif plan.revision and plan.revision~=state.revision then model.title="正在更新行程";model.instruction="正在安排下一步。"
         elseif plan.selectionBlocked then model.title="所选行程等待处理";model.instruction=plan.selectionBlocked
         elseif not A.indexReady then model.title="正在整理任务";model.instruction="任务数据加载后显示当前步骤。"
         else model.title="选择下一项任务";model.instruction="右键任务可选择优先做，左键查看详情。" end
-    end
-    local suggestion=not paused and not A.error and plan.suggestedDungeon
-    if suggestion and suggestion.reference then
-        table.insert(model.rows,1,{dungeonId=suggestion.dungeonId,title=suggestion.title,kind="dungeon",status="副本",
-            progress=string.format("%d 项任务 · %s",suggestion.rewards.count,
-                suggestion.rewards.prepare>0 and "含前置准备" or "可一起安排"),
-            metrics=metrics(suggestion):gsub("路程 ","到入口 "),candidate=suggestion})
     end
     if paused then model.instruction="引导已暂停，右键标题栏可继续引导。";model.hint=nil;model.deliverySummary=nil end
     if A.error then model.title="需要处理";model.instruction=A.error;model.hint=nil;model.deliverySummary=nil end
@@ -464,6 +494,7 @@ function UI:CreateTracker()
     T.card=CreateFrame("Frame",nil,T.content)
     T.actionIcon=T.card:CreateTexture(nil,"ARTWORK")
     T.stepIcon=T.card:CreateTexture(nil,"ARTWORK")
+    T.primaryLabel=text(T.card,11,palette.gold)
     self.title=text(T.card,15,palette.gold)
     T.location=text(T.card,18,palette.white)
     T.area=text(T.card,12,palette.muted)
@@ -491,13 +522,13 @@ function UI:CreateTracker()
     T.region=self:Button(T.content,"",250,function() self.details:Show();self:SelectTab(10) end,12)
     T.region.baseColor={0,0,0,0};T.region:SetBackdropColor(0,0,0,0)
     T.queuePanel=CreateFrame("Frame",nil,T.content)
-    T.queueLabel=text(T.content,12,palette.muted);T.queueLabel:SetText("其他任务")
+    T.queueLabel=text(T.content,12,palette.muted);T.queueLabel:SetText("后续行程")
     T.queueScroll=CreateFrame("ScrollFrame",nil,T.queuePanel,"UIPanelScrollFrameTemplate")
     T.queueScroll:SetPoint("TOPLEFT",0,0)
     T.queueChild=CreateFrame("Frame",nil,T.queueScroll);T.queueScroll:SetScrollChild(T.queueChild)
-    T.pickupLabel=text(T.content,12,palette.blue)
-    T.pickupScroll=CreateFrame("ScrollFrame",nil,T.content,"UIPanelScrollFrameTemplate")
-    T.pickupChild=CreateFrame("Frame",nil,T.pickupScroll);T.pickupScroll:SetScrollChild(T.pickupChild)
+    T.alongLabel=text(T.content,12,palette.blue)
+    T.alongScroll=CreateFrame("ScrollFrame",nil,T.content,"UIPanelScrollFrameTemplate")
+    T.alongChild=CreateFrame("Frame",nil,T.alongScroll);T.alongScroll:SetScrollChild(T.alongChild)
     T.rows={}
     local nav=CreateFrame("Frame","AiLevelingNavigation",UIParent)
     self.navFrame=nav;nav:SetSize(420,90);nav:SetPoint("CENTER",UIParent,"CENTER",0,-110)
@@ -616,8 +647,8 @@ function UI:RenderTracker()
     if model.kind and not A.error then place,name,area=destination(action) end
     T.location:SetText(name and (self:Icon("location",18).." "..name) or "")
     T.area:SetText(area or "")
-    local nextStep,nextId,nextTitle
-    if model.kind and not A.char.paused and not A.error then nextStep,nextId,nextTitle=nextAction(action,plan,state,model.rows) end
+    local nextStep,nextId,nextTitle=model.nextStep,model.nextId,model.nextTitle
+    T.primaryLabel:SetText(model.kind=="turnin" and "本次交付" or model.kind=="accept" and "先接任务" or "主要目标")
     T.thenButton.questId=nextId
     local following=""
     if nextStep then
@@ -680,13 +711,26 @@ function UI:RenderTracker()
         row.title:SetTextColor(unpack(color))
         row.icon:SetVertexColor(unpack(color))
         row.status=item.deferred and (item.accepted and "已接·暂缓" or "未接·暂缓") or item.status
-        row.progress:SetText(item.deferred and "已暂缓" or item.candidate and item.candidate.lowValue and item.candidate.lowValue.suggestion or item.delivery or item.progress)
+        local progress=item.delivery or item.progress
+        if item.along then
+            local verb=({accept="顺路接取",turnin="顺路交付",objective="顺路完成"})[item.kind]
+            if item.shared then
+                local objective=state.quests[item.questId].objectives[item.sharedObjective]
+                progress="同一目标"..(objective.numRequired and objective.numRequired>0 and
+                    string.format(" · %d/%d",objective.numFulfilled or 0,objective.numRequired) or "")
+            elseif item.kind=="objective" then progress=item.candidate and item.candidate.itemShortage and item.sideAction.text or item.progress
+            else
+                local _,name=destination(item.sideAction)
+                progress=verb.." · "..(name or item.progress)
+            end
+        end
+        row.progress:SetText(progress)
         row.progress:SetTextColor(unpack(item.kind=="turnin" and palette.green or item.accepted and palette.muted or palette.blue))
         row.metrics=item.metrics
         row.candidate,row.revision,row.questId=item.candidate,plan.revision,item.questId
         row.deferred,row.dungeonId=item.deferred,item.dungeonId
-        row.atStop,row.pendingPickup=item.atStop,item.pendingPickup
-        row:SetParent(item.atStop and T.currentChild or item.pendingPickup and T.pickupChild or T.queueChild)
+        row.atStop,row.along=item.atStop,item.along
+        row:SetParent(item.atStop and T.currentChild or item.along and T.alongChild or T.queueChild)
         local native=(state.quests or {})[item.questId]
         local objectives=item.accepted and item.kind~="turnin" and not item.deferred and
             not (item.candidate and (item.candidate.lowValue or item.candidate.entryBlocked)) and native and native.objectives or {}
@@ -756,6 +800,9 @@ function UI:LayoutTracker()
     T.area:SetShown(T.area:GetText()~="")
     if T.area:IsShown() then top=top+T.area:GetStringHeight()+3 end
     if top>0 then top=top+10 end
+    T.primaryLabel:ClearAllPoints();T.primaryLabel:SetPoint("TOPLEFT",indent,-top);T.primaryLabel:SetWidth(bodyWidth)
+    T.primaryLabel:SetShown(not collapsed and T.model~=nil and T.model.kind~=nil)
+    if T.primaryLabel:IsShown() then top=top+18*scale end
     T.actionIcon:ClearAllPoints();T.actionIcon:SetPoint("TOPLEFT",0,-top-2);T.actionIcon:SetSize(16*scale,16*scale)
     T.stepIcon:ClearAllPoints();T.stepIcon:SetPoint("TOPRIGHT",-2,-top-2);T.stepIcon:SetSize(15*scale,15*scale)
     self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT",indent,-top);self.title:SetWidth(bodyWidth);self.title:SetMaxLines(2)
@@ -764,14 +811,14 @@ function UI:LayoutTracker()
     T.objectiveFrame:ClearAllPoints();T.objectiveFrame:SetPoint("TOPLEFT",indent,0);T.objectiveFrame:SetWidth(bodyWidth)
     local childHeight=layoutObjectives(T.objectives,bodyWidth,scale)
     T.objectiveFrame:SetHeight(math.max(1,childHeight))
-    local queueHeight,pickupHeight,pickupCount=0,0,0
+    local queueHeight,alongHeight,alongCount=0,0,0
     for i,item in ipairs(T.model and T.model.rows or {}) do
         local row=T.rows[i]
         local current=item.questId and item.questId==T.model.questId
         row:SetShown(not current)
         if not current then
             if row.atStop then childHeight=childHeight+layoutRow(row,childHeight+4)+4
-            elseif row.pendingPickup then pickupHeight=pickupHeight+layoutRow(row,pickupHeight);pickupCount=pickupCount+1
+            elseif row.along then alongHeight=alongHeight+layoutRow(row,alongHeight);alongCount=alongCount+1
             else queueHeight=queueHeight+layoutRow(row,queueHeight) end
         end
     end
@@ -786,19 +833,19 @@ function UI:LayoutTracker()
     T.currentScroll:SetHeight(math.max(1,height));T.currentChild:SetHeight(math.max(1,childHeight));T.currentScroll:SetShown(not collapsed)
     T.card:SetHeight(top+(collapsed and 0 or height))
     local bottom=cardTop+T.card:GetHeight()+10
+    T.alongLabel:ClearAllPoints();T.alongLabel:SetPoint("TOPLEFT",0,-bottom);T.alongLabel:SetWidth(inner)
+    T.alongLabel:SetText("顺路可做 · "..alongCount);T.alongLabel:SetShown(not collapsed and alongCount>0)
+    if T.alongLabel:IsShown() then bottom=bottom+24*scale end
+    T.alongScroll:ClearAllPoints();T.alongScroll:SetPoint("TOPLEFT",0,-bottom);T.alongScroll:SetWidth(inner)
+    T.alongChild:SetWidth(inner);T.alongChild:SetHeight(math.max(1,alongHeight))
+    local alongVisible=math.min(alongHeight,({compact=75,normal=120,expanded=180})[density]*scale)
+    T.alongScroll:SetHeight(math.max(1,alongVisible));T.alongScroll:SetShown(not collapsed and alongCount>0)
+    if T.alongScroll:IsShown() then bottom=bottom+alongVisible+10 end
     T.thenDivider:ClearAllPoints();T.thenDivider:SetPoint("TOPLEFT",0,-bottom);T.thenDivider:SetSize(inner,1)
     T.thenText:ClearAllPoints();T.thenText:SetPoint("TOPLEFT",0,-bottom-10);T.thenText:SetWidth(inner)
     T.thenText:SetShown(not collapsed and T.thenText:GetText()~="");T.thenButton:SetShown(T.thenText:IsShown())
     T.thenDivider:SetShown(T.thenText:IsShown())
     if T.thenText:IsShown() then bottom=bottom+T.thenText:GetStringHeight()+24 end
-    T.pickupLabel:ClearAllPoints();T.pickupLabel:SetPoint("TOPLEFT",0,-bottom);T.pickupLabel:SetWidth(inner)
-    T.pickupLabel:SetText("待接任务 · "..pickupCount);T.pickupLabel:SetShown(not collapsed and pickupCount>0)
-    if T.pickupLabel:IsShown() then bottom=bottom+24*scale end
-    T.pickupScroll:ClearAllPoints();T.pickupScroll:SetPoint("TOPLEFT",0,-bottom);T.pickupScroll:SetWidth(inner)
-    T.pickupChild:SetWidth(inner);T.pickupChild:SetHeight(math.max(1,pickupHeight))
-    local pickupVisible=math.min(pickupHeight,({compact=75,normal=120,expanded=180})[density]*scale)
-    T.pickupScroll:SetHeight(math.max(1,pickupVisible));T.pickupScroll:SetShown(not collapsed and pickupCount>0)
-    if T.pickupScroll:IsShown() then bottom=bottom+pickupVisible+10 end
     T.queueLabel:ClearAllPoints();T.queueLabel:SetPoint("TOPLEFT",0,-bottom);T.queueLabel:SetWidth(inner)
     T.queueLabel:SetShown(not collapsed and queueHeight>0)
     if T.queueLabel:IsShown() then bottom=bottom+24*scale end

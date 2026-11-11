@@ -557,7 +557,7 @@ return function(test,eq,F,plan)
         eq(p.taskChoices[1].questId,2)
         for _,file in ipairs({"UI/Main.lua","UI/Tracker.lua"}) do assert(loadfile(file))("AiLeveling",B) end
         local model=B.UI.TrackerModel(s,p,p.fallback,false)
-        eq(model.rows[1].questId,1);assert(model.rows[1].progress:find(s.instanceEntryError,1,true))
+        eq(#model.rows,0) -- Blocked candidates stay in the main task browser, outside the itinerary.
         s.quests[2]={ready=true,objectives={}}
         p=plan(s,data,B.settings,B);eq(p.fallback.questId,2);eq(p.fallback.kind,"turnin")
         s.quests[2]=nil;s.locked=1;s.instanceEntryError=nil
