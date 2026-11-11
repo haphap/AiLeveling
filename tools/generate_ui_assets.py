@@ -30,6 +30,14 @@ def icon(name, color, paint):
     image.save(OUT / (name + '.tga'))
     assert image.mode == 'RGBA' and image.getpixel((0, 0))[3] == 0
 
+    if name in {'accept', 'objective', 'turnin', 'collect', 'location', 'entry', 'target'}:
+        image = Image.new('RGBA', (32*S, 32*S))
+        draw = ImageDraw.Draw(image)
+        paint(line, ellipse, polygon)
+        image.putdata([(255, 255, 255, 0 if pixel[:3] == (40, 30, 18) else pixel[3])
+                       for pixel in image.getdata()])
+        image.resize((64, 64), Image.Resampling.LANCZOS).save(OUT / ('hud-' + name + '.tga'))
+
 
 icon('accept', (158, 201, 222, 255), lambda line, circle, poly: (
     line([(9, 7), (24, 7), (24, 24), (11, 24), (11, 9)]),
@@ -113,4 +121,11 @@ corner.resize((32, 32), Image.Resampling.LANCZOS).save(OUT / 'corner.tga')
 rim = Image.new('RGBA', (32*S, 32*S))
 ImageDraw.Draw(rim).ellipse((0, 0, 64*S-1, 64*S-1), outline='white', width=4*S)
 rim.resize((32, 32), Image.Resampling.LANCZOS).save(OUT / 'rim.tga')
-print('Generated 18 RGBA textures in Media/')
+sky = Image.new('RGBA', (512, 64))
+draw = ImageDraw.Draw(sky)
+for y in range(64):
+    draw.line((0, y, 511, y), fill=(64, 79, 125, round(80*(1-y/64))))
+for x, y in [(28, 7), (74, 15), (135, 5), (206, 10), (280, 4), (344, 13), (415, 6), (484, 17)]:
+    draw.ellipse((x, y, x+2, y+2), fill=(194, 210, 244, 55))
+sky.save(OUT / 'hud-header.tga')
+print('Generated 26 RGBA textures in Media/')
