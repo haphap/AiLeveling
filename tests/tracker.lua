@@ -26,15 +26,15 @@ test("同NPC任务连续显示整组真实进度并保持行宽与点击",functi
     B.state.quests[3].ready=true;B.UI:RenderTracker()
     local T=B.UI.tracker
     eq(#T.model.rows,3);eq(T.model.rows[1].questId,1);eq(T.model.rows[2].questId,3);eq(T.model.rows[3].questId,2)
-    eq(T.rows[1].group.value,"治安官 · 已完成 1/2")
-    eq(T.rows[2].group.shown,false);eq(T.rows[2].status.value,"可交付")
+    eq(T.model.rows[1].groupTitle,"治安官 · 已完成 1/2")
+    eq(T.model.rows[2].groupTitle,nil);eq(T.rows[2].status,"可交付")
     eq(T.rows[2].progress.value,"同组还差 1 项，做完一起交")
     eq(T.model.deliverySummary,"同组还差 1 项，做完一起交")
-    eq(T.rows[1].number.point[3],T.rows[1].title.point[3]);eq(T.queuePanel.width,T.card.width)
+    eq(T.queuePanel.width,T.card.width)
     T.rows[2].scripts.OnClick(nil,"RightButton");B.menu["优先做此任务"].callback();eq(B.char.locked,3)
     B.state.quests[1].ready=true;B.UI:RenderTracker()
-    eq(T.rows[1].group.value,"治安官 · 已完成 2/2");eq(T.rows[1].progress.value,"一起交给治安官（2项）")
-    B.state.quests[3]=nil;B.UI:RenderTracker();eq(T.rows[1].group.shown,false)
+    eq(T.model.rows[1].groupTitle,"治安官 · 已完成 2/2");eq(T.rows[1].progress.value,"一起交给治安官（2项）")
+    B.state.quests[3]=nil;B.UI:RenderTracker();eq(T.model.rows[1].groupTitle,nil)
     B.finish()
 end)
 test("原生可交付但共用物品不足时显示补齐提示和整批数量",function()
@@ -85,18 +85,21 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     eq(#actions,1);eq(actions[1],action)
     B.action=actions[1];B.UI:RenderTracker()
     assert(not B.UI.body.value:find(action.text,1,true));assert(not B.UI.body.value:find("60.0, 50.0",1,true))
-    assert(T.objectives[1].text.value:find("狗头人",1,true));assert(T.objectives[1].text.value:find("3/10",1,true))
-    eq(B.UI.title.value,"狗头人营地");eq(B.UI.body.value,"当前任务");eq(T.objectives[1].count.value,"3/10");eq(T.objectives[1].ratio,0.3)
-    eq(#T.model.rows,2);eq(T.rows[1].title.value,"后续交付");eq(T.rows[1].status.value,"可交付")
+    assert(T.objectives[1].text.value:find("狗头人",1,true));assert(not T.objectives[1].text.value:find("3/10",1,true))
+    eq(B.UI.title.value,"当前任务");eq(B.UI.body.value,"");eq(T.objectives[1].count.value,"3/10");eq(T.objectives[1].ratio,0.3)
+    eq(#T.model.rows,2);eq(T.rows[1].title.value,"后续交付");eq(T.rows[1].status,"可交付")
     eq(T.queuePanel.width,T.card.width)
-    eq(T.rows[1].number.fontSize,T.rows[1].title.fontSize)
-    eq(T.rows[1].number.point[3],T.rows[1].title.point[3])
-    assert(T.queueScroll.width+8+20<=T.queuePanel.width);assert(T.card.width<=300)
+    eq(T.rows[1].title.shown,true);eq(T.rows[2].objectives[1].count.value,"2/4")
+    eq(T.objectives[1].back.shown,true);eq(T.objectives[1].fill.shown,true)
+    eq(T.rows[2].objectives[1].text.value,"物品");eq(T.rows[2].objectives[1].ratio,0.5)
+    assert(T.rows[1].title.color[2]>T.rows[1].title.color[1])
+    assert(T.rows[2].title.color[1]>T.rows[2].title.color[2])
+    assert(T.queueScroll.width+20<=T.queuePanel.width);assert(T.card.width<=300)
     assert(T.footer.value:find("经验 1250",1,true));assert(T.footer.value:find("路程 2分15秒",1,true))
-    assert(T.rows[1].metrics.value:find("经验 0",1,true));assert(T.rows[1].metrics.value:find("路程 0秒",1,true))
-    assert(T.rows[2].metrics.value:find("路程 1小时01分",1,true))
+    assert(T.rows[1].metrics:find("经验 0",1,true));assert(T.rows[1].metrics:find("路程 0秒",1,true))
+    assert(T.rows[2].metrics:find("路程 1小时01分",1,true))
     assert(T.rows[1].title.fontSize>=15);assert(T.rows[1].progress.fontSize>=13)
-    assert(T.rows[1].progress.color[1]>=0.75);eq(T.queuePanel.surface,nil);eq(T.card.surface,nil)
+    assert(T.rows[1].progress.color[2]>=0.75);eq(T.queuePanel.surface,nil);eq(T.card.surface,nil)
     eq(T.rows[1].title.fontFlags,"OUTLINE")
     eq(T.rows[2].progress.value,"物品 2/4");eq(T.rows[1].enabled,true)
     B.state.quests[3].objectives[1].text="收集物品";B.UI:RenderTracker()
@@ -132,7 +135,7 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.plan.taskChoices[#B.plan.taskChoices+1]={id="task:4",questId=4,kind="task",title="未接任务",
         actions={{questId=4,kind="accept",title="未接任务"}}}
     B.UI:RenderTracker()
-    eq(T.rows[2].status.value,"已接取");eq(T.rows[3].status.value,"未接取")
+    eq(T.rows[2].status,"已接取");eq(T.rows[3].status,"未接取")
     eq(T.rows[3].progress.value,"先接取，再推进任务目标")
     eq(T.model.acceptedCount,2);eq(T.model.unacceptedCount,1)
     T.rows[3].scripts.OnClick(nil,"LeftButton")
@@ -165,7 +168,7 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.UI:RenderTracker();eq(T.rows[3].progress.value,starter.text)
     local model=B.UI.TrackerModel(B.state,B.plan,starter,false);eq(model.destination,nil);eq(model.instruction,starter.text)
     B.plan.taskOrder={B.plan.taskChoices[1],B.plan.taskChoices[4],B.plan.taskChoices[2],B.plan.taskChoices[3]}
-    B.UI:RenderTracker();eq(T.model.rows[1].questId,4);eq(T.rows[1].status.value,"未接取")
+    B.UI:RenderTracker();eq(T.model.rows[1].questId,4);eq(T.rows[1].status,"未接取")
     B.plan.taskOrder=nil
     local distance=B.Navigation.Distance
     B.Navigation.Distance=function(_,a,b) if a and b and a.map==b.map then return math.abs(a.x-b.x)*700 end end
@@ -176,13 +179,13 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.state.locked=nil;B.Navigation.Distance=distance;starter.position=nil
     B.state.quests[4]={title="真实接取的任务",objectives={{text="收集 1/5",numFulfilled=1,numRequired=5}}}
     B.UI:RenderTracker()
-    eq(T.rows[3].status.value,"已接取");eq(T.rows[3].progress.value,"收集 1/5")
+    eq(T.rows[3].status,"已接取");eq(T.rows[3].progress.value,"收集 1/5")
     eq(T.model.acceptedCount,3);eq(T.model.unacceptedCount,0)
-    B.state.quests[4].ready=true;B.UI:RenderTracker();eq(T.rows[3].status.value,"可交付")
+    B.state.quests[4].ready=true;B.UI:RenderTracker();eq(T.rows[3].status,"可交付")
     local suggestion={id="reference:3065",dungeonId="reference:3065",kind="dungeon",reference=true,requiresAcceptance=true,
         title="领主大厅",rewards={count=5,prepare=1},remainingXP=13300,timing={seconds=150}}
     B.refreshAt=nil;B.plan.revision=B.state.revision;B.plan.suggestedDungeon=suggestion;B.UI:RenderTracker()
-    eq(T.rows[1].dungeonId,suggestion.dungeonId);eq(T.rows[1].status.value,"副本")
+    eq(T.rows[1].dungeonId,suggestion.dungeonId);eq(T.rows[1].status,"副本")
     eq(T.rows[1].progress.value,"5 项任务 · 含前置准备");eq(T.model.questId,1)
     -- The browser keeps the same current recommendation as navigation, ahead of dungeon options.
     B.UI.Plan.key=nil;B.UI:SelectTab(1)
@@ -213,7 +216,7 @@ test("未来行动中的交付预期不能把未接任务显示成已接或可�
     local B=ready();local T=B.UI.tracker
     B.plan.best={actions={{questId=1,kind="objective"},{questId=99,kind="turnin",title="未来交付任务"}}}
     B.UI:RenderTracker()
-    eq(T.model.rows[1].questId,99);eq(T.rows[1].status.value,"未接取")
+    eq(T.model.rows[1].questId,99);eq(T.rows[1].status,"未接取")
     eq(T.model.rows[1].accepted,false);eq(T.model.unacceptedCount,1)
     eq(T.model.rows[1].kind,"accept");eq(T.rows[1].progress.value,"先接取，再推进任务目标")
     B.finish()
@@ -237,9 +240,9 @@ test("原生更新后清除旧目标和旧任务行且拒绝过期任务点击",
 end)
 test("暂停飞行手动导航保持真实当前类型且不自动跳过任务",function()
     local B=ready();local T=B.UI.tracker
-    B.char.paused=true;B.UI:RenderTracker();eq(T.step.value,"已暂停");eq(B.UI.title.value,"当前任务");eq(#T.model.rows,2)
+    B.char.paused=true;B.UI:RenderTracker();eq(T.experience.value,"已暂停");eq(B.UI.title.value,"当前任务");eq(#T.model.rows,2)
     B.char.paused=false;B.plan.preparingQuest={title="旧前置"}
-    B.action={kind="flight",title="正在飞行"};B.UI:RenderTracker();eq(T.step.value,"飞行中");eq(T.model.hint,nil)
+    B.action={kind="flight",title="正在飞行"};B.UI:RenderTracker();eq(T.model.kind,"flight");eq(T.model.hint,nil)
     assert(not B.UI.body.value:find("旧前置",1,true));B.plan.preparingQuest=nil
     B.Navigation.manual={};B.action={kind="manual",title="手动目的地"};B.UI:RenderTracker();eq(T.model.kind,"manual");eq(#T.model.rows,3)
     local cleared=0;B.Navigation.ClearManual=function(self) self.manual=nil;cleared=cleared+1 end
@@ -318,7 +321,7 @@ test("原生服务页可切换旅店与训练项目插入取消且页签隐藏�
     B.UI:SelectTab(7);assert(B.UI.detailText.value:find("新技能",1,true))
     U.choose.scripts.OnClick();eq(B.char.serviceStop.kind,"train");assert(B.char.serviceStop.learnKey)
     B.action=B.Services.Build({serviceStop=B.char.serviceStop,position=B.state.position}).fallback
-    B.UI:RenderTracker();eq(B.UI.tracker.step.value,"训练")
+    B.UI:RenderTracker();eq(B.UI.tracker.model.kind,"service")
     B.UI:SelectTab(5);eq(U.frame.shown,false);eq(B.UI.Settings.frame.shown,true)
     B:NormalizeCharacter(B.char);assert(B.char.serviceStop);B.char.serviceStop.position.x=2
     B:NormalizeCharacter(B.char);eq(B.char.serviceStop,nil)
@@ -330,7 +333,7 @@ test("低价值建议保留接取状态手动入口并为换行留出空间",fun
     B.plan.taskChoices[4]={questId=4,kind="task",actions={{kind="accept",questId=4,title="有效新任务"}}}
     B.UI:RenderTracker();local row=B.UI.tracker.rows[3]
     eq(B.UI.tracker.model.rows[2].questId,4)
-    eq(row.status.value,"已接取");assert(row.progress.value:find("建议放弃",1,true));eq(row.enabled,true)
+    eq(row.status,"已接取");assert(row.progress.value:find("建议放弃",1,true));eq(row.enabled,true)
     row.progress.measuredHeight=60;B.UI:LayoutTracker();assert(row.height<90)
     assert(loadfile("UI/Plan.lua"))("AiLeveling",B);B.UI.Plan.preview=c
     local lines=table.concat(B.UI.Plan:Lines(),"\n")
@@ -346,7 +349,7 @@ test("交错行程按任务数汇总并显示每个目标与交付步骤",functi
     a.executionAction=oa;a.executionTiming={seconds=80,low=80,high=80};B.action=oa
     B.UI:RenderTracker();assert(B.UI.tracker.objectives[1].text.value:find("狗头人",1,true))
     assert(not B.UI.body.value:find("先完成附近目标，再集中交付",1,true))
-    eq(B.UI.tracker.stepCount.value,"1 / 4")
+    eq(B.UI.tracker.model.questId,1)
     eq(B.UI.tracker.rows[2].questId,3)
     eq(B.state.quests[3].ready,nil)
     B.finish()

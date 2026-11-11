@@ -93,10 +93,10 @@ C_Map={GetMapInfo=function() return {name="艾尔文森林"} end}
 RAID_CLASS_COLORS={PALADIN={r=0.96,g=0.55,b=0.73}}
 local A={settings={fontScale=1,density="normal",arrow=true,distanceUnits="meters"},char={},indexReady=true,
     state={class="PALADIN",level=8,xp=3200,maxXP=5040,position={map=1429},quests={
-        [7]={title="狗头人的威胁",objectives={{text="消灭狗头人歹徒",numFulfilled=6,numRequired=10}}},
-        [33]={title="林中的群狼",objectives={{type="item",text="收集狼肉",numFulfilled=3,numRequired=8}}},
-        [18]={title="矿工归来",ready=true,objectives={}},
-        [47]={title="把收集的金砂交给治安官",objectives={{type="item",text="收集金砂",numFulfilled=5,numRequired=10}}},
+        [7]={title="狗头人的威胁",level=8,objectives={{text="消灭狗头人歹徒",numFulfilled=6,numRequired=10},{text="消灭狗头人苦力",numFulfilled=4,numRequired=4,finished=true}}},
+        [33]={title="林中的群狼",level=9,objectives={{type="item",text="收集狼肉",numFulfilled=3,numRequired=8}}},
+        [18]={title="矿工归来",level=10,ready=true,objectives={}},
+        [47]={title="把收集的金砂交给治安官",level=10,objectives={{type="item",text="收集金砂",numFulfilled=5,numRequired=10}}},
     }},Selection={CanChoose=function() return true end}}
 if arg[2]=="large" then A.settings.fontScale=1.2 end
 local action={kind="objective",questId=7,title="狗头人的威胁",text="清理矿洞外的狗头人，完成后返回北郡修道院。",position={map=1429,x=0.5,y=0.5,entityName="北郡矿洞"}}
