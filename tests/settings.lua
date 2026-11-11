@@ -10,7 +10,7 @@ local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","
     "PlayerSpellsFrame","PlayerSpellsUtil","PlayerUtil","ExportUtil","C_Traits","C_ClassTalents","C_SpecializationInfo","GetNumSpecGroups"}
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
-    for _,key in ipairs({"SetHyperlinksEnabled","SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag",
+    for _,key in ipairs({"SetResizable","SetClampedToScreen","SetHyperlinksEnabled","SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag",
         "RegisterForClicks","SetAllPoints","SetTexture","SetTexCoord","SetHorizTile","SetVertTile","SetBlendMode","SetMaxLines","SetNonSpaceWrap","SetFontObject","SetMultiLine",
         "SetMaxLetters","SetShadowColor","SetShadowOffset","SetAutoFocus","SetTextInsets","ClearFocus","SetFocus","HighlightText","SetFrameStrata","SetCooldown","Clear"}) do w[key]=function() end end
     w.SetPoint=function(self,...) self.point={...} end
@@ -39,7 +39,9 @@ local function widget()
     w.SetScript=function(self,event,callback) self.scripts[event]=callback end
     w.RegisterForClicks=function(self,...) self.clicks={...} end
     w.RegisterEvent=function(self,event) self.events=self.events or {};self.events[event]=true end
-    w.StartMoving=function(self) self.moving=true end;w.StopMovingOrSizing=function(self) self.moving=false end
+    w.SetResizeBounds=function(self,...) self.resizeBounds={...} end
+    w.StartSizing=function(self,point) self.sizing=point end
+    w.StartMoving=function(self) self.moving=true end;w.StopMovingOrSizing=function(self) self.moving=false;self.sizing=nil end
     w.Show=function(self) self.shown=true end;w.Hide=function(self) self.shown=false end
     w.SetShown=function(self,v) self.shown=v end;w.IsShown=function(self) return self.shown end
     w.SetEnabled=function(self,v) self.enabled=v end
@@ -50,6 +52,7 @@ local function widget()
     w.SetDesaturated=function() end
     w.SetScrollChild=function(self,child) self.child=child end
     w.SetVerticalScroll=function(self,v) self.offset=v end
+    w.GetVerticalScroll=function(self) return self.offset or 0 end
     w.CreateTexture=function() return widget() end;w.CreateFontString=function() return widget() end
     w.CreateLine=function() local line=widget();line.SetThickness=function() end;line.SetStartPoint=function() end;line.SetEndPoint=function() end;return line end
     return w
@@ -384,6 +387,22 @@ test("窗口锁定阻止拖动且主详情分别保存位置并恢复",function(
     U.frame.scripts.OnDragStart();U.frame.scripts.OnDragStop();eq(B.settings.trackerDocked,false)
     U.frame.scripts.OnMouseUp(nil,"RightButton");B.menu["对齐小地图"].callback()
     eq(B.settings.trackerDocked,true);eq(B.settings.position,nil);eq(U.frame.point[2],MinimapCluster)
+    local T=U.tracker
+    B.settings.lockWindow=true;T.resize.scripts.OnMouseDown(nil,"LeftButton");eq(T.resizing,nil)
+    B.settings.lockWindow=false;B.combat(true);T.resize.scripts.OnMouseDown(nil,"LeftButton");eq(T.resizing,nil);B.combat(false)
+    T.resize.scripts.OnMouseDown(nil,"LeftButton");eq(U.frame.sizing,"BOTTOMRIGHT");eq(B.settings.trackerDocked,false)
+    U.frame:SetSize(420,400);T.resize.scripts.OnUpdate()
+    eq(U.frame.width,420);eq(U.frame.height,400);eq(T.content.width,400);eq(U.title.width,356)
+    T.resize.scripts.OnMouseUp();eq(T.resizing,nil);eq(T.resize.scripts.OnUpdate,nil)
+    eq(B.settings.trackerWidth,420);eq(B.settings.trackerHeight,400);eq(B.settings.position[3],25)
+    U:RenderTracker();eq(U.frame.width,420);eq(U.frame.height,400)
+    assert(T.currentChild.height>T.currentScroll.height)
+    T.currentScroll:SetVerticalScroll(30);U:LayoutTracker();eq(T.currentScroll.offset,30)
+    U.folded=true;U:LayoutTracker();assert(U.frame.height<400);eq(T.resize.shown,false)
+    U.folded=false;U:LayoutTracker();eq(U.frame.height,400);eq(T.resize.shown,true)
+    B:NormalizeSettings(B.settings);eq(B.settings.trackerWidth,420);eq(B.settings.trackerHeight,400)
+    U.frame.scripts.OnMouseUp(nil,"RightButton");B.menu["恢复自动尺寸"].callback()
+    eq(B.settings.trackerWidth,0);eq(B.settings.trackerHeight,0);eq(U.frame.width,280)
     B.char.deferredChains[1]=true;B.state.completed[7]=true
     B:RestoreSettings();eq(B.settings.detailPosition,nil);eq(B.char.deferredChains[1],true);eq(B.state.completed[7],true)
     B.finish()

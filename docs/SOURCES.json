@@ -510,6 +510,12 @@
       ],
       "scope": "GetQuestLink takes a quest ID; native quest UI uses ChatFrameUtil.InsertLink and OpenChat to place links in the chat editor. QuestMapFrame_OpenToQuestDetails opens a selected quest. AiLeveling checks the current native GetLogIndexForQuestID before opening accepted quest details; unaccepted tasks reuse their existing plan preview. Only explicit mouse actions invoke these operations; current task, locks and progress are preserved. Layout, native window interaction and chat editor behavior await live verification.",
       "clientVerified": false
+    },
+    {
+      "name": "Forever native frame resizing",
+      "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleFrameAPIDocumentation.lua",
+      "checked": "2026-11-11",
+      "scope": "SetResizable, SetResizeBounds, StartSizing and StopMovingOrSizing for the tracker mouse resize grip; shared scroll viewport keeps the current title and secure target anchor fixed."
     }
   ],
   "native_symbol_checks": {

@@ -461,6 +461,9 @@ function UI:TrackerMenu(owner)
             menu:CreateButton("对齐小地图",function()
                 A.settings.trackerDocked=true;A.settings.position=nil;self:LayoutCard()
             end)
+            menu:CreateButton("恢复自动尺寸",function()
+                A.settings.trackerWidth=0;A.settings.trackerHeight=0;self:LayoutTracker()
+            end)
             menu:CreateButton(self.folded and "展开任务列表" or "收起任务列表",function()
                 self.folded=not self.folded;self:LayoutCard()
             end)
@@ -478,11 +481,38 @@ function UI:CreateTracker()
     f:SetScript("OnMouseUp",function(_,button) if button=="RightButton" then self:TrackerMenu(f) end end)
     f:SetScript("OnEnter",function()
         GameTooltip:SetOwner(f,"ANCHOR_TOP");GameTooltip:SetText("AILeveling")
-        GameTooltip:AddLine("左键拖动面板\n右键：暂停、收起与详细面板",1,1,1,true);GameTooltip:Show()
+        GameTooltip:AddLine("左键拖动面板，右下角调整宽高\n右键：暂停、收起与详细面板",1,1,1,true);GameTooltip:Show()
     end)
     f:SetScript("OnLeave",function() GameTooltip:Hide() end)
     self:Rounded(f,8);f:SetBackdropColor(0.065,0.052,0.043,0.32)
     local T=self.tracker
+    f:SetResizable(true);f:SetClampedToScreen(true)
+    T.resize=CreateFrame("Button",nil,f);T.resize:SetSize(18,18);T.resize:SetPoint("BOTTOMRIGHT",-2,2)
+    for _,length in ipairs({6,11}) do
+        local line=T.resize:CreateLine(nil,"OVERLAY");line:SetThickness(2);line:SetColorTexture(unpack(palette.gold))
+        line:SetStartPoint("BOTTOMRIGHT",T.resize,-length,2);line:SetEndPoint("BOTTOMRIGHT",T.resize,-2,length)
+    end
+    local function finishSizing()
+        if not T.resizing then return end
+        f:StopMovingOrSizing();T.resizing=nil;T.resize:SetScript("OnUpdate",nil)
+        A.settings.trackerWidth,A.settings.trackerHeight=f:GetSize()
+        local point,_,relative,x,y=f:GetPoint()
+        A.settings.position={point,relative,x,y}
+        self:LayoutTracker()
+    end
+    T.resize:SetScript("OnMouseDown",function(_,button)
+        if button~="LeftButton" or A.settings.lockWindow or self.folded or InCombatLockdown() then return end
+        GameTooltip:Hide();A.settings.trackerDocked=false;T.resizing=true;f:StartSizing("BOTTOMRIGHT")
+        T.resize:SetScript("OnUpdate",function()
+            if A.settings.lockWindow or InCombatLockdown() then finishSizing() else self:LayoutTracker() end
+        end)
+    end)
+    T.resize:SetScript("OnMouseUp",finishSizing);T.resize:SetScript("OnHide",finishSizing)
+    T.resize:SetScript("OnEnter",function()
+        GameTooltip:SetOwner(T.resize,"ANCHOR_LEFT");GameTooltip:SetText("调整宽高")
+        GameTooltip:AddLine("按住左键拖动，松开保存尺寸",1,1,1,true);GameTooltip:Show()
+    end)
+    T.resize:SetScript("OnLeave",function() GameTooltip:Hide() end)
     T.content=CreateFrame("Frame",nil,f);T.content:SetPoint("TOPLEFT",10,-10)
     T.zone=text(T.content,14,palette.gold);T.zone:SetPoint("TOPLEFT",0,0)
     T.zone:SetText(self:Icon("compass",16).." 当前行程")
@@ -513,22 +543,22 @@ function UI:CreateTracker()
     T.objectives={}
     T.footer=text(T.currentChild,12,palette.muted)
     T.questTitle.progress=self.body
-    T.thenText=text(T.content,13,palette.blue)
-    T.thenDivider=T.content:CreateTexture(nil,"BACKGROUND");T.thenDivider:SetColorTexture(unpack(palette.line))
-    T.thenButton=CreateFrame("Button",nil,T.content);T.thenButton:SetAllPoints(T.thenText)
+    T.thenText=text(T.currentChild,13,palette.blue)
+    T.thenDivider=T.currentChild:CreateTexture(nil,"BACKGROUND");T.thenDivider:SetColorTexture(unpack(palette.line))
+    T.thenButton=CreateFrame("Button",nil,T.currentChild);T.thenButton:SetAllPoints(T.thenText)
     T.thenButton:SetScript("OnClick",function() self:QuestClick(T.thenButton.questId,"LeftButton") end)
     T.thenButton:SetScript("OnEnter",questTooltip)
     T.thenButton:SetScript("OnLeave",function() GameTooltip:Hide() end)
-    T.region=self:Button(T.content,"",250,function() self.details:Show();self:SelectTab(10) end,12)
+    T.region=self:Button(T.currentChild,"",250,function() self.details:Show();self:SelectTab(10) end,12)
     T.region.baseColor={0,0,0,0};T.region:SetBackdropColor(0,0,0,0)
-    T.queuePanel=CreateFrame("Frame",nil,T.content)
-    T.queueLabel=text(T.content,12,palette.muted);T.queueLabel:SetText("后续行程")
-    T.queueScroll=CreateFrame("ScrollFrame",nil,T.queuePanel,"UIPanelScrollFrameTemplate")
+    T.queuePanel=CreateFrame("Frame",nil,T.currentChild)
+    T.queueLabel=text(T.currentChild,12,palette.muted);T.queueLabel:SetText("后续行程")
+    T.queueScroll=CreateFrame("Frame",nil,T.queuePanel)
     T.queueScroll:SetPoint("TOPLEFT",0,0)
-    T.queueChild=CreateFrame("Frame",nil,T.queueScroll);T.queueScroll:SetScrollChild(T.queueChild)
-    T.alongLabel=text(T.content,12,palette.blue)
-    T.alongScroll=CreateFrame("ScrollFrame",nil,T.content,"UIPanelScrollFrameTemplate")
-    T.alongChild=CreateFrame("Frame",nil,T.alongScroll);T.alongScroll:SetScrollChild(T.alongChild)
+    T.queueChild=CreateFrame("Frame",nil,T.queueScroll);T.queueChild:SetPoint("TOPLEFT")
+    T.alongLabel=text(T.currentChild,12,palette.blue)
+    T.alongScroll=CreateFrame("Frame",nil,T.currentChild)
+    T.alongChild=CreateFrame("Frame",nil,T.alongScroll);T.alongChild:SetPoint("TOPLEFT")
     T.rows={}
     local nav=CreateFrame("Frame","AiLevelingNavigation",UIParent)
     self.navFrame=nav;nav:SetSize(420,90);nav:SetPoint("CENTER",UIParent,"CENTER",0,-110)
@@ -759,6 +789,9 @@ function UI:LayoutTracker()
         if minimap then self.frame:SetPoint("TOPRIGHT",minimap,"BOTTOMRIGHT",0,-12)
         else self.frame:SetPoint("TOPRIGHT",UIParent,"TOPRIGHT",-24,-260) end
     end
+    local requestedWidth=T.resizing and self.frame:GetWidth() or A.settings.trackerWidth or 0
+    if requestedWidth>0 then width=math.max(260,math.min(800,requestedWidth)) end
+    local requestedHeight=T.resizing and self.frame:GetHeight() or A.settings.trackerHeight or 0
     self.frame:SetWidth(width)
     width=width-20
     local inner=width-20
@@ -767,6 +800,7 @@ function UI:LayoutTracker()
     local bodyWidth=inner-indent
     local collapsed=self.folded or (self.inCombat and A.settings.combatFold)
     local density=A.settings.density or "normal"
+    T.resize:SetShown(not collapsed and not A.settings.lockWindow and not InCombatLockdown())
     T.content:SetWidth(width);T.card:SetWidth(width);T.queuePanel:SetWidth(width)
     T.zone:SetWidth(width-120*scale)
     T.menu:ClearAllPoints();T.menu:SetPoint("TOPRIGHT",-22*scale,2);T.menu:SetSize(22*scale,22*scale)
@@ -828,17 +862,15 @@ function UI:LayoutTracker()
     T.footer:ClearAllPoints();T.footer:SetPoint("TOPLEFT",indent,-childHeight);T.footer:SetWidth(bodyWidth);T.footer:SetMaxLines(1)
     T.footer:SetShown(T.footer:GetText()~="")
     if T.footer:IsShown() then childHeight=childHeight+18*scale end
-    local height=math.min(childHeight,({compact=100,normal=200,expanded=280})[density]*scale)
-    T.currentScroll:ClearAllPoints();T.currentScroll:SetPoint("TOPLEFT",0,-top)
-    T.currentScroll:SetHeight(math.max(1,height));T.currentChild:SetHeight(math.max(1,childHeight));T.currentScroll:SetShown(not collapsed)
-    T.card:SetHeight(top+(collapsed and 0 or height))
-    local bottom=cardTop+T.card:GetHeight()+10
+    local clipped=math.max(0,childHeight-({compact=100,normal=200,expanded=280})[density]*scale)
+    local bottom=childHeight+10
     T.alongLabel:ClearAllPoints();T.alongLabel:SetPoint("TOPLEFT",0,-bottom);T.alongLabel:SetWidth(inner)
     T.alongLabel:SetText("顺路可做 · "..alongCount);T.alongLabel:SetShown(not collapsed and alongCount>0)
     if T.alongLabel:IsShown() then bottom=bottom+24*scale end
     T.alongScroll:ClearAllPoints();T.alongScroll:SetPoint("TOPLEFT",0,-bottom);T.alongScroll:SetWidth(inner)
     T.alongChild:SetWidth(inner);T.alongChild:SetHeight(math.max(1,alongHeight))
-    local alongVisible=math.min(alongHeight,({compact=75,normal=120,expanded=180})[density]*scale)
+    clipped=clipped+math.max(0,alongHeight-({compact=75,normal=120,expanded=180})[density]*scale)
+    local alongVisible=alongHeight
     T.alongScroll:SetHeight(math.max(1,alongVisible));T.alongScroll:SetShown(not collapsed and alongCount>0)
     if T.alongScroll:IsShown() then bottom=bottom+alongVisible+10 end
     T.thenDivider:ClearAllPoints();T.thenDivider:SetPoint("TOPLEFT",0,-bottom);T.thenDivider:SetSize(inner,1)
@@ -852,14 +884,24 @@ function UI:LayoutTracker()
     T.queuePanel:ClearAllPoints();T.queuePanel:SetPoint("TOPLEFT",0,-bottom)
     T.queueScroll:SetWidth(inner);T.queueChild:SetWidth(inner)
     T.queueChild:SetHeight(math.max(1,queueHeight))
-    local visible=math.min(queueHeight,({compact=100,normal=160,expanded=240})[density]*scale)
+    clipped=clipped+math.max(0,queueHeight-({compact=100,normal=160,expanded=240})[density]*scale)
+    local visible=queueHeight
     T.queueScroll:SetHeight(math.max(1,visible));T.queueScroll:SetShown(not collapsed and queueHeight>0)
     T.queuePanel:SetHeight(visible);T.queuePanel:SetShown(not collapsed and queueHeight>0)
     bottom=bottom+(not collapsed and queueHeight>0 and visible+4 or 0)
     T.region:ClearAllPoints();T.region:SetPoint("TOPLEFT",indent,-bottom);T.region:SetSize(width-indent,20*scale)
     T.region.text:SetWidth(width-indent);T.region.text:SetMaxLines(1);T.region:SetShown(not collapsed and T.region.region~=nil)
     if T.region:IsShown() then bottom=bottom+24*scale end
-    T.content:SetHeight(bottom);self.frame:SetHeight(bottom+20)
+    local fixed=cardTop+top+24
+    local minHeight=math.max(200,fixed+40*scale)
+    self.frame:SetResizeBounds(260,collapsed and fixed or minHeight,800,math.max(1200,minHeight))
+    local total=collapsed and fixed or requestedHeight>0 and math.max(minHeight,requestedHeight) or fixed+bottom-clipped
+    T.currentScroll:ClearAllPoints();T.currentScroll:SetPoint("TOPLEFT",0,-top)
+    T.currentScroll:SetHeight(math.max(1,total-fixed));T.currentScroll:SetShown(not collapsed)
+    T.currentChild:SetHeight(math.max(1,bottom))
+    T.currentScroll:SetVerticalScroll(math.min(T.currentScroll:GetVerticalScroll(),math.max(0,bottom-(total-fixed))))
+    T.card:SetHeight(top+(collapsed and 0 or total-fixed))
+    T.content:SetHeight(total-20);self.frame:SetHeight(total)
     if A.QuestAssist then A.QuestAssist:LayoutTarget() end
 end
 
