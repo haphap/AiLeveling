@@ -3,6 +3,7 @@ local nodes={}
 local box,boxes
 local function clean(s) return (s or ""):gsub("|c%x%x%x%x%x%x%x%x",""):gsub("|r",""):gsub("|T.-|t","　"):gsub("|H.-|h(.-)|h","%1") end
 local function width(s,size)
+    size=math.floor(size*2+0.5)/2 -- Match the 2x preview font rasterization.
     local total=0
     for c in clean(s):gmatch("[%z\1-\127\194-\244][\128-\191]*") do total=total+(#c>1 and size or size*0.55) end
     return total
