@@ -126,6 +126,12 @@ for _,choice in ipairs(A.plan.taskOrder) do
     end
 end
 for _,choice in ipairs(A.plan.taskOrder) do A.plan.taskQueue.steps[#A.plan.taskQueue.steps+1]={choice=choice,stage=choice.stages[1]} end
+local pickup={questId=63,title="米莉的葡萄",level=9,kind="task",remainingXP=625,timing={seconds=65},
+    actions={{kind="accept",questId=63,title="米莉的葡萄",position={map=1429,x=0.48,y=0.42,entityKind="npc",entityName="米莉·奥斯沃斯"}}}}
+pickup.stages=pickup.actions
+A.plan.taskChoices[#A.plan.taskChoices+1]=pickup
+A.plan.taskOrder[#A.plan.taskOrder+1]=pickup
+A.plan.taskQueue.steps[#A.plan.taskQueue.steps+1]={choice=pickup,stage=pickup.actions[1]}
 assert(loadfile("UI/Main.lua"))("AiLeveling",A)
 assert(loadfile("UI/Tracker.lua"))("AiLeveling",A)
 local anchors={TOPLEFT={0,0},TOP={0.5,0},TOPRIGHT={1,0},LEFT={0,0.5},CENTER={0.5,0.5},RIGHT={1,0.5},BOTTOMLEFT={0,1},BOTTOM={0.5,1},BOTTOMRIGHT={1,1}}

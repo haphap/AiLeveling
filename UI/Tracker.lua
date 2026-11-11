@@ -17,7 +17,9 @@ local function metrics(choice)
 end
 
 local function destination(action)
-    local point=A.Navigation.Target(action) or action and action.recipient
+    local point=action and action.position
+    if A.Navigation and A.Navigation.Target then point=A.Navigation.Target(action) end
+    point=point or action and action.recipient
     if not point then return end
     local map=point.map and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
     local name=point.entityName or action.recipient and action.recipient.entityName
@@ -220,6 +222,11 @@ function UI.TrackerModel(state,plan,action,paused)
         local summary=(sharedKind=="item" and "一并收集：" or "一起推进：")..table.concat(titles,"、",1,math.min(2,#titles))..(#titles>2 and ("等 "..#titles.." 项任务") or "")
         model.hint=(model.hint and (model.hint.."\n") or "")..summary
     end
+    local planned={}
+    for _,step in ipairs(plan.taskQueue and plan.taskQueue.steps or plan.taskOrder or {}) do
+        local choice=step.choice or step
+        if choice.questId then planned[choice.questId]=true end
+    end
     local seen={}
     if action and action.questId and not currentGroup then seen[action.questId]=true end
     local function add(id,source)
@@ -232,7 +239,10 @@ function UI.TrackerModel(state,plan,action,paused)
         local step=source or (candidate and candidate.actions[1]) or {}
         local deferred=(state.skipped or {})[id] or (state.chainDeferred or {})[id]
         local pickup=candidate and candidate.actions[1] or step
-        local pickupName=pickup.position and pickup.position.entityName
+        for _,stage in ipairs(candidate and candidate.stages or {}) do
+            if stage.kind=="accept" then pickup=stage;break end
+        end
+        local pickupPlace=not q and destination(pickup)
         local counts={}
         for _,objective in ipairs(q and q.objectives or {}) do
             if objective.numRequired and objective.numRequired>0 then
@@ -241,12 +251,14 @@ function UI.TrackerModel(state,plan,action,paused)
                 counts[#counts+1]=label and label~="" and (label:find("%d+%s*/%s*%d+") and label or label.." · "..count) or count
             end
         end
-        model.rows[#model.rows+1]={questId=id,title=q and q.title or step.title or ("任务 #"..id),
+        model.rows[#model.rows+1]={questId=id,title=q and q.title or candidate and candidate.title or step.title or ("任务 #"..id),
             kind=q and (q.ready and "turnin" or "objective") or "accept",
             accepted=q~=nil,status=status,metrics=metrics(candidate),
             progress=q and (q.ready and "目标已完成，前往交付" or (#counts>0 and table.concat(counts," · ") or "查看任务日志中的目标")) or
                 (candidate and candidate.acceptBlocked or candidate and candidate.requireCheck and "先确认任务当前是否开放" or
-                    step.position and step.position.startItemId and step.text or pickupName and ("接取："..pickupName) or "先接取，再推进任务目标"),deferred=deferred,candidate=candidate,
+                    pickup.position and pickup.position.startItemId and pickup.text or pickupPlace and ("接取："..pickupPlace) or "先接取，再推进任务目标"),deferred=deferred,candidate=candidate,
+            pendingPickup=not q and planned[id] and not deferred and not (candidate and
+                (candidate.lowValue or candidate.acceptBlocked or candidate.entryBlocked or candidate.requireCheck)),
             shared=sharedByQuest[id] and true,sharedObjective=sharedByQuest[id]}
         if sharedByQuest[id] then
             local row=model.rows[#model.rows]
@@ -263,6 +275,7 @@ function UI.TrackerModel(state,plan,action,paused)
     if plan.best then
         for i=A.Navigation and A.Navigation.index or 1,#(plan.best.actions or {}) do
             local step=plan.best.actions[i]
+            if step.kind=="accept" and step.questId then planned[step.questId]=true end
             if step.kind~="move" then add(step.questId,step) end
         end
     end
@@ -288,8 +301,9 @@ function UI.TrackerModel(state,plan,action,paused)
         add(nearby.questId,nearby.actions[1])
         local row=model.rows[#model.rows]
         if row and row.questId==nearby.questId then
-            local name=nearby.actions[1].position.entityName
-            row.progress="沿途可接"..(name and (" · "..name) or "")
+            local place=destination(nearby.actions[1])
+            row.progress="沿途可接"..(place and (" · "..place) or "")
+            row.pendingPickup=true
         end
     end
     for _,choice in ipairs(plan.taskOrder or plan.taskChoices or {}) do
@@ -481,6 +495,9 @@ function UI:CreateTracker()
     T.queueScroll=CreateFrame("ScrollFrame",nil,T.queuePanel,"UIPanelScrollFrameTemplate")
     T.queueScroll:SetPoint("TOPLEFT",0,0)
     T.queueChild=CreateFrame("Frame",nil,T.queueScroll);T.queueScroll:SetScrollChild(T.queueChild)
+    T.pickupLabel=text(T.content,12,palette.blue)
+    T.pickupScroll=CreateFrame("ScrollFrame",nil,T.content,"UIPanelScrollFrameTemplate")
+    T.pickupChild=CreateFrame("Frame",nil,T.pickupScroll);T.pickupScroll:SetScrollChild(T.pickupChild)
     T.rows={}
     local nav=CreateFrame("Frame","AiLevelingNavigation",UIParent)
     self.navFrame=nav;nav:SetSize(420,90);nav:SetPoint("CENTER",UIParent,"CENTER",0,-110)
@@ -668,8 +685,8 @@ function UI:RenderTracker()
         row.metrics=item.metrics
         row.candidate,row.revision,row.questId=item.candidate,plan.revision,item.questId
         row.deferred,row.dungeonId=item.deferred,item.dungeonId
-        row.atStop=item.atStop
-        row:SetParent(item.atStop and T.currentChild or T.queueChild)
+        row.atStop,row.pendingPickup=item.atStop,item.pendingPickup
+        row:SetParent(item.atStop and T.currentChild or item.pendingPickup and T.pickupChild or T.queueChild)
         local native=(state.quests or {})[item.questId]
         local objectives=item.accepted and item.kind~="turnin" and not item.deferred and
             not (item.candidate and (item.candidate.lowValue or item.candidate.entryBlocked)) and native and native.objectives or {}
@@ -747,13 +764,14 @@ function UI:LayoutTracker()
     T.objectiveFrame:ClearAllPoints();T.objectiveFrame:SetPoint("TOPLEFT",indent,0);T.objectiveFrame:SetWidth(bodyWidth)
     local childHeight=layoutObjectives(T.objectives,bodyWidth,scale)
     T.objectiveFrame:SetHeight(math.max(1,childHeight))
-    local queueHeight=0
+    local queueHeight,pickupHeight,pickupCount=0,0,0
     for i,item in ipairs(T.model and T.model.rows or {}) do
         local row=T.rows[i]
         local current=item.questId and item.questId==T.model.questId
         row:SetShown(not current)
         if not current then
             if row.atStop then childHeight=childHeight+layoutRow(row,childHeight+4)+4
+            elseif row.pendingPickup then pickupHeight=pickupHeight+layoutRow(row,pickupHeight);pickupCount=pickupCount+1
             else queueHeight=queueHeight+layoutRow(row,queueHeight) end
         end
     end
@@ -773,6 +791,14 @@ function UI:LayoutTracker()
     T.thenText:SetShown(not collapsed and T.thenText:GetText()~="");T.thenButton:SetShown(T.thenText:IsShown())
     T.thenDivider:SetShown(T.thenText:IsShown())
     if T.thenText:IsShown() then bottom=bottom+T.thenText:GetStringHeight()+24 end
+    T.pickupLabel:ClearAllPoints();T.pickupLabel:SetPoint("TOPLEFT",0,-bottom);T.pickupLabel:SetWidth(inner)
+    T.pickupLabel:SetText("待接任务 · "..pickupCount);T.pickupLabel:SetShown(not collapsed and pickupCount>0)
+    if T.pickupLabel:IsShown() then bottom=bottom+24*scale end
+    T.pickupScroll:ClearAllPoints();T.pickupScroll:SetPoint("TOPLEFT",0,-bottom);T.pickupScroll:SetWidth(inner)
+    T.pickupChild:SetWidth(inner);T.pickupChild:SetHeight(math.max(1,pickupHeight))
+    local pickupVisible=math.min(pickupHeight,({compact=75,normal=120,expanded=180})[density]*scale)
+    T.pickupScroll:SetHeight(math.max(1,pickupVisible));T.pickupScroll:SetShown(not collapsed and pickupCount>0)
+    if T.pickupScroll:IsShown() then bottom=bottom+pickupVisible+10 end
     T.queueLabel:ClearAllPoints();T.queueLabel:SetPoint("TOPLEFT",0,-bottom);T.queueLabel:SetWidth(inner)
     T.queueLabel:SetShown(not collapsed and queueHeight>0)
     if T.queueLabel:IsShown() then bottom=bottom+24*scale end

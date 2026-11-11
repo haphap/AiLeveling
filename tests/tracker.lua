@@ -136,6 +136,8 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.UI:RenderTracker()
     eq(T.rows[2].status,"已接取");eq(T.rows[3].status,"未接取")
     eq(T.rows[3].progress.value,"先接取，再推进任务目标")
+    eq(T.rows[3].pendingPickup,true);eq(T.rows[3].parent,T.pickupChild);eq(T.pickupLabel.shown,true)
+    eq(T.pickupLabel.value,"待接任务 · 1");assert(T.pickupScroll.point[3]>T.queuePanel.point[3])
     eq(T.model.acceptedCount,2);eq(T.model.unacceptedCount,1)
     T.rows[3].scripts.OnClick(nil,"LeftButton")
     eq(B.UI.Plan.preview.questId,4);eq(B.UI.details.shown,true);eq(B.char.locked,nil)
@@ -157,6 +159,7 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.UI:ShowText("导出内容");eq(B.UI.Browser.frame.shown,false)
     B.UI:SelectTab(1)
     B.state.skipped[4]=true;B.UI:RenderTracker();eq(T.rows[3].enabled,true)
+    eq(T.pickupLabel.shown,false);eq(T.rows[3].parent,T.queueChild)
     T.rows[3].scripts.OnClick(nil,"LeftButton");eq(B.char.locked,nil);eq(B.state.skipped[4],true)
     T.rows[3].scripts.OnClick(nil,"RightButton");eq(B.menu["优先做此任务"].enabled,false)
     B.menu["查看任务详情"].callback();eq(B.UI.Plan.preview.questId,4)
@@ -173,13 +176,15 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.Navigation.Distance=function(_,a,b) if a and b and a.map==b.map then return math.abs(a.x-b.x)*700 end end
     starter.position={map=1,x=0.55,y=0.5,entityKind="object",entityName="焦焚残骸"};starter.text=nil
     B.state.locked=1;B.UI:RenderTracker()
-    eq(T.model.rows[1].questId,4);eq(T.rows[1].progress.value,"沿途可接 · 焦焚残骸")
+    eq(T.model.rows[1].questId,4);assert(T.rows[1].progress.value:find("沿途可接 · 焦焚残骸",1,true))
+    eq(T.rows[1].parent,T.pickupChild);eq(T.pickupLabel.shown,true)
     eq(T.model.questId,1);eq(B.state.locked,1)
     B.state.locked=nil;B.Navigation.Distance=distance;starter.position=nil
     B.state.quests[4]={title="真实接取的任务",objectives={{text="收集 1/5",numFulfilled=1,numRequired=5}}}
     B.UI:RenderTracker()
     eq(T.rows[3].status,"已接取");eq(T.rows[3].progress.value,"收集 1/5")
     eq(T.model.acceptedCount,3);eq(T.model.unacceptedCount,0)
+    eq(T.rows[3].pendingPickup,false);eq(T.rows[3].parent,T.queueChild);eq(T.pickupScroll.shown,false)
     B.state.quests[4].ready=true;B.UI:RenderTracker();eq(T.rows[3].status,"可交付")
     local suggestion={id="reference:3065",dungeonId="reference:3065",kind="dungeon",reference=true,requiresAcceptance=true,
         title="领主大厅",rewards={count=5,prepare=1},remainingXP=13300,timing={seconds=150}}
