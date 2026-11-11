@@ -232,7 +232,7 @@ test("任务总览仅按确认的共享目标建议一起推进且飞行时不�
     B.plan=plan(s,d,nil,B)
     assert(table.concat(B.UI:TaskLines(),"\n"):find("可一起推进：任务甲、任务乙",1,true))
     local model=B.UI.TrackerModel(s,B.plan,B.plan.fallback,false)
-    assert(model.hint:find("任务乙",1,true));eq(model.rows[1].questId,2);eq(model.rows[1].shared,true)
+    assert(model.hint:find("任务乙",1,true));eq(model.rows[1].questId,2);eq(model.rows[1].shared,true);eq(model.rows[1].atStop,true);eq(model.rows[1].sharedObjective,1)
     assert(model.rows[1].progress:find("一起推进",1,true));eq(model.rows[2].shared,nil)
     alias=true;B.plan=plan(s,d,nil,B);assert(table.concat(B.UI:TaskLines(),"\n"):find("可一起推进：任务甲、任务乙",1,true))
     ids[3]=200;B.plan=plan(s,d,nil,B);s.quests[1].objectives[1].finished=true

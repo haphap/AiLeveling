@@ -89,9 +89,8 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     eq(B.UI.title.value,"当前任务");assert(T.location.value:find("狗头人营地",1,true));eq(T.location.shown,true);eq(B.UI.body.value,"");eq(T.objectives[1].count.value,"3/10");eq(T.objectives[1].ratio,0.3)
     eq(#T.model.rows,2);eq(T.rows[1].title.value,"后续交付");eq(T.rows[1].status,"可交付")
     eq(T.queuePanel.width,T.card.width)
-    eq(T.rows[1].title.shown,true);eq(T.rows[2].objectives[1].count.value,"2/4")
+    eq(T.rows[1].title.shown,true);eq(T.rows[2].objectiveFrame.shown,false);eq(T.rows[2].progress.shown,true)
     eq(T.objectives[1].back.shown,true);eq(T.objectives[1].fill.shown,true)
-    eq(T.rows[2].objectives[1].text.value,"物品");eq(T.rows[2].objectives[1].ratio,0.5)
     assert(T.rows[1].title.color[2]>T.rows[1].title.color[1])
     assert(T.rows[2].title.color[1]>T.rows[2].title.color[2])
     assert(T.queueScroll.width+20<=T.queuePanel.width);assert(T.card.width<=300)
@@ -353,9 +352,10 @@ test("交错行程按任务数汇总并显示每个目标与交付步骤",functi
     eq(B.UI.tracker.rows[2].questId,3)
     eq(B.state.quests[3].ready,nil)
     local T=B.UI.tracker
-    assert(T.thenText.value:find("接下来：完成「后续目标」",1,true));assert(T.thenText.value:find("林地",1,true))
+    assert(T.thenText.value:find("完成 后续目标",1,true));assert(T.thenText.value:find("林地",1,true))
     eq(T.thenText.shown,true);eq(T.thenButton.questId,3)
-    B.action=ob;B.UI:RenderTracker();assert(T.thenText.value:find("接下来：交付「当前任务」",1,true))
+    assert(T.thenText.point[3]>T.queuePanel.point[3],"下一步应在其他任务之前")
+    B.action=ob;B.UI:RenderTracker();assert(T.thenText.value:find("接下来：交付 当前任务",1,true))
     B.char.paused=true;B.UI:RenderTracker();eq(T.thenText.shown,false)
     B.finish()
 end)
@@ -380,8 +380,15 @@ test("分散交付点明确现在就近交和等同NPC任务一起交并跟随�
     B.UI:RenderTracker();assert(T.model.deliverySummary:find("再去闪金镇治安官",1,true))
     B.action=tb;B.UI:RenderTracker()
     assert(T.model.deliverySummary:find("一起交付：到闪金镇治安官交 2 项任务",1,true))
+    for _,row in ipairs(T.rows) do
+        if row.questId==3 then eq(row.atStop,true);eq(row.parent,T.currentChild);eq(row.progress.shown,false) end
+    end
+    eq(T.thenText.shown,false)
     B.state.locked=2;B.state.quests[3].ready=false;B.UI:RenderTracker()
     assert(T.model.deliverySummary:find("顺路先交：到闪金镇治安官",1,true))
+    for _,row in ipairs(T.rows) do
+        if row.questId==3 then eq(row.atStop,false);eq(row.parent,T.queueChild);eq(row.progress.shown,true) end
+    end
     B.state.locked=nil;B.action={kind="objective",questId=3,title=c.title};B.UI:RenderTracker()
     eq(T.model.deliverySummary,"同组还差 1 项，做完一起交")
     B.action={kind="service",title="维修"};B.UI:RenderTracker();eq(T.model.deliverySummary,nil)

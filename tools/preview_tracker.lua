@@ -230,6 +230,13 @@ if arg[1]=="assist" then
     action.objectiveIndex=1
     action.position.entityKind,action.position.entityId="npc",10
     A.state.quests[7].objectives[2]={text="消灭狗头人劳工",numFulfilled=2,numRequired=8}
+    action.targetKind,action.targetId="npc",10
+    table.insert(A.plan.taskChoices[1].stages,1,action)
+    local shared=A.plan.taskChoices[3]
+    A.state.quests[33].title="矿洞守卫"
+    A.state.quests[33].objectives={{text="消灭狗头人歹徒",numFulfilled=3,numRequired=8}}
+    local stage=shared.actions[1];stage.objectiveIndex=1;stage.targetKind="npc";stage.targetId=10;stage.position=action.position
+    table.insert(shared.stages,1,stage)
     local names={[10]="狗头人歹徒",[20]="狗头人劳工"}
     A.Data={GetQuest=function() return {id=7} end,db={Npc={Get=function(id) return names[id] end}},
         ObjectiveTargets=function() return {{objectiveIndex=1,entityKind="npc",entityId=10},{objectiveIndex=2,entityKind="npc",entityId=20}} end}

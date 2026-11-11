@@ -21,16 +21,23 @@ local function destination(action)
     if not point then return end
     local map=point.map and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
     local name=point.entityName or action.recipient and action.recipient.entityName
-    return name and (name..(map and map.name~=name and " · "..map.name or "")) or map and map.name
+    local zone=map and map.name
+    return name and (name..(zone and zone~=name and " · "..zone or "")) or zone,name or zone,name and zone~=name and zone
 end
 
-local function nextAction(action,plan,state)
+local function nextAction(action,plan,state,rows)
     if not action or action.kind=="manual" then return end
+    local function listed(stage,id)
+        for _,row in ipairs(rows) do
+            if row.atStop and row.questId==id and row.kind==stage.kind and
+                (stage.kind=="turnin" or stage.objectiveIndex==row.sharedObjective) then return true end
+        end
+    end
     local navigation=A.Navigation
     if navigation.actions and navigation.actions[navigation.index]==action then
         for i=navigation.index+1,#navigation.actions do
             local stage=navigation.actions[i]
-            if stage.kind~="move" then return stage,stage.questId,stage.title end
+            if stage.kind~="move" and not listed(stage,stage.questId) then return stage,stage.questId,stage.title end
         end
     end
     local after=action.kind=="service" or action.kind=="flight" or action.kind=="hearthCast"
@@ -40,7 +47,7 @@ local function nextAction(action,plan,state)
         for _,stage in ipairs(step.stage and {step.stage} or choice.stages or {}) do
             local id=stage.questId or choice.questId
             if not state.locked or id==state.locked then
-                if after then return stage,id,choice.title end
+                if after and not listed(stage,id) then return stage,id,choice.title end
                 if id==action.questId and stage.kind==action.kind and
                     (not action.objectiveIndex or action.objectiveIndex==stage.objectiveIndex) then after=true end
             end
@@ -149,7 +156,7 @@ function UI.TrackerModel(state,plan,action,paused)
     if active then
         model.title=active.title or model.title
         for _,objective in ipairs(active.objectives or {}) do
-            model.objectives[#model.objectives+1]={text=objective.text or "任务目标",done=objective.finished==true,
+            model.objectives[#model.objectives+1]={text=objective.text or "任务目标",done=objective.finished==true,type=objective.type,
                 have=objective.numFulfilled,need=objective.numRequired}
         end
     end
@@ -207,7 +214,7 @@ function UI.TrackerModel(state,plan,action,paused)
     if shared then
         local titles={}
         for _,entry in ipairs(shared) do
-            sharedByQuest[entry.questId]=true
+            sharedByQuest[entry.questId]=entry.objectiveIndex
             if entry.questId~=action.questId then titles[#titles+1]="「"..(quests[entry.questId].title or (choices[entry.questId] or {}).title or ("任务 #"..entry.questId)).."」" end
         end
         local summary=(sharedKind=="item" and "一并收集：" or "一起推进：")..table.concat(titles,"、",1,math.min(2,#titles))..(#titles>2 and ("等 "..#titles.." 项任务") or "")
@@ -239,7 +246,8 @@ function UI.TrackerModel(state,plan,action,paused)
             accepted=q~=nil,status=status,metrics=metrics(candidate),
             progress=q and (q.ready and "目标已完成，前往交付" or (#counts>0 and table.concat(counts," · ") or "查看任务日志中的目标")) or
                 (candidate and candidate.acceptBlocked or candidate and candidate.requireCheck and "先确认任务当前是否开放" or
-                    step.position and step.position.startItemId and step.text or pickupName and ("接取："..pickupName) or "先接取，再推进任务目标"),deferred=deferred,candidate=candidate,shared=sharedByQuest[id]}
+                    step.position and step.position.startItemId and step.text or pickupName and ("接取："..pickupName) or "先接取，再推进任务目标"),deferred=deferred,candidate=candidate,
+            shared=sharedByQuest[id] and true,sharedObjective=sharedByQuest[id]}
         if sharedByQuest[id] then
             local row=model.rows[#model.rows]
             row.progress=(sharedKind=="item" and "一并收集 · " or "一起推进 · ")..row.progress
@@ -323,7 +331,12 @@ function UI.TrackerModel(state,plan,action,paused)
     if model.kind=="flight" or model.kind=="hearthCast" then model.hint=nil end
     local deliveries,summary=deliveryAdvice(state,plan,action,choices,byQuest)
     model.deliverySummary=summary
-    for _,row in ipairs(model.rows) do row.delivery=deliveries[row.questId] end
+    for _,row in ipairs(model.rows) do
+        row.delivery=deliveries[row.questId]
+        row.atStop=not paused and not A.error and not state.locked and not row.deferred and
+            (model.kind=="objective" and row.shared or model.kind=="turnin" and row.kind=="turnin" and
+                currentGroup~=nil and byQuest[row.questId]==currentGroup and not (row.candidate and row.candidate.itemShortage))
+    end
     if not action then
         if plan.complete then model.title="已达到 60 级";model.instruction="本次升级目标已完成。"
         elseif plan.revision and plan.revision~=state.revision then model.title="正在更新行程";model.instruction="正在安排下一步。"
@@ -428,19 +441,18 @@ function UI:CreateTracker()
     local T=self.tracker
     T.content=CreateFrame("Frame",nil,f);T.content:SetPoint("TOPLEFT",10,-10)
     T.zone=text(T.content,14,palette.gold);T.zone:SetPoint("TOPLEFT",0,0)
-    T.zone:SetText(self:Icon("accept",16).." 任务")
+    T.zone:SetText(self:Icon("compass",16).." 当前行程")
     T.experience=text(T.content,12,palette.muted);T.experience:SetJustifyH("RIGHT")
     T.collapse=self:Button(T.content,"−",20,function() self.folded=not self.folded;self:LayoutTracker() end,16)
     T.menu=self:Button(T.content,"···",22,function() self:TrackerMenu(f) end,16)
     for _,button in ipairs({T.collapse,T.menu}) do button.baseColor={0,0,0,0};button:SetBackdropColor(0,0,0,0) end
     T.divider=T.content:CreateTexture(nil,"BACKGROUND");T.divider:SetColorTexture(unpack(palette.line))
     T.card=CreateFrame("Frame",nil,T.content)
-    T.numberBack=CreateFrame("Frame",nil,T.card);self:Rounded(T.numberBack,3,palette.border)
-    T.numberBack:SetBackdropColor(0.18,0.12,0.07,0.7)
-    T.number=text(T.numberBack,12,palette.gold);T.number:SetPoint("CENTER");T.number:SetText("1")
+    T.actionIcon=T.card:CreateTexture(nil,"ARTWORK")
     T.stepIcon=T.card:CreateTexture(nil,"ARTWORK")
     self.title=text(T.card,15,palette.gold)
-    T.location=text(T.card,13,palette.blue)
+    T.location=text(T.card,18,palette.white)
+    T.area=text(T.card,12,palette.muted)
     T.questTitle=CreateFrame("Button",nil,T.card);T.questTitle:SetAllPoints(self.title)
     T.questTitle:RegisterForClicks("LeftButtonUp","RightButtonUp")
     T.questTitle:SetScript("OnClick",function(_,mouse)
@@ -451,11 +463,13 @@ function UI:CreateTracker()
     T.questTitle:SetScript("OnLeave",function() GameTooltip:Hide() end)
     T.currentScroll=CreateFrame("ScrollFrame",nil,T.card,"UIPanelScrollFrameTemplate")
     T.currentChild=CreateFrame("Frame",nil,T.currentScroll);T.currentScroll:SetScrollChild(T.currentChild)
+    T.objectiveFrame=CreateFrame("Frame",nil,T.currentChild)
     self.body=text(T.currentChild,13,palette.muted);self.body:SetMaxLines(2)
     T.objectives={}
     T.footer=text(T.currentChild,12,palette.muted)
     T.questTitle.progress=self.body
     T.thenText=text(T.content,13,palette.blue)
+    T.thenDivider=T.content:CreateTexture(nil,"BACKGROUND");T.thenDivider:SetColorTexture(unpack(palette.line))
     T.thenButton=CreateFrame("Button",nil,T.content);T.thenButton:SetAllPoints(T.thenText)
     T.thenButton:SetScript("OnClick",function() self:QuestClick(T.thenButton.questId,"LeftButton") end)
     T.thenButton:SetScript("OnEnter",questTooltip)
@@ -463,6 +477,7 @@ function UI:CreateTracker()
     T.region=self:Button(T.content,"",250,function() self.details:Show();self:SelectTab(10) end,12)
     T.region.baseColor={0,0,0,0};T.region:SetBackdropColor(0,0,0,0)
     T.queuePanel=CreateFrame("Frame",nil,T.content)
+    T.queueLabel=text(T.content,12,palette.muted);T.queueLabel:SetText("其他任务")
     T.queueScroll=CreateFrame("ScrollFrame",nil,T.queuePanel,"UIPanelScrollFrameTemplate")
     T.queueScroll:SetPoint("TOPLEFT",0,0)
     T.queueChild=CreateFrame("Frame",nil,T.queueScroll);T.queueScroll:SetScrollChild(T.queueChild)
@@ -500,6 +515,7 @@ local function renderObjectives(owner,parent,pool,objectives)
             row:SetScript("OnEnter",function() questTooltip(owner) end)
             row:SetScript("OnLeave",function() GameTooltip:Hide() end)
             row.text=text(row,14);row.text:SetPoint("TOPLEFT");row.text:SetNonSpaceWrap(false)
+            row.icon=row:CreateTexture(nil,"ARTWORK")
             row.count=text(row,13);row.count:SetPoint("TOPRIGHT");row.count:SetJustifyH("RIGHT")
             row.back=row:CreateTexture(nil,"BACKGROUND");row.back:SetColorTexture(1,1,1,0.08)
             row.fill=row:CreateTexture(nil,"ARTWORK");pool[i]=row
@@ -510,6 +526,8 @@ local function renderObjectives(owner,parent,pool,objectives)
         row.ratio=row.known and math.max(0,math.min(1,have/need)) or 0
         row.text:SetText((objective.text or "任务目标"):gsub("%s*%d+%s*/%s*%d+",""):gsub("^%s+",""))
         row.text:SetTextColor(unpack(done and palette.muted or palette.white))
+        row.icon:SetTexture(media..(done and "turnin" or objective.type=="item" and "collect" or "objective")..".tga")
+        row.icon:SetVertexColor(unpack(done and palette.green or objective.type=="item" and palette.purple or palette.gold))
         row.count:SetText(row.known and string.format("%d/%d",have,need) or (done and "✓" or ""))
         row.count:SetTextColor(unpack(done and palette.green or palette.white))
         local color=done and palette.green or palette.accent
@@ -524,7 +542,9 @@ local function layoutObjectives(pool,width,scale)
     for _,row in ipairs(pool) do
         if row:IsShown() then
             local countWidth=row.count:GetText()~="" and 46*scale or 0
-            row:SetWidth(width);row.text:SetWidth(width-countWidth);row.count:SetWidth(countWidth)
+            row:SetWidth(width);row.text:SetWidth(width-countWidth-20*scale);row.count:SetWidth(countWidth)
+            row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",20*scale,0)
+            row.icon:ClearAllPoints();row.icon:SetPoint("TOPLEFT",0,-2);row.icon:SetSize(14*scale,14*scale)
             row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y)
             local height=math.max(18*scale,row.text:GetStringHeight())
             row.back:ClearAllPoints();row.back:SetPoint("TOPLEFT",0,-height-2);row.back:SetSize(width,2)
@@ -542,9 +562,7 @@ function UI:TrackerRow(index)
     if T.rows[index] then return T.rows[index] end
     local row=CreateFrame("Button",nil,T.queueChild,"BackdropTemplate")
     self:Rounded(row,4);row:SetBackdropColor(0,0,0,0)
-    row.numberBack=CreateFrame("Frame",nil,row);self:Rounded(row.numberBack,3,palette.border)
-    row.numberBack:SetBackdropColor(0.18,0.12,0.07,0.7)
-    row.number=text(row.numberBack,12,palette.gold);row.number:SetPoint("CENTER")
+    row.icon=row:CreateTexture(nil,"ARTWORK")
     row.title=text(row,15,palette.gold)
     row.progress=text(row,13,palette.muted)
     row.objectiveFrame=CreateFrame("Frame",nil,row);row.objectives={}
@@ -573,23 +591,25 @@ function UI:RenderTracker()
     local current=(state.quests or {})[model.questId]
     local count=0;for _ in pairs(state.quests or {}) do count=count+1 end
     T.experience:SetText(A.char.paused and "已暂停" or "已接 "..count)
-    T.stepIcon:SetTexture(media..(({accept="accept",objective="objective",turnin="turnin",
-        dungeonEnter="entry",dungeonRun="objective",dungeonWait="party"})[model.kind] or "compass")..".tga")
+    T.stepIcon:SetTexture(media.."target.tga")
+    T.actionIcon:SetTexture(media..(({accept="accept",objective="objective",turnin="turnin"})[model.kind] or "compass")..".tga")
     self.title:SetText(questTitle(model.questId,model.title))
     self.title:SetTextColor(unpack(model.kind=="turnin" and palette.green or model.kind=="accept" and palette.blue or palette.gold))
-    T.numberBack:SetShown(model.questId~=nil)
-    local place=model.kind and destination(action)
-    T.location:SetText(place and (self:Icon("location",14).." "..place) or "")
+    local place,name,area
+    if model.kind and not A.error then place,name,area=destination(action) end
+    T.location:SetText(name and (self:Icon("location",18).." "..name) or "")
+    T.area:SetText(area or "")
     local nextStep,nextId,nextTitle
-    if model.kind and not A.char.paused and not A.error then nextStep,nextId,nextTitle=nextAction(action,plan,state) end
+    if model.kind and not A.char.paused and not A.error then nextStep,nextId,nextTitle=nextAction(action,plan,state,model.rows) end
     T.thenButton.questId=nextId
     local following=""
     if nextStep then
         local verb=({accept="接取",objective="完成",turnin="交付"})[nextStep.kind]
         local title=(state.quests[nextId] or {}).title or nextTitle or nextStep.title
-        following="接下来："..(verb and title and (verb.."「"..title.."」") or self.ActionText(nextStep,A.settings))
+        local instruction=verb and title and (verb.." "..title) or self.ActionText(nextStep,A.settings)
         local target=destination(nextStep)
-        if target then following=following.."\n"..self:Icon("location",14).." "..target end
+        following="接下来："..(target or instruction)
+        if target and target~=instruction then following=following.."\n"..instruction end
     end
     T.thenText:SetText(following);T.thenButton.detail=following
     local region
@@ -632,28 +652,29 @@ function UI:RenderTracker()
     self.body:SetText(guidance)
     self.body:SetTextColor(unpack(model.kind=="turnin" and palette.green or model.kind=="accept" and palette.blue or palette.muted))
     T.questTitle.detail=(place and (place.."\n") or "")..table.concat(lines,"\n")
-    renderObjectives(T.questTitle,T.currentChild,T.objectives,
+    renderObjectives(T.questTitle,T.objectiveFrame,T.objectives,
         (model.kind=="objective" or current and not current.ready) and model.objectives or {})
-    local number=model.questId and 1 or 0
     for i,item in ipairs(model.rows) do
         local row=self:TrackerRow(i)
         local isCurrent=item.questId and item.questId==model.questId
-        if not isCurrent and not item.dungeonId then number=number+1 end
-        row.number:SetText(item.dungeonId and "!" or tostring(number))
+        row.icon:SetTexture(media..(item.dungeonId and "entry" or item.kind)..".tga")
         row.title:SetText(questTitle(item.questId,item.title,item.candidate))
         local color=(item.deferred or item.candidate and item.candidate.lowValue) and palette.muted or item.kind=="turnin" and palette.green or item.accepted and palette.gold or palette.blue
         row.title:SetTextColor(unpack(color))
+        row.icon:SetVertexColor(unpack(color))
         row.status=item.deferred and (item.accepted and "已接·暂缓" or "未接·暂缓") or item.status
         row.progress:SetText(item.deferred and "已暂缓" or item.candidate and item.candidate.lowValue and item.candidate.lowValue.suggestion or item.delivery or item.progress)
         row.progress:SetTextColor(unpack(item.kind=="turnin" and palette.green or item.accepted and palette.muted or palette.blue))
         row.metrics=item.metrics
         row.candidate,row.revision,row.questId=item.candidate,plan.revision,item.questId
         row.deferred,row.dungeonId=item.deferred,item.dungeonId
+        row.atStop=item.atStop
+        row:SetParent(item.atStop and T.currentChild or T.queueChild)
         local native=(state.quests or {})[item.questId]
         local objectives=item.accepted and item.kind~="turnin" and not item.deferred and
             not (item.candidate and (item.candidate.lowValue or item.candidate.entryBlocked)) and native and native.objectives or {}
-        renderObjectives(row,row.objectiveFrame,row.objectives,objectives)
-        row.hasObjectives=#objectives>0
+        if item.sharedObjective and item.atStop then objectives={objectives[item.sharedObjective]} end
+        renderObjectives(row,row.objectiveFrame,row.objectives,item.atStop and objectives or {})
         row.detail=table.concat({row.status,item.groupTitle or "",item.delivery or item.progress},"\n")
         if isCurrent then T.questTitle.candidate=item.candidate;T.questTitle.revision=plan.revision end
         row:SetEnabled(true);row:Show()
@@ -691,60 +712,77 @@ function UI:LayoutTracker()
     T.collapse:ClearAllPoints();T.collapse:SetPoint("TOPRIGHT",0,2);T.collapse:SetSize(20*scale,22*scale)
     T.collapse.text:SetText(collapsed and "+" or "−")
     T.experience:ClearAllPoints();T.experience:SetPoint("TOPRIGHT",-58*scale,-3);T.experience:SetWidth(62*scale);T.experience:SetMaxLines(1)
+    local function layoutRow(row,y)
+        row:SetWidth(inner)
+        row.icon:ClearAllPoints();row.icon:SetPoint("TOPLEFT",0,-2);row.icon:SetSize(16*scale,16*scale)
+        row.title:ClearAllPoints();row.title:SetPoint("TOPLEFT",indent,0);row.title:SetWidth(bodyWidth);row.title:SetMaxLines(2)
+        local height=math.max(20*scale,row.title:GetStringHeight())+4
+        row.objectiveFrame:ClearAllPoints();row.objectiveFrame:SetPoint("TOPLEFT",indent,-height);row.objectiveFrame:SetWidth(bodyWidth)
+        local goals=layoutObjectives(row.objectives,bodyWidth,scale)
+        row.objectiveFrame:SetHeight(math.max(1,goals));row.objectiveFrame:SetShown(row.atStop and goals>0)
+        if row.atStop then height=height+goals end
+        row.progress:SetShown(not row.atStop)
+        row.progress:ClearAllPoints();row.progress:SetPoint("TOPLEFT",indent,-height);row.progress:SetWidth(bodyWidth);row.progress:SetMaxLines(2)
+        if row.progress:IsShown() then height=height+math.min(row.progress:GetStringHeight(),36*scale)+4 end
+        height=height+8*scale
+        row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y);row:SetHeight(height)
+        return height
+    end
     local cardTop=30*scale
     T.divider:ClearAllPoints();T.divider:SetPoint("TOPLEFT",0,-cardTop+7);T.divider:SetSize(width,1)
     T.card:ClearAllPoints();T.card:SetPoint("TOPLEFT",0,-cardTop)
-    T.numberBack:ClearAllPoints();T.numberBack:SetPoint("TOPLEFT",0,-1);T.numberBack:SetSize(18*scale,18*scale)
-    T.stepIcon:ClearAllPoints();T.stepIcon:SetPoint("TOPRIGHT",-2,-2);T.stepIcon:SetSize(15*scale,15*scale)
-    self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT",indent,0);self.title:SetWidth(bodyWidth);self.title:SetMaxLines(2)
-    local top=math.max(20*scale,self.title:GetStringHeight())+5
-    T.location:ClearAllPoints();T.location:SetPoint("TOPLEFT",indent,-top);T.location:SetWidth(bodyWidth)
+    local top=0
+    T.location:ClearAllPoints();T.location:SetPoint("TOPLEFT",0,0);T.location:SetWidth(inner)
     T.location:SetShown(T.location:GetText()~="")
-    if T.location:IsShown() then top=top+T.location:GetStringHeight()+6 end
-    T.currentScroll:SetWidth(bodyWidth);T.currentChild:SetWidth(bodyWidth)
+    if T.location:IsShown() then top=T.location:GetStringHeight()+4 end
+    T.area:ClearAllPoints();T.area:SetPoint("TOPLEFT",indent,-top);T.area:SetWidth(bodyWidth)
+    T.area:SetShown(T.area:GetText()~="")
+    if T.area:IsShown() then top=top+T.area:GetStringHeight()+3 end
+    if top>0 then top=top+10 end
+    T.actionIcon:ClearAllPoints();T.actionIcon:SetPoint("TOPLEFT",0,-top-2);T.actionIcon:SetSize(16*scale,16*scale)
+    T.stepIcon:ClearAllPoints();T.stepIcon:SetPoint("TOPRIGHT",-2,-top-2);T.stepIcon:SetSize(15*scale,15*scale)
+    self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT",indent,-top);self.title:SetWidth(bodyWidth);self.title:SetMaxLines(2)
+    top=top+math.max(20*scale,self.title:GetStringHeight())+6
+    T.currentScroll:SetWidth(inner);T.currentChild:SetWidth(inner)
+    T.objectiveFrame:ClearAllPoints();T.objectiveFrame:SetPoint("TOPLEFT",indent,0);T.objectiveFrame:SetWidth(bodyWidth)
     local childHeight=layoutObjectives(T.objectives,bodyWidth,scale)
-    self.body:ClearAllPoints();self.body:SetPoint("TOPLEFT",0,-childHeight);self.body:SetWidth(bodyWidth)
-    self.body:SetShown(self.body:GetText()~="")
-    if self.body:IsShown() then childHeight=childHeight+self.body:GetStringHeight()+5 end
-    T.footer:ClearAllPoints();T.footer:SetPoint("TOPLEFT",0,-childHeight);T.footer:SetWidth(bodyWidth);T.footer:SetMaxLines(1)
-    T.footer:SetShown(T.footer:GetText()~="")
-    if T.footer:IsShown() then childHeight=childHeight+18*scale end
-    local height=math.min(childHeight,({compact=100,normal=170,expanded=240})[density]*scale)
-    T.currentScroll:ClearAllPoints();T.currentScroll:SetPoint("TOPLEFT",indent,-top)
-    T.currentScroll:SetHeight(math.max(1,height));T.currentChild:SetHeight(math.max(1,childHeight));T.currentScroll:SetShown(not collapsed)
-    T.card:SetHeight(top+(collapsed and 0 or height))
-    local queueTop=cardTop+T.card:GetHeight()+10
-    T.queuePanel:ClearAllPoints();T.queuePanel:SetPoint("TOPLEFT",0,-queueTop)
-    T.queueScroll:SetWidth(inner);T.queueChild:SetWidth(inner)
+    T.objectiveFrame:SetHeight(math.max(1,childHeight))
     local queueHeight=0
     for i,item in ipairs(T.model and T.model.rows or {}) do
         local row=T.rows[i]
         local current=item.questId and item.questId==T.model.questId
         row:SetShown(not current)
         if not current then
-            row:SetWidth(inner)
-            row.numberBack:ClearAllPoints();row.numberBack:SetPoint("TOPLEFT",0,-1);row.numberBack:SetSize(18*scale,18*scale)
-            row.title:ClearAllPoints();row.title:SetPoint("TOPLEFT",indent,0);row.title:SetWidth(bodyWidth);row.title:SetMaxLines(2)
-            local rowHeight=math.max(20*scale,row.title:GetStringHeight())+4
-            row.objectiveFrame:ClearAllPoints();row.objectiveFrame:SetPoint("TOPLEFT",indent,-rowHeight);row.objectiveFrame:SetWidth(bodyWidth)
-            local objectivesHeight=layoutObjectives(row.objectives,bodyWidth,scale)
-            row.objectiveFrame:SetHeight(math.max(1,objectivesHeight));rowHeight=rowHeight+objectivesHeight
-            row.progress:SetShown(not row.hasObjectives)
-            row.progress:ClearAllPoints();row.progress:SetPoint("TOPLEFT",indent,-rowHeight);row.progress:SetWidth(bodyWidth);row.progress:SetMaxLines(2)
-            if row.progress:IsShown() then rowHeight=rowHeight+math.min(row.progress:GetStringHeight(),36*scale)+4 end
-            rowHeight=rowHeight+10*scale
-            row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-queueHeight);row:SetHeight(rowHeight)
-            queueHeight=queueHeight+rowHeight
+            if row.atStop then childHeight=childHeight+layoutRow(row,childHeight+4)+4
+            else queueHeight=queueHeight+layoutRow(row,queueHeight) end
         end
     end
+    self.body:ClearAllPoints();self.body:SetPoint("TOPLEFT",indent,-childHeight);self.body:SetWidth(bodyWidth)
+    self.body:SetShown(self.body:GetText()~="")
+    if self.body:IsShown() then childHeight=childHeight+self.body:GetStringHeight()+5 end
+    T.footer:ClearAllPoints();T.footer:SetPoint("TOPLEFT",indent,-childHeight);T.footer:SetWidth(bodyWidth);T.footer:SetMaxLines(1)
+    T.footer:SetShown(T.footer:GetText()~="")
+    if T.footer:IsShown() then childHeight=childHeight+18*scale end
+    local height=math.min(childHeight,({compact=100,normal=200,expanded=280})[density]*scale)
+    T.currentScroll:ClearAllPoints();T.currentScroll:SetPoint("TOPLEFT",0,-top)
+    T.currentScroll:SetHeight(math.max(1,height));T.currentChild:SetHeight(math.max(1,childHeight));T.currentScroll:SetShown(not collapsed)
+    T.card:SetHeight(top+(collapsed and 0 or height))
+    local bottom=cardTop+T.card:GetHeight()+10
+    T.thenDivider:ClearAllPoints();T.thenDivider:SetPoint("TOPLEFT",0,-bottom);T.thenDivider:SetSize(inner,1)
+    T.thenText:ClearAllPoints();T.thenText:SetPoint("TOPLEFT",0,-bottom-10);T.thenText:SetWidth(inner)
+    T.thenText:SetShown(not collapsed and T.thenText:GetText()~="");T.thenButton:SetShown(T.thenText:IsShown())
+    T.thenDivider:SetShown(T.thenText:IsShown())
+    if T.thenText:IsShown() then bottom=bottom+T.thenText:GetStringHeight()+24 end
+    T.queueLabel:ClearAllPoints();T.queueLabel:SetPoint("TOPLEFT",0,-bottom);T.queueLabel:SetWidth(inner)
+    T.queueLabel:SetShown(not collapsed and queueHeight>0)
+    if T.queueLabel:IsShown() then bottom=bottom+24*scale end
+    T.queuePanel:ClearAllPoints();T.queuePanel:SetPoint("TOPLEFT",0,-bottom)
+    T.queueScroll:SetWidth(inner);T.queueChild:SetWidth(inner)
     T.queueChild:SetHeight(math.max(1,queueHeight))
-    local visible=math.min(queueHeight,({compact=150,normal=250,expanded=340})[density]*scale)
+    local visible=math.min(queueHeight,({compact=100,normal=160,expanded=240})[density]*scale)
     T.queueScroll:SetHeight(math.max(1,visible));T.queueScroll:SetShown(not collapsed and queueHeight>0)
     T.queuePanel:SetHeight(visible);T.queuePanel:SetShown(not collapsed and queueHeight>0)
-    local bottom=queueTop+(not collapsed and queueHeight>0 and visible+4 or 0)
-    T.thenText:ClearAllPoints();T.thenText:SetPoint("TOPLEFT",indent,-bottom);T.thenText:SetWidth(bodyWidth)
-    T.thenText:SetShown(not collapsed and T.thenText:GetText()~="");T.thenButton:SetShown(T.thenText:IsShown())
-    if T.thenText:IsShown() then bottom=bottom+T.thenText:GetStringHeight()+10 end
+    bottom=bottom+(not collapsed and queueHeight>0 and visible+4 or 0)
     T.region:ClearAllPoints();T.region:SetPoint("TOPLEFT",indent,-bottom);T.region:SetSize(width-indent,20*scale)
     T.region.text:SetWidth(width-indent);T.region.text:SetMaxLines(1);T.region:SetShown(not collapsed and T.region.region~=nil)
     if T.region:IsShown() then bottom=bottom+24*scale end
