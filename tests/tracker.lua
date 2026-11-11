@@ -86,7 +86,7 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     B.action=actions[1];B.UI:RenderTracker()
     assert(not B.UI.body.value:find(action.text,1,true));assert(not B.UI.body.value:find("60.0, 50.0",1,true))
     assert(T.objectives[1].text.value:find("狗头人",1,true));assert(not T.objectives[1].text.value:find("3/10",1,true))
-    eq(B.UI.title.value,"当前任务");eq(B.UI.body.value,"");eq(T.objectives[1].count.value,"3/10");eq(T.objectives[1].ratio,0.3)
+    eq(B.UI.title.value,"当前任务");assert(T.location.value:find("狗头人营地",1,true));eq(T.location.shown,true);eq(B.UI.body.value,"");eq(T.objectives[1].count.value,"3/10");eq(T.objectives[1].ratio,0.3)
     eq(#T.model.rows,2);eq(T.rows[1].title.value,"后续交付");eq(T.rows[1].status,"可交付")
     eq(T.queuePanel.width,T.card.width)
     eq(T.rows[1].title.shown,true);eq(T.rows[2].objectives[1].count.value,"2/4")
@@ -343,7 +343,7 @@ end)
 
 test("交错行程按任务数汇总并显示每个目标与交付步骤",function()
     local B=ready();local a,b=B.plan.taskChoices[1],B.plan.taskChoices[3]
-    local oa={kind="objective",questId=1,text="目标甲"};local ob={kind="objective",questId=3,text="目标乙"}
+    local oa={kind="objective",questId=1,text="目标甲"};local ob={kind="objective",questId=3,text="目标乙",position={entityName="林地"}}
     B.plan.taskQueue={stagePlan=true,taskCount=2,seconds=180,low=180,high=180,xp=200,xpKnown=true,
         steps={{choice=a,stage=oa},{choice=b,stage=ob},{choice=a,stage={kind="turnin"}},{choice=b,stage={kind="turnin"}}}}
     a.executionAction=oa;a.executionTiming={seconds=80,low=80,high=80};B.action=oa
@@ -352,6 +352,11 @@ test("交错行程按任务数汇总并显示每个目标与交付步骤",functi
     eq(B.UI.tracker.model.questId,1)
     eq(B.UI.tracker.rows[2].questId,3)
     eq(B.state.quests[3].ready,nil)
+    local T=B.UI.tracker
+    assert(T.thenText.value:find("接下来：完成「后续目标」",1,true));assert(T.thenText.value:find("林地",1,true))
+    eq(T.thenText.shown,true);eq(T.thenButton.questId,3)
+    B.action=ob;B.UI:RenderTracker();assert(T.thenText.value:find("接下来：交付「当前任务」",1,true))
+    B.char.paused=true;B.UI:RenderTracker();eq(T.thenText.shown,false)
     B.finish()
 end)
 

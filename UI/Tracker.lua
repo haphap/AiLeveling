@@ -16,6 +16,38 @@ local function metrics(choice)
     return "经验 "..(xp and string.format("%.0f",xp) or "—").."  ·  路程 "..time
 end
 
+local function destination(action)
+    local point=A.Navigation.Target(action) or action and action.recipient
+    if not point then return end
+    local map=point.map and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
+    local name=point.entityName or action.recipient and action.recipient.entityName
+    return name and (name..(map and map.name~=name and " · "..map.name or "")) or map and map.name
+end
+
+local function nextAction(action,plan,state)
+    if not action or action.kind=="manual" then return end
+    local navigation=A.Navigation
+    if navigation.actions and navigation.actions[navigation.index]==action then
+        for i=navigation.index+1,#navigation.actions do
+            local stage=navigation.actions[i]
+            if stage.kind~="move" then return stage,stage.questId,stage.title end
+        end
+    end
+    local after=action.kind=="service" or action.kind=="flight" or action.kind=="hearthCast"
+    local steps=plan.taskQueue and plan.taskQueue.steps or plan.taskOrder or {}
+    for _,step in ipairs(steps) do
+        local choice=step.choice or step
+        for _,stage in ipairs(step.stage and {step.stage} or choice.stages or {}) do
+            local id=stage.questId or choice.questId
+            if not state.locked or id==state.locked then
+                if after then return stage,id,choice.title end
+                if id==action.questId and stage.kind==action.kind and
+                    (not action.objectiveIndex or action.objectiveIndex==stage.objectiveIndex) then after=true end
+            end
+        end
+    end
+end
+
 local function deliveryAdvice(state,plan,action,choices,byQuest)
     local advice,ordered,seen,immediate={},{},{},{}
     local leading=true
@@ -408,6 +440,7 @@ function UI:CreateTracker()
     T.number=text(T.numberBack,12,palette.gold);T.number:SetPoint("CENTER");T.number:SetText("1")
     T.stepIcon=T.card:CreateTexture(nil,"ARTWORK")
     self.title=text(T.card,15,palette.gold)
+    T.location=text(T.card,13,palette.blue)
     T.questTitle=CreateFrame("Button",nil,T.card);T.questTitle:SetAllPoints(self.title)
     T.questTitle:RegisterForClicks("LeftButtonUp","RightButtonUp")
     T.questTitle:SetScript("OnClick",function(_,mouse)
@@ -422,6 +455,11 @@ function UI:CreateTracker()
     T.objectives={}
     T.footer=text(T.currentChild,12,palette.muted)
     T.questTitle.progress=self.body
+    T.thenText=text(T.content,13,palette.blue)
+    T.thenButton=CreateFrame("Button",nil,T.content);T.thenButton:SetAllPoints(T.thenText)
+    T.thenButton:SetScript("OnClick",function() self:QuestClick(T.thenButton.questId,"LeftButton") end)
+    T.thenButton:SetScript("OnEnter",questTooltip)
+    T.thenButton:SetScript("OnLeave",function() GameTooltip:Hide() end)
     T.region=self:Button(T.content,"",250,function() self.details:Show();self:SelectTab(10) end,12)
     T.region.baseColor={0,0,0,0};T.region:SetBackdropColor(0,0,0,0)
     T.queuePanel=CreateFrame("Frame",nil,T.content)
@@ -540,6 +578,20 @@ function UI:RenderTracker()
     self.title:SetText(questTitle(model.questId,model.title))
     self.title:SetTextColor(unpack(model.kind=="turnin" and palette.green or model.kind=="accept" and palette.blue or palette.gold))
     T.numberBack:SetShown(model.questId~=nil)
+    local place=model.kind and destination(action)
+    T.location:SetText(place and (self:Icon("location",14).." "..place) or "")
+    local nextStep,nextId,nextTitle
+    if model.kind and not A.char.paused and not A.error then nextStep,nextId,nextTitle=nextAction(action,plan,state) end
+    T.thenButton.questId=nextId
+    local following=""
+    if nextStep then
+        local verb=({accept="接取",objective="完成",turnin="交付"})[nextStep.kind]
+        local title=(state.quests[nextId] or {}).title or nextTitle or nextStep.title
+        following="接下来："..(verb and title and (verb.."「"..title.."」") or self.ActionText(nextStep,A.settings))
+        local target=destination(nextStep)
+        if target then following=following.."\n"..self:Icon("location",14).." "..target end
+    end
+    T.thenText:SetText(following);T.thenButton.detail=following
     local region
     for _,candidate in ipairs(plan.regions or {}) do
         if not candidate.current and #candidate.choices>=3 then region=candidate;break end
@@ -579,7 +631,7 @@ function UI:RenderTracker()
     end
     self.body:SetText(guidance)
     self.body:SetTextColor(unpack(model.kind=="turnin" and palette.green or model.kind=="accept" and palette.blue or palette.muted))
-    T.questTitle.detail=table.concat(lines,"\n")
+    T.questTitle.detail=(place and (place.."\n") or "")..table.concat(lines,"\n")
     renderObjectives(T.questTitle,T.currentChild,T.objectives,
         (model.kind=="objective" or current and not current.ready) and model.objectives or {})
     local number=model.questId and 1 or 0
@@ -646,6 +698,9 @@ function UI:LayoutTracker()
     T.stepIcon:ClearAllPoints();T.stepIcon:SetPoint("TOPRIGHT",-2,-2);T.stepIcon:SetSize(15*scale,15*scale)
     self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT",indent,0);self.title:SetWidth(bodyWidth);self.title:SetMaxLines(2)
     local top=math.max(20*scale,self.title:GetStringHeight())+5
+    T.location:ClearAllPoints();T.location:SetPoint("TOPLEFT",indent,-top);T.location:SetWidth(bodyWidth)
+    T.location:SetShown(T.location:GetText()~="")
+    if T.location:IsShown() then top=top+T.location:GetStringHeight()+6 end
     T.currentScroll:SetWidth(bodyWidth);T.currentChild:SetWidth(bodyWidth)
     local childHeight=layoutObjectives(T.objectives,bodyWidth,scale)
     self.body:ClearAllPoints();self.body:SetPoint("TOPLEFT",0,-childHeight);self.body:SetWidth(bodyWidth)
@@ -687,6 +742,9 @@ function UI:LayoutTracker()
     T.queueScroll:SetHeight(math.max(1,visible));T.queueScroll:SetShown(not collapsed and queueHeight>0)
     T.queuePanel:SetHeight(visible);T.queuePanel:SetShown(not collapsed and queueHeight>0)
     local bottom=queueTop+(not collapsed and queueHeight>0 and visible+4 or 0)
+    T.thenText:ClearAllPoints();T.thenText:SetPoint("TOPLEFT",indent,-bottom);T.thenText:SetWidth(bodyWidth)
+    T.thenText:SetShown(not collapsed and T.thenText:GetText()~="");T.thenButton:SetShown(T.thenText:IsShown())
+    if T.thenText:IsShown() then bottom=bottom+T.thenText:GetStringHeight()+10 end
     T.region:ClearAllPoints();T.region:SetPoint("TOPLEFT",indent,-bottom);T.region:SetSize(width-indent,20*scale)
     T.region.text:SetWidth(width-indent);T.region.text:SetMaxLines(1);T.region:SetShown(not collapsed and T.region.region~=nil)
     if T.region:IsShown() then bottom=bottom+24*scale end

@@ -118,6 +118,13 @@ assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",A)
 A.plan.taskChoices[#A.plan.taskChoices+1]={lowValue={suggestion="建议跳过"},questId=62,title="西泉要塞的委托",kind="task",
     actions={{kind="accept",title="西泉要塞的委托"}}}
 A.plan.taskQueue={stagePlan=true,steps={{choice=A.plan.taskChoices[1],stage=action}}}
+for _,choice in ipairs(A.plan.taskOrder) do
+    if choice.questId~=7 and not A.state.quests[choice.questId].ready then
+        local stage=choice.actions[1];stage.questId=choice.questId
+        stage.position={map=1429,x=0.4,y=0.4,entityName=choice.questId==33 and "北郡树林" or "金砂河岸"}
+        A.plan.taskQueue.steps[#A.plan.taskQueue.steps+1]={choice=choice,stage=stage}
+    end
+end
 for _,choice in ipairs(A.plan.taskOrder) do A.plan.taskQueue.steps[#A.plan.taskQueue.steps+1]={choice=choice,stage=choice.stages[1]} end
 assert(loadfile("UI/Main.lua"))("AiLeveling",A)
 assert(loadfile("UI/Tracker.lua"))("AiLeveling",A)
