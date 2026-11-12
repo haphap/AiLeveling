@@ -989,8 +989,8 @@ function UI:LayoutTracker()
     self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT",indent,-top);self.title:SetWidth(bodyWidth);self.title:SetMaxLines(2)
     top=top+math.max(20*scale,self.title:GetStringHeight())+6
     T.currentScroll:SetWidth(inner);T.currentChild:SetWidth(inner)
-    T.objectiveFrame:ClearAllPoints();T.objectiveFrame:SetPoint("TOPLEFT",0,0);T.objectiveFrame:SetWidth(inner)
-    local childHeight=layoutObjectives(T.objectives,inner,scale)
+    T.objectiveFrame:ClearAllPoints();T.objectiveFrame:SetPoint("TOPLEFT",indent,0);T.objectiveFrame:SetWidth(bodyWidth)
+    local childHeight=layoutObjectives(T.objectives,bodyWidth,scale)
     T.objectiveFrame:SetHeight(math.max(1,childHeight))
     local queueHeight,alongHeight,alongCount=0,0,0
     for i,item in ipairs(T.model and T.model.rows or {}) do
