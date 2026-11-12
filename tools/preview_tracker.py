@@ -116,7 +116,7 @@ def main():
                     xx += w - line_width
                 elif row.get('justify') == 'CENTER':
                     xx += (w - line_width) / 2
-                yy = y + i * (row['size'] + 4) * SCALE
+                yy = y + i * (row['size'] + 4 + row.get('spacing', 0)) * SCALE
                 for char, ink, advance in line:
                     if isinstance(char, Image.Image):
                         overlay.alpha_composite(char, (round(xx), round(yy+(row['size']*SCALE-char.height)/2)))

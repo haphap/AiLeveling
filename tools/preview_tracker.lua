@@ -27,6 +27,7 @@ local function widget(kind,parent)
     function w:SetAllPoints(other) self.all=other or self.parent end
     function w:SetText(value) self.value=tostring(value or "") end;function w:GetText() return self.value or "" end
     function w:SetFont(_,size,flags) self.size,self.fontFlags=size,flags end
+    function w:SetSpacing(value) self.spacing=value end
     function w:GetEffectiveScale() return 1 end
     function w:GetCenter()
         boxes={};local r=box(self)
@@ -43,7 +44,8 @@ local function widget(kind,parent)
                 used=used+length
             end
         end
-        return (self.maxLines and self.maxLines>0 and math.min(count,self.maxLines) or count)*(self.size+4)
+        count=self.maxLines and self.maxLines>0 and math.min(count,self.maxLines) or count
+        return count*(self.size+4)+math.max(0,count-1)*(self.spacing or 0)
     end
     function w:SetTextColor(...) self.color={...} end;w.SetColorTexture=w.SetTextColor
     w.SetVertexColor=w.SetTextColor
@@ -389,7 +391,7 @@ local function visit(w,visible,clip)
     visible=visible and w.shown
     if not visible then return end
     local rect=box(w)
-    local record={kind=w.kind,rect=rect,text=w.value,size=w.size,color=w.color,background=w.background,border=w.border,justify=w.justify,maxLines=w.maxLines,nonSpaceWrap=w.nonSpaceWrap,clip=clip,layer=w.layer,texture=w.texture,uv=w.uv,tileX=w.tileX,tileY=w.tileY}
+    local record={kind=w.kind,rect=rect,text=w.value,size=w.size,spacing=w.spacing,color=w.color,background=w.background,border=w.border,justify=w.justify,maxLines=w.maxLines,nonSpaceWrap=w.nonSpaceWrap,clip=clip,layer=w.layer,texture=w.texture,uv=w.uv,tileX=w.tileX,tileY=w.tileY}
     if w.kind=="Line" then
         local function point(p)
             local r=box(p.relative);local a=anchors[p.point]

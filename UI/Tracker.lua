@@ -1278,9 +1278,10 @@ function UI:LayoutTracker()
     if T.alongScroll:IsShown() then bottom=bottom+alongVisible+spacing.gap*scale end
     T.thenDivider:ClearAllPoints();T.thenDivider:SetPoint("TOPLEFT",0,-bottom);T.thenDivider:SetSize(inner,1)
     T.thenText:ClearAllPoints();T.thenText:SetPoint("TOPLEFT",0,-bottom-spacing.gap*scale);T.thenText:SetWidth(inner)
+    T.thenText:SetSpacing(spacing.tight*scale)
     T.thenText:SetShown(not collapsed and T.thenText:GetText()~="");T.thenButton:SetShown(T.thenText:IsShown())
     T.thenDivider:SetShown(T.thenText:IsShown())
-    if T.thenText:IsShown() then bottom=bottom+T.thenText:GetStringHeight()+spacing.section*scale end
+    if T.thenText:IsShown() then bottom=bottom+spacing.gap*scale+T.thenText:GetStringHeight()+spacing.section*scale end
     T.queueLabel:ClearAllPoints();T.queueLabel:SetPoint("TOPLEFT",0,-bottom);T.queueLabel:SetWidth(inner)
     T.queueLabel:SetShown(not collapsed and queueHeight>0)
     if T.queueLabel:IsShown() then bottom=bottom+24*scale end
