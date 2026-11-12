@@ -386,6 +386,7 @@ end)
 
 test("交错行程按任务数汇总并显示每个目标与交付步骤",function()
     local B=ready();local a,b=B.plan.taskChoices[1],B.plan.taskChoices[3]
+    B.state.quests[3].level=9;B.state.quests[3].objectives[1].type="item"
     local oa={kind="objective",questId=1,text="目标甲"};local ob={kind="objective",questId=3,text="目标乙",position={entityName="林地"}}
     B.plan.taskQueue={stagePlan=true,taskCount=2,seconds=180,low=180,high=180,xp=200,xpKnown=true,
         steps={{choice=a,stage=oa},{choice=b,stage=ob},{choice=a,stage={kind="turnin"}},{choice=b,stage={kind="turnin"}}}}
@@ -393,14 +394,18 @@ test("交错行程按任务数汇总并显示每个目标与交付步骤",functi
     B.UI:RenderTracker();assert(B.UI.tracker.objectives[1].text.value:find("狗头人",1,true))
     assert(not B.UI.body.value:find("先完成附近目标，再集中交付",1,true))
     eq(B.UI.tracker.model.questId,1)
-    eq(#B.UI.tracker.model.rows,0) -- The next action appears once, in the Then line.
+    eq(#B.UI.tracker.model.rows,0) -- The next task appears once, in the Then section.
     eq(B.state.quests[3].ready,nil)
     local T=B.UI.tracker
-    assert(T.thenText.value:find("完成 后续目标",1,true));assert(T.thenText.value:find("林地",1,true))
+    assert(T.thenText.value:find("已接取",1,true));eq(T.thenButton.title.value,"[9] 后续目标")
+    eq(T.thenButton.title.color[1],B.UI.colors.gold[1]);assert(T.thenButton.progress.value:find("林地",1,true))
+    eq(T.thenButton.objectives[1].text.value,"物品");eq(T.thenButton.objectives[1].count.value,"2/4")
+    eq(T.thenButton.objectives[1].text.color[1],B.UI.colors.purple[1])
     eq(T.thenText.shown,true);eq(T.thenButton.questId,3)
     assert(T.thenText.point[3]>T.queuePanel.point[3],"下一步应在其他任务之前")
-    B.action=ob;B.UI:RenderTracker();assert(T.thenText.value:find("接下来：交付 当前任务",1,true))
-    B.char.paused=true;B.UI:RenderTracker();eq(T.thenText.shown,false)
+    B.action=ob;B.UI:RenderTracker();eq(T.thenButton.title.value,"当前任务")
+    eq(T.thenButton.status,"已接取");eq(T.thenButton.progress.value,"完成后交付")
+    B.char.paused=true;B.UI:RenderTracker();eq(T.thenText.shown,false);eq(T.thenButton.shown,false)
     B.finish()
 end)
 

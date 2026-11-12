@@ -450,6 +450,7 @@ function UI.TrackerModel(state,plan,action,paused)
     end
     if action and not paused and not A.error then
         model.nextStep,model.nextId,model.nextTitle=nextAction(action,plan,state,model.rows)
+        model.nextChoice=choices[model.nextId]
     end
     local visible={}
     for _,row in ipairs(model.rows) do
@@ -804,12 +805,9 @@ function UI:CreateTracker()
         if T.journeyElapsed>=1 then T.journeyElapsed=0;self:RenderTracker() end
     end)
     T.questTitle.progress=self.body
-    T.thenText=text(T.currentChild,"body",palette.blue)
+    T.thenText=text(T.currentChild,"caption",palette.muted)
     T.thenDivider=T.currentChild:CreateTexture(nil,"BACKGROUND");T.thenDivider:SetColorTexture(unpack(palette.line))
-    T.thenButton=CreateFrame("Button",nil,T.currentChild);T.thenButton:SetAllPoints(T.thenText)
-    T.thenButton:SetScript("OnClick",function() self:QuestClick(T.thenButton.questId,"LeftButton") end)
-    T.thenButton:SetScript("OnEnter",questTooltip)
-    T.thenButton:SetScript("OnLeave",function() GameTooltip:Hide() end)
+    T.thenButton=self:TrackerRow(nil,T.currentChild)
     T.region=self:Button(T.currentChild,"",250,function() self.details:Show();self:SelectTab(10) end,"caption")
     T.region.baseColor={0,0,0,0};T.region:SetBackdropColor(0,0,0,0)
     T.queuePanel=CreateFrame("Frame",nil,T.currentChild)
@@ -908,10 +906,10 @@ local function layoutObjectives(pool,width,scale)
     return y
 end
 
-function UI:TrackerRow(index)
+function UI:TrackerRow(index,parent)
     local T=self.tracker
-    if T.rows[index] then return T.rows[index] end
-    local row=CreateFrame("Button",nil,T.queueChild,"BackdropTemplate")
+    if index and T.rows[index] then return T.rows[index] end
+    local row=CreateFrame("Button",nil,parent or T.queueChild,"BackdropTemplate")
     self:Rounded(row,spacing.controlRadius);row:SetBackdropColor(0,0,0,0);row.material:Hide()
     row.icon=row:CreateTexture(nil,"ARTWORK")
     row.title=text(row,"task",palette.gold)
@@ -925,7 +923,7 @@ function UI:TrackerRow(index)
         elseif row.dungeonId then self.Dungeon.selected=row.dungeonId;self.details:Show();self:SelectTab(4)
         else self:QuestClick(row.questId,button) end
     end)
-    T.rows[index]=row
+    if index then T.rows[index]=row end
     return row
 end
 
@@ -990,17 +988,28 @@ function UI:RenderTracker()
     local nextStep,nextId,nextTitle=model.nextStep,model.nextId,model.nextTitle
     T.primaryLabel:SetText(model.kind=="turnin" and "本次交付" or model.kind=="accept" and "先接任务" or "主要目标")
     if model.unlock then T.primaryLabel:SetText(A.TaskGuide.UnlockText(model.unlock)) end
-    T.thenButton.questId=nextId
-    local following=""
+    local nextRow=T.thenButton
+    local nextQuest=(state.quests or {})[nextId]
+    local taskStep=nextStep and (nextStep.kind=="accept" or nextStep.kind=="objective" or nextStep.kind=="turnin")
+    local tone=not taskStep and "white" or nextQuest and (nextQuest.ready and "green" or "gold") or "blue"
+    nextRow.questId,nextRow.candidate,nextRow.revision=nextId,model.nextChoice,plan.revision
+    nextRow.status=taskStep and nextId and self.QuestStatus(state,nextId,plan)
+    local following,title,instruction="","",""
     if nextStep then
-        local verb=({accept="接取",objective="完成",turnin="交付"})[nextStep.kind]
-        local title=(state.quests[nextId] or {}).title or nextTitle or nextStep.title
-        local instruction=verb and title and (verb.." "..title) or self.ActionText(nextStep,A.settings)
+        title=taskStep and nextId and questTitle(nextId,nextQuest and nextQuest.title or nextTitle or nextStep.title or ("任务 #"..nextId),model.nextChoice)
+            or self.ActionText(nextStep,A.settings)
+        local verb=({accept="接取",objective="前往",turnin="交付"})[nextStep.kind] or "前往"
+        if nextStep.kind=="turnin" and not (nextQuest and nextQuest.ready) then verb="完成后交付" end
         local target=destination(nextStep)
-        following="接下来："..(target or instruction)
-        if target and target~=instruction then following=following.."\n"..instruction end
+        instruction=target and (verb.." · "..target) or nextStep.kind=="turnin" and verb or ""
+        following="接下来"..(nextRow.status and (" · |cff"..self.hex[tone]..nextRow.status.."|r") or "")
     end
-    T.thenText:SetText(following);T.thenButton.detail=following
+    T.thenText:SetText(following)
+    nextRow.title:SetText(title);nextRow.title:SetTextColor(unpack(palette[tone]))
+    nextRow.icon:SetTexture(media..(({accept="hud-accept",objective="hud-objective",turnin="hud-turnin"})[nextStep and nextStep.kind] or "compass")..".tga")
+    nextRow.icon:SetVertexColor(unpack(palette[tone]));nextRow.progress:SetText(instruction)
+    nextRow.detail=(nextRow.status or "").."\n"..instruction
+    renderObjectives(nextRow,nextRow.objectiveFrame,nextRow.objectives,taskStep and nextQuest and not nextQuest.ready and nextQuest.objectives or {})
     local region
     for _,candidate in ipairs(plan.regions or {}) do
         if not candidate.current and #candidate.choices>=3 then region=candidate;break end
@@ -1269,10 +1278,12 @@ function UI:LayoutTracker()
     local bottom=childHeight+spacing.gap*scale
     T.thenDivider:ClearAllPoints();T.thenDivider:SetPoint("TOPLEFT",0,-bottom);T.thenDivider:SetSize(inner,1)
     T.thenText:ClearAllPoints();T.thenText:SetPoint("TOPLEFT",0,-bottom-spacing.gap*scale);T.thenText:SetWidth(inner)
-    T.thenText:SetSpacing(spacing.tight*scale)
     T.thenText:SetShown(not collapsed and T.thenText:GetText()~="");T.thenButton:SetShown(T.thenText:IsShown())
     T.thenDivider:SetShown(T.thenText:IsShown())
-    if T.thenText:IsShown() then bottom=bottom+spacing.gap*scale+T.thenText:GetStringHeight()+spacing.section*scale end
+    if T.thenText:IsShown() then
+        bottom=bottom+spacing.gap*scale+math.max(spacing.hit*scale,T.thenText:GetStringHeight()+spacing.tight*scale)
+        bottom=bottom+layoutRow(T.thenButton,bottom)+spacing.gap*scale
+    end
     T.queueLabel:ClearAllPoints();T.queueLabel:SetPoint("TOPLEFT",0,-bottom);T.queueLabel:SetWidth(inner)
     T.queueLabel:SetShown(not collapsed and queueHeight>0)
     if T.queueLabel:IsShown() then bottom=bottom+24*scale end
