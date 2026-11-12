@@ -29,11 +29,15 @@ def lua(value):
     return '{' + ','.join('[' + (k if k.isdigit() else lua(k)) + ']=' + lua(v) for k, v in sorted(value.items())) + '}'
 
 
-def mount_rewards(quests):
+def reward_unlocks(quests):
     spells = read_effects('SpellEffect')
     mounts = {int(r['SpellID']): int(r['SpellID']) for r in spells.values()
               if int(r['Effect']) == 6 and int(r['EffectAura']) == 78}
     learning = [r for r in spells.values() if int(r['Effect']) in (36, 64)]
+    learned = {}
+    for r in learning:
+        if int(r['Effect']) == 36 and int(r['EffectTriggerSpell']) > 0:
+            learned.setdefault(int(r['SpellID']), set()).add(int(r['EffectTriggerSpell']))
     changed = True
     while changed:
         changed = False
@@ -41,6 +45,10 @@ def mount_rewards(quests):
             ident, target = int(r['SpellID']), int(r['EffectTriggerSpell'])
             if target in mounts and ident not in mounts:
                 mounts[ident] = mounts[target]; changed = True
+            if int(r['Effect']) == 64 and target in learned:
+                before = len(learned.get(ident, set()))
+                learned.setdefault(ident, set()).update(learned[target])
+                changed = changed or len(learned[ident]) > before
     effects = read_effects('ItemEffect')
     items = {}
     for r in read_effects('ItemXItemEffect').values():
@@ -53,6 +61,12 @@ def mount_rewards(quests):
         found += [items[i['id']] for k in ('items', 'choices') for i in reward.get(k, []) if i['id'] in items]
         if found:
             q['mountReward'] = found[0]
+        # Cast rewards count only when they teach; display-only spell IDs are replaced by the taught spells.
+        unlocks = learned.get(reward.get('spellCast'), set()) | learned.get(reward.get('spell'), set())
+        if not unlocks and reward.get('spell'):
+            unlocks = {reward['spell']}
+        if unlocks:
+            q['learnedSpells'] = sorted(unlocks)
 
 
 def main():
@@ -125,7 +139,7 @@ io.write(json(result))
             for key in ['items', 'choices']:
                 if row['rewards'][key] == {}:
                     row['rewards'][key] = []
-    mount_rewards(data['quests'])
+    reward_unlocks(data['quests'])
     data.update(source='LibQuestDB-0.1.0-Forever', clientVerified=False)
     data['cacheXP'], cache_report = load_cache_xp()
     generated = ('local _,A=...\n-- Generated LibQuestDB facts (MIT) and Efficient Games XP/objectives (CC BY 4.0).\n'
@@ -142,6 +156,7 @@ io.write(json(result))
               'objectives': sum(len(r['objectives']) for r in data['quests'].values()),
               'itemDropRows': len(data['drops']), 'sourceFiles': {}}
     report['mountRewards'] = {'quests': sum('mountReward' in q for q in data['quests'].values()), 'build': '1.60.1.70862', 'effectTables': EFFECT_PINS}
+    report['skillRewards'] = {'quests': sum('learnedSpells' in q for q in data['quests'].values()), 'build': '1.60.1.70862', 'effectTables': EFFECT_PINS}
     report['missingQuestLevels']=sorted(int(id) for id,row in data['quests'].items() if 'level' not in row)
     for name in ['LibQuestDB-1.0.lua', *['Data/Forever/_core/' + n + '.lua' for n in ['Quests', 'Rewards', 'QuestXP', 'Drops']]]:
         report['sourceFiles'][name] = hashlib.sha256((package / name).read_bytes()).hexdigest()

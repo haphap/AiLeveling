@@ -26,6 +26,15 @@
       "SpellEffect": "cc8f167fe246b495294b560196f6c59439f703e8f937ddb6acd81157bd5f8b9c"
     }
   },
+  "skillRewards": {
+    "quests": 122,
+    "build": "1.60.1.70862",
+    "effectTables": {
+      "ItemEffect": "df9f123861be4e180736e79dcee708151c6f79de9f5e6773ff8e2066430aa434",
+      "ItemXItemEffect": "15dc36eec90ca5768e00469cb8065aedf82efcf205ca03281daf6aac69ca1885",
+      "SpellEffect": "cc8f167fe246b495294b560196f6c59439f703e8f937ddb6acd81157bd5f8b9c"
+    }
+  },
   "missingQuestLevels": [
     8193,
     8194,

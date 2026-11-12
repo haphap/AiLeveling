@@ -95,8 +95,11 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         add(id)
         if thread and not isMain and clock()>=deadline then coroutine.yield();deadline=clock()+1 end
     end
+    local unlocks=A.TaskGuide and A.TaskGuide.UnlockPriorities(state,data,data.ids or ids) or {}
     local unknownXP={}
     for _,choice in ipairs(choices) do
+        choice.unlock=unlocks[choice.questId]
+        if choice.unlock then choice.lowValue=nil end
         if choice.timing and choice.timing.seconds~=nil and choice.remainingXP==nil then
             unknownXP[choice.status..(choice.lowValue and ":low" or "")]=true
         end
@@ -106,6 +109,7 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         local aBlocked,bBlocked=a.acceptBlocked or a.entryBlocked,b.acceptBlocked or b.entryBlocked
         if (aBlocked~=nil)~=(bBlocked~=nil) then return not aBlocked end
         if (a.lowValue~=nil)~=(b.lowValue~=nil) then return not a.lowValue end
+        if (a.unlock~=nil)~=(b.unlock~=nil) then return a.unlock~=nil end
         if a.currentInstance~=b.currentInstance then return a.currentInstance==true end
         local order={turnin=1,objective=2,accept=3}
         if a.status~=b.status then return order[a.status]<order[b.status] end
@@ -130,9 +134,14 @@ end
 
 function P.TaskOrder(state,choices,data)
     local pending,order,optional={},{},{}
+    local priority
+    for _,choice in ipairs(choices) do
+        if choice.unlock and not choice.acceptBlocked and not choice.entryBlocked and not choice.requireCheck and
+            not A.TaskGuide.ItemGainBlocked(choice.actions[1],state) then priority=choice.questId;break end
+    end
     for _,choice in ipairs(choices) do
         choice.executionTiming=nil;choice.executionAction=nil
-        if state.quests[choice.questId] or choice.questId==state.locked then
+        if state.quests[choice.questId] or choice.questId==state.locked or choice.questId==priority then
             if (choice.lowValue or choice.entryBlocked) and choice.questId~=state.locked then optional[#optional+1]=choice
             else pending[#pending+1]=choice end
         end
@@ -174,7 +183,7 @@ function P.TaskOrder(state,choices,data)
                 if useTime then distance=timings[index].seconds end
                 if useRate then distance=-A.TaskGuide.MovementRate(timings[index].seconds,choice.remainingXP) end
             end
-            local forced=#order==0 and choice.questId==state.locked
+            local forced=#order==0 and choice.questId==(state.locked or priority)
             if forced then best=index;break end
             if not best or (localTarget and not bestLocal) or (localTarget==bestLocal and
                 ((distance and not bestDistance) or (distance and bestDistance and (distance<bestDistance or useRate and distance==bestDistance and (choice.remainingXP>pending[best].remainingXP or choice.remainingXP==pending[best].remainingXP and timings[index].seconds<timings[best].seconds))))) then
@@ -185,7 +194,7 @@ function P.TaskOrder(state,choices,data)
         if #order==0 and not state.locked and timings[best] and useTime then
             for index,choice in ipairs(pending) do
                 local current,proposed=timings[index],timings[best]
-                if choice.questId==state.currentTask and not (state.quests[choice.questId] or {}).ready and index~=best and current then
+                if choice.questId==state.currentTask and (not priority or choice.unlock) and not (state.quests[choice.questId] or {}).ready and index~=best and current then
                     local keep
                     if useRate then
                         keep=A.TaskGuide.MovementRate(current.seconds,choice.remainingXP)>=

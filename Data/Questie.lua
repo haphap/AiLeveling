@@ -70,6 +70,9 @@ function D:BuildIndex()
         if reputation and type(reputation[1])=="number" and reputation[1]>0 then self.requirements.reputations[reputation[1]]=true end
         local spell, spec = get("requiredSpell"), get("requiredSpecialization")
         if spell and spell > 0 then self.requirements.spells[spell] = true end
+        for _,reward in ipairs(q and q.taskFacts and q.taskFacts.learnedSpells or {}) do self.requirements.spells[reward]=true end
+        local mount=q and q.taskFacts and q.taskFacts.mountReward
+        if mount then self.requirements.spells[mount]=true end
         if spec and spec > 0 then self.requirements.specializations[spec] = true end
         A.Chains.IndexQuest(chainIndex,q,self)
         if i % 25 == 0 then coroutine.yield() end

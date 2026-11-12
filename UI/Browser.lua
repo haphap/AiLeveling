@@ -102,6 +102,7 @@ function B:TaskRows(mode)
         local c=status=="可交付" and gold or state.quests[id] and green or allowed and blue or muted
         local meta={color(c,status)}
         if id==currentId then table.insert(meta,1,color(gold,currentLabel)) end
+        if choice.unlock then meta[#meta+1]=color(gold,A.TaskGuide.UnlockText(choice.unlock)) end
         if q and q.requiredLevel then meta[#meta+1]="接取 "..q.requiredLevel.."级" end
         if choice.remainingXP then meta[#meta+1]=color(gold,choice.remainingXP.." 经验") end
         if q and q.requiredSkill then

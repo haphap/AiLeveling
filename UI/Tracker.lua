@@ -279,7 +279,11 @@ function UI.TrackerModel(state,plan,action,paused)
     for _,choice in ipairs(plan.taskChoices or {}) do
         choices[choice.questId]=choices[choice.questId] or choice
     end
-    if action and choices[action.questId] then model.metrics=metrics(choices[action.questId],journey) end
+    if action and choices[action.questId] then
+        local choice=choices[action.questId]
+        model.metrics=metrics(choice,journey)
+        model.unlock=choice.unlock
+    end
     if A.TaskGuide then groups,byQuest=A.TaskGuide.DeliveryGroups(plan.taskChoices,state,plan.taskOrder) end
     local currentGroup=action and byQuest[action.questId]
     model.includesCurrent=currentGroup~=nil
@@ -808,6 +812,7 @@ function UI:RenderTracker()
     T.area:SetText(area or "")
     local nextStep,nextId,nextTitle=model.nextStep,model.nextId,model.nextTitle
     T.primaryLabel:SetText(model.kind=="turnin" and "本次交付" or model.kind=="accept" and "先接任务" or "主要目标")
+    if model.unlock then T.primaryLabel:SetText(A.TaskGuide.UnlockText(model.unlock)) end
     T.thenButton.questId=nextId
     local following=""
     if nextStep then
@@ -999,7 +1004,7 @@ function UI:LayoutTracker()
     if top>0 then top=top+10 end
     T.primaryLabel:ClearAllPoints();T.primaryLabel:SetPoint("TOPLEFT",indent,-top);T.primaryLabel:SetWidth(bodyWidth)
     T.primaryLabel:SetShown(not collapsed and T.model~=nil and T.model.kind~=nil)
-    if T.primaryLabel:IsShown() then top=top+18*scale end
+    if T.primaryLabel:IsShown() then top=top+math.max(18*scale,T.primaryLabel:GetStringHeight()+4*scale) end
     T.actionIcon:ClearAllPoints();T.actionIcon:SetPoint("TOPLEFT",0,-top-2);T.actionIcon:SetSize(16*scale,16*scale)
     T.stepIcon:ClearAllPoints();T.stepIcon:SetPoint("TOPRIGHT",-2,-top-2);T.stepIcon:SetSize(15*scale,15*scale)
     self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT",indent,-top);self.title:SetWidth(bodyWidth);self.title:SetMaxLines(2)

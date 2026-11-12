@@ -338,6 +338,35 @@ function G.MovementRate(seconds,xp)
     return seconds==0 and math.huge or xp/seconds
 end
 
+function G.UnlockPriorities(state,data,ids)
+    local result={}
+    if state.locked or state.preparingQuest or state.gearTarget or state.taskBatch or state.inInstance or
+        state.dungeon and state.dungeon.phase~="complete" then return result end
+    local sorts=data.db and data.db.Enum and data.db.Enum.sortKeys or {}
+    local thread,main=coroutine.running()
+    for index,id in ipairs(ids) do
+        local q=data:GetQuest(id)
+        local facts=q and q.taskFacts
+        local classQuest=q and ((q.requiredClasses or 0)>0 or sorts[state.class] and sorts[state.class]==q.zoneOrSort)
+        local spells=facts and (facts.mountReward and {facts.mountReward} or classQuest and facts.learnedSpells) or {}
+        local missing
+        for _,spell in ipairs(spells or {}) do if not (state.spells or {})[spell] then missing=spell;break end end
+        if missing and not state.completed[id] and A.Eligibility.Check(q,state,data,true) then
+            local unlock={questId=id,title=q.title,spell=missing,kind=facts.mountReward and "mount" or "class"}
+            for _,frontier in ipairs(A.Chains.Preparation(id,data,state)) do
+                result[frontier]=result[frontier] or unlock
+            end
+        end
+        if thread and not main and index%100==0 then coroutine.yield() end
+    end
+    return result
+end
+
+function G.UnlockText(unlock)
+    local spell=C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(unlock.spell)
+    return (unlock.kind=="mount" and "解锁坐骑" or "解锁职业技能")..(spell and (" · "..spell.name) or "")
+end
+
 function G.LowValue(q,state,data,choice)
     local active=state.quests[q.id]
     if state.locked==q.id or active and active.ready then return end

@@ -20,6 +20,16 @@ function C.Preparation(id,data,state)
         if not q or not A.Eligibility.Check(q,state,data,true) then return end
         if A.Eligibility.Check(q,state,data) then
             if data:Target(q,state) then return {[id]=true} end
+            -- Item-started chains can begin with the quest that supplies the starting item.
+            local items=data.db and data.db.Item
+            local sources={}
+            for _,item in ipairs(not state.quests[id] and q.startedBy and q.startedBy[3] or {}) do
+                for _,source in ipairs(items and items.Get(item,"questRewards") or {}) do
+                    local branch=visit(source,depth+1)
+                    if branch then merge(sources,branch) end
+                end
+            end
+            if next(sources) then return sources end
             return
         end
         local result={}
