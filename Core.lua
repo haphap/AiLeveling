@@ -43,6 +43,7 @@ end
 function A:NormalizeCharacter(char)
     if self.LevelingTracker then self.LevelingTracker.Normalize(char) end
     char.ignoreRepair=char.ignoreRepair==true or nil
+    if type(char.classReminderLevel)~="number" or char.classReminderLevel<1 or char.classReminderLevel>1000 then char.classReminderLevel=nil end
     if type(char.junk)~="table" then char.junk={} end
     for id,value in pairs(char.junk) do
         if type(id)~="number" or id<=0 or id>=2147483648 or id%1~=0 or type(value)~="boolean" then char.junk[id]=nil end

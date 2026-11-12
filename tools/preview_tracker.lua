@@ -81,7 +81,7 @@ local dungeonPreview=arg[1]=="dungeon"
 local planPreview=arg[1]=="plan"
 local canvasWidth=(dungeonPreview or planPreview) and 1080 or 560
 local canvasHeight=(dungeonPreview or planPreview) and 700 or 1100
-if arg[1]=="gear" and arg[2]=="large" then canvasHeight=1450 end
+if (arg[1]=="gear" or arg[1]=="class") and arg[2]=="large" then canvasHeight=1450 end
 UIParent=widget("Root");UIParent:SetSize(canvasWidth,canvasHeight)
 CreateFrame=function(kind,_,parent) return widget(kind,parent) end
 if not dungeonPreview and not planPreview then
@@ -271,7 +271,7 @@ if arg[1]=="journey" then
     A.Navigation.actions,A.Navigation.index,A.Navigation.plan=actions,1,A.plan
     action=actions[1]
 end
-if arg[1]=="gear" then
+if arg[1]=="gear" or arg[1]=="class" then
     assert(loadfile("Planner/Gear.lua"))("AiLeveling",A)
     local function item(id,name,strength)
         return {id=id,name=name,link="|cff1eff00|Hitem:"..id.."|h["..name.."]|h|r",usable=true,
@@ -284,7 +284,18 @@ if arg[1]=="gear" then
     A.state.equipment={[5]=item(99,"旧链甲",4)};A.state.bagEquipment={bag}
     A.plan.taskChoices[1].gear={item=reward,upgrade=A.Gear.Upgrade(reward,A.state)}
 end
+if arg[1]=="class" then
+    A.state.level,A.state.revision=22,1
+    A.Data={GetQuest=function() return nil end}
+    A.state.trainableSpells={{id=101,level=22,name="圣光术 · 等级 4",link="|cff9acbff|Hspell:101|h[圣光术 · 等级 4]|h|r"},
+        {id=102,level=22,name="奉献 · 等级 2",link="|cff9acbff|Hspell:102|h[奉献 · 等级 2]|h|r"}}
+    A.plan.taskChoices[#A.plan.taskChoices+1]={questId=1641,title="圣洁之书",level=12,kind="task",actions={},
+        unlock={kind="class",spell=7328,questId=1788}}
+end
 A.UI:CreateTracker();A.UI:RenderTracker();A.UI:SetTrackerNavigation(285,0.25,true)
+if arg[1]=="class" then
+    assert(A.UI.tracker.career:IsShown() and A.UI.tracker.career.text:GetText():find("圣洁之书",1,true))
+end
 if arg[1]=="gear" then
     local T=A.UI.tracker
     assert(T.gear:IsShown() and T.reward:IsShown() and T.objectiveFrame:IsShown())

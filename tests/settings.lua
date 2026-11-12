@@ -6,6 +6,7 @@ local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","
     "debugprofilestop","C_PlayerInteractionManager","UnitClassification","UnitName","UnitCanAttack","UnitIsDeadOrGhost","UnitOnTaxi","C_NamePlate","UIErrorsFrame","issecretvalue","canaccessvalue","Enum",
     "IsInGroup","IsInRaid","UnitIsGroupLeader","UnitIsConnected","FollowUnit",
     "GetQuestLink","ChatFrameUtil","IsModifiedClick","QuestMapFrame_OpenToQuestDetails","GetRealmName","MenuUtil","GameTooltip","MinimapCluster","Minimap","ObjectiveTrackerFrame",
+    "C_SpellBook","IsCharacterNewlyBoosted","SetItemRef",
     "WorldMapFrame","UnitHealth","UnitHealthMax","GetMirrorTimerInfo","GetMirrorTimerProgress","FlashClientIcon","GetActionInfo","ActionButton1",
     "PlayerSpellsFrame","PlayerSpellsUtil","PlayerUtil","ExportUtil","C_Traits","C_ClassTalents","C_SpecializationInfo","GetNumSpecGroups"}
 local function widget()

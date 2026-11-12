@@ -434,6 +434,55 @@ test("分散交付点明确现在就近交和等同NPC任务一起交并跟随�
     B.finish()
 end)
 
+test("职业提醒随可学技能和待接任务更新，稍后保留行程并只导航本职业训练师",function()
+    local B=ready();assert(loadfile("Services.lua"))("AiLeveling",B)
+    assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
+    B.state.level,B.state.class,B.state.className,B.state.classMask=22,"PALADIN","圣骑士",2
+    Enum={SpellBookSpellBank={Player=0},SpellBookItemType={Spell=1,FutureSpell=2}}
+    local spells={{spellID=101,name="圣光术",subName="等级 4",itemType=2,level=22},
+        {spellID=102,name="正义圣印",subName="等级 3",itemType=2,level=20},
+        {spellID=103,name="未来技能",itemType=2,level=24},
+        {spellID=104,name="其他专精",itemType=2,level=20,isOffSpec=true}}
+    IsCharacterNewlyBoosted=function() return false end
+    C_SpellBook={GetNumSpellBookSkillLines=function() return 1 end,
+        GetSpellBookSkillLineInfo=function() return {itemIndexOffset=0,numSpellBookItems=#spells} end,
+        GetSpellBookItemInfo=function(i,bank) eq(bank,0);return spells[i] end,
+        GetSpellBookItemLevelLearned=function(i) return spells[i].level end}
+    local before=B.Services:Snapshot(B.state);eq(#B.state.trainableSpells,2)
+    local get=B.Data.GetQuest
+    B.Data.GetQuest=function(self,id) if id==1641 then return {id=id,title="圣洁之书",requiredClasses=2} end return get(self,id) end
+    local quest={questId=1641,title="圣洁之书",level=12,kind="task",actions={{kind="accept",questId=1641}}}
+    B.plan.taskChoices[#B.plan.taskChoices+1]=quest
+    local T=B.UI.tracker;B.UI:RenderTracker()
+    eq(T.career.shown,true);assert(T.career.text.value:find("圣光术 · 等级 4",1,true));assert(T.career.text.value:find("圣洁之书",1,true))
+    eq(T.model.questId,1);eq(T.objectives[1].count.value,"3/10")
+    local clicked;SetItemRef=function(link) clicked=link end
+    T.career.view:Click();B.menu["圣光术 · 等级 4 · 22级"].callback();eq(clicked,"spell:101")
+    local questClick=B.UI.QuestClick;B.UI.QuestClick=function(_,id) clicked=id end
+    B.menu["待接：圣洁之书"].callback();eq(clicked,1641)
+    T.career.scripts.OnHyperlinkClick(T.career,"quest:1641:12","","LeftButton");eq(clicked,1641);B.UI.QuestClick=questClick
+    T.career.later:Click();eq(T.career.shown,false);eq(B.char.classReminderLevel,22);eq(T.model.questId,1);eq(B.char.skipped[1641],nil)
+    B:NormalizeCharacter(B.char);B.UI:RenderTracker();eq(T.career.shown,false)
+    B.UI:TrackerMenu(B.UI.frame);B.menu["恢复职业提醒"].callback();eq(T.career.shown,true)
+    B.Data.amenitiesByMap={[2]={9}}
+    B.Data.AmenityPoints=function(_,state,kind,maps)
+        eq(kind,"train");eq(maps[2],true)
+        return {{kind="train",npcId=8,title="铁匠",description="锻造训练师",position={map=1,x=0.51,y=0.5}},
+            {kind="train",npcId=9,title="圣骑士导师",description="圣骑士训练师",position={map=1,x=0.6,y=0.5}}}
+    end
+    B.Navigation.Distance=function(_,a,b) return math.abs(a.x-b.x)*1000 end
+    B.char.locked=1;T.career.train:Click();eq(B.char.serviceStop.npcId,9);eq(B.char.serviceStop.classTraining,true);eq(B.char.locked,1)
+    B.Services:Cancel();B.plan.revision=B.state.revision
+    spells[1].itemType=1;assert(B.Services:Snapshot(B.state)~=before);eq(#B.state.trainableSpells,1)
+    B.state.quests[1641]={title=quest.title,objectives={}};B.UI:RenderTracker();assert(not T.career.text.value:find("圣洁之书",1,true))
+    T.career.later:Click();B.state.level=24;B.Services:Snapshot(B.state);B.UI:RenderTracker()
+    eq(T.career.shown,true);eq(#B.state.trainableSpells,2);assert(T.career.text.value:find("未来技能",1,true))
+    T.career.train:Click();eq(B.char.serviceStop.npcId,9)
+    spells[2].itemType=1;spells[3].itemType=1;B.Services:Snapshot(B.state);B.UI:RenderTracker();eq(T.career.shown,false)
+    eq(B.char.serviceStop,nil);eq(B.char.locked,1)
+    B.finish()
+end)
+
 test("装备提示展示链接和任务奖励，忽略可恢复且换装后撤下",function()
     local B=ready();assert(loadfile("Planner/Gear.lua"))("AiLeveling",B)
     local function item(id,score)

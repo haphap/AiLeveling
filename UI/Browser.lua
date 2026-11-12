@@ -131,7 +131,7 @@ function B:TaskRows(mode)
                 local sorts=enums.sortKeys or {}
                 local profession=q.requiredSkill or q.requiredRanks
                 for key in pairs(enums.professionKeys or {}) do if sorts[key]==q.zoneOrSort then profession=true end end
-                local classQuest=(q.requiredClasses or 0)>0 or sorts[A.state.class] and sorts[A.state.class]==q.zoneOrSort
+                local classQuest=A.TaskGuide.IsClassQuest(q,state,A.Data)
                 local matches=mode==8 and profession or mode==9 and classQuest or mode==11 and self.mountQuests[id]
                 if matches then add(choices[id] or {id="task:"..id,kind="task",questId=id,title=q.title,level=q.questLevel,actions={},
                     remainingXP=A.TaskGuide.XP(q,state.level,state)},q) end

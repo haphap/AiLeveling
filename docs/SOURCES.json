@@ -516,6 +516,12 @@
       "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleFrameAPIDocumentation.lua",
       "checked": "2026-11-11",
       "scope": "SetResizable, SetResizeBounds, StartSizing and StopMovingOrSizing for the tracker mouse resize grip; shared scroll viewport keeps the current title and secure target anchor fixed."
+    },
+    {
+      "url": "https://github.com/Gethe/wow-ui-source/blob/9dc84f0d3bbae1768ac3405b3716000bd93eda06/Interface/AddOns/Blizzard_PlayerSpells/SpellBook/Blizzard_SpellBookItem.lua",
+      "sha256": "a74ca521c9748bf39cc98ea0d01485cc384cd3bc050a550abce95f080142003d",
+      "scope": "Native trainable FutureSpell rule: unlearned, not off-spec, required level reached, and not temporarily locked by character boost. Spell identities and ranks come from the live spellbook.",
+      "client_verified": false
     }
   ],
   "native_symbol_checks": {

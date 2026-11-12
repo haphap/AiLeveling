@@ -207,6 +207,35 @@ function S:Event(event,...)
     end
 end
 
+-- Match the native spellbook's trainable FutureSpell rows, including missed ranks.
+function S.TrainableSpells(state)
+    local book,types=C_SpellBook,Enum and Enum.SpellBookItemType
+    local bank=Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player
+    local rows,seen={},{}
+    if not (book and types and bank and book.GetNumSpellBookSkillLines and book.GetSpellBookSkillLineInfo and
+        book.GetSpellBookItemInfo and book.GetSpellBookItemLevelLearned) or
+        IsCharacterNewlyBoosted and IsCharacterNewlyBoosted() then return rows end
+    local count=book.GetNumSpellBookSkillLines()
+    for index=1,count do
+        local line=book.GetSpellBookSkillLineInfo(index)
+        if line and not line.shouldHide and not line.isGuild then
+            for slot=line.itemIndexOffset+1,line.itemIndexOffset+line.numSpellBookItems do
+                local info=book.GetSpellBookItemInfo(slot,bank)
+                local level=book.GetSpellBookItemLevelLearned(slot,bank)
+                if info and info.itemType==types.FutureSpell and not info.isOffSpec and info.spellID and
+                    level and level<=state.level and not seen[info.spellID] then
+                    seen[info.spellID]=true
+                    local label=info.name..(info.subName and info.subName~="" and (" · "..info.subName) or "")
+                    rows[#rows+1]={id=info.spellID,name=label,level=level,
+                        link="|cff9acbff|Hspell:"..info.spellID.."|h["..label.."]|h|r"}
+                end
+            end
+        end
+    end
+    table.sort(rows,function(a,b) if a.level~=b.level then return a.level>b.level end return a.id<b.id end)
+    return rows,count>0
+end
+
 function S:Snapshot(state)
     state.trainer=nil
     local selected=A.char.serviceStop
@@ -214,6 +243,12 @@ function S:Snapshot(state)
         A.char.serviceStop=nil;self.message="所选训练已确认完成，继续原任务。"
     end
     local key={"services"}
+    local spellsReady
+    state.trainableSpells,spellsReady=S.TrainableSpells(state)
+    for _,spell in ipairs(state.trainableSpells) do key[#key+1]="learn:"..spell.id end
+    if selected and selected.classTraining and spellsReady and #state.trainableSpells==0 then
+        A.char.serviceStop=nil;self.message="本级可学技能已学完，继续原任务。"
+    end
     local tasks={}
     for id in pairs(state.quests or {}) do tasks[#tasks+1]=id end
     table.sort(tasks)
@@ -268,8 +303,8 @@ function S:Snapshot(state)
         A.char.serviceStop=nil;stop=nil;self.message="飞行点已开通，继续原任务。"
     end
     if stop then
-        state.serviceStop={kind=stop.kind,npcId=stop.npcId,taxiId=stop.taxiId,title=stop.title,position=copy(stop.position),learnKey=stop.learnKey,learnSpellId=stop.learnSpellId}
-        key[#key+1]=table.concat({stop.kind,stop.npcId or stop.taxiId,stop.position.map,stop.position.x,stop.position.y,stop.learnKey or "",stop.learnSpellId or ""},":")
+        state.serviceStop={kind=stop.kind,npcId=stop.npcId,taxiId=stop.taxiId,title=stop.title,position=copy(stop.position),learnKey=stop.learnKey,learnSpellId=stop.learnSpellId,classTraining=stop.classTraining}
+        key[#key+1]=table.concat({stop.kind,stop.npcId or stop.taxiId,stop.position.map,stop.position.x,stop.position.y,stop.learnKey or "",stop.learnSpellId or "",tostring(stop.classTraining)},":")
     else state.serviceStop=nil end
     return table.concat(key,"|")
 end
@@ -297,7 +332,16 @@ function S.TrainerData(state)
     if data and state.clientVersion==data.version and tostring(state.clientBuild)==data.build and state.interface==data.interface then return data end
 end
 
-function S.TrainerFit(state,id)
+function S.ClassTrainer(state,row)
+    local data=S.TrainerData(state)
+    local profile=data and data.npcs[row.npcId]
+    if profile and profile.classMask then return profile.classMask==state.classMask end
+    return type(row.description)=="string" and type(state.className)=="string" and state.className~="" and
+        row.description:find(state.className,1,true)~=nil
+end
+
+function S.TrainerFit(state,id,description)
+    if S.ClassTrainer(state,{npcId=id,description=description}) then return 0,"本职业训练师" end
     local data=S.TrainerData(state)
     local profile=data and data.npcs[id]
     if not profile then return 1 end
@@ -431,12 +475,23 @@ function S:Choices(kind)
     elseif kind=="unlockFlight" then
         local maps=S.ServiceMaps(current,state);if state.position then maps[state.position.map]=true end
         if A.Flights then rows=A.Flights.UnlockCandidates(state,maps,A.Navigation) end
-    elseif A.Data.AmenityPoints then rows=A.Data:AmenityPoints(state,kind,S.ServiceMaps(current,state)) end
-    local resume=kind~="learn" and current and S.TaskDestination(current)
+    elseif A.Data.AmenityPoints then
+        local maps=S.ServiceMaps(current,state)
+        if kind=="classTrain" then
+            for map in pairs(A.Data.amenitiesByMap or {}) do maps[map]=true end
+        end
+        local points=A.Data:AmenityPoints(state,kind=="classTrain" and "train" or kind,maps)
+        for _,row in ipairs(points) do
+            if kind~="classTrain" or S.ClassTrainer(state,row) then
+                row.classTraining=kind=="classTrain" or nil;rows[#rows+1]=row
+            end
+        end
+    end
+    local resume=kind~="learn" and kind~="classTrain" and current and S.TaskDestination(current)
     local bindings=kind=="bind" and current and current.bindingChoices
     for _,row in ipairs(rows) do
         row.trainingRank,row.trainingText=nil,nil
-        if kind=="train" then row.trainingRank,row.trainingText=S.TrainerFit(state,row.npcId) end
+        if kind=="train" then row.trainingRank,row.trainingText=S.TrainerFit(state,row.npcId,row.description) end
         row.distance=A.Navigation:Distance(state.position,row.position)
         row.journeyDistance,row.resumeTitle=nil,nil
         local binding=bindings and bindings[S.BindingKey(row)]
@@ -483,7 +538,7 @@ end
 
 function S:Pick(row,revision)
     local ok,why=self:CanPick(row,revision);if not ok then return false,why end
-    A.char.serviceStop={kind=row.kind,npcId=row.npcId,taxiId=row.taxiId,title=row.title,position=copy(row.position),learnKey=row.learnKey}
+    A.char.serviceStop={kind=row.kind,npcId=row.npcId,taxiId=row.taxiId,title=row.title,position=copy(row.position),learnKey=row.learnKey,classTraining=row.classTraining}
     if row.offer and self.trainerOpen and GetTrainerServiceInfo and
         UnitGUID and A.Merchant.NpcId(UnitGUID("npc"))==row.npcId then
         local name,_,_,_,sub,category=GetTrainerServiceInfo(row.offer.index)
@@ -515,6 +570,7 @@ function S.Build(state,plan,automatic)
     local instruction=stop.kind=="bind" and "与旅店老板交谈，设置炉石。" or
         stop.kind=="unlockFlight" and "与飞行管理员交谈，开通此飞行点。" or
         stop.learnKey and ("向训练师学习「"..stop.learnKey:match("^[^\031]+").."」；学会后继续原任务。") or
+        stop.classTraining and "与训练师交谈，学习可用技能；学完后继续原任务。" or
         "与训练师交谈，在服务页选择要学习的项目。"
     if automatic then instruction="建议把炉石设在这里，做完任务后回来集中交付。" end
     if stop.kind=="train" and stop.learnKey and state.trainer and state.trainer.npcId==stop.npcId then

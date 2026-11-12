@@ -498,11 +498,14 @@ local function gearLinks(value)
     return table.concat(links," + ")
 end
 
-local function gearLine(parent)
+local function noticeLine(parent)
     local line=CreateFrame("Frame",nil,parent)
     line.text=text(line,13,palette.green);line.text:SetPoint("TOPLEFT");line.text:SetPoint("TOPRIGHT")
     line:SetHyperlinksEnabled(true)
-    line:SetScript("OnHyperlinkClick",function(_,link,label,button) SetItemRef(link,label,button) end)
+    line:SetScript("OnHyperlinkClick",function(_,link,label,button)
+        local id=link:match("^quest:(%d+)")
+        if id then UI:QuestClick(tonumber(id),button) else SetItemRef(link,label,button) end
+    end)
     line:SetScript("OnHyperlinkEnter",function(owner,link)
         GameTooltip:SetOwner(owner,"ANCHOR_LEFT");GameTooltip:SetHyperlink(link)
         if owner.advice then
@@ -513,10 +516,41 @@ local function gearLine(parent)
             if links~=owner.advice.item.link then GameTooltip:AddLine("换装搭配："..links,1,1,1,true) end
         end
         GameTooltip:Show()
-        if GameTooltip_ShowCompareItem then GameTooltip_ShowCompareItem(GameTooltip) end
+        if link:match("^item:") and GameTooltip_ShowCompareItem then GameTooltip_ShowCompareItem(GameTooltip) end
     end)
     line:SetScript("OnHyperlinkLeave",function() GameTooltip:Hide() end)
     return line
+end
+
+function UI.ClassReminders(state,plan)
+    local quests={}
+    if A.TaskGuide and plan.revision==state.revision then
+        for _,choice in ipairs(plan.taskChoices or {}) do
+            local id=choice.questId
+            if id and not (state.quests or {})[id] and not (state.completed or {})[id] and
+                not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] and
+                not choice.lowValue and not choice.entryBlocked and not choice.acceptBlocked and not choice.requireCheck then
+                if choice.unlock or A.TaskGuide.IsClassQuest(A.Data:GetQuest(id),state,A.Data) then
+                    quests[#quests+1]=choice
+                end
+            end
+        end
+    end
+    return {spells=state.trainableSpells or {},quests=quests}
+end
+
+function UI:ClassReminderMenu(owner)
+    local reminder=self.ClassReminders(A.state,A.plan or {})
+    GameTooltip:Hide()
+    MenuUtil.CreateContextMenu(owner,function(_,menu)
+        for _,spell in ipairs(reminder.spells) do
+            menu:CreateButton(spell.name.." · "..spell.level.."级",function() SetItemRef("spell:"..spell.id,spell.link,"LeftButton") end)
+        end
+        for _,choice in ipairs(reminder.quests) do
+            menu:CreateButton("待接："..choice.title,function() self:QuestClick(choice.questId,"LeftButton") end)
+        end
+        menu:CreateButton("查看职业任务",function() self.details:Show();self:SelectTab(9) end)
+    end)
 end
 
 local function questTooltip(owner)
@@ -565,11 +599,17 @@ function UI:TrackerMenu(owner)
                 local ok,why=A.Selection:Automatic();if not ok then A:Message(why) end
             end)
         end
+        if A.char.serviceStop then
+            menu:CreateButton("取消服务，继续任务",function() A.Services:Cancel() end)
+        end
         if owner==self.frame or not id and not owner.dungeonId then
             menu:CreateButton(A.char.paused and "继续引导" or "暂停引导",function() A:TogglePause() end)
             menu:CreateButton("详细面板",function() self:ToggleDetails() end)
             if next(A.char.ignoredGear or {}) then
                 menu:CreateButton("恢复装备提醒",function() A.char.ignoredGear={};self:RenderTracker() end)
+            end
+            if A.char.classReminderLevel then
+                menu:CreateButton("恢复职业提醒",function() A.char.classReminderLevel=nil;self:RenderTracker() end)
             end
             menu:CreateButton(A.settings.targets~=false and "隐藏目标辅助" or "显示目标辅助",function()
                 A:SetOption("targets",A.settings.targets==false)
@@ -663,7 +703,27 @@ function UI:CreateTracker()
         button:SetScript("OnLeave",function() button:SetBackdropColor(0,0,0,0);GameTooltip:Hide() end)
     end
     T.divider=T.content:CreateTexture(nil,"BACKGROUND");T.divider:SetColorTexture(unpack(palette.line))
-    T.gear=gearLine(T.content)
+    T.career=noticeLine(T.content)
+    T.career.text:SetTextColor(unpack(palette.gold))
+    T.career.view=self:Button(T.career,"查看",48,function() self:ClassReminderMenu(T.career) end,12)
+    T.career.train=self:Button(T.career,"去训练",64,function()
+        local rows=A.Services:Choices("classTrain")
+        local ok,why
+        if rows[1] then ok,why=A.Services:Pick(rows[1],A.state.revision)
+        else why="没有找到本职业训练师的位置" end
+        if not ok then A:Message(why) end
+    end,12)
+    T.career.later=self:Button(T.career,"稍后",48,function()
+        A.char.classReminderLevel=A.state.level;self:RenderTracker()
+    end,12)
+    for _,button in ipairs({T.career.view,T.career.train,T.career.later}) do
+        button.baseColor={0,0,0,0};button:SetBackdropColor(0,0,0,0)
+    end
+    T.career.later:SetScript("OnEnter",function(button)
+        GameTooltip:SetOwner(button,"ANCHOR_TOP");GameTooltip:SetText("本级不再提醒；可在行程菜单恢复");GameTooltip:Show()
+    end)
+    T.career.later:SetScript("OnLeave",function() GameTooltip:Hide() end)
+    T.gear=noticeLine(T.content)
     T.gear.shade=T.gear:CreateTexture(nil,"BACKGROUND");T.gear.shade:SetAllPoints()
     T.gear.shade:SetColorTexture(0.42,0.85,0.60,0.06)
     T.gear.equip=self:Button(T.gear,"装备",48,function()
@@ -696,7 +756,7 @@ function UI:CreateTracker()
     T.questTitle:SetScript("OnLeave",function() GameTooltip:Hide() end)
     T.currentScroll=CreateFrame("ScrollFrame",nil,T.card,"UIPanelScrollFrameTemplate")
     T.currentChild=CreateFrame("Frame",nil,T.currentScroll);T.currentScroll:SetScrollChild(T.currentChild)
-    T.reward=gearLine(T.currentChild)
+    T.reward=noticeLine(T.currentChild)
     T.objectiveFrame=CreateFrame("Frame",nil,T.currentChild)
     self.body=text(T.currentChild,13,palette.muted);self.body:SetMaxLines(2)
     T.objectives={}
@@ -844,6 +904,25 @@ function UI:RenderTracker()
     local action=A.Navigation:Current()
     local model=UI.TrackerModel(state,plan,action,A.char.paused)
     T.model,T.action=model,action
+    local reminder=self.ClassReminders(state,plan)
+    local notice={}
+    if (#reminder.spells>0 or #reminder.quests>0) and A.char.classReminderLevel~=state.level then
+        notice[1]=self:Icon("class",14).." "..state.level.."级 · 职业成长"
+        if #reminder.spells>0 then
+            local links={};for i=1,math.min(2,#reminder.spells) do links[i]=reminder.spells[i].link end
+            notice[#notice+1]="可学："..table.concat(links,"、")..(#reminder.spells>2 and (" 等"..#reminder.spells.."项") or "")
+        end
+        local quest=reminder.quests[1]
+        if quest then
+            notice[#notice+1]="待接：|cff9acbff|Hquest:"..quest.questId..":"..(quest.level or state.level).."|h["..quest.title.."]|h|r"..
+                (#reminder.quests>1 and (" 等"..#reminder.quests.."项") or "")
+        end
+    end
+    T.career.text:SetText(table.concat(notice,"\n"))
+    local training=state.serviceStop and state.serviceStop.kind=="train"
+    T.career.train:SetShown(#reminder.spells>0)
+    T.career.train.text:SetText(training and "已安排" or "去训练")
+    T.career.train:SetEnabled(not training and not state.inInstance and not state.dead and not state.onTaxi)
     local bag=A.settings.rewardAdvice~=false and A.Gear and A.Gear.BagUpgrade(state,A.char.ignoredGear) or nil
     T.gear.advice=bag
     T.gear.text:SetText(bag and (self:Icon("gear",14).." 装备提升 · "..A.Gear.UpgradeText(bag).."\n"..gearLinks(bag)) or "")
@@ -1052,6 +1131,17 @@ function UI:LayoutTracker()
     end
     local cardTop=36*scale
     T.divider:ClearAllPoints();T.divider:SetPoint("TOPLEFT",0,-cardTop+7);T.divider:SetSize(width,1)
+    T.career:ClearAllPoints();T.career:SetPoint("TOPLEFT",0,-cardTop);T.career:SetWidth(inner)
+    T.career.text:SetWidth(inner)
+    local noticeHeight=T.career.text:GetStringHeight()+6*scale
+    local noticeX=indent
+    for _,button in ipairs({T.career.view,T.career.train,T.career.later}) do
+        local buttonWidth=(button==T.career.train and 64 or 48)*scale
+        button:ClearAllPoints();button:SetPoint("TOPLEFT",noticeX,-noticeHeight);button:SetSize(buttonWidth,20*scale)
+        if button:IsShown() then noticeX=noticeX+buttonWidth+8*scale end
+    end
+    T.career:SetHeight(noticeHeight+24*scale);T.career:SetShown(not collapsed and T.career.text:GetText()~="")
+    if T.career:IsShown() then cardTop=cardTop+T.career:GetHeight()+12*scale end
     T.gear:ClearAllPoints();T.gear:SetPoint("TOPLEFT",0,-cardTop);T.gear:SetWidth(inner)
     T.gear.text:SetWidth(inner)
     local gearHeight=T.gear.text:GetStringHeight()+8*scale

@@ -224,9 +224,10 @@ function State:Refresh(force)
     fingerprint[#fingerprint+1]="offers:"..(self.questOffersRevision or 0)
     s.clientVersion,s.clientBuild,s.interface=A.clientVersion,A.build,A.interface
     s.level, s.xp, s.maxXP = UnitLevel("player"), UnitXP("player"), UnitXPMax("player")
-    local _, class, classId = UnitClass("player")
+    local className, class, classId = UnitClass("player")
     local _, _, raceId = UnitRace("player")
     s.class, s.classId, s.raceId = class, classId, raceId
+    s.className=className
     s.classMask, s.raceMask = LibQuestieDB.Enum.classKeys[class], LibQuestieDB.Enum.raceMaskById[raceId]
     s.faction = UnitFactionGroup("player")
     s.quests, s.completed, s.bags, s.equipment, s.bagEntries = {}, {}, {}, {}, {}

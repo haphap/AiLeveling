@@ -338,16 +338,20 @@ function G.MovementRate(seconds,xp)
     return seconds==0 and math.huge or xp/seconds
 end
 
+function G.IsClassQuest(q,state,data)
+    local sorts=data.db and data.db.Enum and data.db.Enum.sortKeys or {}
+    return q and ((q.requiredClasses or 0)>0 or sorts[state.class] and sorts[state.class]==q.zoneOrSort)
+end
+
 function G.UnlockPriorities(state,data,ids)
     local result={}
     if state.locked or state.preparingQuest or state.gearTarget or state.taskBatch or state.inInstance or
         state.dungeon and state.dungeon.phase~="complete" then return result end
-    local sorts=data.db and data.db.Enum and data.db.Enum.sortKeys or {}
     local thread,main=coroutine.running()
     for index,id in ipairs(ids) do
         local q=data:GetQuest(id)
         local facts=q and q.taskFacts
-        local classQuest=q and ((q.requiredClasses or 0)>0 or sorts[state.class] and sorts[state.class]==q.zoneOrSort)
+        local classQuest=G.IsClassQuest(q,state,data)
         local spells=facts and (facts.mountReward and {facts.mountReward} or classQuest and facts.learnedSpells) or {}
         local missing
         for _,spell in ipairs(spells or {}) do if not (state.spells or {})[spell] then missing=spell;break end end
