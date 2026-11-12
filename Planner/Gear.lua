@@ -258,6 +258,41 @@ function G.RewardSources(q)
     return sources
 end
 
+function G.BagUpgrade(state,ignored)
+    local best
+    for _,item in ipairs(state.bagEquipment or {}) do
+        local key=tostring(item.link or item.id)
+        if not (ignored or {})[key] then
+            local upgrade=G.Upgrade(item,state)
+            for _,replacement in pairs(upgrade and upgrade.replacements or {}) do
+                if replacement and (ignored or {})[tostring(replacement.link or replacement.id)] then upgrade=nil;break end
+            end
+            if upgrade and upgrade.delta>0 and not upgrade.provisional and #upgrade.notes==0 and
+                (not best or upgrade.delta>best.upgrade.delta) then best={item=item,upgrade=upgrade,key=key} end
+        end
+    end
+    return best
+end
+
+function G.UpgradeText(value)
+    local upgrade=value.upgrade
+    if upgrade.oldScore==0 then return "新增有效属性" end
+    local percent=upgrade.delta/upgrade.oldScore*100
+    return string.format(percent<1 and "属性评分 +%.1f%%" or "属性评分 +%.0f%%",percent)
+end
+
+function G:EquipAdvice(value)
+    if InCombatLockdown() then return false,"脱离战斗后再换装" end
+    A.State:Refresh(true)
+    local current=G.BagUpgrade(A.state,A.char.ignoredGear)
+    if not current or not value or current.key~=value.key then return false,"装备建议已更新" end
+    for slot=1,19 do
+        local item=current.upgrade.replacements[slot]
+        if item then C_Item.EquipItemByName(item.link or item.id,slot) end
+    end
+    return true
+end
+
 function G.DungeonSources(state,instanceId)
     local catalog=A.DungeonCatalog
     if not catalog or not state or state.clientVersion~=catalog.version or tostring(state.clientBuild)~=catalog.build then return {} end

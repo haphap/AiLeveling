@@ -48,7 +48,10 @@ function A:NormalizeCharacter(char)
         if type(id)~="number" or id<=0 or id>=2147483648 or id%1~=0 or type(value)~="boolean" then char.junk[id]=nil end
     end
     char.sampleContext=nil
-    for _,key in ipairs({"skipped","deferredChains","samples","turnIns","pendingResets"}) do if type(char[key])~="table" then char[key]={} end end
+    for _,key in ipairs({"skipped","deferredChains","samples","turnIns","pendingResets","ignoredGear"}) do if type(char[key])~="table" then char[key]={} end end
+    for key,value in pairs(char.ignoredGear) do
+        if type(key)~="string" or #key>1024 or value~=true then char.ignoredGear[key]=nil end
+    end
     for _,key in ipairs({"skipped","deferredChains"}) do
         for id,value in pairs(char[key]) do
             if type(id)~="number" or id<=0 or id>=2147483648 or id%1~=0 or value~=true then char[key][id]=nil end

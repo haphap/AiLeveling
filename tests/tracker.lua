@@ -434,4 +434,45 @@ test("分散交付点明确现在就近交和等同NPC任务一起交并跟随�
     B.finish()
 end)
 
+test("装备提示展示链接和任务奖励，忽略可恢复且换装后撤下",function()
+    local B=ready();assert(loadfile("Planner/Gear.lua"))("AiLeveling",B)
+    local function item(id,score)
+        return {id=id,name="装备 "..id,link="|cff1eff00|Hitem:"..id.."|h[装备 "..id.."]|h|r",
+            equipLoc="INVTYPE_HEAD",usable=true,stats={ITEM_MOD_STRENGTH_SHORT=score}}
+    end
+    local old,bag,reward=item(99,4),item(100,6),item(101,8)
+    B.state.class,B.state.role,B.state.damageStyle="WARRIOR","DAMAGER","auto"
+    B.state.equipment={[1]=old};B.state.bagEquipment={bag};B.state.bags[100]=1
+    B.char.ignoredGear={}
+    B.plan.taskChoices[1].gear={item=reward,upgrade=B.Gear.Upgrade(reward,B.state)}
+    local T=B.UI.tracker
+    B.UI:RenderTracker()
+    eq(T.gear.shown,true);assert(T.gear.text.value:find(bag.link,1,true));assert(T.gear.text.value:find("+50%",1,true))
+    eq(T.reward.shown,true);assert(T.reward.text.value:find(reward.link,1,true))
+    assert(T.objectiveFrame.point[3]<0);eq(T.model.questId,1);eq(T.objectives[1].count.value,"3/10")
+    local previous=SetItemRef;local clicked
+    SetItemRef=function(link) clicked=link end
+    T.reward.scripts.OnHyperlinkClick(T.reward,"item:101",reward.link,"LeftButton");eq(clicked,"item:101")
+    SetItemRef=previous
+    T.gear.ignore:Click();eq(T.gear.shown,false);eq(B.char.ignoredGear[bag.link],true)
+    B.UI:TrackerMenu(B.UI.frame);B.menu["恢复装备提醒"].callback();eq(T.gear.shown,true)
+    B.combat(true);B.UI:RenderTracker();eq(T.gear.equip.enabled,false)
+    eq(B.Gear:EquipAdvice(T.gear.advice),false)
+    B.combat(false);B.UI:RenderTracker()
+    local equips=0
+    C_Item.EquipItemByName=function(link,slot)
+        eq(link,bag.link);eq(slot,1);equips=equips+1
+        B.state.equipment[slot]=bag;B.state.bagEquipment={old}
+    end
+    T.gear.equip:Click();eq(equips,1);eq(T.gear.shown,false)
+    B.state.equipment={[1]=old};B.state.bagEquipment={bag}
+    bag.pending=true;B.UI:RenderTracker();eq(T.gear.shown,false);bag.pending=nil
+    bag.effects={{kind="equip",text="特殊效果"}};B.UI:RenderTracker();eq(T.gear.shown,false);bag.effects=nil
+    B.UI:RenderTracker();local stale=T.gear.advice
+    B.state.bagEquipment={};eq(B.Gear:EquipAdvice(stale),false);eq(equips,1)
+    B.state.bagEquipment={bag};B.settings.rewardAdvice=false;B.UI:RenderTracker()
+    eq(T.gear.shown,false);eq(T.reward.shown,false)
+    B.finish()
+end)
+
 end

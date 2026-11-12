@@ -283,6 +283,7 @@ function UI.TrackerModel(state,plan,action,paused)
         local choice=choices[action.questId]
         model.metrics=metrics(choice,journey)
         model.unlock=choice.unlock
+        if (A.settings or {}).rewardAdvice~=false then model.reward=choice.gear end
     end
     if A.TaskGuide then groups,byQuest=A.TaskGuide.DeliveryGroups(plan.taskChoices,state,plan.taskOrder) end
     local currentGroup=action and byQuest[action.questId]
@@ -488,6 +489,36 @@ local function text(parent,size,color)
     return value
 end
 
+local function gearLinks(value)
+    local links={}
+    for slot=1,19 do
+        local item=value.upgrade.replacements[slot]
+        if item then links[#links+1]=item.link or item.name or ("物品 #"..item.id) end
+    end
+    return table.concat(links," + ")
+end
+
+local function gearLine(parent)
+    local line=CreateFrame("Frame",nil,parent)
+    line.text=text(line,13,palette.green);line.text:SetPoint("TOPLEFT");line.text:SetPoint("TOPRIGHT")
+    line:SetHyperlinksEnabled(true)
+    line:SetScript("OnHyperlinkClick",function(_,link,label,button) SetItemRef(link,label,button) end)
+    line:SetScript("OnHyperlinkEnter",function(owner,link)
+        GameTooltip:SetOwner(owner,"ANCHOR_LEFT");GameTooltip:SetHyperlink(link)
+        if owner.advice then
+            local upgrade=owner.advice.upgrade
+            local _,label=A.Gear.Model(A.state)
+            GameTooltip:AddLine(string.format("%s · 属性评分 %.1f → %.1f",label,upgrade.oldScore,upgrade.newScore),0.42,0.85,0.60,true)
+            local links=gearLinks(owner.advice)
+            if links~=owner.advice.item.link then GameTooltip:AddLine("换装搭配："..links,1,1,1,true) end
+        end
+        GameTooltip:Show()
+        if GameTooltip_ShowCompareItem then GameTooltip_ShowCompareItem(GameTooltip) end
+    end)
+    line:SetScript("OnHyperlinkLeave",function() GameTooltip:Hide() end)
+    return line
+end
+
 local function questTooltip(owner)
     GameTooltip:SetOwner(owner,"ANCHOR_RIGHT")
     if owner.dungeonId then
@@ -537,6 +568,9 @@ function UI:TrackerMenu(owner)
         if owner==self.frame or not id and not owner.dungeonId then
             menu:CreateButton(A.char.paused and "继续引导" or "暂停引导",function() A:TogglePause() end)
             menu:CreateButton("详细面板",function() self:ToggleDetails() end)
+            if next(A.char.ignoredGear or {}) then
+                menu:CreateButton("恢复装备提醒",function() A.char.ignoredGear={};self:RenderTracker() end)
+            end
             menu:CreateButton(A.settings.targets~=false and "隐藏目标辅助" or "显示目标辅助",function()
                 A:SetOption("targets",A.settings.targets==false)
             end)
@@ -629,6 +663,22 @@ function UI:CreateTracker()
         button:SetScript("OnLeave",function() button:SetBackdropColor(0,0,0,0);GameTooltip:Hide() end)
     end
     T.divider=T.content:CreateTexture(nil,"BACKGROUND");T.divider:SetColorTexture(unpack(palette.line))
+    T.gear=gearLine(T.content)
+    T.gear.shade=T.gear:CreateTexture(nil,"BACKGROUND");T.gear.shade:SetAllPoints()
+    T.gear.shade:SetColorTexture(0.42,0.85,0.60,0.06)
+    T.gear.equip=self:Button(T.gear,"装备",48,function()
+        local ok,why=A.Gear:EquipAdvice(T.gear.advice)
+        if not ok then A:Message(why) end
+        self:RenderTracker()
+    end,12)
+    T.gear.ignore=self:Button(T.gear,"忽略",48,function()
+        if not T.gear.advice then return end
+        A.char.ignoredGear=A.char.ignoredGear or {};A.char.ignoredGear[T.gear.advice.key]=true
+        self:RenderTracker()
+    end,12)
+    for _,button in ipairs({T.gear.equip,T.gear.ignore}) do
+        button.baseColor={0,0,0,0};button:SetBackdropColor(0,0,0,0)
+    end
     T.card=CreateFrame("Frame",nil,T.content)
     T.actionIcon=T.card:CreateTexture(nil,"ARTWORK")
     T.stepIcon=T.card:CreateTexture(nil,"ARTWORK")
@@ -646,6 +696,7 @@ function UI:CreateTracker()
     T.questTitle:SetScript("OnLeave",function() GameTooltip:Hide() end)
     T.currentScroll=CreateFrame("ScrollFrame",nil,T.card,"UIPanelScrollFrameTemplate")
     T.currentChild=CreateFrame("Frame",nil,T.currentScroll);T.currentScroll:SetScrollChild(T.currentChild)
+    T.reward=gearLine(T.currentChild)
     T.objectiveFrame=CreateFrame("Frame",nil,T.currentChild)
     self.body=text(T.currentChild,13,palette.muted);self.body:SetMaxLines(2)
     T.objectives={}
@@ -793,6 +844,14 @@ function UI:RenderTracker()
     local action=A.Navigation:Current()
     local model=UI.TrackerModel(state,plan,action,A.char.paused)
     T.model,T.action=model,action
+    local bag=A.settings.rewardAdvice~=false and A.Gear and A.Gear.BagUpgrade(state,A.char.ignoredGear) or nil
+    T.gear.advice=bag
+    T.gear.text:SetText(bag and (self:Icon("gear",14).." 装备提升 · "..A.Gear.UpgradeText(bag).."\n"..gearLinks(bag)) or "")
+    T.gear.equip:SetEnabled(not InCombatLockdown())
+    T.gear.equip.text:SetText(InCombatLockdown() and "战斗中" or "装备")
+    T.reward.advice=model.reward
+    local reward=model.reward and model.reward.item
+    T.reward.text:SetText(reward and ("奖励："..(reward.link or reward.name).."\n"..A.Gear.UpgradeText(model.reward).." · 交付时领取") or "")
     action=model.action
     T.questTitle.questId=model.questId
     T.questTitle.activeObjective=action and action.objectiveIndex
@@ -993,6 +1052,13 @@ function UI:LayoutTracker()
     end
     local cardTop=36*scale
     T.divider:ClearAllPoints();T.divider:SetPoint("TOPLEFT",0,-cardTop+7);T.divider:SetSize(width,1)
+    T.gear:ClearAllPoints();T.gear:SetPoint("TOPLEFT",0,-cardTop);T.gear:SetWidth(inner)
+    T.gear.text:SetWidth(inner)
+    local gearHeight=T.gear.text:GetStringHeight()+8*scale
+    T.gear.equip:ClearAllPoints();T.gear.equip:SetPoint("TOPLEFT",indent,-gearHeight);T.gear.equip:SetSize(48*scale,20*scale)
+    T.gear.ignore:ClearAllPoints();T.gear.ignore:SetPoint("TOPLEFT",indent+60*scale,-gearHeight);T.gear.ignore:SetSize(48*scale,20*scale)
+    T.gear:SetHeight(gearHeight+24*scale);T.gear:SetShown(not collapsed and T.gear.advice~=nil)
+    if T.gear:IsShown() then cardTop=cardTop+T.gear:GetHeight()+12*scale end
     T.card:ClearAllPoints();T.card:SetPoint("TOPLEFT",0,-cardTop)
     local top=0
     T.location:ClearAllPoints();T.location:SetPoint("TOPLEFT",0,0);T.location:SetWidth(inner)
@@ -1010,9 +1076,12 @@ function UI:LayoutTracker()
     self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT",indent,-top);self.title:SetWidth(bodyWidth);self.title:SetMaxLines(2)
     top=top+math.max(20*scale,self.title:GetStringHeight())+6
     T.currentScroll:SetWidth(inner);T.currentChild:SetWidth(inner)
-    T.objectiveFrame:ClearAllPoints();T.objectiveFrame:SetPoint("TOPLEFT",indent,0);T.objectiveFrame:SetWidth(bodyWidth)
-    local childHeight=layoutObjectives(T.objectives,bodyWidth,scale)
-    T.objectiveFrame:SetHeight(math.max(1,childHeight))
+    T.reward:ClearAllPoints();T.reward:SetPoint("TOPLEFT",indent,0);T.reward:SetWidth(bodyWidth);T.reward.text:SetWidth(bodyWidth)
+    T.reward:SetHeight(T.reward.text:GetStringHeight()+8*scale);T.reward:SetShown(T.reward.advice~=nil)
+    local childHeight=T.reward:IsShown() and T.reward:GetHeight() or 0
+    T.objectiveFrame:ClearAllPoints();T.objectiveFrame:SetPoint("TOPLEFT",indent,-childHeight);T.objectiveFrame:SetWidth(bodyWidth)
+    local goals=layoutObjectives(T.objectives,bodyWidth,scale)
+    T.objectiveFrame:SetHeight(math.max(1,goals));childHeight=childHeight+goals
     local queueHeight,alongHeight,alongCount=0,0,0
     for i,item in ipairs(T.model and T.model.rows or {}) do
         local row=T.rows[i]

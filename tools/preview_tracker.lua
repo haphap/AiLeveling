@@ -81,6 +81,7 @@ local dungeonPreview=arg[1]=="dungeon"
 local planPreview=arg[1]=="plan"
 local canvasWidth=(dungeonPreview or planPreview) and 1080 or 560
 local canvasHeight=(dungeonPreview or planPreview) and 700 or 1100
+if arg[1]=="gear" and arg[2]=="large" then canvasHeight=1450 end
 UIParent=widget("Root");UIParent:SetSize(canvasWidth,canvasHeight)
 CreateFrame=function(kind,_,parent) return widget(kind,parent) end
 if not dungeonPreview and not planPreview then
@@ -270,7 +271,25 @@ if arg[1]=="journey" then
     A.Navigation.actions,A.Navigation.index,A.Navigation.plan=actions,1,A.plan
     action=actions[1]
 end
+if arg[1]=="gear" then
+    assert(loadfile("Planner/Gear.lua"))("AiLeveling",A)
+    local function item(id,name,strength)
+        return {id=id,name=name,link="|cff1eff00|Hitem:"..id.."|h["..name.."]|h|r",usable=true,
+            equipLoc="INVTYPE_CHEST",stats={ITEM_MOD_STRENGTH_SHORT=strength}}
+    end
+    -- Example attributes exercise the real comparison and widgets, not a live reward table.
+    local bag=item(100,"精制链甲",6)
+    local reward=item(101,"卫兵胸甲",8)
+    A.state.class,A.state.role,A.state.damageStyle="PALADIN","DAMAGER","auto"
+    A.state.equipment={[5]=item(99,"旧链甲",4)};A.state.bagEquipment={bag}
+    A.plan.taskChoices[1].gear={item=reward,upgrade=A.Gear.Upgrade(reward,A.state)}
+end
 A.UI:CreateTracker();A.UI:RenderTracker();A.UI:SetTrackerNavigation(285,0.25,true)
+if arg[1]=="gear" then
+    local T=A.UI.tracker
+    assert(T.gear:IsShown() and T.reward:IsShown() and T.objectiveFrame:IsShown())
+    assert(T.gear.text:GetText():find("+50%%") and T.reward.text:GetText():find("+100%%"))
+end
 if arg[1]=="journey" then
     local T=A.UI.tracker
     assert(T.journey:IsShown() and T.alongLabel:IsShown() and T.thenText:IsShown() and T.queuePanel:IsShown())
