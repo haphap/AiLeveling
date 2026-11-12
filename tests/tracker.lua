@@ -487,8 +487,9 @@ test("职业提醒随可学技能和待接任务更新，稍后保留行程并�
     B.finish()
 end)
 
-test("装备提示展示链接和任务奖励，忽略可恢复且换装后撤下",function()
+test("新获装备按次序提醒，接交任务显示对应奖励且换装只处理该件",function()
     local B=ready();assert(loadfile("Planner/Gear.lua"))("AiLeveling",B)
+    assert(loadfile("Merchant.lua"))("AiLeveling",B)
     local function item(id,score)
         return {id=id,name="装备 "..id,link="|cff1eff00|Hitem:"..id.."|h[装备 "..id.."]|h|r",
             equipLoc="INVTYPE_HEAD",usable=true,stats={ITEM_MOD_STRENGTH_SHORT=score}}
@@ -497,44 +498,70 @@ test("装备提示展示链接和任务奖励，忽略可恢复且换装后撤�
     B.state.class,B.state.role,B.state.damageStyle="WARRIOR","DAMAGER","auto"
     B.state.equipment={[1]=old};B.state.bagEquipment={bag};B.state.bags[100]=1
     B.char.ignoredGear={}
-    B.plan.taskChoices[1].gear={item=reward,upgrade=B.Gear.Upgrade(reward,B.state)}
+    B.plan.taskChoices[1].rewardPick={item=reward,upgrade=B.Gear.Upgrade(reward,B.state)}
     local T=B.UI.tracker
-    B.UI:RenderTracker()
+    local function refresh() B.Gear:ScanBagOffers(B.state);B.UI:RenderTracker() end
+    refresh();eq(T.gear.shown,false);eq(T.reward.shown,false)
+    B.state.bags[100]=2;refresh()
     eq(T.gear.shown,true);assert(T.gear.text.value:find(bag.link,1,true));assert(T.gear.text.value:find("+50%",1,true))
     eq(T.gear.text.value,"装备提升："..bag.link.."  ·  +50%  ·  头部")
     eq(T.gear.equip.text.value,"装备它");eq(T.gear.ignore.text.value,"忽略这件")
     eq(T.gear.shade.color[1],0.90);eq(T.gear.shade.color[4],0.10)
     eq(B.Gear.UpgradeText({upgrade={oldScore=1000,delta=1}}),"+<1%")
     eq(B.Gear.UpgradeText({upgrade={oldScore=0,delta=1}}),"新")
+    eq(T.reward.shown,false);eq(T.model.questId,1);eq(T.objectives[1].count.value,"3/10")
+    B.action.kind="accept";refresh()
     eq(T.reward.shown,true);assert(T.reward.text.value:find(reward.link,1,true))
+    assert(T.reward.text.value:find("交还时",1,true));eq(T.reward.icon.shown,false)
     assert(T.reward.text.value:find("大幅提升",1,true));assert(not T.reward.text.value:find("\n",1,true))
-    assert(T.objectiveFrame.point[3]<0);eq(T.model.questId,1);eq(T.objectives[1].count.value,"3/10")
+    B.action.kind="turnin";refresh();eq(T.reward.icon.shown,true)
+    B.plan.taskChoices[1].rewardPick.upgrade.delta=-1;refresh()
+    eq(T.reward.icon.shown,false);assert(T.reward.text.value:find("选择 ",1,true))
+    B.action.kind="accept";refresh();eq(T.reward.shown,false)
+    B.plan.taskChoices[1].rewardPick.upgrade.delta=4;refresh()
     local previous=SetItemRef;local clicked
     SetItemRef=function(link) clicked=link end
     T.reward.scripts.OnHyperlinkClick(T.reward,"item:101",reward.link,"LeftButton");eq(clicked,"item:101")
     SetItemRef=previous
     T.gear.close:Click();eq(T.gear.shown,false);eq(next(B.char.ignoredGear),nil)
-    B.UI:RenderTracker();eq(T.gear.shown,false)
-    B.state.bags[100]=2;B.UI:RenderTracker();eq(T.gear.shown,true)
+    refresh();eq(T.gear.shown,false)
+    B.state.bags[100]=3;refresh();eq(T.gear.shown,true)
     T.gear.ignore:Click();eq(T.gear.shown,false);eq(B.char.ignoredGear["item:100"],true)
-    B.state.bags[100]=3;B.UI:RenderTracker();eq(T.gear.shown,false)
-    B.UI:TrackerMenu(B.UI.frame);B.menu["恢复装备提醒"].callback();eq(T.gear.shown,true)
+    B.state.bags[100]=4;refresh();eq(T.gear.shown,false)
+    B.UI:TrackerMenu(B.UI.frame);B.menu["恢复装备提醒"].callback();eq(T.gear.shown,false)
+    B.state.bags[100]=5;refresh();eq(T.gear.shown,true)
     B.combat(true);B.UI:RenderTracker();eq(T.gear.equip.enabled,false)
     eq(B.Gear:EquipAdvice(T.gear.advice),false)
     B.combat(false);B.UI:RenderTracker()
     local equips=0
     C_Item.EquipItemByName=function(link,slot)
         eq(link,bag.link);eq(slot,1);equips=equips+1
-        B.state.equipment[slot]=bag;B.state.bagEquipment={old}
+        B.state.equipment[slot]=bag;B.state.bagEquipment={old};B.state.bags={[99]=1}
     end
     T.gear.equip:Click();eq(equips,1);eq(T.gear.shown,false)
-    B.state.equipment={[1]=old};B.state.bagEquipment={bag}
-    bag.pending=true;B.UI:RenderTracker();eq(T.gear.shown,false);bag.pending=nil
-    bag.effects={{kind="equip",text="特殊效果"}};B.UI:RenderTracker();eq(T.gear.shown,false);bag.effects=nil
-    B.UI:RenderTracker();local stale=T.gear.advice
+    refresh();B.state.equipment={[1]=old};B.state.bagEquipment={bag};B.state.bags={[100]=1}
+    refresh();eq(T.gear.shown,false) -- Just taken off, not newly acquired.
+    B.state.bags[100]=2;bag.pending=true;refresh();eq(T.gear.shown,false)
+    bag.pending=nil;refresh();eq(T.gear.shown,true)
+    bag.effects={{kind="equip",text="特殊效果"}};refresh();eq(T.gear.shown,false);bag.effects=nil
+    B.state.bags[100]=3;refresh();local stale=T.gear.advice
     B.state.bagEquipment={};eq(B.Gear:EquipAdvice(stale),false);eq(equips,1)
-    B.state.bagEquipment={bag};B.settings.rewardAdvice=false;B.UI:RenderTracker()
+    B.state.bagEquipment={bag};B.settings.rewardAdvice=false;refresh()
     eq(T.gear.shown,false);eq(T.reward.shown,false)
+    B.settings.rewardAdvice=true;refresh();eq(T.gear.shown,false)
+    local second=item(102,20)
+    B.state.bagEquipment={bag,second};B.state.bags[100]=4;B.state.bags[102]=1;refresh()
+    eq(T.gear.advice.item.id,100);T.gear.close:Click();eq(T.gear.advice.item.id,102)
+    B.plan.taskQueue={steps={{stage={itemRequirements={{targetId=102}}}}}};refresh();eq(T.gear.shown,false)
+    B.plan.taskQueue=nil;B.char.junk={[102]=true};B.state.bags[102]=2;refresh();eq(T.gear.shown,false)
+    local two,one,off=item(200,10),item(201,5),item(202,20)
+    two.equipLoc,one.equipLoc,off.equipLoc="INVTYPE_2HWEAPON","INVTYPE_WEAPON","INVTYPE_SHIELD"
+    two.weaponDPS,one.weaponDPS=1,1
+    B.state.equipment={[16]=two};B.state.bags={};B.state.bagEquipment={};refresh()
+    B.state.bags={[201]=1,[202]=1};B.state.bagEquipment={one,off};refresh();eq(T.gear.shown,false)
+    one.stats.ITEM_MOD_STRENGTH_SHORT=15;B.state.bags[201]=2;refresh();eq(T.gear.advice.slot,16)
+    C_Item.EquipItemByName=function(link,slot) eq(link,one.link);eq(slot,16);equips=equips+1 end
+    T.gear.equip:Click();eq(equips,2)
     B.finish()
 end)
 

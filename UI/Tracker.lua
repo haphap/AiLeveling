@@ -283,7 +283,10 @@ function UI.TrackerModel(state,plan,action,paused)
         local choice=choices[action.questId]
         model.metrics=metrics(choice,journey)
         model.unlock=choice.unlock
-        if (A.settings or {}).rewardAdvice~=false then model.reward=choice.gear end
+        local pick=choice.rewardPick
+        if (A.settings or {}).rewardAdvice~=false and not paused and not (state.skipped or {})[action.questId] and
+            not (state.chainDeferred or {})[action.questId] and pick and
+            (model.kind=="turnin" or model.kind=="accept" and pick.upgrade.delta>0) then model.reward=pick end
     end
     if A.TaskGuide then groups,byQuest=A.TaskGuide.DeliveryGroups(plan.taskChoices,state,plan.taskOrder) end
     local currentGroup=action and byQuest[action.questId]
@@ -605,8 +608,8 @@ function UI:TrackerMenu(owner)
         if owner==self.frame or not id and not owner.dungeonId then
             menu:CreateButton(A.char.paused and "继续引导" or "暂停引导",function() A:TogglePause() end)
             menu:CreateButton("详细面板",function() self:ToggleDetails() end)
-            if next(A.char.ignoredGear or {}) or (A.Gear and next(A.Gear.dismissedGear or {})) then
-                menu:CreateButton("恢复装备提醒",function() A.char.ignoredGear={};A.Gear.dismissedGear={};self:RenderTracker() end)
+            if next(A.char.ignoredGear or {}) then
+                menu:CreateButton("恢复装备提醒",function() A.char.ignoredGear={};self:RenderTracker() end)
             end
             if A.char.classReminderLevel then
                 menu:CreateButton("恢复职业提醒",function() A.char.classReminderLevel=nil;self:RenderTracker() end)
@@ -765,8 +768,7 @@ function UI:CreateTracker()
     T.gear.close:SetScript("OnLeave",function(button) button.icon:SetVertexColor(unpack(dim));GameTooltip:Hide() end)
     T.gear.close:SetScript("OnClick",function()
         if not T.gear.advice then return end
-        local id=T.gear.advice.item.id
-        A.Gear.dismissedGear=A.Gear.dismissedGear or {};A.Gear.dismissedGear[id]=(A.state.bags or {})[id] or 1
+        A.Gear:DismissAdvice(T.gear.advice)
         GameTooltip:Hide();self:RenderTracker()
     end)
     T.card=CreateFrame("Frame",nil,T.content)
@@ -965,9 +967,12 @@ function UI:RenderTracker()
     T.gear.equip:SetAlpha(InCombatLockdown() and 0.45 or 1)
     T.reward.advice=model.reward
     local reward=model.reward and model.reward.item
-    T.reward.icon:SetShown(reward~=nil and model.kind=="turnin")
-    T.reward.text:SetText(reward and ((model.kind=="turnin" and "" or "奖励：")..(reward.link or reward.name)..
-        " |cff6bd999"..A.Gear.UpgradeText(model.reward).."|r"..(model.kind=="turnin" and "" or " · 交还时")) or "")
+    local upgrade=reward and model.reward.upgrade.delta>0
+    T.reward.icon:SetShown(upgrade and model.kind=="turnin" or false)
+    local prefix=model.kind=="accept" and "奖励：" or upgrade and "" or "选择 "
+    T.reward.text:SetText(reward and (prefix..(reward.link or reward.name)..
+        (upgrade and (" |cff6bd999"..A.Gear.UpgradeText(model.reward).."|r") or "")..
+        (model.kind=="accept" and " · 交还时" or "")) or "")
     action=model.action
     T.questTitle.questId=model.questId
     T.questTitle.activeObjective=action and action.objectiveIndex

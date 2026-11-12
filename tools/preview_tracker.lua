@@ -283,8 +283,15 @@ if arg[1]=="gear" or arg[1]=="class" then
     local bag=item(100,"精制链甲",6)
     local reward=item(101,"卫兵胸甲",8)
     A.state.class,A.state.role,A.state.damageStyle="PALADIN","DAMAGER","auto"
-    A.state.equipment={[5]=item(99,"旧链甲",4)};A.state.bagEquipment={bag}
-    A.plan.taskChoices[1].gear={item=reward,upgrade=A.Gear.Upgrade(reward,A.state)}
+    A.state.equipment={[5]=item(99,"旧链甲",4)};A.state.bagEquipment={};A.state.bags={}
+    A.Gear:ScanBagOffers(A.state)
+    A.state.bagEquipment={bag};A.state.bags[100]=1;A.Gear:ScanBagOffers(A.state)
+    A.QuestAssist={Requirements=function() return {} end,LayoutTarget=function() end}
+    A.plan.taskChoices[1].rewardPick={item=reward,upgrade=A.Gear.Upgrade(reward,A.state)}
+    if arg[1]=="gear" then
+        action.kind="accept";action.text="与治安官玛克布莱德交谈，接取任务。"
+        action.position.entityName="治安官玛克布莱德";A.state.quests[7]=nil
+    end
 end
 if arg[1]=="class" then
     A.state.level,A.state.revision=22,1

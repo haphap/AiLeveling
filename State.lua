@@ -338,6 +338,7 @@ function State:Refresh(force)
         tostring(s.runSpeed),tostring(s.swimSpeed)}, ":")
     local key = table.concat(fingerprint, "|")
     A.state = s
+    A.Gear:ScanBagOffers(s)
     if force or key ~= self.fingerprint then
         s.revision = s.revision + 1
         self.fingerprint = key

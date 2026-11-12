@@ -258,28 +258,70 @@ function G.RewardSources(q)
     return sources
 end
 
-function G.BagUpgrade(state,ignored)
-    for id,count in pairs(G.dismissedGear or {}) do
-        local held=(state.bags or {})[id] or 0
-        G.dismissedGear[id]=held>0 and held<=count and held or nil
-    end
-    local function hidden(item)
-        return (ignored or {})[tostring(item.link or item.id)] or (ignored or {})["item:"..item.id] or
-            (G.dismissedGear or {})[item.id]
-    end
-    local best
+function G:ScanBagOffers(state)
+    if (A.settings or {}).rewardAdvice==false then self.bagCounts,self.bagOffers=nil,{};return end
+    local counts,worn,queued={},{},{}
+    self.bagOffers=self.bagOffers or {}
+    for id,count in pairs(state.bags or {}) do counts[id]=count end
+    for _,item in pairs(state.equipment or {}) do worn[item.id]=true end
+    for _,id in ipairs(self.bagOffers) do queued[id]=true end
     for _,item in ipairs(state.bagEquipment or {}) do
-        local key=tostring(item.link or item.id)
-        if not hidden(item) then
-            local upgrade=G.Upgrade(item,state)
-            for _,replacement in pairs(upgrade and upgrade.replacements or {}) do
-                if replacement and hidden(replacement) then upgrade=nil;break end
-            end
-            if upgrade and upgrade.delta>0 and not upgrade.provisional and #upgrade.notes==0 and
-                (not best or upgrade.delta>best.upgrade.delta) then best={item=item,upgrade=upgrade,key=key} end
+        local id=item.id
+        if self.bagCounts and (counts[id] or 0)>(self.bagCounts[id] or 0) and
+            not worn[id] and not (self.wornGear or {})[id] and not queued[id] then
+            self.bagOffers[#self.bagOffers+1]=id;queued[id]=true
+        end
+    end
+    self.bagCounts,self.wornGear=counts,worn
+end
+
+local function wearUpgrade(item,state)
+    local best
+    for _,slot in ipairs(G.Slots(item,state)) do
+        local replacements={[slot]=item}
+        if slot==16 and not (state.capabilities or {}).titanGrip then
+            if item.equipLoc=="INVTYPE_2HWEAPON" then replacements[17]=false
+            elseif state.equipment[16] and state.equipment[16].equipLoc=="INVTYPE_2HWEAPON" then replacements[17]=false end
+        end
+        local upgrade=G.Loadout(replacements,state)
+        if upgrade and upgrade.delta>0 and not upgrade.provisional and #upgrade.notes==0 and
+            (not best or upgrade.delta>best.upgrade.delta) then
+            best={item=item,upgrade=upgrade,slot=slot,key=tostring(item.link or item.id)}
         end
     end
     return best
+end
+
+function G.BagUpgrade(state,ignored)
+    if not A.indexReady or not G.bagOffers or #G.bagOffers==0 then return end
+    local keep={}
+    for id in pairs(state.quests or {}) do
+        for _,item in ipairs(A.QuestAssist.Requirements({kind="objective",questId=id},state,A.Data)) do keep[item.id]=true end
+    end
+    for _,step in ipairs(A.plan and A.plan.taskQueue and A.plan.taskQueue.steps or {}) do
+        for _,item in ipairs(step.stage and step.stage.itemRequirements or {}) do keep[item.targetId]=true end
+    end
+    local items={}
+    for _,item in ipairs(state.bagEquipment or {}) do if not items[item.id] then items[item.id]=item end end
+    local remaining,first={},nil
+    for _,id in ipairs(G.bagOffers or {}) do
+        local item=items[id]
+        local junk=item and A.Merchant and A.Merchant:IsJunk(id,item.quality)
+        if item and not keep[id] and not junk and not (ignored or {})["item:"..id] and
+            not (ignored or {})[tostring(item.link or id)] then
+            local value=wearUpgrade(item,state)
+            if value or item.pending then remaining[#remaining+1]=id end
+            first=first or value
+        end
+    end
+    G.bagOffers=remaining
+    return first
+end
+
+function G:DismissAdvice(value)
+    for i,id in ipairs(self.bagOffers or {}) do
+        if value and value.item.id==id then table.remove(self.bagOffers,i);return end
+    end
 end
 
 function G.UpgradeText(value)
@@ -303,11 +345,20 @@ function G:EquipAdvice(value)
     A.State:Refresh(true)
     local current=G.BagUpgrade(A.state,A.char.ignoredGear)
     if not current or not value or current.key~=value.key then return false,"装备建议已更新" end
-    for slot=1,19 do
-        local item=current.upgrade.replacements[slot]
-        if item then C_Item.EquipItemByName(item.link or item.id,slot) end
-    end
+    C_Item.EquipItemByName(current.item.link or current.item.id,current.slot)
+    self:DismissAdvice(current)
     return true
+end
+
+function G.BetterReward(value,best,state)
+    if not best then return true end
+    local up,old=value.upgrade.delta>0,best.upgrade.delta>0
+    if up~=old then return up end
+    local score,oldScore=G.Score(value.item,state),G.Score(best.item,state)
+    local gain,oldGain=up and value.upgrade.delta or score,old and best.upgrade.delta or oldScore
+    if gain~=oldGain then return gain>oldGain end
+    if score~=oldScore then return score>oldScore end
+    return value.item.id<best.item.id
 end
 
 function G.DungeonSources(state,instanceId)
@@ -348,7 +399,7 @@ function G.Source(source,state,content,data)
     for key,value in pairs(item) do future[key]=value end
     future.futureCopy=true
     local upgrade,reason=G.Upgrade(future,state)
-    if not upgrade then return nil,reason end
+    if not upgrade then return nil,reason,item end
     local low,high
     if source.kind=="quest" then low,high=1,1
     else
@@ -446,15 +497,23 @@ function G.PlanDungeonTarget(plan,source,state,data)
 end
 
 function G.TaskBenefits(choice,q,state,data)
-    choice.gearSources={}
+    choice.gearSources,choice.rewardPick={},nil
+    local rewardPending,rewardManual
     for id,source in pairs(G.RewardSources(q)) do
-        local value=G.Source(source,state,data.content,data)
+        local value,_,item=G.Source(source,state,data.content,data)
+        if source.choice then
+            item=value and value.item or item
+            if not item or item.pending or item.usable==nil or value and value.upgrade.provisional then rewardPending=true end
+            if value and #value.upgrade.notes>0 then rewardManual=true end
+            if value and G.BetterReward(value,choice.rewardPick,state) then choice.rewardPick=value end
+        end
         if value and not value.owned and (value.upgrade.delta>0 or #(value.upgrade.notes or {})>0) then
             value.sourceId=id;choice.gearSources[id]=value
             if not value.upgrade.provisional and #(value.upgrade.notes or {})==0 and
                 (not choice.gear or value.upgrade.delta>choice.gear.upgrade.delta) then choice.gear=value end
         end
     end
+    if rewardPending or rewardManual then choice.rewardPick=nil end
 end
 
 function G.PreferTask(choices,state,options)

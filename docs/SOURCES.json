@@ -184,9 +184,12 @@
         "QoL/Wear.lua",
         "Gear/Gear.lua",
         "Theme/Theme.lua",
-        "../Polestar_zhCN/Interface.lua"
+        "../Polestar_zhCN/Interface.lua",
+        "Gear/Picks.lua",
+        "Gear/Rewards.lua",
+        "QoL/Equip.lua"
       ],
-      "scope": "Match equipment banner layout, palette, Chinese labels, gain wording, slot label and distinct dismiss/decline actions. Existing AILeveling equipment evaluation and navigation remain in use.",
+      "scope": "Match equipment banner presentation and behavior: new bag acquisitions in arrival order, login baseline, worn-item exclusion, current-plan quest-item and junk exclusions, dismiss versus per-item decline, and one-item equip. Task reward picks appear at accept (upgrades) and turn-in (best gain, otherwise highest usable score), using existing AILeveling scores and task data. No automatic reward equip or guide system added.",
       "code_copied": false,
       "assets_copied": true,
       "assets": [

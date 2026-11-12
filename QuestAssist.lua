@@ -448,11 +448,10 @@ function Q.CompareRewards(items,state)
             local comparison=A.Gear.Upgrade(item,state)
             if comparison and comparison.provisional then unknown=true end
             if comparison then
-                comparisons[#comparisons+1]={item=item,comparison=comparison,index=index}
+                local value={item=item,upgrade=comparison,index=index}
+                comparisons[#comparisons+1]=value
                 if #(comparison.notes or {})>0 then manual=true end
-            end
-            if comparison and comparison.delta>0 and (not best or comparison.delta>best.comparison.delta) then
-                best={item=item,comparison=comparison,index=index}
+                if A.Gear.BetterReward(value,best,state) then best=value end
             end
         end
     end
@@ -482,14 +481,14 @@ function Q:RewardLines()
         local lines={"任务 #"..self.rewardQuest.."：奖励需要权衡，请比较后选择。"}
         for _,entry in ipairs(comparisons) do
             lines[#lines+1]=string.format("第 %d 项 %s · 属性评分变化 %+.1f",entry.index,
-                entry.item.link or entry.item.name or ("#"..entry.item.id),entry.comparison.delta)
-            for _,note in ipairs(entry.comparison.notes or {}) do lines[#lines+1]=note end
+                entry.item.link or entry.item.name or ("#"..entry.item.id),entry.upgrade.delta)
+            for _,note in ipairs(entry.upgrade.notes or {}) do lines[#lines+1]=note end
         end
         return lines
     end
-    if not best then return {"任务 #"..self.rewardQuest.."：没有装备提升，可按需选择奖励。"} end
-    return {string.format("任务 #%d 奖励建议：第 %d 项 %s · 属性评分变化 %+.1f。",
-        self.rewardQuest,best.index,best.item.link or best.item.name or ("#"..best.item.id),best.comparison.delta)}
+    if not best then return {} end
+    return {string.format("奖励建议：选择第 %d 项 %s%s",best.index,best.item.link or best.item.name or ("#"..best.item.id),
+        best.upgrade.delta>0 and (" · "..A.Gear.UpgradeText(best)) or "")}
 end
 
 function Q:Notice(action,rows,quiet)

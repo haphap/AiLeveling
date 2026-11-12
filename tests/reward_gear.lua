@@ -149,7 +149,17 @@ test("装备页从当前真实奖励提供选择并在任务详情显示装备�
     local lines=table.concat(B.UI.Plan:Lines(),"\n");assert(lines:find("属性评分提升 +7.0",1,true))
     eq(B.Gear:SetTarget(selected.sourceId),true);B.plan={taskChoices={}}
     eq(#gear:Ids(),1);eq(B.UI.Browser:GearRows()[1].sourceId,selected.sourceId)
-
+    local choice={};local q=d:GetQuest(2)
+    B.Gear.TaskBenefits(choice,q,s,d);eq(choice.rewardPick.item.id,101)
+    s.equipment[1]=item(99,20);s.bags[101]=1
+    B.Gear.TaskBenefits(choice,q,s,d);eq(choice.rewardPick.item.id,101);assert(choice.rewardPick.upgrade.delta<0)
+    assert(loadfile("QuestAssist.lua"))("AiLeveling",B)
+    local pick=B.QuestAssist.CompareRewards({s.items[100],s.items[101]},s);eq(pick.item.id,101)
+    s.items[100].stats.ITEM_MOD_STRENGTH_SHORT=8
+    B.Gear.TaskBenefits(choice,q,s,d);eq(choice.rewardPick.item.id,100)
+    s.items[100].usable=false;B.Gear.TaskBenefits(choice,q,s,d);eq(choice.rewardPick.item.id,101)
+    q.taskFacts.rewards.items=q.taskFacts.rewards.choices;q.taskFacts.rewards.choices={}
+    B.Gear.TaskBenefits(choice,q,s,d);eq(choice.rewardPick,nil)
 end)
 test("远处低价值奖励任务退出整组而有效装备和手选目标保留",function()
     local B,s,d,q=fixture()
