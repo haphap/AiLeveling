@@ -83,7 +83,9 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     local route={legs={{kind="walk",from=B.state.position,to=action.position,seconds=100}}}
     local actions=B.Flights.Actions(route,action,B.Navigation)
     eq(#actions,1);eq(actions[1],action)
+    local savedMap=C_Map;C_Map={GetMapInfo=function() return {name="艾尔文森林"} end}
     B.action=actions[1];B.UI:RenderTracker()
+    C_Map=savedMap
     assert(not B.UI.body.value:find(action.text,1,true));assert(not B.UI.body.value:find("60.0, 50.0",1,true))
     assert(T.objectives[1].text.value:find("狗头人",1,true));assert(not T.objectives[1].text.value:find("3/10",1,true))
     eq(B.UI.title.value,"当前任务");assert(T.location.value:find("狗头人营地",1,true));eq(T.location.shown,true);eq(B.UI.body.value,"");eq(T.objectives[1].count.value,"3/10");eq(T.objectives[1].ratio,0.3)
@@ -94,7 +96,7 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     assert(T.rows[1].title.color[2]>T.rows[1].title.color[1])
     assert(T.rows[2].title.color[1]>T.rows[2].title.color[2])
     assert(T.queueScroll.width+16<=T.queuePanel.width);assert(T.card.width<=300)
-    eq(T.location.width,T.card.width);eq(T.career.width,T.card.width)
+    eq(T.location.width+T.area.width+12,T.card.width);eq(T.career.width,T.card.width)
     local goal=T.objectives[1]
     eq(goal.count.width,math.ceil(goal.count:GetStringWidth())+6)
     eq(goal.text.width,goal.width-goal.count.width-42)

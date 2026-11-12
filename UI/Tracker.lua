@@ -1199,12 +1199,15 @@ function UI:LayoutTracker()
     if T.gear:IsShown() then cardTop=cardTop+T.gear:GetHeight()+12*scale end
     T.card:ClearAllPoints();T.card:SetPoint("TOPLEFT",0,-cardTop)
     local top=0
-    T.location:ClearAllPoints();T.location:SetPoint("TOPLEFT",0,0);T.location:SetWidth(width)
+    T.area:SetShown(T.area:GetText()~="")
+    local areaWidth=T.area:IsShown() and math.min(math.ceil(T.area:GetStringWidth()),width*0.4) or 0
+    T.area:ClearAllPoints();T.area:SetPoint("TOPRIGHT",0,-5*scale)
+    T.area:SetWidth(math.max(1,areaWidth));T.area:SetJustifyH("RIGHT")
+    T.location:ClearAllPoints();T.location:SetPoint("TOPLEFT",0,0)
+    T.location:SetWidth(width-(areaWidth>0 and areaWidth+12*scale or 0))
     T.location:SetShown(T.location:GetText()~="")
     if T.location:IsShown() then top=T.location:GetStringHeight()+4 end
-    T.area:ClearAllPoints();T.area:SetPoint("TOPLEFT",indent,-top);T.area:SetWidth(width-indent)
-    T.area:SetShown(T.area:GetText()~="")
-    if T.area:IsShown() then top=top+T.area:GetStringHeight()+3 end
+    if T.area:IsShown() then top=math.max(top,T.area:GetStringHeight()+5*scale+4) end
     if top>0 then top=top+10 end
     T.primaryLabel:ClearAllPoints();T.primaryLabel:SetPoint("TOPLEFT",indent,-top);T.primaryLabel:SetWidth(width-indent)
     T.primaryLabel:SetShown(not collapsed and T.model~=nil and T.model.kind~=nil)
