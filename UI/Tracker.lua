@@ -721,7 +721,6 @@ local function renderObjectives(owner,parent,pool,objectives)
             row.count=text(row,13,palette.white);row.count:SetJustifyH("RIGHT")
             row.check=text(row,15,palette.muted);row.check:SetJustifyH("RIGHT")
             row.active=row:CreateTexture(nil,"ARTWORK");row.active:SetColorTexture(unpack(palette.gold))
-            row.active:SetWidth(2);row.active:SetPoint("TOPLEFT",0,0);row.active:SetPoint("BOTTOMLEFT",0,0)
             pool[i]=row
         end
         local done=objective.done or objective.finished==true
@@ -751,6 +750,8 @@ local function layoutObjectives(pool,width,scale)
             row.check:ClearAllPoints();row.check:SetPoint("TOPRIGHT",0,0);row.check:SetWidth(18*scale)
             row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",20*scale,0)
             row.icon:ClearAllPoints();row.icon:SetPoint("TOPLEFT",0,-2);row.icon:SetSize(14*scale,14*scale)
+            row.active:ClearAllPoints();row.active:SetWidth(2*scale)
+            row.active:SetPoint("TOPLEFT",-10*scale,0);row.active:SetPoint("BOTTOMLEFT",-10*scale,6*scale)
             row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y)
             local height=math.max(18*scale,row.text:GetStringHeight())
             height=height+6*scale
