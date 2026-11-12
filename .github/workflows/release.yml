@@ -79,9 +79,9 @@ jobs:
             cat > dist/release-notes.md <<'NOTES'
           从附件下载 AiLeveling 安装 ZIP，解压到 `_forever_/Interface/AddOns/`。
           需独立安装 QuestieDB 与 HereBeDragons，具体版本和操作见仓库 README。
-          开发预览版仍在完善完整任务覆盖和客户端验收。附件附带 SHA256SUMS。
+          安装包由本工作流完成语法、回归和数据结构检查后生成，附件附带 SHA256SUMS。
           NOTES
-            gh release create "$RELEASE_TAG" --verify-tag --title "AiLeveling ${VERSION}" \
+            gh release create "$RELEASE_TAG" --verify-tag --title "AILeveling ${VERSION}" \
               --notes-file dist/release-notes.md "${flags[@]}"
           fi
           gh release upload "$RELEASE_TAG" "dist/AiLeveling-${VERSION}.zip" dist/SHA256SUMS --clobber

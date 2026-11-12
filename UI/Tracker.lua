@@ -1267,15 +1267,6 @@ function UI:LayoutTracker()
     T.journey:SetHeight(journeyHeight)
     if T.journey:IsShown() then childHeight=childHeight+journeyHeight+spacing.section*scale end
     local bottom=childHeight+spacing.gap*scale
-    T.alongLabel:ClearAllPoints();T.alongLabel:SetPoint("TOPLEFT",0,-bottom);T.alongLabel:SetWidth(inner)
-    T.alongLabel:SetText("顺路可做 · "..alongCount);T.alongLabel:SetShown(not collapsed and alongCount>0)
-    if T.alongLabel:IsShown() then bottom=bottom+24*scale end
-    T.alongScroll:ClearAllPoints();T.alongScroll:SetPoint("TOPLEFT",0,-bottom);T.alongScroll:SetWidth(inner)
-    T.alongChild:SetWidth(inner);T.alongChild:SetHeight(math.max(1,alongHeight))
-    clipped=clipped+math.max(0,alongHeight-({compact=75,normal=120,expanded=180})[density]*scale)
-    local alongVisible=alongHeight
-    T.alongScroll:SetHeight(math.max(1,alongVisible));T.alongScroll:SetShown(not collapsed and alongCount>0)
-    if T.alongScroll:IsShown() then bottom=bottom+alongVisible+spacing.gap*scale end
     T.thenDivider:ClearAllPoints();T.thenDivider:SetPoint("TOPLEFT",0,-bottom);T.thenDivider:SetSize(inner,1)
     T.thenText:ClearAllPoints();T.thenText:SetPoint("TOPLEFT",0,-bottom-spacing.gap*scale);T.thenText:SetWidth(inner)
     T.thenText:SetSpacing(spacing.tight*scale)
@@ -1293,6 +1284,15 @@ function UI:LayoutTracker()
     T.queueScroll:SetHeight(math.max(1,visible));T.queueScroll:SetShown(not collapsed and queueHeight>0)
     T.queuePanel:SetHeight(visible);T.queuePanel:SetShown(not collapsed and queueHeight>0)
     bottom=bottom+(not collapsed and queueHeight>0 and visible+4 or 0)
+    T.alongLabel:ClearAllPoints();T.alongLabel:SetPoint("TOPLEFT",0,-bottom);T.alongLabel:SetWidth(inner)
+    T.alongLabel:SetText("顺路可做 · "..alongCount);T.alongLabel:SetShown(not collapsed and alongCount>0)
+    if T.alongLabel:IsShown() then bottom=bottom+24*scale end
+    T.alongScroll:ClearAllPoints();T.alongScroll:SetPoint("TOPLEFT",0,-bottom);T.alongScroll:SetWidth(inner)
+    T.alongChild:SetWidth(inner);T.alongChild:SetHeight(math.max(1,alongHeight))
+    clipped=clipped+math.max(0,alongHeight-({compact=75,normal=120,expanded=180})[density]*scale)
+    local alongVisible=alongHeight
+    T.alongScroll:SetHeight(math.max(1,alongVisible));T.alongScroll:SetShown(not collapsed and alongCount>0)
+    if T.alongScroll:IsShown() then bottom=bottom+alongVisible+spacing.gap*scale end
     T.region:ClearAllPoints();T.region:SetPoint("TOPLEFT",indent,-bottom);T.region:SetSize(width-indent,20*scale)
     T.region.text:SetWidth(width-indent);T.region.text:SetMaxLines(1);T.region:SetShown(not collapsed and T.region.region~=nil)
     if T.region:IsShown() then bottom=bottom+24*scale end

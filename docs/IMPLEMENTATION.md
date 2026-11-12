@@ -1,3 +1,23 @@
+# 构建与发布
+
+当前范围与完成条件见 [PLAN.md](../PLAN.md)，功能对照与已完成结果见 [验收记录](ACCEPTANCE.md)。以下命令用于维护源码，玩家安装与操作见 [README](../README.md)。
+
+```sh
+python3 tools/build.py
+```
+
+构建一次完成 Lua 5.1 语法、现有回归和数据结构检查，生成 `dist/AiLeveling-<版本>.zip`。仅调试逻辑时可单独运行 `lua5.1 tests/run.lua`。`--release` 额外要求正式版本号为 `X.Y.Z`；两类包共用相同代码与数据检查。`clientVerified` 和覆盖标记记录实际证据，保留原值。
+
+用户确认发布后更新 TOC 版本，提交并推送同名 `v<版本>` 标签；GitHub Actions 的 Release 工作流构建 ZIP 与 SHA256SUMS。带 `-dev` 的标签发布为预发布。`workflow_dispatch` 可填写已有标签重跑，留空则只生成含 BUILD.txt 的 Artifact。发布完成后下载检查清单和固定提交，再备份安装。
+
+参考数据变更时按受影响项运行 `python3 tools/check_reference.py inventory area cache delivery`。依赖准备与离线盘点沿用 `python3 tools/prepare_dependencies.py --with-audit-source`、`python3 tools/audit_data.py`；连续任务诊断沿用 `tools/check_continuous_personas.py`，按具体问题使用。
+
+UI 预览使用 `python3 tools/preview_tracker.py`，主界面追加 `plan`，放大字号追加 `large`。示例使用实际布局代码，任务数据仅为展示。
+
+---
+
+以下为历史实施记录，当前阶段和安装版本由 PLAN 与交接记录维护。
+
 > 历史实施记录：本文保留各次实现与当时的验证事实。现行范围、批次及完成条件统一见 [PLAN.md](../PLAN.md)，当前功能差距见 [RESTEDXP_PARITY.md](RESTEDXP_PARITY.md)。下文旧“下一步”、设计和版本状态不再作为执行计划。
 
 # AiLeveling 执行记录

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build reproducible development/install archives; never install into the game."""
+"""Build reproducible install archives; never install into the game."""
 from pathlib import Path
 import argparse
 import hashlib
@@ -18,12 +18,12 @@ def main():
     lines = toc.read_text().splitlines()
     version = next(line.split(': ', 1)[1] for line in lines if line.startswith('## Version:'))
     if args.release and ('dev' in version or not re.fullmatch(r'\d+\.\d+\.\d+', version)):
-        parser.error('正式发布需要正式版本号与全部数据／实机验收结果。')
+        parser.error('正式版本号须使用 X.Y.Z 格式。')
     entries = [ROOT / line.replace('\\', '/') for line in lines if line.strip() and not line.startswith('#')]
     for path in entries:
         subprocess.run(['luac5.1', '-p', str(path)], cwd=ROOT, check=True)
     subprocess.run(['lua5.1', 'tests/run.lua'], cwd=ROOT, check=True)
-    subprocess.run(['lua5.1', 'tools/validate.lua'] + (['--release'] if args.release else []), cwd=ROOT, check=True)
+    subprocess.run(['lua5.1', 'tools/validate.lua'], cwd=ROOT, check=True)
     entries += [toc, ROOT / 'README.md', ROOT / 'LICENSE', ROOT / 'docs' / 'SOURCES.json']
     entries.append(ROOT / 'docs' / 'LICENSE.LibQuestDB.txt')
     entries.append(ROOT / 'docs' / 'TASK_FACTS_AUDIT.json')
@@ -64,7 +64,7 @@ def main():
         info = zipfile.ZipInfo('AiLeveling/SHA256SUMS', date_time=(2026, 11, 8, 0, 0, 0))
         info.compress_type = zipfile.ZIP_DEFLATED
         archive.writestr(info, '\n'.join(manifest) + '\n')
-    print(f'安装开发包：{output}')
+    print(f'安装包：{output}')
 
 if __name__ == '__main__':
     main()

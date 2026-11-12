@@ -23,8 +23,8 @@
 - A 连续任务流程和 B 冻结清单的适用功能已完成开发及必要本地检查，详见 [RESTEDXP_PARITY.md](RESTEDXP_PARITY.md)。
 - C 已接通动态副本任务组的准备、进入、目标、交付、本内收尾和恢复野外任务；整次活动计时连接实际任务组。相关回归见 `dist/dungeon-activity-regression.log`。
 - 1—60 共用接续、职业独有分支与副本清单的开发复核已完成，结论见下表。已有 [起始及等级接入证据](LEVEL_ENTRY_REPLAY.md)、[角色组合清单](PLAYABLE_COVERAGE.md)、[副本清单](DUNGEON_COVERAGE.md)；构建和文件检查结果直接复用。
-- 安装、升级、回退说明见 [README](../README.md)。当前安装为 `c55fdbb`，包含界面修正、全副本共用规划及全量任务候选修正；包 `AiLeveling-planning-fix-c55fdbb.zip`，SHA256 `b5a9ea1e1627f14c38239fead2a194d4985b515dd5afdbdbd31c0e977f5a9c2f`。85项文件已核对，记录见本地 `dist/all-task-candidates-installation.json`。
-- 装备扩展按用户要求独立暂缓；当前功能范围按上述流程对照及既有检查结项。
+- 安装、升级、回退说明见 [README](../README.md)。Guide 对照时的安装快照为 `c55fdbb`，包含界面修正、全副本共用规划及全量任务候选修正；包 `AiLeveling-planning-fix-c55fdbb.zip`，SHA256 `b5a9ea1e1627f14c38239fead2a194d4985b515dd5afdbdbd31c0e977f5a9c2f`。85项文件已核对，记录见本地 `dist/all-task-candidates-installation.json`。
+- 2026-11-12 已按后续要求完成背包装备提升、换装／忽略、接取／交付奖励建议及职业技能提醒；其他装备扩展独立暂缓。UI 统一规范及间距调整复用现有检查，当前安装版本由本地交接记录维护。
 
 ## C 覆盖复核结论
 
@@ -109,4 +109,4 @@
 
 ## 结果记录与发布
 
-当前包安装与校验、既有相关检查及单条 RestedXP 流程对照均已完成，按用户调整后的条件结项。安装依赖为 QuestieDB 1.0.12、HereBeDragons 2.18-release，保持原版本。此次只更新计划与记录，不重复构建或安装；Release 仍在用户明确要求时通过 Actions 集中发布。
+当前包安装与校验、既有相关检查及单条 RestedXP 流程对照均已完成，按用户调整后的条件结项。安装依赖为 QuestieDB 1.0.12、HereBeDragons 2.18-release，保持原版本。发布按用户明确要求通过 Actions 集中构建；保留语法、回归、数据结构和来源检查，实机与完整覆盖标记仅作为实际证据记录。
