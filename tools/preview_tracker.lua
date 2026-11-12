@@ -247,18 +247,37 @@ if arg[1]=="journey" then
     local nextGoal={kind="objective",questId=63,title="肮脏的爪子",position={map=1432,x=0.356,y=0.246,entityName="银泉矿洞"}}
     local choice={questId=63,title=goal.title,kind="task",remainingXP=1350,actions={goal},stages={goal,nextGoal}}
     A.state.level=17;A.state.position={map=1453,x=0.6,y=0.5}
-    A.state.quests={};A.state.completed={}
-    C_Map.GetMapInfo=function(id) return {name=({[1453]="暴风城",[1455]="铁炉堡",[1432]="洛克莫丹"})[id]} end
+    local side={kind="accept",questId=64,title="保卫国王的领土",
+        position={map=1432,x=0.258,y=0.184,entityKind="npc",entityName="拉格·加玛森"}}
+    local sideChoice={questId=64,title=side.title,kind="task",remainingXP=900,actions={side},stages={side}}
+    local later={kind="objective",questId=65,title="西部荒野人民军",objectiveIndex=1,
+        position={map=1436,x=0.45,y=0.6,entityName="月溪镇"}}
+    local delivery={kind="turnin",questId=66,title="迪菲亚兄弟会",
+        position={map=1436,x=0.56,y=0.47,entityKind="npc",entityId=234,entityName="格里安·斯托曼"}}
+    local laterChoice={questId=65,title=later.title,kind="task",remainingXP=975,actions={later},stages={later}}
+    local deliveryChoice={questId=66,title=delivery.title,kind="task",remainingXP=1350,actions={delivery},stages={delivery}}
+    A.state.quests={[65]={title=later.title,objectives={{text="消灭迪菲亚抢劫者",numFulfilled=8,numRequired=15}}},
+        [66]={title=delivery.title,ready=true,objectives={}}};A.state.completed={}
+    C_Map.GetMapInfo=function(id) return {name=({[1453]="暴风城",[1455]="铁炉堡",[1432]="洛克莫丹",[1436]="西部荒野"})[id]} end
     -- Example cross-zone distance; transit timing comes from the shipped table.
     A.Navigation.Distance=function(_,from,to)
         if from and to then return from.map==to.map and math.sqrt((from.x-to.x)^2+(from.y-to.y)^2)*4000 or 2850 end
     end
     local actions=A.Flights.Actions({legs={tram}},goal,A.Navigation)
-    A.plan={taskChoices={choice},taskOrder={choice},travelActions=actions,taskQueue={steps={{choice=choice,stage=goal},{choice=choice,stage=nextGoal}}}}
+    A.plan={taskChoices={choice,sideChoice,laterChoice,deliveryChoice},taskOrder={choice,sideChoice,laterChoice,deliveryChoice},
+        travelActions=actions,taskQueue={steps={{choice=choice,stage=goal},{choice=sideChoice,stage=side},
+            {choice=choice,stage=nextGoal},{choice=laterChoice,stage=later},{choice=deliveryChoice,stage=delivery}}}}
     A.Navigation.actions,A.Navigation.index,A.Navigation.plan=actions,1,A.plan
     action=actions[1]
 end
 A.UI:CreateTracker();A.UI:RenderTracker();A.UI:SetTrackerNavigation(285,0.25,true)
+if arg[1]=="journey" then
+    local T=A.UI.tracker
+    assert(T.journey:IsShown() and T.alongLabel:IsShown() and T.thenText:IsShown() and T.queuePanel:IsShown())
+    assert(T.model.rows[1].questId==64 and T.model.rows[1].along and T.model.rows[1].status=="未接取")
+    assert(T.model.rows[2].questId==65 and T.model.rows[2].status=="已接取")
+    assert(T.model.rows[3].questId==66 and T.model.rows[3].status=="可交付")
+end
 A.UI.navFrame:ClearAllPoints();A.UI.navFrame:SetPoint("TOP",A.UI.frame,"BOTTOM",0,-54)
 if arg[1]=="assist" then
     A.UI.navFrame:Hide()
