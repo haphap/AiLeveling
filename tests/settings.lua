@@ -194,7 +194,12 @@ test("配置迁移、复制、切换与恢复保留角色进度，并可刷新�
     S.profileName:SetText("大字")
     S.profileName.scripts.OnEnterPressed()
     eq(char.profile,"大字");eq(B.settings.scale,1.3)
-    B:SetOption("fontScale",1.2);B.settings.position[3]=-200
+    local titleSize=B.UI.title.fontSize
+    B.UI.tracker.menu:Click();B.menu["放大字体 · 110%"].callback()
+    eq(B.settings.fontScale,1.1);eq(B.UI.title.fontSize,titleSize*1.1)
+    B.UI:TrackerMenu(B.UI.frame);B.menu["放大字体 · 120%"].callback()
+    B.UI:TrackerMenu(B.UI.frame);eq(B.menu["放大字体"].enabled,false)
+    B.settings.position[3]=-200
     eq(db.profiles["默认"].position[3],-120)
     B:SelectProfile("默认");eq(B.settings.fontScale,1);eq(B.UI.frame.point[4],-120)
     S.profile.scripts.OnClick();eq(char.profile,"大字");eq(B.settings.fontScale,1.2)
@@ -403,6 +408,9 @@ test("窗口锁定阻止拖动且主详情分别保存位置并恢复",function(
     B:NormalizeSettings(B.settings);eq(B.settings.trackerWidth,420);eq(B.settings.trackerHeight,400)
     U.frame.scripts.OnMouseUp(nil,"RightButton");B.menu["恢复自动尺寸"].callback()
     eq(B.settings.trackerWidth,0);eq(B.settings.trackerHeight,0);eq(U.frame.width,280)
+    U.frame.scripts.OnMouseUp(nil,"RightButton");B.menu["缩小字体 · 85%"].callback()
+    U:TrackerMenu(U.frame);eq(B.menu["缩小字体"].enabled,false)
+    B.menu["放大字体 · 100%"].callback();eq(B.settings.fontScale,1)
     B.char.deferredChains[1]=true;B.state.completed[7]=true
     B:RestoreSettings();eq(B.settings.detailPosition,nil);eq(B.char.deferredChains[1],true);eq(B.state.completed[7],true)
     B.finish()

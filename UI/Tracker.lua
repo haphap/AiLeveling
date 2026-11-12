@@ -536,6 +536,20 @@ function UI:TrackerMenu(owner)
             menu:CreateButton(A.settings.targets~=false and "隐藏目标辅助" or "显示目标辅助",function()
                 A:SetOption("targets",A.settings.targets==false)
             end)
+            local scale=A.settings.fontScale or 1
+            local smaller,larger
+            for _,value in ipairs({0.85,1,1.1,1.2}) do
+                if value<scale then smaller=value
+                elseif value>scale and not larger then larger=value end
+            end
+            local function fontOption(label,value)
+                menu:CreateButton(label..(value and string.format(" · %d%%",math.floor(value*100+0.5)) or ""),function()
+                    A:SetOption("fontScale",value)
+                    self.Settings:Refresh()
+                end):SetEnabled(value~=nil)
+            end
+            fontOption("放大字体",larger)
+            fontOption("缩小字体",smaller)
             menu:CreateButton("对齐小地图",function()
                 A.settings.trackerDocked=true;A.settings.position=nil;self:LayoutCard()
             end)
@@ -559,7 +573,7 @@ function UI:CreateTracker()
     f:SetScript("OnMouseUp",function(_,button) if button=="RightButton" then self:TrackerMenu(f) end end)
     f:SetScript("OnEnter",function()
         GameTooltip:SetOwner(f,"ANCHOR_TOP");GameTooltip:SetText("AILeveling")
-        GameTooltip:AddLine("左键拖动面板，右下角调整宽高\n右键：暂停、收起与详细面板",1,1,1,true);GameTooltip:Show()
+        GameTooltip:AddLine("左键拖动面板，右下角调整宽高\n右键：字号、暂停、收起与详细面板",1,1,1,true);GameTooltip:Show()
     end)
     f:SetScript("OnLeave",function() GameTooltip:Hide() end)
     self:Rounded(f,5);f:SetBackdropColor(0.07,0.085,0.14,0.80);f.material:Hide()
