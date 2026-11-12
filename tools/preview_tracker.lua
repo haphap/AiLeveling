@@ -239,6 +239,7 @@ elseif planPreview then
 
 else
 if arg[1]=="journey" then
+    A.Data={GetQuest=function() return nil end}
     assert(loadfile("Planner/Travel.lua"))("AiLeveling",A)
     assert(loadfile("Planner/Flights.lua"))("AiLeveling",A)
     assert(loadfile("Data/PublicTransit.lua"))("AiLeveling",A)

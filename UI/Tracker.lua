@@ -892,7 +892,7 @@ local function layoutObjectives(pool,width,scale)
     local y=0
     for _,row in ipairs(pool) do
         if row:IsShown() then
-            local countWidth=row.count:GetText()~="" and 46*scale or 0
+            local countWidth=row.count:GetText()~="" and math.ceil(row.count:GetStringWidth())+6*scale or 0
             row:SetWidth(width);row.text:SetWidth(width-countWidth-42*scale);row.count:SetWidth(countWidth)
             row.count:ClearAllPoints();row.count:SetPoint("TOPRIGHT",-22*scale,0)
             row.check:ClearAllPoints();row.check:SetPoint("TOPRIGHT",0,0);row.check:SetWidth(18*scale)
@@ -1168,8 +1168,8 @@ function UI:LayoutTracker()
     end
     local cardTop=36*scale
     T.divider:ClearAllPoints();T.divider:SetPoint("TOPLEFT",0,-cardTop+7);T.divider:SetSize(width,1)
-    T.career:ClearAllPoints();T.career:SetPoint("TOPLEFT",0,-cardTop);T.career:SetWidth(inner)
-    T.career.text:SetWidth(inner)
+    T.career:ClearAllPoints();T.career:SetPoint("TOPLEFT",0,-cardTop);T.career:SetWidth(width)
+    T.career.text:SetWidth(width)
     local noticeHeight=T.career.text:GetStringHeight()+6*scale
     local noticeX=indent
     for _,button in ipairs({T.career.view,T.career.train,T.career.later}) do
@@ -1194,14 +1194,14 @@ function UI:LayoutTracker()
     if T.gear:IsShown() then cardTop=cardTop+T.gear:GetHeight()+12*scale end
     T.card:ClearAllPoints();T.card:SetPoint("TOPLEFT",0,-cardTop)
     local top=0
-    T.location:ClearAllPoints();T.location:SetPoint("TOPLEFT",0,0);T.location:SetWidth(inner)
+    T.location:ClearAllPoints();T.location:SetPoint("TOPLEFT",0,0);T.location:SetWidth(width)
     T.location:SetShown(T.location:GetText()~="")
     if T.location:IsShown() then top=T.location:GetStringHeight()+4 end
-    T.area:ClearAllPoints();T.area:SetPoint("TOPLEFT",indent,-top);T.area:SetWidth(bodyWidth)
+    T.area:ClearAllPoints();T.area:SetPoint("TOPLEFT",indent,-top);T.area:SetWidth(width-indent)
     T.area:SetShown(T.area:GetText()~="")
     if T.area:IsShown() then top=top+T.area:GetStringHeight()+3 end
     if top>0 then top=top+10 end
-    T.primaryLabel:ClearAllPoints();T.primaryLabel:SetPoint("TOPLEFT",indent,-top);T.primaryLabel:SetWidth(bodyWidth)
+    T.primaryLabel:ClearAllPoints();T.primaryLabel:SetPoint("TOPLEFT",indent,-top);T.primaryLabel:SetWidth(width-indent)
     T.primaryLabel:SetShown(not collapsed and T.model~=nil and T.model.kind~=nil)
     if T.primaryLabel:IsShown() then top=top+math.max(18*scale,T.primaryLabel:GetStringHeight()+4*scale) end
     T.actionIcon:ClearAllPoints();T.actionIcon:SetPoint("TOPLEFT",0,-top-2);T.actionIcon:SetSize(16*scale,16*scale)
@@ -1249,8 +1249,9 @@ function UI:LayoutTracker()
             row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-journeyHeight);row:SetWidth(inner)
             row.number:ClearAllPoints();row.number:SetPoint("TOPLEFT",0,-2);row.number:SetWidth(16*scale)
             row.icon:ClearAllPoints();row.icon:SetPoint("TOPLEFT",18*scale,-2);row.icon:SetSize(14*scale,14*scale)
-            row.title:ClearAllPoints();row.title:SetPoint("TOPLEFT",38*scale,0);row.title:SetWidth(inner-82*scale)
-            row.time:ClearAllPoints();row.time:SetPoint("TOPRIGHT",0,0);row.time:SetWidth(42*scale)
+            local timeWidth=math.ceil(row.time:GetStringWidth())
+            row.title:ClearAllPoints();row.title:SetPoint("TOPLEFT",38*scale,0);row.title:SetWidth(inner-44*scale-timeWidth)
+            row.time:ClearAllPoints();row.time:SetPoint("TOPRIGHT",0,0);row.time:SetWidth(timeWidth)
             local height=math.max(18*scale,row.title:GetStringHeight())
             row.detail:ClearAllPoints();row.detail:SetPoint("TOPLEFT",38*scale,-height);row.detail:SetWidth(inner-38*scale)
             row.detail:SetShown(row.detail:GetText()~="")
