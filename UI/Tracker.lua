@@ -910,8 +910,9 @@ function UI:RenderTracker()
         local native=(state.quests or {})[item.questId]
         local objectives=item.accepted and item.kind~="turnin" and not item.deferred and
             not (item.candidate and (item.candidate.lowValue or item.candidate.entryBlocked)) and native and native.objectives or {}
-        if item.sharedObjective and item.atStop then objectives={objectives[item.sharedObjective]} end
-        renderObjectives(row,row.objectiveFrame,row.objectives,item.atStop and objectives or {})
+        if item.sharedObjective then objectives={objectives[item.sharedObjective]} end
+        renderObjectives(row,row.objectiveFrame,row.objectives,objectives)
+        if #objectives>0 and not item.delivery and not (item.candidate and item.candidate.itemShortage) then row.progress:SetText("") end
         row.detail=table.concat({row.status,item.groupTitle or "",item.delivery or item.progress},"\n")
         if isCurrent then T.questTitle.candidate=item.candidate;T.questTitle.revision=plan.revision end
         row:SetEnabled(true);row:Show()
@@ -961,9 +962,9 @@ function UI:LayoutTracker()
         local height=math.max(20*scale,row.title:GetStringHeight())+4
         row.objectiveFrame:ClearAllPoints();row.objectiveFrame:SetPoint("TOPLEFT",indent,-height);row.objectiveFrame:SetWidth(bodyWidth)
         local goals=layoutObjectives(row.objectives,bodyWidth,scale)
-        row.objectiveFrame:SetHeight(math.max(1,goals));row.objectiveFrame:SetShown(row.atStop and goals>0)
-        if row.atStop then height=height+goals end
-        row.progress:SetShown(not row.atStop)
+        row.objectiveFrame:SetHeight(math.max(1,goals));row.objectiveFrame:SetShown(goals>0)
+        height=height+goals
+        row.progress:SetShown(not row.atStop and row.progress:GetText()~="")
         row.progress:ClearAllPoints();row.progress:SetPoint("TOPLEFT",indent,-height);row.progress:SetWidth(bodyWidth);row.progress:SetMaxLines(2)
         if row.progress:IsShown() then height=height+math.min(row.progress:GetStringHeight(),36*scale)+4 end
         height=height+8*scale

@@ -89,7 +89,7 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     eq(B.UI.title.value,"当前任务");assert(T.location.value:find("狗头人营地",1,true));eq(T.location.shown,true);eq(B.UI.body.value,"");eq(T.objectives[1].count.value,"3/10");eq(T.objectives[1].ratio,0.3)
     eq(#T.model.rows,2);eq(T.rows[1].title.value,"后续交付");eq(T.rows[1].status,"可交付")
     eq(T.queuePanel.width,T.card.width)
-    eq(T.rows[1].title.shown,true);eq(T.rows[2].objectiveFrame.shown,false);eq(T.rows[2].progress.shown,true)
+    eq(T.rows[1].title.shown,true);eq(T.rows[2].objectiveFrame.shown,true);eq(T.rows[2].progress.shown,false)
     eq(T.objectives[1].check.value,"□");eq(T.progressRatio,0.3);eq(T.progress.shown,true)
     assert(T.rows[1].title.color[2]>T.rows[1].title.color[1])
     assert(T.rows[2].title.color[1]>T.rows[2].title.color[2])
@@ -100,9 +100,10 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     assert(T.rows[1].title.fontSize>=15);assert(T.rows[1].progress.fontSize>=13)
     assert(T.rows[1].progress.color[2]>=0.75);eq(T.queuePanel.surface,nil);eq(T.card.surface,nil)
     eq(T.rows[1].title.fontFlags,"OUTLINE")
-    eq(T.rows[2].progress.value,"物品 2/4");eq(T.rows[1].enabled,true)
-    B.state.quests[3].objectives[1].text="收集物品";B.UI:RenderTracker()
-    eq(T.rows[2].progress.value,"收集物品 · 2/4")
+    eq(T.rows[2].objectives[1].text.value,"物品");eq(T.rows[2].objectives[1].count.value,"2/4");eq(T.rows[1].enabled,true)
+    B.state.quests[3].objectives[1].text="收集物品";B.state.quests[3].objectives[1].type="item";B.UI:RenderTracker()
+    eq(T.rows[2].objectives[1].text.value,"收集物品");eq(T.rows[2].objectives[1].count.value,"2/4")
+    eq(T.rows[2].objectives[1].check.value,"□");assert(T.rows[2].objectives[1].text.color[1]>T.rows[2].objectives[1].text.color[2])
     local shown,inserted,opened,modified,focused=nil,nil,nil,false,true
     C_QuestLog.GetLogIndexForQuestID=function(id) return id<=3 and id+10 end
     QuestMapFrame_OpenToQuestDetails=function(id) shown=id end
@@ -183,7 +184,7 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     -- Nearby work and ready hand-ins share the optional section without changing the main action.
     starter.position.x=0.525;starter.kind="objective";starter.objectiveIndex=1
     B.state.quests[4]={objectives={{text="收集 1/5",numRequired=5,numFulfilled=1}}}
-    B.UI:RenderTracker();eq(T.model.rows[1].along,true);eq(T.rows[1].progress.value,"收集 1/5")
+    B.UI:RenderTracker();eq(T.model.rows[1].along,true);eq(T.rows[1].objectives[1].count.value,"1/5");eq(T.rows[1].progress.shown,false)
     B.state.quests[4].objectives[1].finished=true;B.UI:RenderTracker();eq(T.alongLabel.shown,false)
     starter.kind="turnin";starter.objectiveIndex=nil;B.state.quests[4].ready=true
     B.UI:RenderTracker();eq(T.rows[1].status,"可交付");eq(T.rows[1].along,true);eq(B.action.questId,1)
@@ -191,7 +192,7 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.state.locked=nil;B.Navigation.Distance=distance;starter.position=nil;B.plan.taskOrder=B.plan.taskChoices
     B.state.quests[4]={title="真实接取的任务",objectives={{text="收集 1/5",numFulfilled=1,numRequired=5}}}
     B.UI:RenderTracker()
-    eq(T.rows[3].status,"已接取");eq(T.rows[3].progress.value,"收集 1/5")
+    eq(T.rows[3].status,"已接取");eq(T.rows[3].objectives[1].count.value,"1/5");eq(T.rows[3].objectiveFrame.shown,true)
     eq(T.model.acceptedCount,3);eq(T.model.unacceptedCount,0)
     eq(T.rows[3].along,false);eq(T.rows[3].parent,T.queueChild);eq(T.alongScroll.shown,false)
     B.state.quests[4].ready=true;B.UI:RenderTracker();eq(T.rows[3].status,"可交付")
@@ -424,7 +425,7 @@ test("分散交付点明确现在就近交和等同NPC任务一起交并跟随�
     B.state.locked=2;B.state.quests[3].ready=false;B.UI:RenderTracker()
     assert(T.model.deliverySummary:find("顺路先交：到闪金镇治安官",1,true))
     for _,row in ipairs(T.rows) do
-        if row.questId==3 then eq(row.atStop,false);eq(row.parent,T.queueChild);eq(row.progress.shown,true) end
+        if row.questId==3 then eq(row.atStop,false);eq(row.parent,T.queueChild);eq(row.progress.shown,false);eq(row.objectiveFrame.shown,true) end
     end
     B.state.locked=nil;B.action={kind="objective",questId=3,title=c.title};B.UI:RenderTracker()
     eq(T.model.deliverySummary,"同组还差 1 项，做完一起交")
