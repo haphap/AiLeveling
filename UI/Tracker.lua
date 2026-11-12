@@ -817,7 +817,7 @@ function UI:CreateTracker()
     T.queueScroll=CreateFrame("Frame",nil,T.queuePanel)
     T.queueScroll:SetPoint("TOPLEFT",0,0)
     T.queueChild=CreateFrame("Frame",nil,T.queueScroll);T.queueChild:SetPoint("TOPLEFT")
-    T.alongLabel=text(T.currentChild,"caption",palette.blue)
+    T.alongLabel=text(T.currentChild,"caption",palette.muted)
     T.alongScroll=CreateFrame("Frame",nil,T.currentChild)
     T.alongChild=CreateFrame("Frame",nil,T.alongScroll);T.alongChild:SetPoint("TOPLEFT")
     T.rows={}
@@ -915,7 +915,7 @@ function UI:TrackerRow(index)
     self:Rounded(row,spacing.controlRadius);row:SetBackdropColor(0,0,0,0);row.material:Hide()
     row.icon=row:CreateTexture(nil,"ARTWORK")
     row.title=text(row,"task",palette.gold)
-    row.progress=text(row,"body",palette.muted)
+    row.progress=text(row,"caption",palette.muted)
     row.objectiveFrame=CreateFrame("Frame",nil,row);row.objectives={}
     row:RegisterForClicks("LeftButtonUp","RightButtonUp")
     row:SetScript("OnEnter",function() row:SetBackdropColor(unpack(palette.rowHover));questTooltip(row) end)
@@ -1098,7 +1098,7 @@ function UI:RenderTracker()
             end
         end
         row.progress:SetText(progress)
-        row.progress:SetTextColor(unpack(item.kind=="turnin" and palette.green or item.accepted and palette.muted or palette.blue))
+        row.progress:SetTextColor(unpack(item.kind=="turnin" and palette.green or palette.muted))
         row.metrics=item.metrics
         row.candidate,row.revision,row.questId=item.candidate,plan.revision,item.questId
         row.deferred,row.dungeonId=item.deferred,item.dungeonId
@@ -1206,9 +1206,9 @@ function UI:LayoutTracker()
     if T.location:IsShown() then top=T.location:GetStringHeight()+4 end
     if T.area:IsShown() then top=math.max(top,T.area:GetStringHeight()+6*scale+spacing.tight) end
     if top>0 then top=top+spacing.gap*scale end
-    T.primaryLabel:ClearAllPoints();T.primaryLabel:SetPoint("TOPLEFT",indent,-top);T.primaryLabel:SetWidth(width-indent)
+    T.primaryLabel:ClearAllPoints();T.primaryLabel:SetPoint("TOPLEFT",0,-top);T.primaryLabel:SetWidth(inner)
     T.primaryLabel:SetShown(not collapsed and T.model~=nil and T.model.kind~=nil)
-    if T.primaryLabel:IsShown() then top=top+math.max(18*scale,T.primaryLabel:GetStringHeight()+4*scale) end
+    if T.primaryLabel:IsShown() then top=top+24*scale end
     T.actionIcon:ClearAllPoints();T.actionIcon:SetPoint("TOPLEFT",0,-top-2);T.actionIcon:SetSize(16*scale,16*scale)
     T.stepIcon:ClearAllPoints();T.stepIcon:SetPoint("TOPRIGHT",-2,-top-2);T.stepIcon:SetSize(15*scale,15*scale)
     self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT",indent,-top);self.title:SetWidth(bodyWidth);self.title:SetMaxLines(2)

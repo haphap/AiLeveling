@@ -103,7 +103,7 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     assert(T.footer.value:find("经验 1250",1,true));assert(T.footer.value:find("路程 2分15秒",1,true))
     assert(T.rows[1].metrics:find("经验 0",1,true));assert(T.rows[1].metrics:find("路程 0秒",1,true))
     assert(T.rows[2].metrics:find("路程 1小时01分",1,true))
-    assert(T.rows[1].title.fontSize>=15);assert(T.rows[1].progress.fontSize>=13)
+    assert(T.rows[1].title.fontSize>=15);eq(T.rows[1].progress.fontSize,B.UI.fontSizes.caption)
     assert(T.rows[1].progress.color[2]>=0.75);eq(T.queuePanel.surface,nil);eq(T.card.surface,nil)
     eq(T.rows[1].title.fontFlags,"OUTLINE")
     eq(T.rows[2].objectives[1].text.value,"物品");eq(T.rows[2].objectives[1].count.value,"2/4");eq(T.rows[1].enabled,true)
