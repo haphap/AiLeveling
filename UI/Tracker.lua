@@ -7,8 +7,10 @@ local palette={
 }
 local media="Interface\\AddOns\\AiLeveling\\Media\\"
 
-local function metrics(choice)
+local function metrics(choice,xpOnly)
     local xp=choice and choice.remainingXP
+    local reward="经验 "..(xp and string.format("%.0f",xp) or "—")
+    if xpOnly then return reward end
     local seconds=choice and choice.timing and choice.timing.seconds
     local time="—"
     if seconds then
@@ -17,7 +19,7 @@ local function metrics(choice)
         elseif seconds>=60 then time=string.format("%d分%02d秒",math.floor(seconds/60),seconds%60)
         else time=string.format("%d秒",seconds) end
     end
-    return "经验 "..(xp and string.format("%.0f",xp) or "—").."  ·  路程 "..time
+    return reward.."  ·  路程 "..time
 end
 
 local function destination(action)
@@ -29,6 +31,76 @@ local function destination(action)
     local name=point.entityName or action.recipient and action.recipient.entityName
     local zone=map and map.name
     return name and (name..(zone and zone~=name and " · "..zone or "")) or zone,name or zone,name and zone~=name and zone
+end
+
+local function clockText(seconds)
+    if seconds==nil then return "—" end
+    seconds=math.max(0,math.ceil(seconds))
+    return string.format("%d:%02d",math.floor(seconds/60),seconds%60)
+end
+
+local function placeName(point,fallback)
+    local map=point and point.map and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
+    return point and point.entityName or fallback or map and map.name or "任务地点"
+end
+
+function UI.TrackerJourney(state,action)
+    local nav=A.Navigation
+    if not action or not nav or nav.manual or not nav.actions or not A.Travel then return end
+    local index=nav.index or 1
+    local current=nav.actions[index]
+    local flight=A.Transport and A.Transport.flight
+    local hearth=A.Hearth and (A.Hearth.cast or A.Hearth.pending)
+    local flying=action.kind=="flight" and flight and flight.action==current
+    local returning=action.kind=="hearthCast" and hearth and hearth.action==current
+    if not current or current~=action and not flying and not returning then return end
+    local result={steps={},seconds=0,distance=0}
+    local position,transport=state.position,false
+    local function add(kind,title,seconds,detail)
+        seconds=seconds and math.max(0,math.ceil(seconds))
+        result.steps[#result.steps+1]={kind=kind,title=title,seconds=seconds,detail=detail}
+        result.seconds=result.seconds and seconds and result.seconds+seconds or nil
+    end
+    local function walk(point,name,radius)
+        local seconds,distance=A.Travel.Walk(position,point,state,nav)
+        if seconds~=0 and (not distance or distance>(radius or 12)) then
+            add("walk","走到 "..placeName(point,name),seconds)
+            result.distance=result.distance and distance and result.distance+distance or nil
+        end
+        position=point
+    end
+    for i=index,#nav.actions do
+        local step=nav.actions[i]
+        if nav.StaleAction and nav.StaleAction(step,state,nav.plan) then return end
+        if step.kind=="transit" then
+            transport=true
+            local boarded=i==index and (flying or returning or step.atDeparture)
+            local from=step.fromTaxi and ((state.taxiNames or {})[step.fromTaxi] or
+                A.FlightData and A.FlightData.nodes[step.fromTaxi] and A.FlightData.nodes[step.fromTaxi].name)
+            if not boarded and step.mode~="hearth" then walk(step.departure,step.fromName or from,step.departureRadius) end
+            local seconds,detail=step.travelSeconds,nil
+            if flying and i==index and flight.duration and flight.observedStart then
+                seconds=math.max(0,flight.duration-(GetTime()-flight.started));detail="飞行中"
+            elseif returning and i==index then
+                seconds=step.travelRide and math.max(0,step.travelRide-(GetTime()-hearth.started));detail="炉石返回中"
+            elseif step.publicTransit and step.travelWait and step.travelRide then
+                detail="平均等候 "..clockText(step.travelWait).." · 乘坐 "..clockText(step.travelRide)
+            end
+            add(step.mode,step.title or "前往 "..placeName(step.position,step.toName),seconds,detail)
+            position=step.position
+        elseif step.kind=="move" or step.kind=="approach" then
+            walk(step.position,step.title~="前往下一目的地" and step.title or nil,step.arrival)
+        else
+            result.goal=step
+            walk(step.position,nil,step.arrival)
+            local verb=({accept="接取",objective="完成",turnin="交付"})[step.kind]
+            if verb then
+                result.steps[#result.steps+1]={kind=step.kind,title=verb.." "..(step.title or "任务"),task=true}
+            end
+            break
+        end
+    end
+    if transport and result.goal then return result end
 end
 
 local function nextAction(action,plan,state,rows)
@@ -154,9 +226,11 @@ end
 function UI.TrackerModel(state,plan,action,paused)
     state,plan=state or {},plan or {}
     local quests=state.quests or {}
+    local journey=not paused and not A.error and UI.TrackerJourney(state,action) or nil
+    action=journey and journey.goal or action
     if A.Navigation and A.Navigation.StaleAction and A.Navigation.StaleAction(action,state,plan) or
         action and action.questId and UI.QuestStatus(state,action.questId,plan)=="已交付" then action=nil end
-    local model={rows={},objectives={},acceptedCount=0,unacceptedCount=0,title=action and action.title or "正在寻找下一步",kind=action and action.kind,
+    local model={journey=journey,action=action,rows={},objectives={},acceptedCount=0,unacceptedCount=0,title=action and action.title or "正在寻找下一步",kind=action and action.kind,
         instruction=action and UI.ActionText(action,A.settings or {}) or "",questId=action and action.questId}
     local active=action and quests[action.questId]
     if active then
@@ -205,7 +279,7 @@ function UI.TrackerModel(state,plan,action,paused)
     for _,choice in ipairs(plan.taskChoices or {}) do
         choices[choice.questId]=choices[choice.questId] or choice
     end
-    if action and choices[action.questId] then model.metrics=metrics(choices[action.questId]) end
+    if action and choices[action.questId] then model.metrics=metrics(choices[action.questId],journey) end
     if A.TaskGuide then groups,byQuest=A.TaskGuide.DeliveryGroups(plan.taskChoices,state,plan.taskOrder) end
     local currentGroup=action and byQuest[action.questId]
     model.includesCurrent=currentGroup~=nil
@@ -558,6 +632,16 @@ function UI:CreateTracker()
     self.body=text(T.currentChild,13,palette.muted);self.body:SetMaxLines(2)
     T.objectives={}
     T.footer=text(T.currentChild,12,palette.muted)
+    T.journey=CreateFrame("Frame",nil,T.currentChild)
+    T.journeyHeader=CreateFrame("Button",nil,T.journey)
+    T.journeyLabel=text(T.journeyHeader,13,palette.muted);T.journeyLabel:SetPoint("LEFT");T.journeyLabel:SetText("行程")
+    T.journeySummary=text(T.journeyHeader,12,palette.white);T.journeySummary:SetPoint("RIGHT");T.journeySummary:SetJustifyH("RIGHT")
+    T.journeyHeader:SetScript("OnClick",function() T.journeyClosed=not T.journeyClosed;self:LayoutTracker() end)
+    T.journeyRows={}
+    T.journey:SetScript("OnUpdate",function(_,elapsed)
+        T.journeyElapsed=(T.journeyElapsed or 0)+elapsed
+        if T.journeyElapsed>=1 then T.journeyElapsed=0;self:RenderTracker() end
+    end)
     T.questTitle.progress=self.body
     T.thenText=text(T.currentChild,14,palette.blue)
     T.thenDivider=T.currentChild:CreateTexture(nil,"BACKGROUND");T.thenDivider:SetColorTexture(unpack(palette.line))
@@ -690,6 +774,7 @@ function UI:RenderTracker()
     local action=A.Navigation:Current()
     local model=UI.TrackerModel(state,plan,action,A.char.paused)
     T.model,T.action=model,action
+    action=model.action
     T.questTitle.questId=model.questId
     T.questTitle.activeObjective=action and action.objectiveIndex
     T.questTitle.candidate,T.questTitle.revision=nil,nil
@@ -767,6 +852,32 @@ function UI:RenderTracker()
     end
     T.progressRatio=goals>0 and progress/goals or nil
     T.progressText:SetText(T.progressRatio and string.format("%.0f%%",T.progressRatio*100) or "")
+    local journey=model.journey
+    T.journeyTime=journey and clockText(journey.seconds) or ""
+    if journey and journey.distance and journey.distance>0 then
+        local meters=A.settings.distanceUnits=="meters"
+        local distance=journey.distance*(meters and 0.9144 or 1)
+        T.journeyTime=T.journeyTime.." · 步行 "..(distance>=1000 and string.format("%.1f",distance/1000)..(meters and "公里" or "k码") or string.format("%.0f",distance)..(meters and "米" or "码"))
+    end
+    for i,step in ipairs(journey and journey.steps or {}) do
+        local row=T.journeyRows[i]
+        if not row then
+            row=CreateFrame("Frame",nil,T.journey)
+            row.number=text(row,12,palette.muted)
+            row.icon=row:CreateTexture(nil,"ARTWORK")
+            row.title=text(row,13,palette.white)
+            row.time=text(row,12,palette.white);row.time:SetJustifyH("RIGHT")
+            row.detail=text(row,11,palette.muted)
+            T.journeyRows[i]=row
+        end
+        row.number:SetText(i)
+        row.icon:SetTexture(media.."hud-"..(({walk="location",zeppelin="boat",flight="flight",boat="boat",tram="tram",hearth="hearth",accept="accept",objective="objective",turnin="turnin"})[step.kind] or "location")..".tga")
+        row.icon:SetVertexColor(unpack(i==1 and palette.gold or palette.blue))
+        row.title:SetText(step.title);row.title:SetTextColor(unpack(i==1 and palette.gold or palette.white))
+        row.time:SetText(step.task and "" or clockText(step.seconds));row.detail:SetText(step.detail or "")
+        row:Show()
+    end
+    for i=#(journey and journey.steps or {})+1,#T.journeyRows do T.journeyRows[i]:Hide() end
     for i,item in ipairs(model.rows) do
         local row=self:TrackerRow(i)
         local isCurrent=item.questId and item.questId==model.questId
@@ -899,6 +1010,30 @@ function UI:LayoutTracker()
     T.footer:SetShown(T.footer:GetText()~="")
     if T.footer:IsShown() then childHeight=childHeight+18*scale end
     local clipped=math.max(0,childHeight-({compact=100,normal=200,expanded=280})[density]*scale)
+    T.journey:ClearAllPoints();T.journey:SetPoint("TOPLEFT",0,-childHeight-10);T.journey:SetWidth(inner)
+    T.journey:SetShown(not collapsed and T.model~=nil and T.model.journey~=nil)
+    T.journeyHeader:ClearAllPoints();T.journeyHeader:SetPoint("TOPLEFT");T.journeyHeader:SetSize(inner,24*scale)
+    T.journeySummary:SetWidth(inner-36*scale);T.journeySummary:SetMaxLines(1)
+    T.journeySummary:SetText((T.journeyTime or "")..(T.journeyClosed and "  +" or "  −"))
+    local journeyHeight=28*scale
+    for i,row in ipairs(T.journeyRows) do
+        local shown=not T.journeyClosed and T.model and T.model.journey and T.model.journey.steps[i]~=nil
+        row:SetShown(shown==true)
+        if shown then
+            row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-journeyHeight);row:SetWidth(inner)
+            row.number:ClearAllPoints();row.number:SetPoint("TOPLEFT",0,-2);row.number:SetWidth(16*scale)
+            row.icon:ClearAllPoints();row.icon:SetPoint("TOPLEFT",18*scale,-2);row.icon:SetSize(14*scale,14*scale)
+            row.title:ClearAllPoints();row.title:SetPoint("TOPLEFT",38*scale,0);row.title:SetWidth(inner-82*scale)
+            row.time:ClearAllPoints();row.time:SetPoint("TOPRIGHT",0,0);row.time:SetWidth(42*scale)
+            local height=math.max(18*scale,row.title:GetStringHeight())
+            row.detail:ClearAllPoints();row.detail:SetPoint("TOPLEFT",38*scale,-height);row.detail:SetWidth(inner-38*scale)
+            row.detail:SetShown(row.detail:GetText()~="")
+            if row.detail:IsShown() then height=height+row.detail:GetStringHeight() end
+            height=height+8*scale;row:SetHeight(height);journeyHeight=journeyHeight+height
+        end
+    end
+    T.journey:SetHeight(journeyHeight)
+    if T.journey:IsShown() then childHeight=childHeight+journeyHeight+16 end
     local bottom=childHeight+10
     T.alongLabel:ClearAllPoints();T.alongLabel:SetPoint("TOPLEFT",0,-bottom);T.alongLabel:SetWidth(inner)
     T.alongLabel:SetText("顺路可做 · "..alongCount);T.alongLabel:SetShown(not collapsed and alongCount>0)

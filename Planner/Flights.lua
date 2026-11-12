@@ -246,13 +246,13 @@ function F.Actions(route,action,navigation)
         if leg.kind=="hearth" then
             actions[#actions+1]={kind="transit",mode="hearth",questId=action.questId,title="炉石返回 "..(leg.name or "绑定地点"),
                 text=(leg.wait>0 and string.format("等待炉石冷却约 %.1f 分钟后，",leg.wait/60) or "").."手动使用炉石返回实际绑定地点，落地后继续任务。",
-                position=leg.to,arrival=12,departure=leg.from,hearthBindingKey=leg.bindingKey,travelSeconds=leg.seconds,referenceHearth=true}
+                position=leg.to,arrival=12,departure=leg.from,hearthBindingKey=leg.bindingKey,travelSeconds=leg.seconds,travelWait=leg.wait,travelRide=leg.seconds-leg.wait,referenceHearth=true}
         elseif leg.kind=="boat" or leg.kind=="zeppelin" or leg.kind=="tram" then
             local vehicle=leg.kind=="boat" and "船" or leg.kind=="tram" and "地铁" or "飞艇"
             actions[#actions+1]={kind="transit",mode=leg.kind,questId=action.questId,title="乘"..vehicle.."前往"..leg.toName,
                 text="前往"..leg.fromName..(leg.kind=="zeppelin" and "，登上塔台" or "").."，乘坐开往"..leg.toName.."的"..vehicle.."；到站后下"..vehicle.."继续任务。",
                 departure=leg.from,departureRadius=40,position=leg.to,arrival=40,travelSeconds=leg.seconds,
-                publicTransit=true,transitKey=leg.key}
+                publicTransit=true,transitKey=leg.key,fromName=leg.fromName,toName=leg.toName,travelWait=leg.seconds-leg.low,travelRide=leg.low}
         elseif leg.kind=="flight" then
             local node=A.FlightData.nodes[leg.toTaxi]
             local name=(A.state and A.state.taxiNames or {})[leg.toTaxi] or node.name

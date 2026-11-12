@@ -281,6 +281,31 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     U.navFrame.scripts.OnDragStop();eq(B.settings.navigationPosition[3],25)
     B:NormalizeSettings(B.settings);eq(B.settings.navigationPosition[3],25)
     B:RestoreSettings();eq(B.settings.navigationPosition,nil)
+    assert(loadfile("Planner/Travel.lua"))("AiLeveling",B)
+    local goal={kind="accept",questId=4,title="新的任务",position={map=2,x=0.5,y=0,entityName="接取人"}}
+    local transit={kind="transit",mode="tram",questId=4,title="乘地铁前往铁炉堡",publicTransit=true,
+        departure={map=1,x=0.1,y=0},position={map=2,x=0.2,y=0},departureRadius=40,
+        fromName="暴风城地铁入口",travelSeconds=100,travelWait=40,travelRide=60}
+    B.Navigation.Distance=function(_,a,b) if a and b and a.map==b.map then return math.abs(a.x-b.x)*700 end end
+    B.state.position={map=1,x=0,y=0};B.state.runSpeed=7
+    B.Navigation.actions={transit,goal};B.Navigation.index=1;B.action=transit
+    U:RenderTracker();local T=U.tracker;local journey=T.model.journey
+    eq(U.title.value,"新的任务");eq(T.model.kind,"accept");eq(T.action,transit)
+    eq(#journey.steps,4);eq(journey.seconds,140);eq(journey.distance,280)
+    eq(journey.steps[1].title,"走到 暴风城地铁入口");eq(journey.steps[2].detail,"平均等候 0:40 · 乘坐 1:00")
+    eq(journey.steps[4].title,"接取 新的任务");eq(T.journey.shown,true)
+    T.journeyHeader.scripts.OnClick();eq(T.journeyRows[1].shown,false);eq(U.title.value,"新的任务")
+    T.journeyHeader.scripts.OnClick();eq(T.journeyRows[1].shown,true)
+    B.state.position=transit.departure;T.journey.scripts.OnUpdate(nil,1)
+    eq(#T.model.journey.steps,3);eq(T.model.journey.seconds,130)
+    transit.atDeparture=true;B.state.position={map=1,x=0.2,y=0};U:RenderTracker()
+    eq(#T.model.journey.steps,3);eq(T.model.journey.steps[1].kind,"tram")
+    B.char.paused=true;U:RenderTracker();eq(T.journey.shown,false);B.char.paused=false
+    transit.mode="flight";B.Transport.flight={action=transit,observedStart=true,duration=100,started=5}
+    B.action={kind="flight",title="正在飞行"};U:RenderTracker()
+    eq(T.model.journey.seconds,125);eq(T.model.journey.steps[1].detail,"飞行中")
+    B.Navigation.index=2;B.action=goal;U:RenderTracker();eq(T.journey.shown,false);eq(T.model.questId,4)
+    eq(B.state.quests[4],nil);eq(B.state.completed[4],nil)
     B.finish()
 end)
 test("商店事件触发刷新且维修卡片可以忽略",function()

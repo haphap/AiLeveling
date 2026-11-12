@@ -236,6 +236,28 @@ elseif planPreview then
     A.previewTab=1
 
 else
+if arg[1]=="journey" then
+    assert(loadfile("Planner/Travel.lua"))("AiLeveling",A)
+    assert(loadfile("Planner/Flights.lua"))("AiLeveling",A)
+    assert(loadfile("Data/PublicTransit.lua"))("AiLeveling",A)
+    local tram
+    for _,leg in ipairs(A.PublicTransitData.legs) do if leg.key=="public:tram:0" then tram=leg end end
+    local goal={kind="accept",questId=63,title="肮脏的爪子",text="与巡山人卡尔·雷矛交谈，接取任务。",
+        position={map=1432,x=0.248,y=0.184,entityKind="npc",entityName="巡山人卡尔·雷矛"}}
+    local nextGoal={kind="objective",questId=63,title="肮脏的爪子",position={map=1432,x=0.356,y=0.246,entityName="银泉矿洞"}}
+    local choice={questId=63,title=goal.title,kind="task",remainingXP=1350,actions={goal},stages={goal,nextGoal}}
+    A.state.level=17;A.state.position={map=1453,x=0.6,y=0.5}
+    A.state.quests={};A.state.completed={}
+    C_Map.GetMapInfo=function(id) return {name=({[1453]="暴风城",[1455]="铁炉堡",[1432]="洛克莫丹"})[id]} end
+    -- Example cross-zone distance; transit timing comes from the shipped table.
+    A.Navigation.Distance=function(_,from,to)
+        if from and to then return from.map==to.map and math.sqrt((from.x-to.x)^2+(from.y-to.y)^2)*4000 or 2850 end
+    end
+    local actions=A.Flights.Actions({legs={tram}},goal,A.Navigation)
+    A.plan={taskChoices={choice},taskOrder={choice},travelActions=actions,taskQueue={steps={{choice=choice,stage=goal},{choice=choice,stage=nextGoal}}}}
+    A.Navigation.actions,A.Navigation.index,A.Navigation.plan=actions,1,A.plan
+    action=actions[1]
+end
 A.UI:CreateTracker();A.UI:RenderTracker();A.UI:SetTrackerNavigation(285,0.25,true)
 A.UI.navFrame:ClearAllPoints();A.UI.navFrame:SetPoint("TOP",A.UI.frame,"BOTTOM",0,-54)
 if arg[1]=="assist" then

@@ -22,7 +22,7 @@ def icon(name, color, paint):
     def polygon(points, fill=color):
         draw.polygon([(round(x*S), round(y*S)) for x, y in points], fill=fill)
 
-    if name != 'compass':
+    if name != 'compass' and not name.startswith('hud-'):
         draw.rounded_rectangle((S, S, 31*S, 31*S), radius=5*S, fill=(40, 30, 18, 190),
                                outline=(157, 123, 69, 110), width=S)
     paint(line, ellipse, polygon)
@@ -90,6 +90,26 @@ icon('location', (232, 196, 125, 255), lambda line, circle, poly: (
     circle((12, 8, 20, 16), fill=(40, 30, 18, 255), outline=None),
 ))
 
+icon('hud-tram', (255, 255, 255, 255), lambda line, circle, poly: (
+    line([(9, 6), (23, 6), (24, 9), (24, 23), (8, 23), (8, 9), (9, 6)]),
+    line([(9, 15), (23, 15)], 2), line([(16, 7), (16, 14)], 1.6),
+    circle((11, 18, 13, 20), fill='white'), circle((19, 18, 21, 20), fill='white'),
+    line([(11, 24), (7, 28)]), line([(21, 24), (25, 28)]),
+))
+icon('hud-boat', (255, 255, 255, 255), lambda line, circle, poly: (
+    line([(16, 4), (16, 21)], 2), poly([(13, 7), (6, 18), (13, 18)]),
+    poly([(19, 5), (19, 18), (27, 18)]),
+    line([(5, 22), (27, 22), (23, 27), (10, 27), (5, 22)], 2),
+))
+icon('hud-flight', (255, 255, 255, 255), lambda line, circle, poly: (
+    poly([(16, 13), (3, 8), (7, 20), (14, 21), (16, 26), (18, 21), (25, 20), (29, 8)]),
+    line([(16, 5), (16, 18)], 2.5),
+))
+icon('hud-hearth', (255, 255, 255, 255), lambda line, circle, poly: (
+    line([(10, 5), (21, 5), (26, 11), (25, 23), (20, 28), (9, 27), (5, 21), (6, 10), (10, 5)], 2),
+    line([(12, 22), (11, 14), (16, 10), (21, 14), (20, 19), (16, 19), (16, 15)], 2),
+))
+
 icon('profession', (204, 166, 99, 255), lambda line, circle, poly: (
     poly([(6, 11), (27, 11), (23, 16), (18, 16), (18, 21), (24, 24), (24, 26), (8, 26), (8, 24), (13, 21), (13, 16), (6, 14)]),
     line([(12, 7), (22, 7)], 2),
@@ -128,4 +148,4 @@ for y in range(64):
 for x, y in [(28, 7), (74, 15), (135, 5), (206, 10), (280, 4), (344, 13), (415, 6), (484, 17)]:
     draw.ellipse((x, y, x+2, y+2), fill=(194, 210, 244, 55))
 sky.save(OUT / 'hud-header.tga')
-print('Generated 26 RGBA textures in Media/')
+print('Generated 30 RGBA textures in Media/')
