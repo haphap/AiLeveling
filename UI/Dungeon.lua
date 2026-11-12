@@ -1,7 +1,8 @@
 local _, A = ...
 A.UI.Dungeon = {}
 local UI = A.UI.Dungeon
-local statusColors={"|cffe8c47d","|cff96cc9c","|cff9ec9de","|cffc4bfad","|cffc4bfad"}
+local hex=A.UI.hex
+local statusColors={"|cff"..hex.turnin,"|cff"..hex.objective,"|cff"..hex.accept,"|cff"..hex.muted,"|cff"..hex.muted}
 
 function UI:Create(parent)
     local frame = CreateFrame("Frame",nil,parent)
@@ -24,7 +25,7 @@ function UI:Create(parent)
                 end)
             end
         end)
-    end,14)
+    end,"body")
     self.selector:SetPoint("TOPLEFT")
     self.selector.text:SetWidth(462);self.selector.text:SetMaxLines(1)
     self.taskBatch=A.UI:Button(frame,"安排关联任务",160,function()
@@ -34,7 +35,7 @@ function UI:Create(parent)
         else ok,why=A.Dungeon:StartTaskBatch(self.selected) end
         self.message=not ok and why or nil
         self:Refresh();A.UI:SelectTab(4)
-    end,14)
+    end,"body")
     local function control(label,event)
         local button = A.UI:Button(frame,label,106,function()
             local ok,reason
@@ -44,7 +45,7 @@ function UI:Create(parent)
             else ok,reason=A.Dungeon:Control(event) end
             self.message = ok and nil or reason
             self:Refresh(); A.UI:SelectTab(4)
-        end,14)
+        end,"body")
         return button
     end
     self.accept = control("接受行程","accept")
@@ -56,28 +57,28 @@ function UI:Create(parent)
         local ok,reason=A.Instances:ConfirmReset(self.selected)
         self.message=ok and "已记录玩家确认；进入资格继续由客户端检查。" or reason
         self:Refresh();A.UI:SelectTab(4)
-    end,14)
+    end,"body")
     self.retry=A.UI:Button(frame,"重新检查",170,function()
         local ok,reason=A.Instances:Retry()
         self.message=not ok and reason or nil
         self:Refresh();A.UI:SelectTab(4)
-    end,14)
+    end,"body")
     self.summaryScroll=CreateFrame("ScrollFrame",nil,frame,"UIPanelScrollFrameTemplate")
     self.summaryScroll:SetPoint("TOPLEFT",514,0)
     self.summaryChild=CreateFrame("Frame",nil,self.summaryScroll)
     self.summaryChild:SetSize(200,280);self.summaryScroll:SetScrollChild(self.summaryChild)
-    self.status = A.UI:Text(self.summaryChild,14,{0.9,0.94,1})
+    self.status = A.UI:Text(self.summaryChild,"body",A.UI.colors.white)
     self.status:SetPoint("TOPLEFT");self.status:SetWidth(200)
     self.taskSelector=A.UI:Button(frame,"关联任务",320,function()
         local rows=self.tasks or {}
         if #rows>0 then self.taskIndex=(self.taskIndex or 1)%#rows+1 end
         self:Refresh();A.UI:SelectTab(4)
-    end,14)
+    end,"body")
     self.taskSelector.text:SetWidth(308);self.taskSelector.text:SetMaxLines(1)
     self.taskChain=A.UI:Button(frame,"查看任务链",108,function()
         local row=self.tasks and self.tasks[self.taskIndex or 1]
         if row then A.UI.Chains:Focus(row.id) end
-    end,14)
+    end,"body")
     self.taskGo=A.UI:Button(frame,"继续此任务",116,function()
         local d=self.entries and self.entries[self.selected]
         local row=self.tasks and self.tasks[self.taskIndex or 1]
@@ -86,7 +87,7 @@ function UI:Create(parent)
             self.message=ok and "已选择此任务" or why
             self:Refresh();A.UI:SelectTab(4)
         end
-    end,14)
+    end,"body")
     frame:Hide()
 end
 
@@ -276,7 +277,7 @@ function UI:Lines()
                 local symbol=action.kind=="accept" and "accept" or action.kind=="turnin" and "turnin" or "objective"
                 local text=A.UI:Icon(symbol).."  "..heading..title.."|r  "..status.."|r  "..verb.."「"..action.title.."」"
                 if action.kind=="objective" and action.text then text=text.."\n    "..action.text end
-                if where and where~=step.instance then text=text.."\n    |cffc4bfad"..where.."|r" end
+                if where and where~=step.instance then text=text.."\n    |cff"..hex.muted..where.."|r" end
                 if step.preparingQuest then text=text.."\n    为「"..step.preparingQuest.title.."」准备前置，交付后接续。" end
                 if step.blocked then text=text.."\n    "..step.blocked end
                 lines[#lines+1]=text
@@ -299,7 +300,7 @@ function UI:Lines()
     if rewards.excluded>0 then summary[#summary+1]="另有 "..rewards.excluded.." 项低收益任务。" end
     local drops=selected and A.Gear.DungeonBenefits and A.Gear.DungeonBenefits(selected,A.state,A.Data) or {}
     if #drops>0 then
-        lines[#lines+1]="|cffffd36b副本装备提升|r"
+        lines[#lines+1]="|cff"..hex.gold.."副本装备提升|r"
         for _,value in ipairs(drops) do
             lines[#lines+1]=string.format("%s · 属性评分 %+.1f\n    %s",value.item.link or value.item.name or ("物品 #"..value.item.id),
                 value.upgrade.delta,value.source.title)
@@ -318,7 +319,7 @@ function UI:Lines()
             local detail=row.requireCheck and "向任务发布者查看任务" or
                 not row.allowed and row.group~=5 and row.reason or row.recipientName
             local symbol=row.group==1 and "turnin" or row.group==2 and "objective" or "accept"
-            lines[#lines+1]=A.UI:Icon(symbol).."  "..string.format("%s%s%s|r  %s\n    |cffc4bfad%s%s|r",i==self.taskIndex and "› " or "",statusColors[row.group],row.status,row.title,hint,detail and (" · "..detail) or "")
+            lines[#lines+1]=A.UI:Icon(symbol).."  "..string.format("%s%s%s|r  %s\n    |cff%s%s%s|r",i==self.taskIndex and "› " or "",statusColors[row.group],row.status,row.title,hex.muted,hint,detail and (" · "..detail) or "")
             if row.gear then
                 local reward=row.gear
                 lines[#lines+1]=string.format("     装备提升：%s · 属性评分 %+.1f",reward.item.link or reward.item.name or ("物品 #"..reward.item.id),reward.upgrade.delta)

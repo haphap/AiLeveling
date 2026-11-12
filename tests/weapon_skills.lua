@@ -1,7 +1,7 @@
 return function(test,eq,F,A)
 local function fixture()
     local B={UI={},Content={gearSources={}},settings={}}
-    for _,file in ipairs({"Data/WeaponSkills.lua","State.lua","Planner/Gear.lua","QuestAssist.lua","UI/Gear.lua"}) do
+    for _,file in ipairs({"Data/WeaponSkills.lua","State.lua","Planner/Gear.lua","QuestAssist.lua","UI/Main.lua","UI/Gear.lua"}) do
         assert(loadfile(file))("AiLeveling",B)
     end
     local s=F.State();s.clientVersion,s.clientBuild,s.interface="1.60.1","70862",16001

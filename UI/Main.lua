@@ -2,14 +2,26 @@ local _, A = ...
 A.UI = {fonts={}}
 local UI = A.UI
 UI.colors={
-    bg={0.065,0.052,0.043,0.97}, sidebar={0.040,0.034,0.030,0.94},
-    panel={0.12,0.085,0.052,0.38}, button={0.14,0.095,0.052,0.90},
-    hover={0.25,0.17,0.085,0.90}, selected={0.23,0.15,0.065,0.96},
-    accent={0.80,0.65,0.39}, white={0.94,0.91,0.83}, muted={0.77,0.75,0.68},
-    gold={0.91,0.77,0.49}, green={0.59,0.80,0.61}, blue={0.62,0.79,0.87}, purple={0.77,0.69,0.87},
-    line={0.72,0.56,0.31,0.25}, border={0.85,0.70,0.46,0.72},
+    bg={0.07,0.085,0.14,0.96}, sidebar={0.05,0.065,0.11,0.94},
+    panel={0,0,0,0}, button={0.13,0.15,0.21,0.90},
+    hover={0.20,0.24,0.32,0.96}, selected={0.17,0.20,0.28,0.90},
+    rowHover={0.50,0.60,0.85,0.14}, hud={0.07,0.085,0.14,0.80},
+    white={0.96,0.97,0.99}, muted={0.70,0.73,0.80},
+    gold={0.90,0.73,0.40}, green={0.42,0.85,0.60}, blue={0.58,0.79,1}, purple={0.78,0.68,1},
+    red={0.95,0.61,0.61}, line={0.65,0.70,0.82,0.18}, border={0.50,0.55,0.65,0.25},
+    gearShade={0.90,0.73,0.40,0.10}, gearText={0.765,0.793,0.868},
 }
 local colors=UI.colors
+colors.accent=colors.gold
+colors.accept=colors.blue;colors.objective=colors.gold;colors.turnin=colors.green
+UI.hex={}
+for name,color in pairs(colors) do
+    UI.hex[name]=string.format("%02x%02x%02x",math.floor(color[1]*255+0.5),math.floor(color[2]*255+0.5),math.floor(color[3]*255+0.5))
+end
+UI.fontSizes={caption=12,body=14,task=15,brand=18,title=20}
+UI.metrics={tight=4,gap=8,padding=12,section=16,indent=24,icon=16,smallIcon=12,
+    button=28,hit=24,scrollbar=16,radius=6,controlRadius=4}
+local metrics=UI.metrics
 local media="Interface\\AddOns\\AiLeveling\\Media\\"
 function UI:Accent()
     local class=A.state and A.state.class
@@ -20,12 +32,13 @@ function UI:Accent()
 end
 
 function UI:RegisterFont(text,size,role,flags)
+    size=type(size)=="string" and self.fontSizes[size] or size
     self.fonts[#self.fonts+1]={text=text,size=size,role=role,flags=flags}
     text:SetFont(STANDARD_TEXT_FONT,size*(A.settings.fontScale or 1),flags or "")
 end
 
 function UI:Icon(name,size)
-    size=math.floor((size or 20)*(A.settings.fontScale or 1)+0.5)
+    size=math.floor((size or metrics.icon)*(A.settings.fontScale or 1)+0.5)
     return "|T"..media..name..".tga:"..size..":"..size..":0:0|t"
 end
 
@@ -74,7 +87,7 @@ function UI:Rounded(frame,radius,border)
     frame.SetBackdropColor=function(self,...)
         for _,t in ipairs(self.surface) do t:SetVertexColor(...) end
         local _,_,_,alpha=...
-        material:SetVertexColor(0.82,0.72,0.56,(alpha or 1)*0.60)
+        material:SetVertexColor(0.65,0.70,0.82,(alpha or 1)*0.12)
         if border then
             for _,t in ipairs(trim) do t:SetVertexColor(border[1],border[2],border[3],(alpha or 1)*border[4]) end
         end
@@ -84,7 +97,7 @@ end
 function UI:Panel(name, parent, width, height)
     local f = CreateFrame("Frame", name, parent or UIParent, "BackdropTemplate")
     f:SetSize(width, height)
-    self:Rounded(f,8,colors.border)
+    self:Rounded(f,metrics.radius,colors.border)
     f:SetBackdropColor(unpack(colors.bg))
     return f
 end
@@ -100,19 +113,19 @@ end
 
 function UI:Button(parent, label, width, callback, fontSize)
     local b = CreateFrame("Button", nil, parent, "BackdropTemplate")
-    b:SetSize(width, 26)
-    self:Rounded(b,4,colors.border)
+    b:SetSize(width,metrics.button)
+    self:Rounded(b,metrics.controlRadius,colors.border)
     b:SetBackdropColor(unpack(colors.button))
     b.highlight=b:CreateTexture(nil,"BACKGROUND",nil,-4)
     b.highlight:SetAllPoints();b.highlight:SetTexture("Interface\\Buttons\\UI-Panel-Button-Highlight")
-    b.highlight:SetTexCoord(0,0.625,0,0.6875);b.highlight:SetVertexColor(1,0.78,0.44,0.24)
+    b.highlight:SetTexCoord(0,0.625,0,0.6875);b.highlight:SetVertexColor(unpack(colors.rowHover))
     b:SetHighlightTexture(b.highlight,"ADD")
-    b.text = self:Text(b, fontSize or 12)
+    b.text = self:Text(b, fontSize or "caption")
     b.text:SetPoint("CENTER")
     b.text:SetText(label)
     b:SetScript("OnClick", callback)
     b:SetScript("OnEnter", function()
-        b:SetBackdropColor(unpack(colors.hover))
+        b:SetBackdropColor(unpack(b.baseColor==colors.panel and colors.rowHover or colors.hover))
     end)
     b:SetScript("OnLeave", function()
         b:SetBackdropColor(unpack(b.baseColor or colors.button))
@@ -168,13 +181,12 @@ function UI:Create()
     self:Movable(self.details,"detailPosition")
     self.details:SetFrameStrata("DIALOG")
     self.details:Hide()
-    local close = self:Button(self.details, "×", 26, function() self.details:Hide() end,20)
+    local close = self:Button(self.details, "×", 26, function() self.details:Hide() end,"title")
     close:SetPoint("TOPRIGHT", -14, -14)
     self.tabs = {}
     local side=CreateFrame("Frame",nil,self.details);side:SetSize(164,584)
     side:SetPoint("TOPLEFT",8,-8)
-    self:Rounded(side,5);side:SetBackdropColor(unpack(colors.sidebar))
-    side.material:SetTexture("Interface\\FrameGeneral\\UI-Background-Marble")
+    self:Rounded(side,metrics.radius);side:SetBackdropColor(unpack(colors.sidebar))
     local divider=self.details:CreateTexture(nil,"BACKGROUND")
     divider:SetPoint("TOPLEFT",180,-14);divider:SetPoint("BOTTOMLEFT",180,14);divider:SetWidth(1)
     divider:SetColorTexture(unpack(colors.line))
@@ -183,31 +195,31 @@ function UI:Create()
     header:SetColorTexture(unpack(colors.line))
     self.detailMark=side:CreateTexture(nil,"ARTWORK")
     self.detailMark:SetTexture(media.."compass.tga");self.detailMark:SetSize(24,24);self.detailMark:SetPoint("TOPLEFT",12,-16)
-    local brand=self:Text(side,18,colors.gold);brand:SetPoint("TOPLEFT",42,-18);brand:SetText("AILeveling")
-    local subtitle=self:Text(side,12,colors.muted);subtitle:SetPoint("TOPLEFT",12,-50);subtitle:SetText("少跑路 · 多经验")
+    local brand=self:Text(side,"brand",colors.gold);brand:SetPoint("TOPLEFT",42,-18);brand:SetText("AILeveling")
+    local subtitle=self:Text(side,"caption",colors.muted);subtitle:SetPoint("TOPLEFT",12,-50);subtitle:SetText("少跑路 · 多经验")
     local labels={"任务行程","任务链","装备","地下城","设置","数据","服务","专业任务","职业任务","练级区域","坐骑任务"}
     local icons={"compass","chain","gear","entry","settings","xp","accept","profession","class","location","mount"}
     for n,i in ipairs({1,10,9,8,11,4,3,2,7,5,6}) do
-        local b=self:Button(side,self:Icon(icons[i],16).."  "..labels[i],148,function() self:SelectTab(i) end,14)
+        local b=self:Button(side,self:Icon(icons[i],16).."  "..labels[i],148,function() self:SelectTab(i) end,"body")
         b:SetPoint("TOPLEFT",8,-84-(n-1)*40);b:SetHeight(30)
         b.text:ClearAllPoints();b.text:SetPoint("LEFT",10,0);b.text:SetJustifyH("LEFT")
         self.tabs[i]=b
     end
-    self.detailHeading=self:Text(self.details,21,colors.gold)
+    self.detailHeading=self:Text(self.details,"title",colors.white)
     self.detailHeading:SetPoint("TOPLEFT",194,-22);self.detailHeading:SetText("任务行程")
-    self.detailSubtitle=self:Text(self.details,13,colors.muted)
+    self.detailSubtitle=self:Text(self.details,"body",colors.muted)
     self.detailSubtitle:SetPoint("TOPLEFT",194,-54)
     self.scroll = CreateFrame("ScrollFrame", nil, self.details, "UIPanelScrollFrameTemplate")
     self.scroll:SetPoint("TOPLEFT", 18, -96); self.scroll:SetPoint("BOTTOMRIGHT", -36, 18)
     self.scrollChild = CreateFrame("Frame", nil, self.scroll)
     self.scrollChild:SetSize(560, 380); self.scroll:SetScrollChild(self.scrollChild)
-    self.detailText = self:Text(self.scrollChild, 16, colors.white)
+    self.detailText = self:Text(self.scrollChild,"body", colors.white)
     self.detailText:SetPoint("TOPLEFT"); self.detailText:SetWidth(552)
     self.copyBox = CreateFrame("EditBox", nil, self.scrollChild)
     self.copyBox:SetPoint("TOPLEFT"); self.copyBox:SetSize(552, 380)
     self.copyBox:SetMultiLine(true); self.copyBox:SetAutoFocus(false)
     self.copyBox:SetFontObject(GameFontHighlight)
-    self:RegisterFont(self.copyBox,13)
+    self:RegisterFont(self.copyBox,"body")
     self.copyBox:SetScript("OnEscapePressed", function(box) box:ClearFocus() end)
     self.copyBox:Hide()
     self.Settings:Create(self.details)

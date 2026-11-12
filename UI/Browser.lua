@@ -2,8 +2,9 @@ local _,A=...
 -- The main window: one list and one detail pane, backed by the existing task models.
 A.UI.Browser={selection={}}
 local B=A.UI.Browser
-local gold,blue,green,muted="e8c47d","9ec9de","96cc9c","c4bfad"
+local gold,blue,green,muted=A.UI.hex.gold,A.UI.hex.blue,A.UI.hex.green,A.UI.hex.muted
 local colors=A.UI.colors
+local metrics=A.UI.metrics
 local function color(c,s) return "|cff"..c..tostring(s).."|r" end
 local function questLink(id,title) return color(blue,"|Hquest:"..id..":0|h["..title.."]|h") end
 local function itemLink(item)
@@ -46,14 +47,14 @@ function B:Create(parent)
     local divider=self.frame:CreateTexture(nil,"BACKGROUND")
     divider:SetPoint("TOPLEFT",410,0);divider:SetPoint("BOTTOMLEFT",410,0);divider:SetWidth(1)
     divider:SetColorTexture(unpack(colors.line))
-    self.summary=A.UI:Text(self.frame,13,colors.muted);self.summary:SetPoint("TOPLEFT");self.summary:SetWidth(392)
+    self.summary=A.UI:Text(self.frame,"body",colors.muted);self.summary:SetPoint("TOPLEFT");self.summary:SetWidth(392)
     self.search=CreateFrame("EditBox",nil,self.frame,"BackdropTemplate")
     self.search:SetPoint("TOPLEFT",0,-32);self.search:SetSize(392,28);self.search:SetAutoFocus(false)
     self.search:SetTextInsets(10,10,0,0)
-    A.UI:Rounded(self.search,4,colors.border);self.search:SetBackdropColor(unpack(colors.button))
-    A.UI:RegisterFont(self.search,13)
+    A.UI:Rounded(self.search,metrics.controlRadius,colors.border);self.search:SetBackdropColor(unpack(colors.button))
+    A.UI:RegisterFont(self.search,"body")
     self.search:SetTextColor(unpack(colors.white))
-    self.searchHint=A.UI:Text(self.frame,12,colors.muted);self.searchHint:SetPoint("TOPLEFT",10,-38);self.searchHint:SetText("搜索名称或任务编号")
+    self.searchHint=A.UI:Text(self.frame,"caption",colors.muted);self.searchHint:SetPoint("TOPLEFT",10,-38);self.searchHint:SetText("搜索名称或任务编号")
     self.search:SetScript("OnEscapePressed",function(box) box:SetText("");box:ClearFocus() end)
     self.search:SetScript("OnTextChanged",function(box)
         self.query=box:GetText():lower();self.searchHint:SetShown(self.query=="")
@@ -74,11 +75,11 @@ function B:Create(parent)
         GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetHyperlink(link);GameTooltip:Show()
     end)
     self.infoChild:SetScript("OnHyperlinkLeave",function() GameTooltip:Hide() end)
-    self.title=A.UI:Text(self.infoChild,20,colors.gold);self.title:SetPoint("TOPLEFT");self.title:SetWidth(326)
-    self.detail=A.UI:Text(self.infoChild,14,colors.white);self.detail:SetWidth(326)
+    self.title=A.UI:Text(self.infoChild,"title",colors.white);self.title:SetPoint("TOPLEFT");self.title:SetWidth(326)
+    self.detail=A.UI:Text(self.infoChild,"body",colors.white);self.detail:SetWidth(326)
     self.buttons={}
     for i=1,3 do
-        local b=A.UI:Button(self.frame,"",330,function() local f=self.buttons[i].run;if f then f() end end,14)
+        local b=A.UI:Button(self.frame,"",330,function() local f=self.buttons[i].run;if f then f() end end,"body")
         b:SetPoint("TOPLEFT",430,-390-(i-1)*33);self.buttons[i]=b
     end
     self.rows={};self.frame:Hide()
@@ -99,7 +100,7 @@ function B:TaskRows(mode)
         local allowed,why,pre=true
         if q then allowed,why,pre=A.Eligibility.Check(q,state,A.Data) end
         if not allowed and status=="未接取" then status=why end
-        local c=status=="可交付" and gold or state.quests[id] and green or allowed and blue or muted
+        local c=status=="可交付" and green or state.quests[id] and gold or allowed and blue or muted
         local meta={color(c,status)}
         if id==currentId then table.insert(meta,1,color(gold,currentLabel)) end
         if choice.unlock then meta[#meta+1]=color(gold,A.TaskGuide.UnlockText(choice.unlock)) end
@@ -254,11 +255,11 @@ function B:Refresh(mode)
     for i,entry in ipairs(rows) do
         local row=self.rows[i]
         if not row then
-            row=A.UI:Button(self.child,"",382,function() end,15)
-            row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",28,-9);row.text:SetWidth(342);row.text:SetMaxLines(1)
-            row.icon=A.UI:Text(row,16);row.icon:SetPoint("TOPLEFT",4,-9)
-            row.sub=A.UI:Text(row,12,colors.muted);row.sub:SetWidth(342);row.sub:SetMaxLines(2)
-            row.line=row:CreateTexture(nil,"ARTWORK");row.line:SetPoint("BOTTOMLEFT",28,0);row.line:SetPoint("BOTTOMRIGHT",-8,0);row.line:SetHeight(1)
+            row=A.UI:Button(self.child,"",382,function() end,"task")
+            row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",metrics.indent+metrics.gap,-metrics.gap);row.text:SetWidth(342);row.text:SetMaxLines(2)
+            row.icon=A.UI:Text(row,"body");row.icon:SetPoint("TOPLEFT",metrics.gap,-metrics.gap)
+            row.sub=A.UI:Text(row,"caption",colors.muted);row.sub:SetWidth(342);row.sub:SetMaxLines(2)
+            row.line=row:CreateTexture(nil,"ARTWORK");row.line:SetPoint("BOTTOMLEFT",metrics.indent+metrics.gap,0);row.line:SetPoint("BOTTOMRIGHT",-8,0);row.line:SetHeight(1)
             row.line:SetColorTexture(unpack(colors.line))
             row.marker=row:CreateTexture(nil,"ARTWORK");row.marker:SetPoint("TOPLEFT");row.marker:SetPoint("BOTTOMLEFT");row.marker:SetWidth(2)
             row:RegisterForClicks("LeftButtonUp","RightButtonUp")
@@ -270,19 +271,24 @@ function B:Refresh(mode)
                 self:Refresh(self.mode)
             end)
             row:SetScript("OnEnter",function(f)
+                f:SetBackdropColor(unpack(colors.rowHover))
                 GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(f.entry.title)
                 GameTooltip:AddLine(f.entry.sub or "",0.85,0.9,1,true);GameTooltip:Show()
             end)
-            row:SetScript("OnLeave",function() GameTooltip:Hide() end)
+            row:SetScript("OnLeave",function(f) f:SetBackdropColor(unpack(f.baseColor));GameTooltip:Hide() end)
             self.rows[i]=row
         end
         row.entry,row.questId,row.candidate,row.revision=entry,entry.questId,entry.choice,A.plan and A.plan.revision
         row.deferred=entry.questId and ((A.state.skipped or {})[entry.questId] or (A.state.chainDeferred or {})[entry.questId])
-        row.text:SetText(entry.title);row.text:SetTextColor(unpack(entry==self.selected and colors.gold or colors.white))
-        row.icon:SetText(A.UI:Icon(entry.icon,16));row.sub:SetText(entry.sub or "")
-        row.sub:ClearAllPoints();row.sub:SetPoint("TOPLEFT",28,-(12+18*scale))
-        local h=18*scale+row.sub:GetStringHeight()+22
-        row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y);row:SetSize(382,h);row:Show();y=y+h+2
+        local inset=metrics.gap+(metrics.icon+metrics.gap)*scale
+        row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",inset,-metrics.gap);row.text:SetWidth(382-inset-metrics.gap)
+        row.text:SetText(entry.title);row.text:SetTextColor(unpack(colors.white))
+        row.icon:SetText(A.UI:Icon(entry.icon,metrics.icon));row.sub:SetText(entry.sub or "")
+        local titleHeight=math.max(20*scale,row.text:GetStringHeight())
+        row.sub:ClearAllPoints();row.sub:SetPoint("TOPLEFT",inset,-(metrics.gap+titleHeight+metrics.tight*scale));row.sub:SetWidth(382-inset-metrics.gap)
+        row.line:ClearAllPoints();row.line:SetPoint("BOTTOMLEFT",inset,0);row.line:SetPoint("BOTTOMRIGHT",-metrics.gap,0)
+        local h=titleHeight+row.sub:GetStringHeight()+2*metrics.gap+metrics.tight*scale
+        row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y);row:SetSize(382,h);row:Show();y=y+h+metrics.tight
         local r,g,b=unpack(colors.accent);row.baseColor=entry==self.selected and colors.selected or colors.panel
         row:SetBackdropColor(unpack(row.baseColor));row.marker:SetColorTexture(r,g,b,1);row.marker:SetShown(entry==self.selected)
     end
@@ -395,7 +401,7 @@ function B:Detail()
                 for key,n in pairs(replacement and replacement.stats or {}) do stats[key]=(stats[key] or 0)+n end
             end
             local keys={};for key,n in pairs(stats) do if n~=0 then keys[#keys+1]=key end end;table.sort(keys)
-            for _,key in ipairs(keys) do lines[#lines+1]=color(stats[key]>0 and green or "f29c9c",(_G[key] or key)..string.format(" %+.1f",stats[key])) end
+            for _,key in ipairs(keys) do lines[#lines+1]=color(stats[key]>0 and green or A.UI.hex.red,(_G[key] or key)..string.format(" %+.1f",stats[key])) end
             for _,note in ipairs(c.notes or {}) do lines[#lines+1]=note end
         end
         if e.sourceId then self:Action(1,"安排获取此装备",function() local ok,why=A.Gear:SetTarget(e.sourceId);self.message=not ok and why or nil;self:Refresh(3) end) end
@@ -416,12 +422,12 @@ function B:DungeonDetail(e)
     if not view then
         view=CreateFrame("Frame",nil,self.infoChild);view:SetWidth(326)
         self.dungeonDetail=view;view.rows={}
-        view.levels=A.UI:Text(view,12,colors.muted);view.levels:SetPoint("TOPLEFT");view.levels:SetWidth(326)
-        view.tasks=A.UI:Text(view,19);view.tasks:SetWidth(154)
-        view.xp=A.UI:Text(view,19,colors.gold);view.xp:SetWidth(162)
-        view.tasksLabel=A.UI:Text(view,12,colors.muted);view.tasksLabel:SetWidth(154)
-        view.xpLabel=A.UI:Text(view,12,colors.muted);view.xpLabel:SetWidth(162);view.xpLabel:SetText("任务经验")
-        view.hint=A.UI:Text(view,13);view.hint:SetWidth(326);view.hint:SetMaxLines(2)
+        view.levels=A.UI:Text(view,"caption",colors.muted);view.levels:SetPoint("TOPLEFT");view.levels:SetWidth(326)
+        view.tasks=A.UI:Text(view,"title");view.tasks:SetWidth(154)
+        view.xp=A.UI:Text(view,"title",colors.gold);view.xp:SetWidth(162)
+        view.tasksLabel=A.UI:Text(view,"caption",colors.muted);view.tasksLabel:SetWidth(154)
+        view.xpLabel=A.UI:Text(view,"caption",colors.muted);view.xpLabel:SetWidth(162);view.xpLabel:SetText("任务经验")
+        view.hint=A.UI:Text(view,"body");view.hint:SetWidth(326);view.hint:SetMaxLines(2)
         view.note=CreateFrame("Frame",nil,view);view.note:SetAllPoints(view.hint);view.note:EnableMouse(true)
         view.note:SetScript("OnEnter",function(f)
             GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText("当前安排")
@@ -429,9 +435,9 @@ function B:DungeonDetail(e)
             GameTooltip:Show()
         end)
         view.note:SetScript("OnLeave",function() GameTooltip:Hide() end)
-        view.heading=A.UI:Text(view,13,colors.gold);view.heading:SetWidth(326)
-        view.loot=A.UI:Button(view,"",326,function() A.UI:SelectTab(3) end,13)
-        view.loot.baseColor={0,0,0,0};view.loot:SetBackdropColor(0,0,0,0)
+        view.heading=A.UI:Text(view,"body",colors.gold);view.heading:SetWidth(326)
+        view.loot=A.UI:Button(view,"",326,function() A.UI:SelectTab(3) end,"body")
+        view.loot.baseColor=colors.panel;view.loot:SetBackdropColor(0,0,0,0)
     end
     self.detail:Hide();view:Show();view:ClearAllPoints()
     local top=self.title:GetStringHeight()+10
@@ -474,7 +480,7 @@ function B:DungeonDetail(e)
     for _,line in pairs({A.Dungeon.EncounterProgress(e.dungeon,A.state),A.Dungeon:TaskActivityText(e.key),d:RepeatText()}) do
         view.tip[#view.tip+1]=line
     end
-    local tones={colors.gold,colors.green,colors.blue,colors.muted,colors.muted}
+    local tones={colors.turnin,colors.objective,colors.accept,colors.muted,colors.muted}
     local tasks={}
     -- Put pickup prompts first without changing the planner's task order.
     for _,task in ipairs(e.tasks) do if task.group==3 or task.preparation then tasks[#tasks+1]=task end end
@@ -482,12 +488,12 @@ function B:DungeonDetail(e)
     for i,task in ipairs(tasks) do
         local row=view.rows[i]
         if not row then
-            row=A.UI:Button(view,"",326,function() end,14)
-            row.baseColor={0,0,0,0};row:SetBackdropColor(0,0,0,0)
-            row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",24,-10);row.text:SetMaxLines(2)
-            row.icon=A.UI:Text(row,14);row.icon:SetPoint("TOPLEFT",0,-10)
-            row.status=A.UI:Text(row,12);row.status:SetPoint("TOPRIGHT",0,-11);row.status:SetJustifyH("RIGHT")
-            row.meta=A.UI:Text(row,12,colors.muted);row.meta:SetWidth(302)
+            row=A.UI:Button(view,"",326,function() end,"body")
+            row.baseColor=colors.panel;row:SetBackdropColor(0,0,0,0)
+            row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",metrics.indent,-metrics.gap);row.text:SetMaxLines(2)
+            row.icon=A.UI:Text(row,"body");row.icon:SetPoint("TOPLEFT",0,-metrics.gap)
+            row.status=A.UI:Text(row,"caption");row.status:SetPoint("TOPRIGHT",0,-metrics.gap);row.status:SetJustifyH("RIGHT")
+            row.meta=A.UI:Text(row,"caption",colors.muted);row.meta:SetWidth(302)
             row.line=row:CreateTexture(nil,"ARTWORK");row.line:SetPoint("TOPLEFT");row.line:SetPoint("TOPRIGHT");row.line:SetHeight(1)
             row.line:SetColorTexture(unpack(colors.line))
             row:RegisterForClicks("LeftButtonUp","RightButtonUp")
@@ -498,7 +504,7 @@ function B:DungeonDetail(e)
             end)
             row:SetScript("OnLeave",function(f) f:SetBackdropColor(0,0,0,0);GameTooltip:Hide() end)
             row:SetScript("OnEnter",function(f)
-                f:SetBackdropColor(unpack(colors.hover))
+                f:SetBackdropColor(unpack(colors.rowHover))
                 local task=f.task
                 GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(task.title)
                 GameTooltip:AddLine(task.status,unpack(tones[task.group]))
@@ -520,8 +526,8 @@ function B:DungeonDetail(e)
                 GameTooltip:Hide()
                 local ok,why=A.Dungeon:ContinueTask(self.selected.dungeon,row.questId)
                 self.message=not ok and why or nil;self:Refresh(self.mode)
-            end,12)
-            row.route.baseColor={0,0,0,0};row.route:SetBackdropColor(0,0,0,0)
+            end,"caption")
+            row.route.baseColor=colors.panel;row.route:SetBackdropColor(0,0,0,0)
             row.route.text:ClearAllPoints();row.route.text:SetPoint("TOPLEFT");row.route.text:SetWidth(302)
             row.route.text:SetMaxLines(2);row.route.text:SetJustifyH("LEFT");row.route.text:SetTextColor(unpack(colors.blue))
             row.route:SetScript("OnEnter",function(f)
@@ -544,7 +550,7 @@ function B:DungeonDetail(e)
         if task.gear then meta[#meta+1]="装备提升" end
         if task.lowValue then meta[#meta+1]=task.lowValue.suggestion end
         row.meta:SetText(table.concat(meta," · "))
-        local h=math.max(row.text:GetStringHeight(),row.status:GetStringHeight())+14
+        local h=math.max(row.text:GetStringHeight(),row.status:GetStringHeight())+metrics.gap+metrics.tight
         row.meta:ClearAllPoints();row.meta:SetPoint("TOPLEFT",24,-h)
         h=h+(#meta>0 and row.meta:GetStringHeight() or 0)+4
         row.route:SetShown(direction~=nil)

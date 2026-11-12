@@ -57,7 +57,9 @@ test("同构建首领掉落进入比较与手选导航，击败不当作拿到�
     B.Dungeon.encounterVisit={instanceId=389,difficulty=1,kills={[2732]="奥格弗林特"}}
     p=plan(s,d,balanced,B);assert(p.fallback.text:find("已击败",1,true))
     B.Gear:SyncTarget(s);eq(s.gearTarget,id);eq(s.gearAcquired,nil)
-    B.plan=p;B.UI={Accent=function() return 1,1,1 end,Icon=function() return "" end};assert(loadfile("UI/Gear.lua"))("AiLeveling",B)
+    B.plan=p;assert(loadfile("UI/Main.lua"))("AiLeveling",B)
+    B.UI.Accent=function() return 1,1,1 end;B.UI.Icon=function() return "" end
+    assert(loadfile("UI/Gear.lua"))("AiLeveling",B)
     assert(loadfile("UI/Browser.lua"))("AiLeveling",B)
     local rows=B.UI.Browser:GearRows();local found
     for _,row in ipairs(rows) do if row.sourceId==id then found=row end end

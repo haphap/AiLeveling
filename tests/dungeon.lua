@@ -168,7 +168,9 @@ return function(test,eq,F,plan)
     end)
     test("首领进度适用于参考目录并在重新进入清空，不借观察推断通关",function()
         local B,d,s=context();local native=GetInstanceInfo
-        d.reference=true;B.UI={Accent=function() return 1,1,1 end,Icon=function() return "" end};assert(loadfile("UI/Dungeon.lua"))("AiLeveling",B)
+        d.reference=true;assert(loadfile("UI/Main.lua"))("AiLeveling",B)
+        B.UI.Accent=function() return 1,1,1 end;B.UI.Icon=function() return "" end
+        assert(loadfile("UI/Dungeon.lua"))("AiLeveling",B)
         local ui=B.UI.Dungeon;ui.entries={[1]=d};ui.selected=1;ui.tasks={}
         GetInstanceInfo=function() return "夹具副本","party",1,nil,nil,nil,nil,42 end
         s.inInstance,s.instanceId=true,42
@@ -351,7 +353,8 @@ return function(test,eq,F,plan)
         local B,d,s,data=context()
         local create,menuUtil=CreateFrame,MenuUtil
         CreateFrame=function() return {SetPoint=function() end,SetSize=function() end,SetHeight=function() end,SetScrollChild=function() end,Hide=function() end} end
-        B.UI={colors={panel={0,0,0,1}},Accent=function() return 1,1,1 end,Icon=function() return "" end,
+        assert(loadfile("UI/Main.lua"))("AiLeveling",B)
+        B.UI={colors=B.UI.colors,hex=B.UI.hex,Accent=function() return 1,1,1 end,Icon=function() return "" end,
         Panel=function() return {SetPoint=function() end,SetBackdropColor=function() end} end,SelectTab=function() end,Text=function()
             return {ClearAllPoints=function() end,SetPoint=function() end,SetWidth=function() end,SetHeight=function() end,GetStringHeight=function() return 100 end,SetText=function(self,v) self.value=v end}
         end,Button=function(_,_,_,_,callback)

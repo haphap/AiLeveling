@@ -39,7 +39,7 @@ function UI:Create(parent)
     self.input=CreateFrame("EditBox",nil,box)
     self.input:SetPoint("TOPLEFT",4,-4);self.input:SetPoint("BOTTOMRIGHT",-4,4)
     self.input:SetAutoFocus(false);self.input:SetFontObject(GameFontHighlight);self.input:SetMaxLetters(10)
-    if A.UI.RegisterFont then A.UI:RegisterFont(self.input,12) end
+    if A.UI.RegisterFont then A.UI:RegisterFont(self.input,"caption") end
     self.input:SetScript("OnEnterPressed",function() self:Focus(tonumber(self.input:GetText())) end)
     self.input:SetScript("OnEscapePressed",function(f) f:ClearFocus() end)
     local open=A.UI:Button(self.frame,"查看 ID",72,function() self:Focus(tonumber(self.input:GetText())) end)
@@ -75,7 +75,7 @@ function UI:Create(parent)
         self.preview=nil;A.UI:SelectTab(2)
     end)
     self.restore:SetPoint("TOPLEFT",494,0)
-    self.header=A.UI:Text(self.frame,13)
+    self.header=A.UI:Text(self.frame,"body")
     self.header:SetPoint("TOPLEFT",0,-34);self.header:SetWidth(560);self.header:SetHeight(36);self.header:SetMaxLines(2)
     self.viewport=CreateFrame("ScrollFrame",nil,self.frame,"UIPanelScrollFrameTemplate")
     self.viewport:SetPoint("TOPLEFT",0,-72);self.viewport:SetSize(536,190)
@@ -95,7 +95,7 @@ function UI:Create(parent)
     self.infoScroll=CreateFrame("ScrollFrame",nil,self.frame,"UIPanelScrollFrameTemplate")
     self.infoScroll:SetPoint("TOPLEFT",0,-306);self.infoScroll:SetPoint("BOTTOMRIGHT",-30,0)
     self.infoChild=CreateFrame("Frame",nil,self.infoScroll);self.infoChild:SetSize(530,80);self.infoScroll:SetScrollChild(self.infoChild)
-    self.info=A.UI:Text(self.infoChild,12);self.info:SetPoint("TOPLEFT");self.info:SetWidth(524)
+    self.info=A.UI:Text(self.infoChild,"caption");self.info:SetPoint("TOPLEFT");self.info:SetWidth(524)
     self.frame:Hide()
 end
 
@@ -124,7 +124,7 @@ function UI:Draw(graph)
             card=A.UI:Button(self.canvas,"",164,function() self:Focus(self.cards[i].questId) end)
             card:SetSize(164,64)
             card.text:ClearAllPoints();card.text:SetPoint("TOPLEFT",6,-6);card.text:SetWidth(152);card.text:SetMaxLines(1)
-            card.title=A.UI:Text(card,11);card.title:SetPoint("TOPLEFT",6,-25);card.title:SetWidth(152);card.title:SetMaxLines(2)
+            card.title=A.UI:Text(card,"caption");card.title:SetPoint("TOPLEFT",6,-25);card.title:SetWidth(152);card.title:SetMaxLines(2)
             card:SetScript("OnEnter",function(f)
                 GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(f.node.title)
                 GameTooltip:AddLine(status[f.node.status] or f.node.status,1,1,1)
@@ -138,13 +138,18 @@ function UI:Draw(graph)
         card:ClearAllPoints();card:SetPoint("TOPLEFT",self.canvas,"TOPLEFT",node.x,-node.y)
         card.text:SetText("#"..node.id.." · "..(node.deferredRoot and "整链暂缓" or node.skipped and "已暂缓" or status[node.status]))
         card.title:SetText(node.title)
-        card:SetBackdropColor(node.id==self.focus and 0.23 or 0.14,node.id==self.focus and 0.16 or 0.10,0.06,1)
+        card.baseColor=node.id==self.focus and A.UI.colors.selected or A.UI.colors.button
+        card:SetBackdropColor(unpack(card.baseColor))
+        local tone=(node.deferredRoot or node.skipped) and A.UI.colors.muted or
+            node.status=="ready" and A.UI.colors.turnin or node.status=="active" and A.UI.colors.objective or
+            node.status=="notStarted" and A.UI.colors.accept or A.UI.colors.muted
+        card.text:SetTextColor(unpack(tone))
         card:Show()
     end
     for i,edge in ipairs(graph.edges) do
         local line=self.lines[i]
         if not line then
-            line={parts={},label=A.UI:Text(self.canvas,9),arrow=A.UI:Text(self.canvas,12)}
+            line={parts={},label=A.UI:Text(self.canvas,"caption"),arrow=A.UI:Text(self.canvas,"caption")}
             for j=1,3 do line.parts[j]=self.canvas:CreateTexture(nil,"ARTWORK") end
             self.lines[i]=line
         end
@@ -159,7 +164,7 @@ function UI:Draw(graph)
             local part=line.parts[j]
             part:ClearAllPoints();part:SetPoint("TOPLEFT",self.canvas,"TOPLEFT",math.min(s[1],s[3]),-math.min(s[2],s[4]))
             part:SetSize(math.max(2,math.abs(s[1]-s[3])),math.max(2,math.abs(s[2]-s[4])))
-            part:SetColorTexture(edge.kind=="exclusive" and 0.8 or 0.25,edge.kind=="any" and 0.65 or 0.5,0.5,0.8);part:Show()
+            part:SetColorTexture(unpack(edge.kind=="exclusive" and A.UI.colors.purple or A.UI.colors.muted));part:Show()
         end
         line.label:ClearAllPoints();line.label:SetPoint("TOPLEFT",self.canvas,"TOPLEFT",mx+3,-(sy+ty)/2)
         line.label:SetText(A.Chains.Label(edge));line.label:Show()
