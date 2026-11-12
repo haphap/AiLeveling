@@ -497,13 +497,23 @@ test("装备提示展示链接和任务奖励，忽略可恢复且换装后撤�
     local T=B.UI.tracker
     B.UI:RenderTracker()
     eq(T.gear.shown,true);assert(T.gear.text.value:find(bag.link,1,true));assert(T.gear.text.value:find("+50%",1,true))
+    eq(T.gear.text.value,"装备提升："..bag.link.."  ·  +50%  ·  头部")
+    eq(T.gear.equip.text.value,"装备它");eq(T.gear.ignore.text.value,"忽略这件")
+    eq(T.gear.shade.color[1],0.90);eq(T.gear.shade.color[4],0.10)
+    eq(B.Gear.UpgradeText({upgrade={oldScore=1000,delta=1}}),"+<1%")
+    eq(B.Gear.UpgradeText({upgrade={oldScore=0,delta=1}}),"新")
     eq(T.reward.shown,true);assert(T.reward.text.value:find(reward.link,1,true))
+    assert(T.reward.text.value:find("大幅提升",1,true));assert(not T.reward.text.value:find("\n",1,true))
     assert(T.objectiveFrame.point[3]<0);eq(T.model.questId,1);eq(T.objectives[1].count.value,"3/10")
     local previous=SetItemRef;local clicked
     SetItemRef=function(link) clicked=link end
     T.reward.scripts.OnHyperlinkClick(T.reward,"item:101",reward.link,"LeftButton");eq(clicked,"item:101")
     SetItemRef=previous
-    T.gear.ignore:Click();eq(T.gear.shown,false);eq(B.char.ignoredGear[bag.link],true)
+    T.gear.close:Click();eq(T.gear.shown,false);eq(next(B.char.ignoredGear),nil)
+    B.UI:RenderTracker();eq(T.gear.shown,false)
+    B.state.bags[100]=2;B.UI:RenderTracker();eq(T.gear.shown,true)
+    T.gear.ignore:Click();eq(T.gear.shown,false);eq(B.char.ignoredGear["item:100"],true)
+    B.state.bags[100]=3;B.UI:RenderTracker();eq(T.gear.shown,false)
     B.UI:TrackerMenu(B.UI.frame);B.menu["恢复装备提醒"].callback();eq(T.gear.shown,true)
     B.combat(true);B.UI:RenderTracker();eq(T.gear.equip.enabled,false)
     eq(B.Gear:EquipAdvice(T.gear.advice),false)

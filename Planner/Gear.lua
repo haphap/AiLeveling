@@ -259,13 +259,21 @@ function G.RewardSources(q)
 end
 
 function G.BagUpgrade(state,ignored)
+    for id,count in pairs(G.dismissedGear or {}) do
+        local held=(state.bags or {})[id] or 0
+        G.dismissedGear[id]=held>0 and held<=count and held or nil
+    end
+    local function hidden(item)
+        return (ignored or {})[tostring(item.link or item.id)] or (ignored or {})["item:"..item.id] or
+            (G.dismissedGear or {})[item.id]
+    end
     local best
     for _,item in ipairs(state.bagEquipment or {}) do
         local key=tostring(item.link or item.id)
-        if not (ignored or {})[key] then
+        if not hidden(item) then
             local upgrade=G.Upgrade(item,state)
             for _,replacement in pairs(upgrade and upgrade.replacements or {}) do
-                if replacement and (ignored or {})[tostring(replacement.link or replacement.id)] then upgrade=nil;break end
+                if replacement and hidden(replacement) then upgrade=nil;break end
             end
             if upgrade and upgrade.delta>0 and not upgrade.provisional and #upgrade.notes==0 and
                 (not best or upgrade.delta>best.upgrade.delta) then best={item=item,upgrade=upgrade,key=key} end
@@ -276,9 +284,18 @@ end
 
 function G.UpgradeText(value)
     local upgrade=value.upgrade
-    if upgrade.oldScore==0 then return "新增有效属性" end
+    if upgrade.oldScore==0 then return "新" end
     local percent=upgrade.delta/upgrade.oldScore*100
-    return string.format(percent<1 and "属性评分 +%.1f%%" or "属性评分 +%.0f%%",percent)
+    if percent>=100 then return "大幅提升" end
+    local rounded=math.floor(percent+0.5)
+    return rounded==0 and "+<1%" or ("+"..rounded.."%")
+end
+
+function G.UpgradeSlot(value)
+    local names={"头部","颈部","肩部","衬衣","胸部","腰部","腿部","脚","手腕","手", "手指","手指","饰品","饰品","背部","主手","副手","远程","战袍"}
+    for slot=1,19 do
+        if value.upgrade.replacements[slot]==value.item then return names[slot] end
+    end
 end
 
 function G:EquipAdvice(value)

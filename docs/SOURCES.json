@@ -173,6 +173,45 @@
       "scope": "Focused destination/goals, optional parallel goals, nearby pickups/work/turn-ins and a separate next action. Independent presentation uses existing AILeveling task queue and shared objectives; nearby actions use straight-line extra walking time, with existing eligibility and batch delivery constraints. No guide scripts, route engine, notification system or assets copied.",
       "code_copied": false,
       "assets_copied": false
+    },
+    {
+      "name": "Polestar equipment offer banner and quest reward line",
+      "url": "https://github.com/fitzforge/polestar/tree/c0c99712a7b907455dd49cc928484aa0114765d8/addon/Polestar",
+      "checked": "2026-11-12",
+      "files": [
+        "UI/GuideFrame.lua",
+        "UI/GearPick.lua",
+        "QoL/Wear.lua",
+        "Gear/Gear.lua",
+        "Theme/Theme.lua",
+        "../Polestar_zhCN/Interface.lua"
+      ],
+      "scope": "Match equipment banner layout, palette, Chinese labels, gain wording, slot label and distinct dismiss/decline actions. Existing AILeveling equipment evaluation and navigation remain in use.",
+      "code_copied": false,
+      "assets_copied": true,
+      "assets": [
+        {
+          "file": "Media/hud-chevron-right.tga",
+          "url": "https://raw.githubusercontent.com/fitzforge/polestar/c0c99712a7b907455dd49cc928484aa0114765d8/addon/Polestar/Media/UI/chevron-right.tga",
+          "sha256": "9a32382518b818e25ae4cf37d84db25c95fd437bdcef11242f41fff253593d20"
+        },
+        {
+          "file": "Media/hud-chevron-up.tga",
+          "url": "https://raw.githubusercontent.com/fitzforge/polestar/c0c99712a7b907455dd49cc928484aa0114765d8/addon/Polestar/Media/UI/chevron-up.tga",
+          "sha256": "d2f360f123952fbcf958a69a886380d6192df85e487b3fbd899f4043ffa0e03b"
+        },
+        {
+          "file": "Media/hud-close.tga",
+          "url": "https://raw.githubusercontent.com/fitzforge/polestar/c0c99712a7b907455dd49cc928484aa0114765d8/addon/Polestar/Media/UI/close.tga",
+          "sha256": "62c218c6498ba99b379649962d8c63beff03bd494deaad17833a1be617fbbdd7"
+        },
+        {
+          "file": "Media/hud-equip.tga",
+          "url": "https://raw.githubusercontent.com/fitzforge/polestar/c0c99712a7b907455dd49cc928484aa0114765d8/addon/Polestar/Media/UI/icon-use.tga",
+          "sha256": "9ffff0241337001ea74e5e41e180f9b5631d73cecd20c4950647752205d65584"
+        }
+      ],
+      "asset_license": "GPL-3.0; docs/LICENSE.Polestar.txt"
     }
   ],
   "api_references": [

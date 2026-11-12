@@ -498,9 +498,9 @@ local function gearLinks(value)
     return table.concat(links," + ")
 end
 
-local function noticeLine(parent)
+local function noticeLine(parent,size,color)
     local line=CreateFrame("Frame",nil,parent)
-    line.text=text(line,13,palette.green);line.text:SetPoint("TOPLEFT");line.text:SetPoint("TOPRIGHT")
+    line.text=text(line,size or 13,color or palette.green);line.text:SetPoint("TOPLEFT");line.text:SetPoint("TOPRIGHT")
     line:SetHyperlinksEnabled(true)
     line:SetScript("OnHyperlinkClick",function(_,link,label,button)
         local id=link:match("^quest:(%d+)")
@@ -605,8 +605,8 @@ function UI:TrackerMenu(owner)
         if owner==self.frame or not id and not owner.dungeonId then
             menu:CreateButton(A.char.paused and "继续引导" or "暂停引导",function() A:TogglePause() end)
             menu:CreateButton("详细面板",function() self:ToggleDetails() end)
-            if next(A.char.ignoredGear or {}) then
-                menu:CreateButton("恢复装备提醒",function() A.char.ignoredGear={};self:RenderTracker() end)
+            if next(A.char.ignoredGear or {}) or (A.Gear and next(A.Gear.dismissedGear or {})) then
+                menu:CreateButton("恢复装备提醒",function() A.char.ignoredGear={};A.Gear.dismissedGear={};self:RenderTracker() end)
             end
             if A.char.classReminderLevel then
                 menu:CreateButton("恢复职业提醒",function() A.char.classReminderLevel=nil;self:RenderTracker() end)
@@ -723,22 +723,52 @@ function UI:CreateTracker()
         GameTooltip:SetOwner(button,"ANCHOR_TOP");GameTooltip:SetText("本级不再提醒；可在行程菜单恢复");GameTooltip:Show()
     end)
     T.career.later:SetScript("OnLeave",function() GameTooltip:Hide() end)
-    T.gear=noticeLine(T.content)
+    T.gear=noticeLine(T.content,12,palette.white)
+    T.gear.text:SetNonSpaceWrap(false)
     T.gear.shade=T.gear:CreateTexture(nil,"BACKGROUND");T.gear.shade:SetAllPoints()
-    T.gear.shade:SetColorTexture(0.42,0.85,0.60,0.06)
-    T.gear.equip=self:Button(T.gear,"装备",48,function()
+    T.gear.shade:SetColorTexture(0.90,0.73,0.40,0.10)
+    T.gear.rule=T.gear:CreateTexture(nil,"BORDER");T.gear.rule:SetColorTexture(1,1,1,0.10)
+    T.gear.icon=T.gear:CreateTexture(nil,"ARTWORK");T.gear.icon:SetTexture(media.."hud-equip.tga")
+    T.gear.icon:SetVertexColor(unpack(palette.gold))
+    local dim={0.765,0.793,0.868}
+    for _,key in ipairs({"equip","ignore"}) do
+        local button=CreateFrame("Button",nil,T.gear);T.gear[key]=button
+        local color=key=="equip" and palette.gold or dim
+        button.text=text(button,12,color);button.text:SetPoint("LEFT",0,0)
+        button.text:SetText(key=="equip" and "装备它" or "忽略这件")
+        button:SetScript("OnEnter",function()
+            button.text:SetTextColor(unpack(palette.white));if button.chevron then button.chevron:SetVertexColor(unpack(palette.white)) end
+        end)
+        button:SetScript("OnLeave",function()
+            button.text:SetTextColor(unpack(color));if button.chevron then button.chevron:SetVertexColor(unpack(color)) end
+        end)
+    end
+    T.gear.equip.chevron=T.gear.equip:CreateTexture(nil,"ARTWORK")
+    T.gear.equip.chevron:SetTexture(media.."hud-chevron-right.tga");T.gear.equip.chevron:SetVertexColor(unpack(palette.gold))
+    T.gear.equip:SetScript("OnClick",function()
         local ok,why=A.Gear:EquipAdvice(T.gear.advice)
         if not ok then A:Message(why) end
         self:RenderTracker()
-    end,12)
-    T.gear.ignore=self:Button(T.gear,"忽略",48,function()
+    end)
+    T.gear.ignore:SetScript("OnClick",function()
         if not T.gear.advice then return end
-        A.char.ignoredGear=A.char.ignoredGear or {};A.char.ignoredGear[T.gear.advice.key]=true
+        A.char.ignoredGear=A.char.ignoredGear or {};A.char.ignoredGear["item:"..T.gear.advice.item.id]=true
         self:RenderTracker()
-    end,12)
-    for _,button in ipairs({T.gear.equip,T.gear.ignore}) do
-        button.baseColor={0,0,0,0};button:SetBackdropColor(0,0,0,0)
-    end
+    end)
+    T.gear.close=CreateFrame("Button",nil,T.gear)
+    T.gear.close.icon=T.gear.close:CreateTexture(nil,"ARTWORK");T.gear.close.icon:SetPoint("CENTER")
+    T.gear.close.icon:SetTexture(media.."hud-close.tga");T.gear.close.icon:SetVertexColor(unpack(dim))
+    T.gear.close:SetScript("OnEnter",function(button)
+        button.icon:SetVertexColor(unpack(palette.white))
+        GameTooltip:SetOwner(button,"ANCHOR_TOP");GameTooltip:SetText("关闭");GameTooltip:Show()
+    end)
+    T.gear.close:SetScript("OnLeave",function(button) button.icon:SetVertexColor(unpack(dim));GameTooltip:Hide() end)
+    T.gear.close:SetScript("OnClick",function()
+        if not T.gear.advice then return end
+        local id=T.gear.advice.item.id
+        A.Gear.dismissedGear=A.Gear.dismissedGear or {};A.Gear.dismissedGear[id]=(A.state.bags or {})[id] or 1
+        GameTooltip:Hide();self:RenderTracker()
+    end)
     T.card=CreateFrame("Frame",nil,T.content)
     T.actionIcon=T.card:CreateTexture(nil,"ARTWORK")
     T.stepIcon=T.card:CreateTexture(nil,"ARTWORK")
@@ -756,7 +786,10 @@ function UI:CreateTracker()
     T.questTitle:SetScript("OnLeave",function() GameTooltip:Hide() end)
     T.currentScroll=CreateFrame("ScrollFrame",nil,T.card,"UIPanelScrollFrameTemplate")
     T.currentChild=CreateFrame("Frame",nil,T.currentScroll);T.currentScroll:SetScrollChild(T.currentChild)
-    T.reward=noticeLine(T.currentChild)
+    T.reward=noticeLine(T.currentChild,12,{0.765,0.793,0.868})
+    T.reward.text:SetNonSpaceWrap(false)
+    T.reward.icon=T.reward:CreateTexture(nil,"ARTWORK");T.reward.icon:SetTexture(media.."hud-chevron-up.tga")
+    T.reward.icon:SetVertexColor(unpack(palette.green))
     T.objectiveFrame=CreateFrame("Frame",nil,T.currentChild)
     self.body=text(T.currentChild,13,palette.muted);self.body:SetMaxLines(2)
     T.objectives={}
@@ -925,12 +958,16 @@ function UI:RenderTracker()
     T.career.train:SetEnabled(not training and not state.inInstance and not state.dead and not state.onTaxi)
     local bag=A.settings.rewardAdvice~=false and A.Gear and A.Gear.BagUpgrade(state,A.char.ignoredGear) or nil
     T.gear.advice=bag
-    T.gear.text:SetText(bag and (self:Icon("gear",14).." 装备提升 · "..A.Gear.UpgradeText(bag).."\n"..gearLinks(bag)) or "")
+    local slot=bag and A.Gear.UpgradeSlot(bag)
+    T.gear.text:SetText(bag and ("装备提升："..(bag.item.link or bag.item.name).."  ·  "..A.Gear.UpgradeText(bag)..
+        (slot and ("  ·  "..slot) or "")) or "")
     T.gear.equip:SetEnabled(not InCombatLockdown())
-    T.gear.equip.text:SetText(InCombatLockdown() and "战斗中" or "装备")
+    T.gear.equip:SetAlpha(InCombatLockdown() and 0.45 or 1)
     T.reward.advice=model.reward
     local reward=model.reward and model.reward.item
-    T.reward.text:SetText(reward and ("奖励："..(reward.link or reward.name).."\n"..A.Gear.UpgradeText(model.reward).." · 交付时领取") or "")
+    T.reward.icon:SetShown(reward~=nil and model.kind=="turnin")
+    T.reward.text:SetText(reward and ((model.kind=="turnin" and "" or "奖励：")..(reward.link or reward.name)..
+        " |cff6bd999"..A.Gear.UpgradeText(model.reward).."|r"..(model.kind=="turnin" and "" or " · 交还时")) or "")
     action=model.action
     T.questTitle.questId=model.questId
     T.questTitle.activeObjective=action and action.objectiveIndex
@@ -1142,12 +1179,18 @@ function UI:LayoutTracker()
     end
     T.career:SetHeight(noticeHeight+24*scale);T.career:SetShown(not collapsed and T.career.text:GetText()~="")
     if T.career:IsShown() then cardTop=cardTop+T.career:GetHeight()+12*scale end
-    T.gear:ClearAllPoints();T.gear:SetPoint("TOPLEFT",0,-cardTop);T.gear:SetWidth(inner)
-    T.gear.text:SetWidth(inner)
-    local gearHeight=T.gear.text:GetStringHeight()+8*scale
-    T.gear.equip:ClearAllPoints();T.gear.equip:SetPoint("TOPLEFT",indent,-gearHeight);T.gear.equip:SetSize(48*scale,20*scale)
-    T.gear.ignore:ClearAllPoints();T.gear.ignore:SetPoint("TOPLEFT",indent+60*scale,-gearHeight);T.gear.ignore:SetSize(48*scale,20*scale)
-    T.gear:SetHeight(gearHeight+24*scale);T.gear:SetShown(not collapsed and T.gear.advice~=nil)
+    T.gear:ClearAllPoints();T.gear:SetPoint("TOPLEFT",-10,-cardTop);T.gear:SetWidth(width+20)
+    T.gear.icon:ClearAllPoints();T.gear.icon:SetPoint("TOPLEFT",14*scale,-10*scale);T.gear.icon:SetSize(13*scale,13*scale)
+    T.gear.text:ClearAllPoints();T.gear.text:SetPoint("TOPLEFT",35*scale,-9*scale);T.gear.text:SetWidth(width+20-73*scale)
+    T.gear.close:ClearAllPoints();T.gear.close:SetPoint("TOPRIGHT",-5*scale,-3*scale);T.gear.close:SetSize(24*scale,24*scale)
+    T.gear.close.icon:SetSize(12*scale,12*scale)
+    local gearHeight=9*scale+T.gear.text:GetStringHeight()+4*scale
+    local equipWidth=T.gear.equip.text:GetStringWidth()+16*scale
+    T.gear.equip:ClearAllPoints();T.gear.equip:SetPoint("TOPLEFT",35*scale,-gearHeight);T.gear.equip:SetSize(equipWidth,18*scale)
+    T.gear.equip.chevron:ClearAllPoints();T.gear.equip.chevron:SetPoint("LEFT",T.gear.equip.text,"RIGHT",3*scale,0);T.gear.equip.chevron:SetSize(11*scale,11*scale)
+    T.gear.ignore:ClearAllPoints();T.gear.ignore:SetPoint("TOPLEFT",45*scale+equipWidth,-gearHeight);T.gear.ignore:SetSize(T.gear.ignore.text:GetStringWidth(),18*scale)
+    T.gear:SetHeight(gearHeight+27*scale);T.gear:SetShown(not collapsed and T.gear.advice~=nil)
+    T.gear.rule:ClearAllPoints();T.gear.rule:SetPoint("BOTTOMLEFT");T.gear.rule:SetSize(width+20,1)
     if T.gear:IsShown() then cardTop=cardTop+T.gear:GetHeight()+12*scale end
     T.card:ClearAllPoints();T.card:SetPoint("TOPLEFT",0,-cardTop)
     local top=0
@@ -1166,7 +1209,10 @@ function UI:LayoutTracker()
     self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT",indent,-top);self.title:SetWidth(bodyWidth);self.title:SetMaxLines(2)
     top=top+math.max(20*scale,self.title:GetStringHeight())+6
     T.currentScroll:SetWidth(inner);T.currentChild:SetWidth(inner)
-    T.reward:ClearAllPoints();T.reward:SetPoint("TOPLEFT",indent,0);T.reward:SetWidth(bodyWidth);T.reward.text:SetWidth(bodyWidth)
+    T.reward:ClearAllPoints();T.reward:SetPoint("TOPLEFT",indent,0);T.reward:SetWidth(bodyWidth)
+    local rewardInset=T.reward.icon:IsShown() and 14*scale or 0
+    T.reward.icon:ClearAllPoints();T.reward.icon:SetPoint("TOPLEFT",0,-2*scale);T.reward.icon:SetSize(11*scale,11*scale)
+    T.reward.text:ClearAllPoints();T.reward.text:SetPoint("TOPLEFT",rewardInset,0);T.reward.text:SetWidth(bodyWidth-rewardInset)
     T.reward:SetHeight(T.reward.text:GetStringHeight()+8*scale);T.reward:SetShown(T.reward.advice~=nil)
     local childHeight=T.reward:IsShown() and T.reward:GetHeight() or 0
     T.objectiveFrame:ClearAllPoints();T.objectiveFrame:SetPoint("TOPLEFT",indent,-childHeight);T.objectiveFrame:SetWidth(bodyWidth)

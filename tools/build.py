@@ -41,6 +41,7 @@ def main():
     entries.append(ROOT / 'docs' / 'PVP_MAP_AUDIT.json')
     entries.append(ROOT / 'docs' / 'LICENSE.InFlight.txt')
     entries.append(ROOT / 'docs' / 'LICENSE.RestedXP.txt')
+    entries.append(ROOT / 'docs' / 'LICENSE.Polestar.txt')
     entries.append(ROOT / 'docs' / 'DANGER_DATA_AUDIT.json')
     bindings = ROOT / 'Bindings.xml'
     names = [binding.attrib['name'] for binding in ET.parse(bindings).getroot()]

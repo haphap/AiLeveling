@@ -15,6 +15,7 @@ local function widget(kind,parent)
     function w:SetSize(x,y) self.width,self.height=x,y end
     function w:SetWidth(x) self.width=x end;function w:SetHeight(y) self.height=y end
     function w:GetWidth() return self.width or math.ceil(width(self.value,self.size))+2 end
+    function w:GetStringWidth() return width(self.value,self.size) end
     function w:GetHeight() return self.height or self:GetStringHeight() end
     function w:SetPoint(point,a,b,c,d)
         local relative,relativePoint,x,y
@@ -299,7 +300,7 @@ end
 if arg[1]=="gear" then
     local T=A.UI.tracker
     assert(T.gear:IsShown() and T.reward:IsShown() and T.objectiveFrame:IsShown())
-    assert(T.gear.text:GetText():find("+50%%") and T.reward.text:GetText():find("+100%%"))
+    assert(T.gear.text:GetText():find("+50%%") and T.reward.text:GetText():find("大幅提升",1,true))
 end
 if arg[1]=="journey" then
     local T=A.UI.tracker
