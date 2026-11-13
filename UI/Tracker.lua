@@ -467,7 +467,8 @@ function UI.TrackerModel(state,plan,action,paused)
         local candidate=row.candidate or {}
         local eligible=not row.deferred and not candidate.lowValue and not candidate.acceptBlocked and
             not candidate.entryBlocked and not candidate.requireCheck
-        if row.questId==model.questId or row.atStop or row.along or eligible and row.planOrder and row.questId~=model.nextId then
+        if row.questId==model.questId or row.atStop or row.along or
+            eligible and (row.planOrder or not action and row.accepted) and row.questId~=model.nextId then
             visible[#visible+1]=row
         end
     end
@@ -484,7 +485,8 @@ function UI.TrackerModel(state,plan,action,paused)
     model.rows=visible
     if not action then
         if plan.complete then model.title="已达到 60 级";model.instruction="本次升级目标已完成。"
-        elseif plan.revision and plan.revision~=state.revision then model.title="正在更新行程";model.instruction="正在安排下一步。"
+        elseif (A.jobs and A.jobs.plan) or (plan.revision and plan.revision~=state.revision) then
+            model.title="正在安排行程";model.instruction="下方显示已接任务与进度。"
         elseif plan.selectionBlocked then model.title="所选行程等待处理";model.instruction=plan.selectionBlocked
         elseif not A.indexReady then model.title="正在整理任务";model.instruction="任务数据加载后显示当前步骤。"
         else model.title="选择下一项任务";model.instruction="右键任务可选择优先做，左键查看详情。" end
@@ -942,7 +944,7 @@ local function layoutObjectives(pool,width,scale)
     local y=0
     for _,row in ipairs(pool) do
         if row:IsShown() then
-            local countWidth=row.count:GetText()~="" and math.ceil(row.count:GetStringWidth())+6*scale or 0
+            local countWidth=(row.count:GetText() or "")~="" and math.ceil(row.count:GetStringWidth())+6*scale or 0
             row:SetWidth(width);row.text:SetWidth(width-countWidth-42*scale);row.count:SetWidth(countWidth)
             row.count:ClearAllPoints();row.count:SetPoint("TOPRIGHT",-22*scale,0)
             row.check:ClearAllPoints();row.check:SetPoint("TOPRIGHT",0,0);row.check:SetWidth(18*scale)
@@ -1094,6 +1096,7 @@ function UI:RenderTracker()
     local count=0;for _ in pairs(state.quests or {}) do count=count+1 end
     T.experience:SetText(A.char.paused and "已暂停" or "已接 "..count.." 项")
     T.stepIcon:SetTexture(media.."hud-target.tga")
+    T.stepIcon:SetShown(model.questId~=nil)
     T.actionIcon:SetTexture(media..(({accept="hud-accept",objective="hud-objective",turnin="hud-turnin"})[model.kind] or "compass")..".tga")
     self.title:SetText(questTitle(model.questId,model.title))
     self.title:SetTextColor(unpack(model.kind=="turnin" and palette.green or model.kind=="accept" and palette.blue or palette.gold))
@@ -1287,7 +1290,7 @@ function UI:LayoutTracker()
         local goals=layoutObjectives(row.objectives,bodyWidth,scale)
         row.objectiveFrame:SetHeight(math.max(1,goals));row.objectiveFrame:SetShown(goals>0)
         height=height+goals
-        row.progress:SetShown(not row.atStop and row.progress:GetText()~="")
+        row.progress:SetShown(not row.atStop and (row.progress:GetText() or "")~="")
         row.progress:ClearAllPoints();row.progress:SetPoint("TOPLEFT",indent,-height);row.progress:SetWidth(bodyWidth);row.progress:SetMaxLines(2)
         if row.progress:IsShown() then height=height+math.min(row.progress:GetStringHeight(),36*scale)+4 end
         height=height+spacing.gap*scale
@@ -1307,7 +1310,7 @@ function UI:LayoutTracker()
         button:ClearAllPoints();button:SetPoint("TOPLEFT",noticeX,-noticeHeight);button:SetSize(buttonWidth,20*scale)
         if button:IsShown() then noticeX=noticeX+buttonWidth+8*scale end
     end
-    T.career:SetHeight(noticeHeight+24*scale);T.career:SetShown(not collapsed and T.career.text:GetText()~="")
+    T.career:SetHeight(noticeHeight+24*scale);T.career:SetShown(not collapsed and (T.career.text:GetText() or "")~="")
     if T.career:IsShown() then cardTop=cardTop+T.career:GetHeight()+spacing.padding*scale end
     T.gear:ClearAllPoints();T.gear:SetPoint("TOPLEFT",-spacing.padding,-cardTop);T.gear:SetWidth(width+2*spacing.padding)
     T.gear.icon:ClearAllPoints();T.gear.icon:SetPoint("TOPLEFT",14*scale,-10*scale);T.gear.icon:SetSize(13*scale,13*scale)
@@ -1324,13 +1327,13 @@ function UI:LayoutTracker()
     if T.gear:IsShown() then cardTop=cardTop+T.gear:GetHeight()+spacing.padding*scale end
     T.card:ClearAllPoints();T.card:SetPoint("TOPLEFT",0,-cardTop)
     local top=0
-    T.area:SetShown(T.area:GetText()~="")
+    T.area:SetShown((T.area:GetText() or "")~="")
     local areaWidth=T.area:IsShown() and math.min(math.ceil(T.area:GetStringWidth()),width*0.4) or 0
     T.area:ClearAllPoints();T.area:SetPoint("TOPRIGHT",0,-6*scale)
     T.area:SetWidth(math.max(1,areaWidth));T.area:SetJustifyH("RIGHT")
     T.location:ClearAllPoints();T.location:SetPoint("TOPLEFT",0,0)
     T.location:SetWidth(width-(areaWidth>0 and areaWidth+spacing.padding*scale or 0))
-    T.location:SetShown(T.location:GetText()~="")
+    T.location:SetShown((T.location:GetText() or "")~="")
     if T.location:IsShown() then top=T.location:GetStringHeight()+4 end
     if T.area:IsShown() then top=math.max(top,T.area:GetStringHeight()+6*scale+spacing.tight) end
     if top>0 then top=top+spacing.gap*scale end
@@ -1363,10 +1366,10 @@ function UI:LayoutTracker()
         end
     end
     self.body:ClearAllPoints();self.body:SetPoint("TOPLEFT",indent,-childHeight);self.body:SetWidth(bodyWidth)
-    self.body:SetShown(self.body:GetText()~="")
+    self.body:SetShown((self.body:GetText() or "")~="")
     if self.body:IsShown() then childHeight=childHeight+self.body:GetStringHeight()+5 end
     T.footer:ClearAllPoints();T.footer:SetPoint("TOPLEFT",indent,-childHeight);T.footer:SetWidth(bodyWidth);T.footer:SetMaxLines(1)
-    T.footer:SetShown(T.footer:GetText()~="")
+    T.footer:SetShown((T.footer:GetText() or "")~="")
     if T.footer:IsShown() then childHeight=childHeight+18*scale end
     local clipped=math.max(0,childHeight-({compact=100,normal=200,expanded=280})[density]*scale)
     T.journey:ClearAllPoints();T.journey:SetPoint("TOPLEFT",0,-childHeight-spacing.gap*scale);T.journey:SetWidth(inner)
@@ -1387,7 +1390,7 @@ function UI:LayoutTracker()
             row.time:ClearAllPoints();row.time:SetPoint("TOPRIGHT",0,0);row.time:SetWidth(timeWidth)
             local height=math.max(18*scale,row.title:GetStringHeight())
             row.detail:ClearAllPoints();row.detail:SetPoint("TOPLEFT",38*scale,-height);row.detail:SetWidth(inner-38*scale)
-            row.detail:SetShown(row.detail:GetText()~="")
+            row.detail:SetShown((row.detail:GetText() or "")~="")
             if row.detail:IsShown() then height=height+row.detail:GetStringHeight() end
             height=height+spacing.gap*scale;row:SetHeight(height);journeyHeight=journeyHeight+height
         end
@@ -1397,13 +1400,14 @@ function UI:LayoutTracker()
     local bottom=childHeight+spacing.gap*scale
     T.thenDivider:ClearAllPoints();T.thenDivider:SetPoint("TOPLEFT",0,-bottom);T.thenDivider:SetSize(inner,1)
     T.thenText:ClearAllPoints();T.thenText:SetPoint("TOPLEFT",0,-bottom-spacing.gap*scale);T.thenText:SetWidth(inner)
-    T.thenText:SetShown(not collapsed and T.thenText:GetText()~="");T.thenButton:SetShown(T.thenText:IsShown())
+    T.thenText:SetShown(not collapsed and (T.thenText:GetText() or "")~="");T.thenButton:SetShown(T.thenText:IsShown())
     T.thenDivider:SetShown(T.thenText:IsShown())
     if T.thenText:IsShown() then
         bottom=bottom+spacing.gap*scale+math.max(spacing.hit*scale,T.thenText:GetStringHeight()+spacing.tight*scale)
         bottom=bottom+layoutRow(T.thenButton,bottom)+spacing.gap*scale
     end
     T.queueLabel:ClearAllPoints();T.queueLabel:SetPoint("TOPLEFT",0,-bottom);T.queueLabel:SetWidth(inner)
+    T.queueLabel:SetText(T.model and T.model.action and "后续行程" or "已接任务")
     T.queueLabel:SetShown(not collapsed and queueHeight>0)
     if T.queueLabel:IsShown() then bottom=bottom+24*scale end
     T.queuePanel:ClearAllPoints();T.queuePanel:SetPoint("TOPLEFT",0,-bottom)

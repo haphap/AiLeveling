@@ -522,7 +522,7 @@ test("同一NPC五项任务全部目标完成后才连续集中交付",function(
     B.char={};B.UI.Plan.preview=previous.taskChoices[2]
     assert(not table.concat(B.UI.Plan:Lines(),"\n"):find("任务 2",1,true))
     model=B.UI.TrackerModel(s,previous,{kind="turnin",questId=2},false)
-    eq(model.questId,nil);eq(#model.rows,4);eq(model.title,"正在更新行程")
+    eq(model.questId,nil);eq(#model.rows,4);eq(model.title,"正在安排行程")
     local renewed={revision=s.revision,taskChoices={{id="task:2",questId=2,kind="task",status="accept",actions={{kind="accept",questId=2}}}}}
     model=B.UI.TrackerModel(s,renewed,nil,false);eq(model.unacceptedCount,1)
     result=plan(s,d,nil,B);eq(result.taskQueue.taskCount,4);eq(#result.taskQueue.steps,4)

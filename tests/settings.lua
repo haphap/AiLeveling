@@ -291,9 +291,15 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     event("QUEST_FINISHED");accept.requireCheck=true
     B.refreshAt=20;event("QUEST_DETAIL",true);update()
     eq(coroutine.status(assert(B.jobs["quest:dialog"])),"suspended");eq(#calls,0)
-    B.refreshAt=nil;B:Queue("plan",function() coroutine.yield();accept.requireCheck=false end)
-    update();eq(#calls,0);assert(B.jobs.plan)
+    local planningTime,resumes=0,0
+    debugprofilestop=function() return planningTime end
+    B.refreshAt=nil;B:Queue("plan",function()
+        for i=1,30 do resumes=resumes+1;planningTime=planningTime+0.1;eq(#calls,0);coroutine.yield() end
+        accept.requireCheck=false
+    end)
+    update();eq(#calls,0);assert(B.jobs.plan);assert(resumes>1 and resumes<30);assert(planningTime>=2 and planningTime<2.2)
     update();eq(calls[1],"accept:2");eq(B.jobs["quest:dialog"],nil);eq(B.jobs.plan,nil)
+    debugprofilestop=function() return 0 end
     event("QUEST_FINISHED");B.refreshAt=1;event("QUEST_DETAIL",true)
     event("QUEST_FINISHED",true);B.refreshAt=nil;update();eq(B.jobs["quest:dialog"],nil);eq(#calls,1)
     B.refreshAt=1;event("QUEST_DETAIL",true);id=99;B.refreshAt=nil

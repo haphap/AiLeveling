@@ -476,19 +476,22 @@ frame:SetScript("OnUpdate", function(_, elapsed)
         if A.Merchant then A.Merchant:SellJunk() end
     end
     local start = debugprofilestop()
-    -- One resume per job per frame; jobs yield after small batches.
+    -- Spend the existing frame budget on planning; a cheap yield need not cost a whole frame.
     for _, key in ipairs({"index", "plan", "quest:dialog", "service:bind"}) do
         local job = A.jobs[key]
-        if job then
+        while job do
             local ok, err = coroutine.resume(job)
             if not ok then
                 A.jobs[key] = nil
                 A.error = "计算失败：" .. tostring(err)
                 A.dirty = true
                 geterrorhandler()(err)
-            elseif coroutine.status(job) == "dead" and A.jobs[key] == job then
-                A.jobs[key] = nil
+                break
+            elseif coroutine.status(job) == "dead" then
+                if A.jobs[key] == job then A.jobs[key] = nil end
+                break
             end
+            if (key~="index" and key~="plan") or A.jobs[key]~=job or debugprofilestop()-start>=2 then break end
         end
         if debugprofilestop() - start >= 2 then break end
     end

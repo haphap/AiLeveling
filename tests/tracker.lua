@@ -264,13 +264,25 @@ test("原生更新后清除旧目标和旧任务行且拒绝过期任务点击",
     B.state.quests[1].objectives={};B.UI:RenderTracker()
     eq(T.objectives[1].shown,false);eq(T.rows[1].shown,false);eq(T.queueScroll.shown,false)
     B.state.quests[1].objectives={{text="旧目标",finished=true}};B.action.objectiveIndex=1
-    B.UI:RenderTracker();eq(T.model.questId,nil);eq(B.UI.title.value,"正在更新行程")
-    eq(#T.model.rows,0);eq(B.UI.QuestStatus(B.state,1,B.plan),"已接取")
-    B.state.quests[1].ready=true;B.UI:RenderTracker();eq(#T.model.rows,0);eq(B.UI.QuestStatus(B.state,1,B.plan),"可交付")
+    B.UI:RenderTracker();eq(T.model.questId,nil);eq(B.UI.title.value,"正在安排行程")
+    eq(#T.model.rows,1);eq(B.UI.QuestStatus(B.state,1,B.plan),"已接取")
+    B.state.quests[1].ready=true;B.UI:RenderTracker();eq(#T.model.rows,1);eq(B.UI.QuestStatus(B.state,1,B.plan),"可交付")
     B.action.itemGain=2;B.action.targetId=500;B.UI:RenderTracker();eq(T.model.questId,1)
     B.action.itemGain=nil;B.action.kind="accept";B.UI:RenderTracker();eq(T.model.questId,nil)
     B.action.kind="turnin";B.UI:RenderTracker();eq(T.model.questId,1)
     B.state.quests[1].ready=false;B.UI:RenderTracker();eq(T.model.questId,nil)
+    -- A first plan can still be running with a full quest log. Native empty font strings return nil.
+    B.action=nil;B.plan=nil;B.jobs.plan=coroutine.create(function() coroutine.yield() end)
+    for id=1,30 do
+        B.state.quests[id]={title="已接任务 "..id,objectives={{text="收集物品",numFulfilled=2,numRequired=5}}}
+    end
+    for _,font in ipairs({T.career.text,T.area,T.location,T.thenText,T.footer}) do
+        font.GetText=function(self) if self.value~="" then return self.value end end
+    end
+    B.UI:RenderTracker()
+    eq(B.UI.title.value,"正在安排行程");eq(T.queueLabel.value,"已接任务");eq(#T.model.rows,30)
+    eq(T.queueScroll.shown,true);eq(T.rows[1].status,"已接取");eq(T.rows[1].objectives[1].count.value,"2/5")
+    eq(T.career.shown,false);eq(T.thenButton.shown,false);eq(T.location.shown,false);eq(T.footer.shown,false)
     B.finish()
 end)
 test("暂停飞行手动导航保持真实当前类型且不自动跳过任务",function()
