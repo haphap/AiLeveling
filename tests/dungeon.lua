@@ -102,9 +102,8 @@ return function(test,eq,F,plan)
         d.difficultyId=201;eq(B.Dungeon.Workflow(d,data.content,s),false)
         d.completionEncounters={2761};eq(B.Dungeon.Workflow(d,data.content,s),true)
         d.completionEncounters={999999};eq(B.Dungeon.Workflow(d,data.content,s),true)
-        d.completionEncounters={2910};s.clientBuild="70888"
-        eq(B.Dungeon.EncounterIdentity(2910,s),B.DungeonCatalog.encounters[2910]);eq(B.Dungeon.Workflow(d,data.content,s),false)
-        s.clientBuild="70862";s.clientVersion="other";eq(B.Dungeon.EncounterIdentity(2910,s),nil)
+        d.completionEncounters={2910};s.clientVersion,s.clientBuild="other","next"
+        eq(B.Dungeon.EncounterIdentity(2910),B.DungeonCatalog.encounters[2910]);eq(B.Dungeon.Workflow(d,data.content,s),false)
     end)
     test("真实首领身份冲突不记录击败也不进入校准，缺名字使用目录中文",function()
         local B,d,s=context();local native=GetInstanceInfo
@@ -431,23 +430,19 @@ return function(test,eq,F,plan)
         s.skipped[2]=true;ui:Refresh();eq(ui.taskGo.enabled,false)
         s.skipped[1]=true;ui:Refresh();eq(ui.taskGo.enabled,false)
         ui.taskGo.click();eq(ui.message,"已暂缓")
-        s.clientVersion="different";ui:Refresh();eq(ui.selector.enabled,false);eq(ui.taskGo.enabled,false)
+        B.DungeonCatalog=nil;ui:Refresh();eq(ui.selector.enabled,false);eq(ui.taskGo.enabled,false)
         CreateFrame,MenuUtil=create,menuUtil
     end)
-    test("副本目录兼容同版本补丁且已验证行程覆盖同实例参考",function()
+    test("副本目录不因版本变化隐藏且自有行程覆盖同实例参考",function()
         local B,d,s,data=context()
         B.DungeonCatalog={version="1.60.1",build="70862",entries={ref={instanceId=42},other={instanceId=99}}}
-        eq(B.Dungeon.Catalog(s,data.content).ref,nil)
-        s.clientVersion,s.clientBuild="1.60.1",70862
         local entries=B.Dungeon.Catalog(s,data.content)
         eq(entries[1],d);eq(entries.ref,nil);assert(entries.other)
-        s.clientBuild="70888";entries=B.Dungeon.Catalog(s,data.content)
-        eq(entries[1],d);eq(entries.ref,nil);assert(entries.other)
+        s.clientVersion,s.clientBuild="other","next"
         assert(loadfile("Data/Dungeons.lua"))("AiLeveling",B)
         entries=B.Dungeon.Catalog(s,{dungeons={}})
         local count=0;for _ in pairs(entries) do count=count+1 end
         eq(count,39);eq(entries["reference:36"].title,"死亡矿井")
-        s.clientVersion="other";eq(B.Dungeon.Catalog(s,data.content)["reference:36"],nil)
     end)
     test("副本任务区分已接可交付前置资格和阵营并按收件人排序",function()
         local quests={}
@@ -535,14 +530,13 @@ return function(test,eq,F,plan)
         s.instanceEntryError="进入受限";p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonBlocked")
         eq(p.fallback.position,nil);eq(p.travelActions,nil)
     end)
-    test("无地图区域归属保持版本和唯一性门控并让实际坐标优先",function()
+    test("无地图区域归属必须唯一且实际坐标优先",function()
         local B,d,s,data,point=approachFixture();data.maps[100]=nil
         local action={kind="objective",questId=1,areaId=100}
         eq(B.Dungeon.TaskApproach(action,s,data).kind,"dungeonEnter")
         action.position={map=1,x=0.4,y=0};eq(B.Dungeon.TaskApproach(action,s,data),action)
         action.position=nil;s.clientBuild="70888";eq(B.Dungeon.TaskApproach(action,s,data).kind,"dungeonEnter")
-        s.clientVersion="other";eq(B.Dungeon.TaskApproach(action,s,data),action)
-        s.clientVersion="1.60.1";B.DungeonCatalog.entries.other={instanceId=99,areas={100}}
+        B.DungeonCatalog.entries.other={instanceId=99,areas={100}}
         eq(B.Dungeon.TaskApproach(action,s,data),action);B.DungeonCatalog.entries.other=nil
         d.entrances={};local guide=B.Dungeon.TaskApproach(action,s,data)
         eq(guide.position,nil);assert(guide.text:find("测试副本入口",1,true))
@@ -575,15 +569,14 @@ return function(test,eq,F,plan)
         p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonEnter")
         eq(s.completed[1],nil);eq(s.quests[1].ready,nil)
     end)
-    test("入口依据实际目标地图与楼层，野外目标和版本不符不改写",function()
+    test("入口依据实际目标地图与楼层且不改写野外目标",function()
         local B,d,s,data,point=approachFixture()
         local a={kind="objective",questId=1,position=point}
         local oldMap=C_Map
         C_Map={GetMapInfo=function(id) return {parentMapID=id==8 and 7 or 0} end}
         point.map=8;eq(B.Dungeon.TaskApproach(a,s,data).kind,"dungeonEnter")
         point.map=1;eq(B.Dungeon.TaskApproach(a,s,data),a)
-        point.map=7;s.clientVersion="other";eq(B.Dungeon.TaskApproach(a,s,data),a)
-        s.clientVersion="1.60.1";d.entrances={};eq(B.Dungeon.TaskApproach(a,s,data),a)
+        point.map=7;d.entrances={};eq(B.Dungeon.TaskApproach(a,s,data),a)
         d.entrances={{999,20,30}};eq(B.Dungeon.TaskApproach(a,s,data),a)
         d.entrances={{200,20,0}};B.DungeonCatalog.entries.other={instanceId=99,areas={100}}
         eq(B.Dungeon.TaskApproach(a,s,data),a)
@@ -632,9 +625,7 @@ return function(test,eq,F,plan)
         eq(B.Dungeon.TaskApproach(a,s,data).kind,"dungeonLeave")
         a.kind="objective";assert(B.Dungeon.TaskApproach(a,s,data).text:find("继续任务",1,true))
         C_Map.GetMapInfo=function() return {mapType=4} end;eq(B.Dungeon.TaskApproach(a,s,data),a)
-        C_Map.GetMapInfo=function() return nil end;eq(B.Dungeon.TaskApproach(a,s,data),a)
-        C_Map.GetMapInfo=function() return {mapType=3} end;s.clientVersion="other"
-        eq(B.Dungeon.TaskApproach(a,s,data),a);C_Map=oldMap
+        C_Map.GetMapInfo=function() return nil end;eq(B.Dungeon.TaskApproach(a,s,data),a);C_Map=oldMap
     end)
 
 end

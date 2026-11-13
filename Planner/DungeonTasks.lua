@@ -1,12 +1,6 @@
 local _,A=...
 local D=A.Dungeon
 
-local function catalogFor(state)
-    local catalog=A.DungeonCatalog
-    -- The recorded build identifies the source snapshot, not a per-hotfix availability switch.
-    if catalog and state.clientVersion==catalog.version then return catalog end
-end
-
 local function pvpFor(state)
     local catalog=A.PvPCatalog
     if catalog and state.clientVersion==catalog.version and tostring(state.clientBuild)==catalog.build then return catalog.entries end
@@ -32,7 +26,7 @@ end
 
 -- Resolve the actual map or an unambiguous source area, never the quest category.
 function D.TaskInstance(position,state,data,areaId)
-    local catalog=catalogFor(state)
+    local catalog=A.DungeonCatalog
     if not catalog or not data.maps then return end
     local hbd=A.Navigation and A.Navigation.hbd
     if position and hbd and hbd.GetWorldCoordinatesFromZone then
@@ -80,7 +74,7 @@ end
 -- Finish objectives in the current instance/outdoors before crossing its boundary.
 function D.OrderTaskObjectives(stages,state,data)
     local first=stages[1]
-    if not first or first.kind~="objective" or not catalogFor(state) then return end
+    if not first or first.kind~="objective" or not A.DungeonCatalog then return end
     -- An unassociated native waypoint may describe a prerequisite to the logged objectives.
     if first.position and first.position.label=="客户端任务目标" and not first.objectiveIndex then return end
     local nearby,remaining={},{}
@@ -116,7 +110,7 @@ function D.TaskApproach(action,state,data)
         return {kind="pvpLeave",questId=action.questId,title=action.title,
             text="离开「"..currentPvP.title.."」后，"..(action.kind=="turnin" and "前往任务交付者交付任务。" or "继续野外任务。")}
     end
-    if not catalogFor(state) then return action end
+    if not A.DungeonCatalog then return action end
     local instance=D.TaskInstance(action.position,state,data,action.areaId)
     local info=action.position and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(action.position.map)
     if not instance and state.inInstance and info and (info.mapType==2 or info.mapType==3) then
@@ -199,7 +193,7 @@ end
 function D.Catalog(state,content)
     local entries,instances={},{}
     for id,d in pairs(content.dungeons) do entries[id]=d;instances[d.instanceId]=true end
-    local catalog=catalogFor(state)
+    local catalog=A.DungeonCatalog
     if catalog then
         for id,d in pairs(catalog.entries) do if not instances[d.instanceId] then entries[id]=d end end
     end

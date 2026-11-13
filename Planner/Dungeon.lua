@@ -24,10 +24,9 @@ function D.ValidSession(s)
     return true
 end
 
-function D.EncounterIdentity(id,state)
+function D.EncounterIdentity(id)
     local catalog=A.DungeonCatalog
-    if not catalog or state and state.clientVersion~=catalog.version then return end
-    return catalog.encounters and catalog.encounters[id]
+    return catalog and catalog.encounters and catalog.encounters[id]
 end
 
 local function encounterMatches(record,instanceId,difficulty)
@@ -59,7 +58,7 @@ function D.Workflow(d, content, state)
                 seen[id]=true
                 count=count+1
                 if field=="completionEncounters" then
-                    local record=D.EncounterIdentity(id,state)
+                    local record=D.EncounterIdentity(id)
                     if record and not encounterMatches(record,d.instanceId,d.difficultyId) then
                         return false,"完成首领与副本或难度不符："..record.title
                     end
@@ -114,7 +113,7 @@ function D:EncounterEvent(event,id,name,difficulty,groupSize,success)
         if d.instanceId==instanceId then known=true;break end
     end
     if not known then return end
-    local record=D.EncounterIdentity(id,A.state)
+    local record=D.EncounterIdentity(id)
     if record and not encounterMatches(record,instanceId,difficulty) then return end
     if event=="ENCOUNTER_START" then
         self.encounterPull={id=id,instanceId=instanceId,difficulty=difficulty,sample=self.runSample}

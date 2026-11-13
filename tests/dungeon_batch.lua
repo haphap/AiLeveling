@@ -375,7 +375,6 @@ run("整组中单项前置失效不阻止其他任务，全部受阻显示原因
     local p=plan(s,data,B.settings,B);eq(p.fallback.questId,2)
     s.completed[2]=true;B.State:Refresh();p=plan(s,data,B.settings,B)
     eq(p.fallback.kind,"selectionBlocked");assert(p.fallback.text:find("前置未交付",1,true));eq(s.completed[1],nil)
-    s.clientVersion="other";p=plan(s,data,B.settings,B);eq(p.fallback.kind,"selectionBlocked");assert(B.char.taskBatch)
 end)
 run("整组选择不会保护远处低收益任务或拖住同NPC交付",function()
     local B,s,data,q,d=fixture();q[1].preQuestGroup=nil
@@ -555,7 +554,7 @@ run("缺本内坐标的已接任务可单独继续并完整加入同NPC交付组
     p=plan(s,data,B.settings,B);eq(p.fallback.kind,"turnin");eq(p.fallback.questId,4)
     s.quests[4]=nil;B.char.turnIns[4]=1;B.State:Refresh();eq(s.taskBatch,nil)
 end)
-run("缺图目的地必须属于当前版本副本，资格受阻和真正未知仍不加入任务组",function()
+run("缺图目的地必须能对应副本，资格受阻和真正未知仍不加入任务组",function()
     local B,s,data,q,d=fixture();q[1].preQuestGroup=nil;d.quests.Alliance={[1]="inside"}
     data.Target=function() end;data.UnmappedTargetArea=function() return 100 end
     local rows=B.Dungeon.Tasks(d,s,data);eq(rows[1].areaId,100)
@@ -563,9 +562,7 @@ run("缺图目的地必须属于当前版本副本，资格受阻和真正未知
     data.UnmappedTargetArea=function() return 999 end
     rows=B.Dungeon.Tasks(d,s,data);eq(rows[1].areaId,nil);eq(B.Dungeon:ContinueTask(d,1),false)
     eq(B.Dungeon:StartTaskBatch("ref"),false);eq(B.Dungeon.TaskRewards(rows).count,0)
-    data.UnmappedTargetArea=function() return 100 end;s.clientVersion="other"
-    rows=B.Dungeon.Tasks(d,s,data);eq(rows[1].areaId,nil);eq(B.Dungeon.TaskRewards(rows).count,0)
-    s.clientVersion="1.60.1";q[1].requiredLevel=40
+    data.UnmappedTargetArea=function() return 100 end;q[1].requiredLevel=40
     rows=B.Dungeon.Tasks(d,s,data);eq(rows[1].areaId,nil);eq(B.Dungeon:ContinueTask(d,1),false)
 end)
 
@@ -644,8 +641,7 @@ run("混合目标按实际副本区分，保留目标身份顺序和未关联的
     eq(B.Dungeon.OrderTaskObjectives(stages,s,data),b);eq(stages[2],a);eq(stages[3],c)
     local waypoint={kind="objective",position={map=1,x=0.2,y=0.2,label="客户端任务目标"}}
     stages={waypoint,a,b,finish};eq(B.Dungeon.OrderTaskObjectives(stages,s,data),nil);eq(stages[1],waypoint)
-    s.clientVersion="other";stages={a,b,finish};eq(B.Dungeon.OrderTaskObjectives(stages,s,data),nil);eq(stages[1],a)
-    s.clientVersion="1.60.1";stages={finish,a};eq(B.Dungeon.OrderTaskObjectives(stages,s,data),nil)
+    stages={finish,a};eq(B.Dungeon.OrderTaskObjectives(stages,s,data),nil)
 end)
 
 end
