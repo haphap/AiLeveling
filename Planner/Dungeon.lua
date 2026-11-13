@@ -26,7 +26,7 @@ end
 
 function D.EncounterIdentity(id,state)
     local catalog=A.DungeonCatalog
-    if not catalog or state and (state.clientVersion~=catalog.version or tostring(state.clientBuild)~=catalog.build) then return end
+    if not catalog or state and state.clientVersion~=catalog.version then return end
     return catalog.encounters and catalog.encounters[id]
 end
 

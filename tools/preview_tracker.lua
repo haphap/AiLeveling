@@ -177,7 +177,7 @@ end
 if dungeonPreview then
     A.ready=true;A.Content={dungeons={}}
     if arg[2]=="entry-blocked" then A.state.instanceEntryError="客户端提示近期进入实例次数过多，待限制解除后重新检查" end
-    A.state.clientVersion,A.state.clientBuild,A.state.faction="1.60.1","70862","Alliance"
+    A.state.clientVersion,A.state.clientBuild,A.state.faction="1.60.1","70888","Alliance"
     A.state.level=20;A.state.raceMask=1;A.state.classMask=1
     A.state.completed={};A.state.skipped={};A.state.quests={[167]={ready=true},[166]={}}
     local quests={

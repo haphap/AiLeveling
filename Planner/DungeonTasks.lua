@@ -3,7 +3,8 @@ local D=A.Dungeon
 
 local function catalogFor(state)
     local catalog=A.DungeonCatalog
-    if catalog and state.clientVersion==catalog.version and tostring(state.clientBuild)==catalog.build then return catalog end
+    -- The recorded build identifies the source snapshot, not a per-hotfix availability switch.
+    if catalog and state.clientVersion==catalog.version then return catalog end
 end
 
 local function pvpFor(state)
