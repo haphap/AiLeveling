@@ -362,7 +362,16 @@ function Q.Pickup(order,choices,state,navigation,data,queue)
     if not data or not navigation or not navigation.Distance or #order==0 or order[1].unlockPriority or state.locked or
         state.taskBatch or state.gearTarget or state.inInstance or state.dungeon and state.dungeon.phase~="complete" then return end
     local base=queue or Q.Evaluate(order,state,navigation,data)
-    local best,bestQueue=nil,base
+    local best,bestQueue
+    local routed={}
+    for _,step in ipairs(base and base.steps or {}) do routed[step.choice.questId]=true end
+    if not base then
+        for _,choice in ipairs(order) do
+            local timing=choice.stagesComplete and A.TaskGuide.Timing(state.position,choice,state,navigation)
+            if timing and timing.seconds~=nil then routed[choice.questId]=true end
+        end
+    end
+    local cache={}
     local candidates={}
     for _,choice in ipairs(choices) do
         if choice.questId==state.currentTask then table.insert(candidates,1,choice)
@@ -372,15 +381,22 @@ function Q.Pickup(order,choices,state,navigation,data,queue)
         if choice.status=="accept" and not choice.lowValue and not choice.acceptBlocked and not choice.entryBlocked and
             not choice.requireCheck and choice.stagesComplete and (choice.remainingXP==nil or choice.remainingXP>0) then
             local trial={copy(choice)}
-            for _,existing in ipairs(order) do trial[#trial+1]=copy(existing) end
-            local proposed,path=Q.Solve(trial,state,navigation,data)
-            if path and (not base or (path.remaining or 0)<=(base.remaining or 0)) and better(path,bestQueue,state) then
-                best,bestQueue=proposed,path
+            for _,existing in ipairs(order) do
+                if routed[existing.questId] then trial[#trial+1]=copy(existing) end
+            end
+            -- Compare every pickup once; optimize only the selected addition to the trip.
+            local path=Q.Evaluate(trial,state,navigation,data,cache)
+            if better(path,bestQueue,state) then
+                best,bestQueue=choice,path
             end
             checkpoint()
         end
     end
     if best then
+        local trial={copy(best)}
+        for _,existing in ipairs(order) do trial[#trial+1]=copy(existing) end
+        best,bestQueue=Q.Solve(trial,state,navigation,data)
+        if not bestQueue or base and ((bestQueue.remaining or 0)>(base.remaining or 0) or not better(bestQueue,base,state)) then return end
         local action=best[1].executionAction or best[1].stages[1]
         if action.kind=="accept" then
             best[1].executionAction=copy(action)

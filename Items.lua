@@ -108,6 +108,15 @@ function I:Read(id,link)
     return item
 end
 
+function I.Key(item)
+    local parts={"item:"..tostring(item.link or item.id),"pending:"..tostring(item.pending),
+        "usable:"..tostring(item.usable),"effectsPending:"..tostring(item.effectsPending)}
+    for key,value in pairs(item.stats or {}) do parts[#parts+1]=key.."="..tostring(value) end
+    for _,effect in ipairs(item.effects or {}) do parts[#parts+1]=effect.kind..":"..effect.text end
+    table.sort(parts)
+    return table.concat(parts,"\031")
+end
+
 function I:Snapshot(state)
     self.tooltipData,self.spellData={},{}
     state.items,state.bagEquipment={},{}

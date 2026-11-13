@@ -134,6 +134,44 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     history=A.state;A.char.turnIns[88]=2;A.State:Refresh();eq(A.state.revision,history.revision+1)
     C_SkillInfo,A.WeaponSkills=oldSkills,oldWeaponSkills
     A.clientVersion,A.build,A.interface=oldVersion,oldBuild,oldInterface
+    local saved={C_Item=C_Item,C_PlayerInfo=C_PlayerInfo,C_TooltipInfo=C_TooltipInfo,Enum=Enum,
+        GetInventoryItemID=GetInventoryItemID,GetInventoryItemLink=GetInventoryItemLink,
+        CreateFrame=CreateFrame,SlashCmdList=SlashCmdList,AiLeveling=AiLeveling}
+    local strength,effect=5,"装备：提高力量。"
+    GetInventoryItemID=function(_,slot) if slot==5 then return 999 end end
+    GetInventoryItemLink=function() return "item:999" end
+    C_Item={GetItemInfo=function() return "装备","item:999",2,20,10,nil,nil,1,"INVTYPE_CHEST" end,
+        GetItemStats=function() return {ITEM_MOD_STRENGTH_SHORT=strength} end}
+    C_PlayerInfo={CanUseItem=function() return true end}
+    Enum={TooltipDataLineType={ItemSpellTriggerOnEquip=45}}
+    C_TooltipInfo={GetHyperlink=function() return {dataInstanceID=55,lines={{type=45,leftText=effect}}} end}
+    local C,scripts={},{}
+    CreateFrame=function() return {RegisterEvent=function() end,SetScript=function(_,key,fn) scripts[key]=fn end} end
+    SlashCmdList={};assert(loadfile("Core.lua"))("AiLeveling",C)
+    C.ready,C.Items,C.State=true,A.Items,A.State
+    local replans,job,published=0,nil,nil
+    A.Replan=function()
+        replans=replans+1
+        local revision=A.state.revision
+        job=coroutine.create(function()
+            for _=1,3 do coroutine.yield() end
+            published=revision
+        end)
+    end
+    A.State:Refresh(true);local stable=A.state.revision
+    -- Repeated tooltip notifications must let the same planning job finish.
+    for _=1,8 do
+        scripts.OnEvent(nil,"TOOLTIP_DATA_UPDATE",55)
+        A.State:Refresh()
+        if coroutine.status(job)~="dead" then assert(coroutine.resume(job)) end
+    end
+    eq(replans,1);eq(published,stable);eq(A.state.revision,stable)
+    effect="装备：额外攻击。";scripts.OnEvent(nil,"TOOLTIP_DATA_UPDATE",55);A.State:Refresh()
+    eq(replans,2);eq(A.state.revision,stable+1)
+    strength=6;A.State:Refresh();eq(replans,3);eq(A.state.revision,stable+2)
+    A.State:Refresh();eq(replans,3)
+    for _,name in ipairs({"C_Item","C_PlayerInfo","C_TooltipInfo","Enum","GetInventoryItemID","GetInventoryItemLink","CreateFrame","SlashCmdList","AiLeveling"}) do _G[name]=saved[name] end
+    A.Replan=function() end
     A.Data=provider;A.Navigation=oldNavigation
 end)
 test("专业与声望资格直接按 ID 读取且支持多个已学专精",function()
@@ -230,7 +268,7 @@ test("原生难度变化事件已注册并触发状态重建",function()
     eq(received[1],"ENCOUNTER_END");eq(received[2],2732);eq(received[6],1)
     CreateFrame,SlashCmdList,C_AddOns=create,slash,addons
 end)
-test("只有本轮装备提示资料更新才触发重算且合并重复事件",function()
+test("本轮装备提示更新合并刷新请求且由实际内容决定重算",function()
     local create,slash,tooltip,spell=CreateFrame,SlashCmdList,C_TooltipInfo,C_Spell
     local scripts,events,C={},{},{}
     CreateFrame=function() return {RegisterEvent=function(_,name) events[name]=true end,
@@ -243,7 +281,7 @@ test("只有本轮装备提示资料更新才触发重算且合并重复事件",
     local refreshes=0;C.RequestRefresh=function() refreshes=refreshes+1 end
     scripts.OnEvent(nil,"TOOLTIP_DATA_UPDATE",99);eq(refreshes,0);eq(C.State.fingerprint,"before")
     scripts.OnEvent(nil,"TOOLTIP_DATA_UPDATE");eq(refreshes,0)
-    scripts.OnEvent(nil,"TOOLTIP_DATA_UPDATE",55);eq(refreshes,1);eq(C.State.fingerprint,nil)
+    scripts.OnEvent(nil,"TOOLTIP_DATA_UPDATE",55);eq(refreshes,1);eq(C.State.fingerprint,"before")
     scripts.OnEvent(nil,"TOOLTIP_DATA_UPDATE",55);eq(refreshes,1)
     eq(events.SPELL_TEXT_UPDATE,true)
     scripts.OnEvent(nil,"SPELL_TEXT_UPDATE",42);eq(refreshes,1)

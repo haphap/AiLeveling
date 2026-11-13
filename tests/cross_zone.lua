@@ -108,8 +108,11 @@ test("自动行程顺路接取合算任务并按原生进度继续整组交付",
         q[id]=F.Quest(id);q[id].taskFacts={level=20,xp={{1,c.remainingXP}}}
         candidates[#candidates+1]=c
     end
+    local solve,solves=B.TaskQueue.Solve,0
+    B.TaskQueue.Solve=function(...) solves=solves+1;return solve(...) end
     local picked=B.TaskQueue.Pickup({choice(p,1)},candidates,s,B.Navigation,d)
-    eq(picked[1].questId,5)
+    B.TaskQueue.Solve=solve
+    eq(picked[1].questId,5);eq(solves,1)
     q[2],q[3],q[4],q[5]=original2,original3,nil,nil
     third=true;s.currentTask=2;q[3].taskFacts.xp={{1,1050}}
     eq(plan(s,d,nil,B).fallback.questId,2)

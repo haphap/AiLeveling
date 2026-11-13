@@ -447,7 +447,6 @@ frame:SetScript("OnEvent", function(_, event, ...)
         local pending=A.Items and (event=="TOOLTIP_DATA_UPDATE" and A.Items.tooltipData or event=="SPELL_TEXT_UPDATE" and A.Items.spellData)
         if id and pending and pending[id] then
             pending[id]=nil
-            A.State.fingerprint=nil
             A:RequestRefresh()
         end
     elseif event == "GET_ITEM_INFO_RECEIVED" then

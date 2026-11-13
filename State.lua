@@ -295,7 +295,6 @@ function State:Refresh(force)
     if A.Selection then fingerprint[#fingerprint+1]=A.Selection:Snapshot(s) end
     if A.Chains then fingerprint[#fingerprint+1]=A.Chains:Snapshot(s) end
     if A.Dungeon.TaskBatchSnapshot then fingerprint[#fingerprint+1]=A.Dungeon:TaskBatchSnapshot(s) end
-    table.sort(fingerprint)
     self:SnapshotBags(s,fingerprint)
     for slot = 1, 19 do
         local id = GetInventoryItemID("player", slot)
@@ -311,10 +310,10 @@ function State:Refresh(force)
     fingerprint[#fingerprint+1]=A.Transport.Key(s)
     A.Gear:SyncTarget(s)
     for slot,item in pairs(s.equipment) do
-        fingerprint[#fingerprint+1]="e"..slot..":"..(item.link or item.id)..":"..tostring(item.stats~=nil)
+        fingerprint[#fingerprint+1]="e"..slot..":"..A.Items.Key(item)
     end
-    for id,item in pairs(s.items) do fingerprint[#fingerprint+1]="i"..id..":"..tostring(item.pending)..":"..tostring(item.usable) end
-    for _,item in ipairs(s.bagEquipment) do fingerprint[#fingerprint+1]="g"..item.instanceKey..":"..tostring(item.link)..":"..tostring(item.pending) end
+    for id,item in pairs(s.items) do fingerprint[#fingerprint+1]="i"..id..":"..A.Items.Key(item) end
+    for _,item in ipairs(s.bagEquipment) do fingerprint[#fingerprint+1]="g"..item.instanceKey..":"..A.Items.Key(item) end
     self:Position(s)
     if A.Services then fingerprint[#fingerprint+1]=A.Services:Snapshot(s) end
     for kind, sample in pairs(A.char.samples) do
@@ -336,6 +335,7 @@ function State:Refresh(force)
         tostring(A.settings.dungeons), tostring(s.locked), tostring(s.instanceId), tostring(s.instanceDifficultyId), tostring(s.dead),
         tostring(A.settings.waitMinutes),s.damageStyle,tostring(s.gearTarget),tostring(A.settings.gearPreference),
         tostring(s.runSpeed),tostring(s.swimSpeed)}, ":")
+    table.sort(fingerprint)
     local key = table.concat(fingerprint, "|")
     A.state = s
     A.Gear:ScanBagOffers(s)
