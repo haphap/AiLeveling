@@ -35,7 +35,6 @@ end
 
 function R:Hide()
     if self.overlay then self.overlay:Hide() end
-    if self.legend then self.legend:Hide() end
 end
 
 function R:Update(force)
@@ -49,8 +48,7 @@ function R:Update(force)
     if self.canvas~=canvas then
         self:Hide();self.canvas=canvas;self.lines={}
         self.overlay=CreateFrame("Frame",nil,canvas);self.overlay:SetAllPoints(canvas)
-        self.legend=CreateFrame("Frame",nil,WorldMapFrame);self.legend:SetSize(440,64);self.legend:SetPoint("TOPLEFT",18,-44)
-        self.legend.text=A.UI:Text(self.legend,12,"accent");self.legend.text:SetAllPoints();self.key=nil
+        self.key=nil
     end
     local key=table.concat({tostring(nav.actions),nav.index or 1,map,width,height,A.settings.accent or "teal",
         A.state.position and string.format("%s:%.4f:%.4f",A.state.position.map,A.state.position.x,A.state.position.y) or ""},":")
@@ -59,7 +57,7 @@ function R:Update(force)
         local info=C_Map.GetMapInfo(map)
         local kinds=Enum and Enum.UIMapType
         local overview=kinds and info and (info.mapType==kinds.World or info.mapType==kinds.Continent)
-        self.segments,self.missing=R.Segments(nav.actions or {},nav.index or 1,map,function(p,view)
+        self.segments=R.Segments(nav.actions or {},nav.index or 1,map,function(p,view)
             return R.Project(p,view,nav.hbd,overview)
         end,A.state.position)
         self.key,self.cursor=key,1
@@ -77,8 +75,5 @@ function R:Update(force)
         line:SetColorTexture(r,g,b,segment.current and 1 or 0.3);line:Show()
     end
     self.cursor=finish+1
-    local label=#self.segments>0 and "AiLeveling · 目的地直线参考，当前目标亮显" or "AiLeveling · 当前地图暂无目的地连线"
-    if self.missing>0 then label=label.."\n"..self.missing.." 项目标尚无坐标" end
-    if self.cursor<=#self.segments then label=label..string.format("\n正在绘制 %d/%d 段",finish,#self.segments) end
-    self.legend.text:SetText(label);self.overlay:Show();self.legend:Show()
+    self.overlay:Show()
 end

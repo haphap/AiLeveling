@@ -27,7 +27,6 @@ local function widget()
     local w={shown=true}
     w.SetSize=function(self,x,y) self.width,self.height=x,y end;w.GetSize=function(self) return self.width,self.height end
     w.SetAllPoints=function() end;w.SetPoint=function() end;w.ClearAllPoints=function() end
-    w.SetText=function(self,value) self.value=value end
     w.Show=function(self) self.shown=true end;w.Hide=function(self) self.shown=false end;w.IsShown=function(self) return self.shown end
     w.SetStartPoint=function(self,anchor,parent,x,y) self.start={x,y} end
     w.SetEndPoint=function(self,anchor,parent,x,y) self.finish={x,y} end
@@ -42,11 +41,10 @@ test("原生地图绘制目的地直线且关闭和换图清除旧连线",functi
     local canvas=widget();canvas:SetSize(1000,500)
     local map=1;WorldMapFrame=widget();WorldMapFrame.GetCanvas=function() return canvas end;WorldMapFrame.GetMapID=function() return map end
     Enum={UIMapType={World=1,Continent=2,Zone=3}};C_Map={GetMapInfo=function() return {mapType=3} end}
-    B.UI.Text=function() return widget() end;B.UI.Accent=function() return 0.2,0.8,0.7 end
+    B.UI.Accent=function() return 0.2,0.8,0.7 end
     B.Navigation.actions={{kind="objective",position=point(1,0)}}
     B.Routes:Update();eq(#B.Routes.lines,1)
     eq(B.Routes.lines[1].start[1],0);eq(B.Routes.lines[1].finish[1],1000)
-    assert(B.Routes.legend.text.value:find("直线参考",1,true))
     B.settings.routes=false;B.Routes:Update();eq(B.Routes.overlay.shown,false)
     B.settings.routes=true;map=2;B.Routes:Update();eq(#B.Routes.segments,0);eq(B.Routes.lines[1].shown,false)
     for key,value in pairs(saved) do _G[key]=value end
