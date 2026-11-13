@@ -558,21 +558,20 @@ test("行动提示音首次静默重复去重并过滤战斗与设置更新",fun
     B.action.kind="objective";B.QuestAssist:Update(true);eq(B.sounds,1)
     B.finish()
 end)
-test("跟随队长按真实队伍生成点击入口且战斗后同步并保留任务",function()
+test("跟随队长快捷键按真实队伍更新且战斗后同步并保留任务",function()
     local B=setup();local Q=B.QuestAssist
     local grouped,raid,leader,connected,name,realm=true,false,"party2",true,"队长","异乡"
     IsInGroup=function() return grouped end;IsInRaid=function() return raid end
     UnitIsGroupLeader=function(unit) return unit==leader end;UnitIsConnected=function() return connected end
     UnitName=function() return name,realm end
-    FollowUnit=function() error("跟随应由玩家点击执行") end
+    FollowUnit=function() error("跟随应由玩家按键执行") end
     B.action={kind="manual"};B.char.locked=1;Q:Update()
     eq(Q.followButton.type1,"macro");eq(Q.followButton.macrotext1,"/follow 队长-异乡")
-    eq(Q.followButton.shown,true);eq(Q.followButton.point[2],Q.info)
+    eq(Q.followButton.shown,true)
     leader,name,realm="party3","新队长",nil
     B.frame.scripts.OnEvent(nil,"PARTY_LEADER_CHANGED");assert(B.refreshAt)
     B.combat(true);local writes=Q.followButton.attributeWrites;Q:Update()
     eq(Q.followButton.attributeWrites,writes);eq(Q.followButton.macrotext1,"/follow 队长-异乡")
-    assert(Q.followButton.text.value:find("待更新",1,true))
     B.combat(false);B.frame.scripts.OnEvent(nil,"PLAYER_REGEN_ENABLED")
     eq(Q.followButton.macrotext1,"/follow 新队长")
     leader="player";Q:Update();eq(Q.followButton.shown,false);eq(Q.followButton.macrotext1,nil)

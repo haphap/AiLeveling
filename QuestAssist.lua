@@ -140,19 +140,10 @@ function Q:CycleTarget(delta)
 end
 
 function Q:ApplyFollow()
-    if not self.followButton then return end
+    if not self.followButton or InCombatLockdown() then return end
     local wanted=self.followWanted
-    if InCombatLockdown() then
-        self.followQueued=(self.followActive and self.followActive.fullName)~=(wanted and wanted.fullName)
-    else
-        self.followQueued=nil;self.followActive=wanted
-        self.followButton:SetAttribute("macrotext1",wanted and ("/follow "..wanted.fullName) or nil)
-        self.followButton:ClearAllPoints()
-        self.followButton:SetPoint("TOP",self.info,"BOTTOM",0,-8)
-        self.followButton:SetShown(wanted~=nil);self.followButton:SetScale(A.settings.scale or 1)
-    end
-    local active=self.followActive
-    self.followButton.text:SetText(active and ("跟随 "..active.name..(self.followQueued and " · 待更新" or "")) or "")
+    self.followButton:SetAttribute("macrotext1",wanted and ("/follow "..wanted.fullName) or nil)
+    self.followButton:SetShown(wanted~=nil)
 end
 
 function Q.DialogChoice(id,kind)
@@ -376,20 +367,12 @@ function Q:Create()
     end)
     target:SetScript("OnLeave",function() GameTooltip:Hide() end)
     target:Hide()
-    local follow=CreateFrame("Button","AiLevelingFollowLeader",UIParent,"SecureActionButtonTemplate,BackdropTemplate")
+    local follow=CreateFrame("Button","AiLevelingFollowLeader",UIParent,"SecureActionButtonTemplate")
     self.followButton=follow
-    follow:SetSize(340,32);follow:SetPoint("TOP",self.info,"BOTTOM",0,-8)
-    follow:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1})
-    follow:SetBackdropColor(0.035,0.05,0.065,0.96);follow:SetBackdropBorderColor(A.UI:Accent())
+    -- Keyboard binding only: no floating button or mouse hit area.
+    follow:SetSize(1,1);follow:SetPoint("TOPLEFT",UIParent,"TOPLEFT")
     follow:RegisterForClicks("AnyUp","AnyDown");follow:SetAttribute("type1","macro")
-    follow.text=A.UI:Text(follow,13);follow.text:SetPoint("CENTER");follow.text:SetWidth(318);follow.text:SetMaxLines(1)
-    follow:SetScript("OnEnter",function(button)
-        if self.followActive then
-            GameTooltip:SetOwner(button,"ANCHOR_RIGHT");GameTooltip:SetText("跟随 "..self.followActive.fullName)
-            GameTooltip:AddLine(self.followQueued and "战斗结束后更新此按钮。" or "点击或使用快捷键跟随队长。",1,1,1,true);GameTooltip:Show()
-        end
-    end)
-    follow:SetScript("OnLeave",function() GameTooltip:Hide() end);follow:Hide()
+    follow:EnableMouse(false);follow:Hide()
     for i = 1, 4 do
         local button = CreateFrame("Button", "AiLevelingItem" .. i, f, "SecureActionButtonTemplate")
         button:SetSize(38, 38)
