@@ -220,6 +220,47 @@ local function deliveryAdvice(state,plan,action,choices,byQuest)
     return advice,summary
 end
 
+local function alongTasks(state,plan,action,paused,byQuest)
+    local quests=state.quests or {}
+    byQuest=byQuest or {}
+    -- Nearby work is optional: compare the extra straight-line walk without changing navigation.
+    local along={}
+    local navigation=A.Navigation
+    local target=action and (navigation and navigation.Target and navigation.Target(action) or action.position)
+    local direct=not paused and not A.error and action and action.questId and
+        (action.kind=="accept" or action.kind=="objective" or action.kind=="turnin") and navigation and navigation.Distance and
+        navigation:Distance(state.position,target)
+    local speed=state.runSpeed
+    if direct and speed and speed>0 then
+        for _,choice in ipairs(plan.taskChoices or {}) do
+            local id=choice.questId
+            local q=quests[id]
+            if id~=action.questId and not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] and
+                not choice.lowValue and not choice.acceptBlocked and not choice.entryBlocked and not choice.requireCheck then
+                local kind=not q and "accept" or q.ready and not choice.itemShortage and "turnin" or "objective"
+                local step=choice.executionAction or (choice.actions or {})[1]
+                for _,stage in ipairs(choice.stages or {}) do
+                    local objective=q and stage.objectiveIndex and (q.objectives or {})[stage.objectiveIndex]
+                    if stage.kind==kind and (not (objective and objective.finished) or stage.itemGain and stage.itemGain>0) then step=stage;break end
+                end
+                local group=byQuest[id]
+                local waiting=kind=="turnin" and group and not group.splitDelivery and group.ready<#group.choices
+                local objective=q and step and step.objectiveIndex and (q.objectives or {})[step.objectiveIndex]
+                if step and step.kind==kind and step.position and not waiting and
+                    (not (objective and objective.finished) or step.itemGain and step.itemGain>0) then
+                    local approach=navigation:Distance(state.position,step.position)
+                    local onward=navigation:Distance(step.position,target)
+                    if approach and onward and approach<=math.max(direct,180) and onward<=math.max(direct,180) and
+                        (kind~="objective" or approach<=180) and math.max(0,approach+onward-direct)/speed<=20 then
+                        along[id]={action=step,distance=approach}
+                    end
+                end
+            end
+        end
+    end
+    return along
+end
+
 function UI.TrackerModel(state,plan,action,paused)
     state,plan=state or {},plan or {}
     local quests=state.quests or {}
@@ -360,41 +401,10 @@ function UI.TrackerModel(state,plan,action,paused)
             if step.kind~="move" then add(step.questId,step) end
         end
     end
-    -- Nearby work is optional: compare the extra straight-line walk without changing navigation.
-    local along={}
-    local navigation=A.Navigation
-    local target=action and (navigation and navigation.Target and navigation.Target(action) or action.position)
-    local direct=not paused and not A.error and action and action.questId and
-        (action.kind=="accept" or action.kind=="objective" or action.kind=="turnin") and navigation and navigation.Distance and
-        navigation:Distance(state.position,target)
-    local speed=state.runSpeed
-    if direct and speed and speed>0 then
-        for _,choice in ipairs(plan.taskChoices or {}) do
-            local id=choice.questId
-            local q=quests[id]
-            if id~=model.questId and not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] and
-                not choice.lowValue and not choice.acceptBlocked and not choice.entryBlocked and not choice.requireCheck then
-                local kind=not q and "accept" or q.ready and not choice.itemShortage and "turnin" or "objective"
-                local step=choice.executionAction or (choice.actions or {})[1]
-                for _,stage in ipairs(choice.stages or {}) do
-                    local objective=q and stage.objectiveIndex and (q.objectives or {})[stage.objectiveIndex]
-                    if stage.kind==kind and (not (objective and objective.finished) or stage.itemGain and stage.itemGain>0) then step=stage;break end
-                end
-                local group=byQuest[id]
-                local waiting=kind=="turnin" and group and not group.splitDelivery and group.ready<#group.choices
-                local objective=q and step and step.objectiveIndex and (q.objectives or {})[step.objectiveIndex]
-                if step and step.kind==kind and step.position and not waiting and
-                    (not (objective and objective.finished) or step.itemGain and step.itemGain>0) then
-                    local approach=navigation:Distance(state.position,step.position)
-                    local onward=navigation:Distance(step.position,target)
-                    if approach and onward and approach<=math.max(direct,180) and onward<=math.max(direct,180) and
-                        (kind~="objective" or approach<=180) and math.max(0,approach+onward-direct)/speed<=20 then
-                        along[id]={action=step,distance=approach}
-                        add(id,step)
-                    end
-                end
-            end
-        end
+    local along=alongTasks(state,plan,action,paused,byQuest)
+    for _,choice in ipairs(plan.taskChoices or {}) do
+        local side=along[choice.questId]
+        if side then add(choice.questId,side.action) end
     end
     for _,choice in ipairs(plan.taskOrder or plan.taskChoices or {}) do
         add(choice.questId,choice.executionAction or choice.actions[1])
@@ -657,6 +667,44 @@ function UI:CreateTracker()
     f:SetScript("OnLeave",function() GameTooltip:Hide() end)
     self:Rounded(f,spacing.radius);f:SetBackdropColor(unpack(palette.hud));f.material:Hide()
     local T=self.tracker
+    T.nearby=CreateFrame("Button",nil,f,"BackdropTemplate")
+    local notice=T.nearby
+    notice:SetPoint("TOP",UIParent,"TOP",0,-180);notice:SetClampedToScreen(true)
+    self:Rounded(notice,spacing.controlRadius);notice:SetBackdropColor(unpack(palette.hud));notice.material:Hide()
+    notice.mark=notice:CreateTexture(nil,"ARTWORK");notice.mark:SetColorTexture(unpack(palette.gold))
+    notice.icon=notice:CreateTexture(nil,"ARTWORK");notice.icon:SetVertexColor(unpack(palette.gold))
+    notice.heading=text(notice,"caption",palette.gold);notice.heading:SetText("顺便完成")
+    notice.body=text(notice,"body",palette.blue);notice.body:SetMaxLines(1)
+    notice.ignored={};notice:RegisterForClicks("LeftButtonUp","RightButtonUp")
+    notice:SetScript("OnEnter",function()
+        GameTooltip:SetOwner(notice,"ANCHOR_TOP");GameTooltip:SetText("顺便完成")
+        GameTooltip:AddLine(notice.title or "",1,1,1,true)
+        GameTooltip:AddLine("点击让箭头指向此处",unpack(palette.gold))
+        GameTooltip:AddLine("右键：在这附近忽略；再次忽略后，本地图内不再提示此目标。",palette.muted[1],palette.muted[2],palette.muted[3],true)
+        GameTooltip:Show()
+    end)
+    notice:SetScript("OnLeave",function() GameTooltip:Hide() end)
+    notice:SetScript("OnHide",function() GameTooltip:Hide() end)
+    notice:SetScript("OnClick",function(_,button)
+        local key=notice.key
+        self:UpdateNearby()
+        if not key or notice.key~=key then return end
+        local position=A.state.position
+        if button=="RightButton" then
+            local old=notice.ignored[key]
+            notice.ignored[key]={count=(old and old.count or 0)+1,position={map=position.map,x=position.x,y=position.y}}
+        else
+            local point=notice.action.position
+            A.Navigation.manual={map=point.map,x=point.x,y=point.y,title=notice.title}
+            A.Navigation:RefreshPins();A.dirty=true
+        end
+        GameTooltip:Hide();self:UpdateNearby()
+    end)
+    notice:Hide()
+    f:SetScript("OnUpdate",function(_,elapsed)
+        T.nearbyElapsed=(T.nearbyElapsed or 0)+elapsed
+        if T.nearbyElapsed>=1 then T.nearbyElapsed=0;self:UpdateNearby() end
+    end)
     T.header=f:CreateTexture(nil,"BACKGROUND");T.header:SetTexture(media.."hud-header.tga")
     T.header:SetPoint("TOPLEFT",4,-4);T.header:SetPoint("TOPRIGHT",-4,-4)
     T.headerLine=f:CreateTexture(nil,"ARTWORK");T.headerLine:SetColorTexture(unpack(palette.gold))
@@ -927,6 +975,50 @@ function UI:TrackerRow(index,parent)
     return row
 end
 
+function UI:UpdateNearby()
+    local notice=self.tracker and self.tracker.nearby
+    if not notice then return end
+    local state,plan,navigation=A.state,A.plan or {},A.Navigation
+    local position=state.position
+    local map=position and position.map
+    if notice.map~=map then notice.map=map;notice.ignored={} end
+    notice.key,notice.action=nil,nil
+    local best,goal,bestKey
+    if position and not A.char.paused and not state.dead and not state.onTaxi and not navigation.manual and not A.error then
+        local action=navigation:Current()
+        local journey=self.TrackerJourney(state,action)
+        action=journey and journey.goal or action
+        for id,side in pairs(alongTasks(state,plan,action,false)) do
+            local q=(state.quests or {})[id]
+            local objective=q and (q.objectives or {})[side.action.objectiveIndex]
+            if side.action.kind=="objective" and objective and not objective.finished and side.distance<=180 and
+                (not objective.numRequired or objective.numRequired<=0 or (objective.numFulfilled or 0)<objective.numRequired) then
+                local key=id..":"..side.action.objectiveIndex
+                local ignored=notice.ignored[key]
+                local away=ignored and navigation:Distance(position,ignored.position)
+                if (not ignored or ignored.count<2 and away and away>180) and
+                    (not best or side.distance<best.distance or side.distance==best.distance and key<bestKey) then
+                    best,goal,bestKey=side,objective,key
+                end
+            end
+        end
+    end
+    if not best then notice:Hide();return end
+    local title=(goal.text or "完成任务目标"):gsub("%s*%d+%s*/%s*%d+",""):gsub("：%s*$",""):gsub(":%s*$","")
+    local need,have=goal.numRequired,goal.numFulfilled or 0
+    if type(need)=="number" and need>0 then title=title.." · 还差 "..math.max(0,need-have) end
+    notice.key,notice.action,notice.title=bestKey,best.action,title
+    notice.body:SetText(title)
+    notice.icon:SetTexture(media.."hud-"..(goal.type=="item" and "collect" or "objective")..".tga")
+    local scale=A.settings.fontScale or 1
+    notice:SetSize(340*scale,52*scale)
+    notice.mark:ClearAllPoints();notice.mark:SetPoint("TOPLEFT",0,-4*scale);notice.mark:SetPoint("BOTTOMLEFT",0,4*scale);notice.mark:SetWidth(2*scale)
+    notice.icon:ClearAllPoints();notice.icon:SetPoint("LEFT",12*scale,0);notice.icon:SetSize(16*scale,16*scale)
+    notice.heading:ClearAllPoints();notice.heading:SetPoint("TOPLEFT",36*scale,-7*scale)
+    notice.body:ClearAllPoints();notice.body:SetPoint("TOPLEFT",36*scale,-26*scale);notice.body:SetWidth(292*scale)
+    notice:Show()
+end
+
 function UI:RenderTracker()
     local T=self.tracker
     if not T then return end
@@ -934,6 +1026,7 @@ function UI:RenderTracker()
     local action=A.Navigation:Current()
     local model=UI.TrackerModel(state,plan,action,A.char.paused)
     T.model,T.action=model,action
+    self:UpdateNearby()
     local reminder=self.ClassReminders(state,plan)
     local notice={}
     if (#reminder.spells>0 or #reminder.quests>0) and A.char.classReminderLevel~=state.level then

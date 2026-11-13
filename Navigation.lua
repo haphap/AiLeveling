@@ -103,7 +103,7 @@ function N:Current()
     if flight then return flight end
     local hearth=A.Hearth and A.Hearth:Gate()
     if hearth then return hearth end
-    if self.manual then return {kind = "manual", title = "手动目的地", position = self.manual} end
+    if self.manual then return {kind = "manual", title = self.manual.title or "手动目的地", position = self.manual} end
     local action=self.actions and self.actions[self.index]
     if not N.StaleAction(action) then return action end
 end

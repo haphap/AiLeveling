@@ -82,7 +82,7 @@ local function widget(kind,parent)
 end
 local dungeonPreview=arg[1]=="dungeon"
 local planPreview=arg[1]=="plan"
-local canvasWidth=(dungeonPreview or planPreview) and 1080 or 560
+local canvasWidth=(dungeonPreview or planPreview or arg[1]=="nearby") and 1080 or 560
 local canvasHeight=(dungeonPreview or planPreview) and 700 or 1100
 if (arg[1]=="gear" or arg[1]=="class") and arg[2]=="large" then canvasHeight=1450 end
 UIParent=widget("Root");UIParent:SetSize(canvasWidth,canvasHeight)
@@ -144,6 +144,14 @@ pickup.stages=pickup.actions
 A.plan.taskChoices[#A.plan.taskChoices+1]=pickup
 A.plan.taskOrder[#A.plan.taskOrder+1]=pickup
 A.plan.taskQueue.steps[#A.plan.taskQueue.steps+1]={choice=pickup,stage=pickup.actions[1]}
+if arg[1]=="nearby" then
+    for _,choice in ipairs(A.plan.taskChoices) do
+        if choice.questId==33 then
+            choice.actions[1].position={map=1429,x=0.48,y=0.45,entityName="北郡树林"}
+            choice.actions[1].objectiveIndex=1
+        end
+    end
+end
 assert(loadfile("UI/Main.lua"))("AiLeveling",A)
 assert(loadfile("UI/Tracker.lua"))("AiLeveling",A)
 local anchors={TOPLEFT={0,0},TOP={0.5,0},TOPRIGHT={1,0},LEFT={0,0.5},CENTER={0.5,0.5},RIGHT={1,0.5},BOTTOMLEFT={0,1},BOTTOM={0.5,1},BOTTOMRIGHT={1,1}}

@@ -255,7 +255,7 @@ function Q.Interleave(order,state,navigation,data,cache)
     if batched then stages=batchStages(stages,byQuest) end
     local best=Q.Evaluate(stages,state,navigation,data,cache)
     if not best then return nil,batched end
-    local first=state.locked and (#order[1].stages+1) or ((order[1].unlock or order[1].orderHeld) and 2 or 1)
+    local first=state.locked and (#order[1].stages+1) or ((order[1].unlockPriority or order[1].orderHeld) and 2 or 1)
     local changed=batched
     -- shortcut: two passes across at most three tasks; enlarge only if route replay shows a need.
     for pass=1,2 do
@@ -299,13 +299,16 @@ function Q.Solve(order,state,navigation,data)
         end
     end
     for _,choice in ipairs(order) do
-        if choice.stagesComplete and (state.locked or not incomplete[byQuest[choice.questId]]) then base[#base+1]=choice
+        local complete=choice.stagesComplete and (state.locked or not incomplete[byQuest[choice.questId]])
+        local timing=complete and A.TaskGuide.Timing(state.position,choice,state,navigation)
+        -- An unpriced distant trip must not block the work we can compare here.
+        if timing and timing.seconds~=nil then base[#base+1]=choice
         else pending[#pending+1]=choice end
     end
-    if #base==0 or (state.locked or order[1].unlock) and base[1]~=order[1] then return end
+    if #base==0 or (state.locked or order[1].unlockPriority) and base[1]~=order[1] then return end
     local cache={}
     local best=Q.Evaluate(base,state,navigation,data,cache)
-    local first=(state.locked or base[1].unlock or best and base[1].orderHeld) and 2 or 1
+    local first=(state.locked or base[1].unlockPriority or best and base[1].orderHeld) and 2 or 1
     do
         -- Three-task rolling windows keep the existing short planning horizon; every trial funds the whole queue.
         for start=math.max(first,#base-2),first,-1 do
@@ -356,10 +359,9 @@ end
 
 -- Compare every eligible pickup against the complete trip, including objectives and hand-in.
 function Q.Pickup(order,choices,state,navigation,data,queue)
-    if not data or not navigation or not navigation.Distance or #order==0 or order[1].unlock or state.locked or
+    if not data or not navigation or not navigation.Distance or #order==0 or order[1].unlockPriority or state.locked or
         state.taskBatch or state.gearTarget or state.inInstance or state.dungeon and state.dungeon.phase~="complete" then return end
     local base=queue or Q.Evaluate(order,state,navigation,data)
-    if not base then return end
     local best,bestQueue=nil,base
     local candidates={}
     for _,choice in ipairs(choices) do
@@ -372,7 +374,7 @@ function Q.Pickup(order,choices,state,navigation,data,queue)
             local trial={copy(choice)}
             for _,existing in ipairs(order) do trial[#trial+1]=copy(existing) end
             local proposed,path=Q.Solve(trial,state,navigation,data)
-            if path and (path.remaining or 0)<=(base.remaining or 0) and better(path,bestQueue,state) then
+            if path and (not base or (path.remaining or 0)<=(base.remaining or 0)) and better(path,bestQueue,state) then
                 best,bestQueue=proposed,path
             end
             checkpoint()

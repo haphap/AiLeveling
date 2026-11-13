@@ -106,6 +106,23 @@ test("关键职业能力与坐骑从可接前置优先接续并尊重已学会�
     eq(result.fallback.questId,2);eq(result.fallback.kind,"accept");eq(result.taskOrder[1].questId,2)
     eq(result.taskChoices[1].unlock.questId,3);eq(s.locked,nil);eq(s.completed[2],nil)
     if result.taskQueue then eq(result.taskQueue.steps[1].choice.questId,2) end
+    -- A class unlock on another continent must not displace local work or pickups.
+    local target,objectives,reference,candidates=d.Target,d.ObjectiveTargets,d.ReferenceObjectiveTargets,d.Candidates
+    local nearby=F.Quest(4);nearby.questLevel=10;nearby.taskFacts={level=10,xp={{1,1000}}};quests[4]=nearby
+    d.Candidates=function() return {1,2,3,4} end
+    d.Target=function(self,quest,context)
+        local p=target(self,quest,context);p.map=quest.id==4 and 1 or 2;return p
+    end
+    d.ObjectiveTargets=function(self,quest) local p=self:Target(quest);p.objectiveIndex=1;return {p} end
+    d.ReferenceObjectiveTargets=function(self,quest) return {{text="本地目标"}},{self:Target(quest)},false end
+    s.quests[4]={objectives={{text="本地目标",numRequired=1,numFulfilled=0}}}
+    result=plan(s,d,nil,B);eq(result.fallback.questId,4)
+    for _,c in ipairs(result.taskChoices) do if c.questId==2 then assert(c.unlock);eq(c.unlockPriority,nil) end end
+    s.quests[4]=nil
+    result=plan(s,d,nil,B);eq(result.fallback.questId,4);eq(result.fallback.kind,"accept")
+    eq(result.taskQueue.remaining,1);eq(s.quests[4],nil);eq(s.skipped[1],nil)
+    s.locked=2;eq(plan(s,d,nil,B).fallback.questId,2);s.locked=nil
+    quests[4]=nil;d.Target,d.ObjectiveTargets,d.ReferenceObjectiveTargets,d.Candidates=target,objectives,reference,candidates
     s.locked=1;eq(plan(s,d,nil,B).fallback.questId,1);s.locked=nil
     s.skipped[2]=true;eq(plan(s,d,nil,B).fallback.questId,1);s.skipped[2]=nil
     s.spells={[355]=true,[71]=true};eq(plan(s,d,nil,B).fallback.questId,1);s.spells={}
