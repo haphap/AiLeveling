@@ -8,7 +8,7 @@ local function fixture(learn)
     C_Item={GetItemSpell=function(id) eq(id,6948);return "炉石",8690 end}
     C_Container={GetItemCooldown=function() return coolStart,coolDuration,1 end}
     UnitIsDeadOrGhost=function() return dead end;GetPlayerFacing=function() return 0 end
-    local B={settings={learn=learn~=false,pins=false},char={samples={}},state=F.State(),Content={nodes={}},jobs={},
+    local B={settings={learn=learn~=false,pins=false},char={samples={}},state=F.State(),jobs={},
         QuestAssist={Update=function() end},UI={SetNavigation=function() end},Transport={InFlight=function() return false end,FlightGate=function() end}}
     B.state.clientVersion,B.state.clientBuild,B.state.interface="1.60.1","70862",16001
     B.state.bags={[6948]=1};B.state.bindName=name

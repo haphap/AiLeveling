@@ -310,7 +310,7 @@ function S:Snapshot(state)
 end
 
 function S.TaskDestination(plan)
-    if not plan or plan.sessionActive or plan.maintenance then return end
+    if not plan or plan.maintenance then return end
     local function task(action)
         return action and action.questId and position(action.position) and
             (action.kind=="accept" or action.kind=="objective" or action.kind=="turnin")
@@ -329,7 +329,7 @@ end
 
 function S.TrainerData(state)
     local data=A.Trainers
-    if data and state.clientVersion==data.version and tostring(state.clientBuild)==data.build and state.interface==data.interface then return data end
+    if data and state.clientVersion==data.version and state.interface==data.interface then return data end
 end
 
 function S.ClassTrainer(state,row)
@@ -360,7 +360,7 @@ end
 
 function S.ServiceMaps(plan,state)
     local maps={}
-    if not plan or plan.sessionActive or plan.maintenance or state.inInstance then return maps end
+    if not plan or plan.maintenance or state.inInstance then return maps end
     local function add(action)
         if action and position(action.position) then maps[action.position.map]=true end
     end
@@ -374,7 +374,7 @@ function S.ServiceMaps(plan,state)
 end
 
 local function taskStages(plan,state)
-    if plan.best or plan.sessionActive or plan.maintenance or state.dead or state.onTaxi or state.inInstance then return end
+    if plan.best or plan.maintenance or state.dead or state.onTaxi or state.inInstance then return end
     local stages={}
     local function add(choice,stage)
         if choice.lowValue or choice.entryBlocked or choice.requireCheck or choice.acceptBlocked or not choice.stagesComplete then return false end
@@ -408,7 +408,7 @@ local function betterHub(a,b)
 end
 
 function S.PlanBindings(plan,state,data)
-    if state.serviceStop or plan.sessionActive or plan.maintenance or state.inInstance or not data.AmenityPoints then return end
+    if state.serviceStop or plan.maintenance or state.inInstance or not data.AmenityPoints then return end
     local result={}
     for _,row in ipairs(data:AmenityPoints(state,"bind",S.ServiceMaps(plan,state))) do
         local hub={deliveryCount=0,acceptCount=0,pendingCount=0,deliveryDistance=0,
@@ -438,7 +438,7 @@ end
 
 function S.AutomaticBinding(plan,state)
     if state.locked or state.gearTarget or state.taskBatch or state.serviceStop or state.dead or state.onTaxi or state.inInstance or
-        plan.best or plan.sessionActive or plan.maintenance or not state.bindingTaskKey or state.bindingTaskKey=="" or
+        plan.best or plan.maintenance or not state.bindingTaskKey or state.bindingTaskKey=="" or
         state.declinedBinding==state.bindingTaskKey or (state.bags or {})[6948]==nil or state.bags[6948]<=0 then return end
     local current=S.TaskDestination(plan)
     if current and current.kind=="turnin" then return end
@@ -527,7 +527,7 @@ end
 function S:CanPick(row,revision)
     if not A.ready or not A.indexReady then return false,"任务数据尚未就绪" end
     if A.refreshAt or A.jobs and A.jobs.plan or revision~=A.state.revision or revision~=self.revision then return false,"状态正在更新，请稍后重选" end
-    if A.char.dungeon or A.state.inInstance then return false,"请先结束副本行程并离开副本" end
+    if A.state.inInstance then return false,"离开副本后再前往服务点" end
     if A.state.dead or A.Transport:InFlight() then return false,"请在存活且落地后安排服务" end
     local found=false;for _,candidate in ipairs(self.choices or {}) do if candidate==row then found=true;break end end
     if not found or not S.ValidStop(row) then return false,"请重新选择当前服务点" end

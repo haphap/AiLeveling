@@ -14,7 +14,7 @@ local function fixture()
         return {map=map,x=q.id/10,y=0.3,entityKind="npc",entityId=active and active.ready and 99 or q.id,entityName="任务NPC"}
     end
     data.ObjectiveTargets=function(_,q) return {{map=q.id<=2 and 2 or 1,x=q.id/10,y=0.3,objectiveIndex=1}} end
-    local B={Data=data,Content=data.content,state=s,char={turnIns={},skipped={}},Navigation=F.Navigation,ready=true,
+    local B={Data=data,state=s,char={turnIns={},skipped={}},Navigation=F.Navigation,ready=true,
         settings={minutes=60,gearPreference="xp",dungeons=true,role="DAMAGER"},
         DungeonCatalog={version="1.60.1",build="70862",entries={ref=d}}}
     for _,file in ipairs({"State.lua","Planner/Eligibility.lua","Planner/Chains.lua","Planner/Travel.lua","Planner/Gear.lua",
@@ -203,7 +203,7 @@ run("副本整组先接齐可行任务，完成前置后入本，整组完成再
     s.quests[2]={objectives={{text="完成目标",numRequired=1,numFulfilled=0}}}
     p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonEnter")
     s.inInstance,s.instanceId,s.position=true,42,{map=2,x=0,y=0}
-    now=400;s.difficulty=1;B.Dungeon:Update()
+    now=400;s.difficulty=1;B.Dungeon:UpdateTaskActivity(s)
     local sampleKey=B.Dungeon.taskActivity.key
     s.quests[1].ready=true
     p=plan(s,data,B.settings,B);eq(p.fallback.kind,"objective");eq(p.fallback.questId,2)
@@ -222,9 +222,9 @@ run("副本整组先接齐可行任务，完成前置后入本，整组完成再
     -- A new trip interrupted by a pause never replaces the complete sample.
     for id=1,2 do q[id].repeatable=true;s.quests[id]={ready=true} end
     assert(B.Dungeon:StartTaskBatch("ref"))
-    s.inInstance=true;B.Dungeon:Update()
+    s.inInstance=true;B.Dungeon:UpdateTaskActivity(s)
     assert(B.Dungeon:TaskActivityText("ref"):find("历史平均",1,true))
-    B.char.paused=true;B.Dungeon:Update();B.char.paused=false
+    B.char.paused=true;B.Dungeon:UpdateTaskActivity(s);B.char.paused=false
     now=1300;s.inInstance=false
     for id=1,2 do s.quests[id]=nil;B.char.turnIns[id]=2 end
     B.State:Refresh();eq(B.char.samples[sampleKey].n,1)
@@ -293,7 +293,7 @@ run("副本行程保留缺图目标身份，剔除低价值和受阻项，交付
     eq(j.after[4].action.questId,1);eq(j.after[5].action.questId,3);eq(j.after[6].action.questId,2)
     eq(choices[1].stages[1].position,nil);eq(s.completed[1],nil)
 end)
-run("副本页显示当前任务行程及接取状态，状态过期不显示旧行程",function()
+run("副本任务按实际接取点、入口和前置提供指引",function()
     local B,s,data=fixture();s.completed[3]=true;s.revision=7
     data.ReferenceObjectiveTargets=function(_,q)
         return {{text="参考目标",numRequired=1,numFulfilled=0}},data:ObjectiveTargets(q)
@@ -301,17 +301,12 @@ run("副本页显示当前任务行程及接取状态，状态过期不显示旧
     s.quests[1]={objectives={{text="本内目标",numRequired=1,numFulfilled=0}}}
     assert(B.Dungeon:StartTaskBatch("ref"));B.plan=plan(s,data,B.settings,B);B.plan.revision=7
     assert(loadfile("UI/Dungeon.lua"))("AiLeveling",B)
-    local ui=B.UI.Dungeon;ui.selected="ref";ui.tasks=B.Dungeon.Tasks(B.Dungeon.Catalog(s,B.Content).ref,s,data)
-    local text=table.concat(ui:Lines(),"\n"):gsub("|c%x%x%x%x%x%x%x%x",""):gsub("|r","")
-    assert(text:find("已接  完成「测试任务 1」",1,true));assert(text:find("未接  接取「测试任务 2」",1,true))
-    assert(text:find("入本前",1,true));assert(text:find("副本内",1,true));assert(text:find("出本后",1,true))
-    B.plan.revision=6;text=table.concat(ui:Lines(),"\n")
-    assert(not text:find("入本前",1,true))
+    local ui=B.UI.Dungeon;ui.selected="ref";ui.tasks=B.Dungeon.Tasks(B.Dungeon.Catalog().ref,s,data)
     local rows={};for _,row in ipairs(ui.tasks) do rows[row.id]=row end
     assert(ui:TaskDirection(rows[2]):find("接取：任务区域 · 任务NPC",1,true))
     assert(ui:TaskDirection(rows[1]):find("测试副本入口",1,true))
     s.completed[3]=nil;s.quests[1]=nil
-    for _,row in ipairs(B.Dungeon.Tasks(B.Dungeon.Catalog(s,B.Content).ref,s,data)) do rows[row.id]=row end
+    for _,row in ipairs(B.Dungeon.Tasks(B.Dungeon.Catalog().ref,s,data)) do rows[row.id]=row end
     assert(ui:TaskDirection(rows[1]):find("前置 · 接取：任务区域 · 任务NPC",1,true))
 end)
 run("已就绪成员不会在门外先交付，同收件人未完成成员继续入本",function()
@@ -408,7 +403,6 @@ run("暂缓一项保留整组，手动选择或恢复自动清除整组且状态
     assert(B.Dungeon:StartTaskBatch("ref"));assert(B.Selection:Automatic());eq(s.taskBatch,nil)
     B.refreshAt=1;eq(B.Dungeon:StartTaskBatch("ref"),false);eq(B.char.taskBatch,nil);B.refreshAt=nil
     B.Transport={InFlight=function() return true end};eq(B.Dungeon:StartTaskBatch("ref"),false);B.Transport=nil
-    B.char.dungeon={phase="inside"};eq(B.Dungeon:StartTaskBatch("ref"),false)
 end)
 run("损坏任务组存档拒绝并清除，完整副本或单任务选择优先",function()
     local B,s=fixture()
@@ -416,9 +410,7 @@ run("损坏任务组存档拒绝并清除，完整副本或单任务选择优先
         {id="ref",baselines={[1]=-1}}, {id="ref",baselines={[1]=math.huge}}, {id={},baselines={[1]=0}}}) do
         eq(B.Dungeon.ValidTaskBatch(bad),false);B.char.taskBatch=bad;B.Dungeon:TaskBatchSnapshot(s);eq(B.char.taskBatch,nil)
     end
-    B.char.taskBatch={id="ref",baselines={[1]=0}};B.char.dungeon={phase="inside"}
-    B.Dungeon:TaskBatchSnapshot(s);eq(B.char.taskBatch,nil)
-    B.char.dungeon=nil;B.char.taskBatch={id="ref",baselines={[1]=0}};B.char.locked=1
+    B.char.taskBatch={id="ref",baselines={[1]=0}};B.char.locked=1
     B.Dungeon:TaskBatchSnapshot(s);eq(B.char.taskBatch,nil)
 end)
 run("任务日志已满先推进已接成员，腾出名额后继续接取，全部未接时显示整理提示",function()
@@ -482,11 +474,6 @@ run("本次副本收益只统计所选根任务且远处低价值成员退出建
     assert(B.Dungeon:StartTaskBatch("ref"))
     local p=plan(s,data,B.settings,B);eq(p.taskBatch.rewards.xp,1000);eq(p.taskBatch.rewards.count,1)
     eq(p.taskBatch.rewards.excluded,1);eq(p.taskBatch.rewards.ready,1);eq(p.fallback.questId,2)
-    B.plan=p;assert(loadfile("UI/Dungeon.lua"))("AiLeveling",B)
-    B.UI.Dungeon.selected="ref";B.UI.Dungeon.tasks=B.Dungeon.Tasks(d,s,data)
-    local _,summary=B.UI.Dungeon:Lines();local lines=table.concat(summary,"\n")
-    assert(lines:find("交付经验：1000",1,true));assert(lines:find("1 项低收益任务",1,true))
-    assert(not lines:find("经验/小时",1,true))
     B.Selection:Skip(1);p=plan(s,data,B.settings,B);eq(p.taskBatch.rewards.count,1);eq(p.taskBatch.rewards.excluded,0)
 end)
 

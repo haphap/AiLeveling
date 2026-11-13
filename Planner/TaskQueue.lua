@@ -374,7 +374,7 @@ end
 -- Compare every eligible pickup against the complete trip, including objectives and hand-in.
 function Q.Pickup(order,choices,state,navigation,data,queue)
     if not data or not navigation or not navigation.Distance or #order==0 or order[1].unlockPriority or state.locked or
-        state.taskBatch or state.gearTarget or state.inInstance or state.dungeon and state.dungeon.phase~="complete" then return end
+        state.taskBatch or state.gearTarget or state.inInstance then return end
     local base=queue or Q.Evaluate(order,state,navigation,data)
     local best,bestQueue
     local routed={}

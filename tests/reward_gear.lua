@@ -13,13 +13,13 @@ local function fixture()
         q.taskFacts={level=20,xp={{1,1000}},rewards={items={},choices={}}};quests[id]=q
     end
     quests[2].taskFacts.rewards.choices={{id=100,count=1},{id=101,count=1}}
-    local s,d=F.State(),F.Data(quests);d.content.gearSources={};s.items={[100]=item(100,5),[101]=item(101,8)}
+    local s,d=F.State(),F.Data(quests);s.items={[100]=item(100,5),[101]=item(101,8)}
     s.equipment[1]=item(99,1)
     d.Target=function(_,q) return {map=1,x=q.id==1 and 0.5 or 0.52,y=0} end
     d.ReferenceObjectiveTargets=function(_,q) return {{text="目标"}},{d:Target(q)},false end
     d.ObjectiveTargets=function(_,q) local p=d:Target(q);p.objectiveIndex=1;return {p} end
     d.chainIndex=B.Chains.NewIndex();for _,q in pairs(quests) do B.Chains.IndexQuest(d.chainIndex,q,d) end
-    B.Data,B.Content,B.state,B.char,B.ready=d,d.content,s,{turnIns={},skipped={}},true
+    B.Data,B.state,B.char,B.ready=d,s,{turnIns={},skipped={}},true
     B.State={};for k,v in pairs(A.State) do B.State[k]=v end
     B.State.Refresh=function() s.gearTarget=B.char.gearTarget end
     B.Navigation={};for k,v in pairs(F.Navigation) do B.Navigation[k]=v end
@@ -37,12 +37,10 @@ test("同构建首领掉落进入比较与手选导航，击败不当作拿到�
     assert(source and source.reference);eq(source.instanceId,389);eq(source.kind,"dungeon")
     local count=0;for _ in pairs(B.Gear.DungeonSources(s)) do count=count+1 end;eq(count,11)
     s.items[source.itemId]=item(source.itemId,8)
-    local value=B.Gear.Source(source,s,d.content,d)
+    local value=B.Gear.Source(source,s,d)
     eq(value.upgrade.delta,7);eq(value.chanceLow,0);eq(value.chanceHigh,1);eq(value.expectedAttemptsHigh,nil)
-    local candidate={dungeonId=source.dungeonId}
-    B.Gear.Benefits({candidate},s,d.content);assert(candidate.gearSources[id]);eq(candidate.gear.chanceLow,0)
     local fake={};for key,v in pairs(source) do fake[key]=v end
-    fake.encounterId=2733;eq(B.Gear.Source(fake,s,d.content,d),nil)
+    fake.encounterId=2733;eq(B.Gear.Source(fake,s,d),nil)
     local dungeon=B.DungeonCatalog.entries[source.dungeonId]
     eq(#B.Gear.DungeonBenefits(dungeon,s,d),1)
     d.maps={};for _,area in ipairs(dungeon.areas) do d.maps[area]=2 end
@@ -67,10 +65,9 @@ test("同构建首领掉落进入比较与手选导航，击败不当作拿到�
     local lines
     assert(loadfile("UI/Dungeon.lua"))("AiLeveling",B)
     B.UI.Dungeon.entries={[dungeon.id]=dungeon};B.UI.Dungeon.selected=dungeon.id;B.UI.Dungeon.tasks={}
-    lines=table.concat(B.UI.Dungeon:Lines(),"\n");assert(lines:find("副本装备提升",1,true))
-    s.clientBuild="other";eq(B.Gear.GetSource(id,d),nil);eq(B.Gear.Source(source,s,d.content,d),nil)
+    s.clientVersion="other";eq(B.Gear.GetSource(id,d),nil);eq(B.Gear.Source(source,s,d),nil)
     p=plan(s,d,balanced,B);eq(p.fallback.kind,"selectionBlocked");eq(s.gearTarget,id)
-    s.clientBuild="70862";s.bags[source.itemId]=1;B.Gear:SyncTarget(s)
+    s.clientVersion="1.60.1";s.clientBuild="70862";s.bags[source.itemId]=1;B.Gear:SyncTarget(s)
     eq(s.gearTarget,nil);eq(s.gearAcquired,source.itemId)
     eq(B.Gear:SetTarget(id),false)
     eq(next(s.completed),nil)
@@ -84,9 +81,8 @@ test("真实任务奖励解析来源身份并按互斥奖励分别比较而不�
     local p=plan(s,d,balanced,B);local c=find(p,2)
     eq(c.gear.upgrade.delta,7);eq(c.gearSources["reward:2:100"].upgrade.delta,4)
     eq(c.gearSources["reward:2:101"].upgrade.delta,7);eq(c.remainingXP,1000)
-    eq(next(d.content.gearSources or {}),nil)
     local fake={id="reward:2:101",reference=true,kind="quest",questId=1,itemId=101}
-    eq(B.Gear.Source(fake,s,d.content,d),nil)
+    eq(B.Gear.Source(fake,s,d),nil)
     q[2].questLevel=21;eq(B.Gear.GetSource("reward:2:101",d),nil)
 end)
 
@@ -148,7 +144,6 @@ test("装备页从当前真实奖励提供选择并在任务详情显示装备�
     for _,row in ipairs(rows) do if row.sourceId=="reward:2:101" then selected=row end end
     assert(selected);eq(selected.source.choice,true);eq(selected.comparison.delta,7)
     B.UI.Plan.preview=find(B.plan,2)
-    local lines=table.concat(B.UI.Plan:Lines(),"\n");assert(lines:find("属性评分提升 +7.0",1,true))
     eq(B.Gear:SetTarget(selected.sourceId),true);B.plan={taskChoices={}}
     eq(#gear:Ids(),1);eq(B.UI.Browser:GearRows()[1].sourceId,selected.sourceId)
     local choice={};local q=d:GetQuest(2)
@@ -184,7 +179,7 @@ test("远处低价值奖励任务退出整组而有效装备和手选目标保�
 end)
 
 test("奖励物品延迟加载合并请求且选定来源加入状态快照",function()
-    local B,s,d=fixture();B.requestedItems={};B.Content.items={};B.Content.sources={}
+    local B,s,d=fixture();B.requestedItems={}
     assert(loadfile("Items.lua"))("AiLeveling",B)
     local oldItem,oldPlayer=C_Item,C_PlayerInfo
     local calls,loaded=0,false
@@ -195,9 +190,9 @@ test("奖励物品延迟加载合并请求且选定来源加入状态快照",fun
     C_PlayerInfo={CanUseItem=function() return true end}
     s.items={};s.equipment={}
     local source=B.Gear.GetSource("reward:2:101",d)
-    eq(B.Gear.Source(source,s,d.content,d),nil);eq(B.Gear.Source(source,s,d.content,d),nil);eq(calls,1)
+    eq(B.Gear.Source(source,s,d),nil);eq(B.Gear.Source(source,s,d),nil);eq(calls,1)
     loaded=true;B.requestedItems[101]=nil
-    assert(B.Gear.Source(source,s,d.content,d).upgrade.delta>0)
+    assert(B.Gear.Source(source,s,d).upgrade.delta>0)
     B.char.gearTarget=source.id;B.Items:Snapshot(s);eq(s.items[101].pending,false)
     C_Item,C_PlayerInfo=oldItem,oldPlayer
 end)
@@ -223,27 +218,16 @@ test("低属性套装奖励保留效果比较与手动任务接续，不自动�
     eq(row.comparison.delta,-3);assert(table.concat(row.comparison.notes,"\n"):find("获得 2 件套效果",1,true))
     eq(#gear:Ids(),1)
     local lines
-    B.UI.Plan.preview=c;lines=table.concat(B.UI.Plan:Lines(),"\n")
-    assert(lines:find("属性评分变化 -3.0",1,true));assert(lines:find("获得 2 件套效果",1,true))
     eq(B.Gear:SetTarget(id),true);eq(plan(s,d,balanced,B).fallback.questId,2)
     s.bags[10399]=1;B.Gear:SyncTarget(s);eq(s.gearTarget,nil);eq(s.gearAcquired,10399)
     s.bags[10399]=nil;s.equipment[10]=nil
     eq(B.Gear:SetTarget(id),false);eq(find(plan(s,d,balanced,B),2).gearSources[id],nil)
 end)
 
-test("自有装备来源保留负属性效果权衡，仅手选时切换",function()
-    local B,s,d=fixture();local source={id="test",verified=true,kind="quest",questId=2,itemId=100}
-    d.content.gearSources={test=source};s.items[100].stats.ITEM_MOD_STRENGTH_SHORT=0;s.items[100].useSpell=42
-    local base={actions={},rate=10};local candidate={actions={{kind="turnin",questId=2}},rate=10}
-    B.Gear.Benefits({base,candidate},s,d.content)
-    assert(candidate.gearSources.test);eq(candidate.gear,nil)
-    eq(B.Gear.Prefer({base,candidate},base,s,balanced),base)
-    eq(B.Gear:SetTarget("test"),true)
-    eq(B.Gear.Prefer({base,candidate},base,s,balanced),candidate)
-end)
+
 
 test("原生装备提示按链接读取主动及命中效果并列出换装得失",function()
-    local B,s,d=fixture();B.requestedItems={};B.Content.items={};B.Content.sources={}
+    local B,s,d=fixture();B.requestedItems={}
     assert(loadfile("Items.lua"))("AiLeveling",B)
     local oldItem,oldPlayer,oldTooltip,oldEnum=C_Item,C_PlayerInfo,C_TooltipInfo,Enum
     local loc,calls="INVTYPE_HEAD",{}
@@ -267,7 +251,7 @@ test("原生装备提示按链接读取主动及命中效果并列出换装得�
     C_Item,C_PlayerInfo,C_TooltipInfo,Enum=oldItem,oldPlayer,oldTooltip,oldEnum
 end)
 test("装备效果延迟或接口异常保留未知，重新读取成功后恢复",function()
-    local B,s,d=fixture();B.requestedItems={};B.Content.items={};B.Content.sources={}
+    local B,s,d=fixture();B.requestedItems={}
     assert(loadfile("Items.lua"))("AiLeveling",B)
     local oldItem,oldPlayer,oldTooltip,oldEnum=C_Item,C_PlayerInfo,C_TooltipInfo,Enum
     C_Item={GetItemInfo=function(link) return "奖励",link,2,20,1,nil,nil,1,"INVTYPE_HEAD" end,

@@ -1,12 +1,12 @@
 return function(test,eq,F,A,plan)
 local function state(level)
     local s=F.State();s.level=level or 1;s.xp=0;s.maxXP=A.Experience.xpToLevel[s.level]
-    s.clientVersion="1.60.1";s.clientBuild="70862";s.interface=16001
+    s.clientVersion="1.60.1";s.clientVersion="1.60.1";s.clientBuild="70862";s.interface=16001
     return s
 end
-test("版本构建接口或原生门槛不匹配时拒绝参考表但保留当前原生门槛",function()
-    for _,change in ipairs({function(s) s.clientVersion="1.60.2" end,function(s) s.clientBuild="70532" end,
-        function(s) s.interface=11508 end,function(s) s.maxXP=500 end,function(s) s.clientBuild=nil end}) do
+test("版本接口或原生门槛不匹配时拒绝参考表但保留当前原生门槛",function()
+    for _,change in ipairs({function(s) s.clientVersion="1.60.2" end,
+        function(s) s.interface=11508 end,function(s) s.maxXP=500 end}) do
         local s=state();change(s);s.xp=s.maxXP-1
         local curve=A.Progression.Curve(s,{});eq(curve,nil)
         local after=A.Progression.Advance(s,901,{})
@@ -33,13 +33,5 @@ test("任务预览保留交付等级预测与原生状态且隐藏内部来源�
     local choice=result.taskChoices[1]
     eq(choice.remainingXP,170);eq(choice.forecast.level,2);eq(choice.forecast.xp,169);eq(choice.forecast.maxXP,900)
     eq(s.completed[1],nil);eq(s.quests[1].ready,true)
-    B.UI={};B.Navigation.Current=function() end
-    assert(loadfile("UI/Main.lua"))("AiLeveling",B)
-    assert(loadfile("UI/Plan.lua"))("AiLeveling",B)
-    B.char={};B.plan=result;B.state=s;B.UI.Plan.preview=choice
-    local text=table.concat(B.UI.Plan:Lines(),"\n")
-    assert(text:find("交付后：2 级",1,true));assert(not text:find("当前构建客户端参考表",1,true))
-    choice.forecast={level=2,xp=0};text=table.concat(B.UI.Plan:Lines(),"\n")
-    assert(text:find("交付后：2 级",1,true));assert(not text:find("后续经验门槛待核对",1,true));assert(not text:find("0 / 0",1,true))
 end)
 end

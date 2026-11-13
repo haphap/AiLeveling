@@ -1,7 +1,7 @@
 return function(test,eq,F,A,plan)
 local function fixture()
     local B={};for k,v in pairs(A) do B[k]=v end
-    B.Content={items={},sources={}};B.requestedItems={};B.char={}
+    B.requestedItems={};B.char={}
     B.clientVersion,B.build,B.interface="1.60.1","70862",16001
     for _,file in ipairs({"Data/ItemSets.lua","Items.lua","Planner/Gear.lua"}) do assert(loadfile(file))("AiLeveling",B) end
     local s=F.State();s.skills={}
@@ -22,11 +22,10 @@ test("原生套装归属按当前构建接入，冲突与缺失套装效果表�
     eq(B.Items:Read(276538).setId,2111)
     c=B.Items:Read(221785);eq(c.setId,nil);eq(c.setUnknown,true)
     eq(B.ItemSets.sets[1969].bonuses,nil)
-    for _,field in ipairs({"clientVersion","build","interface"}) do
+    for _,field in ipairs({"clientVersion","interface"}) do
         local saved=B[field];B[field]="other";eq(B.Items:Read(10399).setId,nil);B[field]=saved
     end
-    B.Content.sources.test=true;B.Content.items[221785]={verified=true,source="test",setId=1700}
-    c=B.Items:Read(221785);eq(c.setId,1700);eq(c.setUnknown,nil)
+    B.build="70888";eq(B.Items:Read(10399).setId,161)
     C_Item,C_PlayerInfo,C_TooltipInfo=oldItem,oldPlayer,oldTooltip
 end)
 
@@ -76,8 +75,8 @@ test("套装专业状态采集与任务要求合并且按构建启用",function(
     local requirements={skills={[197]=true,[999]=true}}
     B.State:Qualifications(s,requirements);eq(s.skills[197],300);eq(s.skills[164],0);eq(s.skills[165],0)
     eq(calls[197],1);eq(s.skills[999],0);eq(requirements.skills[164],nil)
-    s.clientBuild="other";B.State:Qualifications(s,requirements);eq(s.skills[164],nil)
-    s.clientBuild="70862";C_SkillInfo=nil;B.State:Qualifications(s,requirements);eq(s.skills[197],nil)
+    s.clientVersion="other";B.State:Qualifications(s,requirements);eq(s.skills[164],nil)
+    s.clientVersion="1.60.1";s.clientBuild="70862";C_SkillInfo=nil;B.State:Qualifications(s,requirements);eq(s.skills[197],nil)
     C_SkillInfo=old
 end)
 end

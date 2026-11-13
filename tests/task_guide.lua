@@ -70,9 +70,9 @@ test("服务器缓存经验按构建与任务等级启用且原生奖励优先",
     s.quests[1].rewardXP,s.quests[1].rewardXPLevel=1700,10
     eq(B.TaskGuide.XP(q,10,s),1700);eq(B.TaskGuide.XP(q,11,s),1500)
     q.questLevel=11;eq(B.TaskGuide.XP(q,11,s),nil)
-    q.questLevel=10;s.clientBuild="other";eq(B.TaskGuide.XP(q,11,s),1000)
+    q.questLevel=10;s.clientVersion="other";eq(B.TaskGuide.XP(q,11,s),1000)
     q.taskFacts=nil;eq(B.TaskGuide.XP(q,11,s),nil)
-    s.clientBuild="70862";eq(B.TaskGuide.XP(q,11,s),1500)
+    s.clientVersion="1.60.1";s.clientBuild="70862";eq(B.TaskGuide.XP(q,11,s),1500)
     eq(B.TaskGuide.XP(q,60,s),nil)
     q.questLevel=-1;eq(B.TaskGuide.XP(q,20,s),nil)
 end)
@@ -90,7 +90,7 @@ test("缓存经验补齐后进入任务收益排序与低价值保护",function(
         quests={[1]={level=20,xp={{1,100}}},[2]={level=20,xp={{1,2000}}}}}}
     local p=plan(s,d,nil,B);eq(p.fallback.questId,2)
     eq(q1.taskFacts,nil);eq(B.TaskGuide.LowValue(q1,s,d,p.taskChoices[2]),nil)
-    s.clientBuild="other";p=plan(s,d,nil,B);eq(p.fallback.questId,1)
+    s.clientVersion="other";p=plan(s,d,nil,B);eq(p.fallback.questId,1)
     q1.referenceXPLevel,q1.referenceXP=20,100;q2.referenceXPLevel,q2.referenceXP=20,2000
     p=plan(s,d,nil,B);eq(p.fallback.questId,2)
     q2.referenceXPLevel=21;p=plan(s,d,nil,B);eq(p.fallback.questId,1)

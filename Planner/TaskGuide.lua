@@ -4,9 +4,8 @@ local G=A.TaskGuide
 local function cacheXP(state)
     local cache=A.TaskFacts and A.TaskFacts.cacheXP
     local version=state and state.clientVersion or A.clientVersion
-    local build=state and state.clientBuild or A.build
     local interface=state and state.interface or A.interface
-    if cache and version==cache.version and tostring(build)==cache.build and interface==cache.interface then return cache end
+    if cache and version==cache.version and interface==cache.interface then return cache end
 end
 function G.Counts()
     local quests,rewards,xp=0,0,0
@@ -235,7 +234,7 @@ end
 function G.ItemLimit(id,state)
     local reference=A.ItemLimits
     if reference and (state.clientVersion or A.clientVersion)==reference.version and
-        tostring(state.clientBuild or A.build)==reference.build and (state.interface or A.interface)==reference.interface then
+        (state.interface or A.interface)==reference.interface then
         return reference.counts[id]
     end
 end
@@ -345,8 +344,7 @@ end
 
 function G.UnlockPriorities(state,data,ids)
     local result={}
-    if state.locked or state.preparingQuest or state.gearTarget or state.taskBatch or state.inInstance or
-        state.dungeon and state.dungeon.phase~="complete" then return result end
+    if state.locked or state.preparingQuest or state.gearTarget or state.taskBatch or state.inInstance then return result end
     local thread,main=coroutine.running()
     for index,id in ipairs(ids) do
         local q=data:GetQuest(id)
@@ -406,8 +404,7 @@ function G.LowValue(q,state,data,choice)
     local index=data.chainIndex
     if not index or not index.nodes[q.id] or #(index.incoming[q.id] or {})>0 or #(index.outgoing[q.id] or {})>0 then return end
     if q.requiredClasses and q.requiredClasses~=0 or q.requiredSkill or (q.requiredSpell or 0)>0 then return end
-    local source=A.Gear and A.Gear.GetSource and A.Gear.GetSource(state.gearTarget,data) or
-        (data.content and data.content.gearSources and data.content.gearSources[state.gearTarget])
+    local source=A.Gear and A.Gear.GetSource and A.Gear.GetSource(state.gearTarget,data)
     if source and source.questId==q.id then return end
     if not rewards or (rewards.spell or 0)>0 or (rewards.spellCast or 0)>0 then return end
     for _,list in ipairs({rewards.items or {},rewards.choices or {}}) do

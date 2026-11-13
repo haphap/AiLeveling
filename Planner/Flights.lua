@@ -4,7 +4,7 @@ local F=A.Flights
 
 function F.Matches(state)
     local data=A.FlightData
-    return data and state and state.clientVersion==data.clientVersion and tostring(state.clientBuild)==tostring(data.build) and state.interface==data.interface
+    return data and state and state.clientVersion==data.clientVersion and state.interface==data.interface
 end
 
 function F.ReadSpeed(state)
@@ -147,7 +147,7 @@ function F.Routes(origin,target,state,navigation)
         end
     end
     local public=A.PublicTransitData
-    if public and state.clientVersion==public.clientVersion and tostring(state.clientBuild)==tostring(public.build) and state.interface==public.interface then
+    if public and state.clientVersion==public.clientVersion and state.interface==public.interface then
         for _,leg in ipairs(public.legs) do
             if not leg.faction or leg.faction==state.faction then flights[#flights+1]=leg end
         end

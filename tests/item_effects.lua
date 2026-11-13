@@ -1,7 +1,7 @@
 return function(test,eq,F,A,plan)
 local function fixture()
     local B={};for k,v in pairs(A) do B[k]=v end
-    B.Content={items={},sources={}};B.requestedItems={};B.char={}
+    B.requestedItems={};B.char={}
     B.clientVersion,B.build,B.interface="1.60.1","70862",16001
     for _,f in ipairs({"Data/ItemEffects.lua","Items.lua","Planner/Gear.lua"}) do assert(loadfile(f))("AiLeveling",B) end
     return B,F.State()
@@ -55,7 +55,7 @@ test("提示接口缺失或未列被动时从当前构建效果表保留说明�
     c=B.Items:Read(167648);assert(c.effects[1].text:find("被动效果",1,true))
     C_TooltipInfo={GetHyperlink=function() return {lines={{type=0,leftText="物品名"}}} end}
     c=B.Items:Read(11815);eq(#c.effects,1)
-    for _,key in ipairs({"clientVersion","build","interface"}) do
+    for _,key in ipairs({"clientVersion","interface"}) do
         local value=B[key];B[key]="other";eq(#B.Items:Read(11815).effects,0);B[key]=value
     end
 end) end)

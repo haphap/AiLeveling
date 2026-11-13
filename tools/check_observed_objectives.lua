@@ -6,7 +6,7 @@ metadata.load(package.."/QuestieDB_Forever.toc","QuestieDB")
 local db=metadata.loadAddon(package.."/QuestieDB_Forever.toc","QuestieDB",package)
 local A={Navigation=dofile(root.."/tests/fixtures.lua").Navigation}
 C_Map={GetMapInfo=function(id) return {mapID=id} end};C_QuestLog={}
-for _,file in ipairs({"State.lua","Data/Content.lua","Data/TaskFacts.lua","Data/Questie.lua"}) do assert(loadfile(root.."/"..file))("AiLeveling",A) end
+for _,file in ipairs({"State.lua","Data/TaskFacts.lua","Data/Questie.lua"}) do assert(loadfile(root.."/"..file))("AiLeveling",A) end
 assert(A.Data:Connect(db))
 local s={clientVersion="1.60.1",clientBuild="70862",interface=16001,faction=faction,quests={},completed={},bags={},position={map=1413,x=0.5,y=0.5}}
 local observed=A.Data.ObservedObjectiveTarget

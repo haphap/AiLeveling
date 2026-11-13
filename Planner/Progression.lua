@@ -4,7 +4,7 @@ local X = A.Progression
 
 function X.Curve(state)
     local reference=A.Experience
-    if not reference or state.clientVersion~=reference.version or tostring(state.clientBuild)~=reference.build or
+    if not reference or state.clientVersion~=reference.version or
         state.interface~=reference.interface then return nil,"客户端版本未匹配参考经验表" end
     if not reference.xpToLevel[state.level] or reference.xpToLevel[state.level]~=state.maxXP then return nil,"原生当前经验门槛与参考表不符" end
     return reference.xpToLevel,reference.source

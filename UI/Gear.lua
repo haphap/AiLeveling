@@ -5,12 +5,11 @@ local UI=A.UI.Gear
 function UI:Ids()
     local ids,seen={},{}
     local function add(id) if not seen[id] then ids[#ids+1]=id;seen[id]=true end end
-    for id in pairs(A.Content.gearSources) do add(id) end
     for _,choice in ipairs(A.plan and A.plan.taskChoices or {}) do
         for id in pairs(choice.gearSources or {}) do add(id) end
     end
     for id,source in pairs(A.Gear.DungeonSources(A.state)) do
-        local value=A.Gear.Source(source,A.state,A.Content)
+        local value=A.Gear.Source(source,A.state,A.Data)
         if value and not value.owned and (value.upgrade.delta>0 or #(value.upgrade.notes or {})>0) then add(id) end
     end
     local target=A.char and A.char.gearTarget

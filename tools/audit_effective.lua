@@ -5,7 +5,7 @@ client.install({expansion="Forever", faction=faction, classFile=class, locale="z
 metadata.load(package .. "/QuestieDB_Forever.toc", "QuestieDB")
 local db = metadata.loadAddon(package .. "/QuestieDB_Forever.toc", "QuestieDB", package)
 local A = {}
-for _, file in ipairs({"Data/Content.lua", "Data/Questie.lua", "Planner/Chains.lua", "Data/Audit.lua"}) do
+for _, file in ipairs({ "Data/Questie.lua", "Planner/Chains.lua", "Data/Audit.lua"}) do
     assert(loadfile(root .. "/" .. file))("AiLeveling", A)
 end
 assert(A.Data:Connect(db))

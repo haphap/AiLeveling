@@ -1,14 +1,8 @@
 local A = {}
-assert(loadfile("Data/Content.lua"))("AiLeveling", A)
 assert(loadfile("Data/TaskFacts.lua"))("AiLeveling", A)
 assert(loadfile("Data/Experience.lua"))("AiLeveling", A)
 assert(loadfile("Data/Flights.lua"))("AiLeveling", A)
 assert(loadfile("Data/Dungeons.lua"))("AiLeveling", A)
-assert(loadfile("Planner/Dungeon.lua"))("AiLeveling", A)
-assert(loadfile("Planner/Supplies.lua"))("AiLeveling", A)
-assert(loadfile("Planner/Travel.lua"))("AiLeveling", A)
-local c, errors, questCount, nodeCount, dungeonCount,serviceCount = A.Content, {}, 0, 0, 0,0
-local function fail(text) errors[#errors + 1] = text end
 local function positive(v) return type(v)=="number" and v>0 and v<math.huge end
 local function finite(v) return type(v)=="number" and v==v and math.abs(v)<math.huge end
 local flightNodes,flightPaths,flightTimes=0,0,0
@@ -73,74 +67,5 @@ local referenceDungeons=0
 assert(A.DungeonCatalog.version=="1.60.1" and A.DungeonCatalog.build=="70862","副本目录与目标构建不匹配")
 for _ in pairs(A.DungeonCatalog.entries) do referenceDungeons=referenceDungeons+1 end
 print(string.format("动态副本任务目录：%d 项；服务点通过 QuestieDB 公开接口查询",referenceDungeons))
-local kinds={accept=true,objective=true,turnin=true,move=true,service=true,transit=true}
-for id,node in pairs(c.nodes) do
-    nodeCount=nodeCount+1
-    local p=node.position
-    if not p or not positive(p.map) or type(p.x)~="number" or type(p.y)~="number" or p.x<0 or p.x>1 or p.y<0 or p.y>1 then
-        fail("目的地坐标无效："..id)
-    end
-    if node.verified and not c.sources[node.source] then fail("已验证节点缺少来源："..id) end
-    if node.hearth and (type(node.bindName)~="string" or node.bindName=="") then fail("炉石节点缺少绑定地名："..id) end
-end
-for id,transit in pairs(c.transit or {}) do
-    if (not c.nodes[transit.from] and not (transit.kind=="hearth" and transit.from==nil)) or not c.nodes[transit.to] then fail("交通节点缺失："..id) end
-    if transit.kind=="flight" and (not positive(transit.fromTaxi) or not positive(transit.toTaxi)) then fail("飞行点映射缺失："..id) end
-    if not positive(transit.seconds) then fail("交通耗时无效："..id) end
-    if transit.period and not positive(transit.period) then fail("交通周期无效："..id) end
-    if transit.kind=="hearth" and not positive(transit.cooldown) then fail("炉石冷却无效："..id) end
-    if transit.verified and not c.sources[transit.source] then fail("已验证交通缺少来源："..id) end
-end
-for id,q in pairs(c.quests) do
-    questCount=questCount+1
-    for item,rule in pairs(q.itemRules or {}) do
-        local types={use=true,collect=true,key=true,source=true,start=true}
-        if not positive(item) or type(rule)~="table" or not types[rule.kind] then fail("物品用途规则无效："..id)
-        elseif rule.count and (not positive(rule.count) or rule.count%1~=0) then fail("物品需求数量无效："..id) end
-    end
-end
-for id,item in pairs(c.items or {}) do
-    if item.verified and not c.sources[item.source] then fail("装备记录缺少来源："..id) end
-    if item.stackSize and (not positive(item.stackSize) or item.stackSize%1~=0) then fail("物品堆叠数量无效："..id) end
-    if item.family and (type(item.family)~="number" or item.family<0 or item.family%1~=0) then fail("物品家族无效："..id) end
-    if item.weaponDPS and (type(item.weaponDPS)~="number" or item.weaponDPS<0 or item.weaponDPS>=math.huge) then fail("武器伤害无效："..id) end
-end
-local function probability(value) return type(value)=="number" and value>=0 and value<=1 end
-for id,source in pairs(c.gearSources or {}) do
-    if not positive(source.itemId) or (source.kind~="quest" and source.kind~="dungeon") then fail("装备来源类型或物品无效："..id) end
-    if source.verified then
-        if not c.sources[source.source] then fail("装备来源缺少证据："..id) end
-        if source.kind=="quest" and not c.quests[source.questId] then fail("装备奖励任务缺失："..id) end
-        if source.kind=="dungeon" and not c.dungeons[source.dungeonId] then fail("装备掉落副本缺失："..id) end
-    end
-    local low,high=source.chanceLow or source.chance,source.chanceHigh or source.chance
-    if (low~=nil or high~=nil) and (not probability(low) or not probability(high) or low>high) then fail("掉落概率区间无效："..id) end
-    if source.shareChance~=nil and not probability(source.shareChance) then fail("装备分配概率无效："..id) end
-end
-for id,d in pairs(c.dungeons) do
-    dungeonCount=dungeonCount+1
-    if d.verified and not c.sources[d.source] then fail("副本缺少来源："..id) end
-    if d.verified then
-        if type(d.lockoutNames)~="table" or not next(d.lockoutNames) then fail("副本原生锁定名称映射缺失："..id) end
-        local valid,reason=A.Supplies.ValidAction(d)
-        if not valid then fail("副本资源模型无效："..id.."，"..reason) end
-        for _,action in ipairs(d.actions or {}) do
-            local ok,why=A.Supplies.ValidAction(action)
-            if not ok then fail("副本行动资源无效："..id.."，"..why) end
-        end
-        valid,reason=A.Dungeon.Workflow(d,c)
-        if not valid then fail("副本行程不完整："..id.."，"..reason) end
-        if not positive(d.runSeconds) or type(d.xp)~="number" or d.xp<0 or d.xp==math.huge then fail("副本耗时／经验无效："..id) end
-    end
-end
-for id,point in pairs(c.services or {}) do
-    serviceCount=serviceCount+1
-    local valid,why=A.Supplies.ValidService(point,c)
-    if not valid then fail("服务点无效："..id.."，"..why) end
-end
-if dungeonCount+referenceDungeons==0 then fail("副本任务目录尚未建立") end
-print(string.format("自有内容：%d 个任务、%d 个目的地、%d 个副本、%d 个服务点",questCount,nodeCount,dungeonCount,serviceCount))
-if questCount==0 then print("QuestieDB 基础任务数量须由实际依赖运行盘点，未计入自有内容。") end
-for _,err in ipairs(errors) do io.stderr:write(err,"\n") end
-if #errors>0 then os.exit(1) end
+assert(referenceDungeons>0,"副本任务目录尚未建立")
 print("内容结构检查通过")

@@ -84,11 +84,11 @@ function State:Qualifications(s, requirements)
     local trainers=A.Services and A.Services.TrainerData(s)
     for id in pairs(trainers and trainers.skills or {}) do skills[id]=true end
     local sets=A.ItemSets
-    if sets and s.clientVersion==sets.version and tostring(s.clientBuild)==sets.build and s.interface==sets.interface then
+    if sets and s.clientVersion==sets.version and s.interface==sets.interface then
         for id in pairs(sets.skills) do skills[id]=true end
     end
     local weapons=A.WeaponSkills
-    if weapons and s.clientVersion==weapons.version and tostring(s.clientBuild)==weapons.build and s.interface==weapons.interface then
+    if weapons and s.clientVersion==weapons.version and s.interface==weapons.interface then
         s.weaponSkills={}
         for _,weapon in pairs(weapons.subclasses) do skills[weapon.skill]=true end
     end
@@ -138,7 +138,6 @@ function State:Position(snapshot)
     local map = C_Map.GetBestMapForUnit("player")
     local pos = map and C_Map.GetPlayerMapPosition(map, "player")
     snapshot.position = pos and { map = map, x = pos.x, y = pos.y } or nil
-    A.Navigation:AttachNode(snapshot.position)
 end
 
 function State.Movement(snapshot)
@@ -321,15 +320,7 @@ function State:Refresh(force)
         for key, value in pairs(sample) do s.samples[kind][key] = value end
         fingerprint[#fingerprint + 1] = kind .. ":" .. sample.n .. ":" .. sample.mean
     end
-    A.Dungeon:Sync(s,previous)
     fingerprint[#fingerprint+1]=A.Instances:Snapshot(s)
-    if s.dungeon then
-        local d = s.dungeon
-        local done = {}
-        for index in pairs(d.done) do done[#done+1] = tostring(index) end
-        table.sort(done)
-        fingerprint[#fingerprint+1] = table.concat({d.id,d.round,d.phase,tostring(d.settled),math.floor(d.elapsed/30),table.concat(done,",")},":")
-    end
     fingerprint[#fingerprint + 1] = table.concat({s.level, tostring(s.maxXP), s.classId, s.raceId, s.groupSize,
         tostring(s.inInstance), A.settings.role, A.settings.minutes,
         tostring(A.settings.dungeons), tostring(s.locked), tostring(s.instanceId), tostring(s.instanceDifficultyId), tostring(s.dead),

@@ -27,11 +27,5 @@ test("耗时未知时相邻区域的近任务仍按直线距离排序",function(
     near.stagesComplete=true
     s.locked=1;eq(B.Planner.TaskOrder(s,{far,other,near})[1],far)
 end)
-test("当前位置未接入任何命名节点时仍可直线前往目的地",function()
-    local d,s=F.Data({}),F.State()
-    local origin={map=1,x=0.1,y=0}
-    local r=A.Travel.Route(d.content,origin,"goal",s)
-    eq(r.seconds,10);eq(r.actions[1].position,d.content.nodes.goal.position)
-    eq(r.actions[1].fromPosition,origin)
-end)
+
 end

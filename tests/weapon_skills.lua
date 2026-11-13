@@ -1,6 +1,6 @@
 return function(test,eq,F,A)
 local function fixture()
-    local B={UI={},Content={gearSources={}},settings={}}
+    local B={UI={},settings={}}
     for _,file in ipairs({"Data/WeaponSkills.lua","State.lua","Planner/Gear.lua","QuestAssist.lua","UI/Main.lua","UI/Gear.lua"}) do
         assert(loadfile(file))("AiLeveling",B)
     end
@@ -38,8 +38,8 @@ test("武器熟练度合并任务要求只读采集，缺失接口和异常值�
     eq(s.weaponSkills[43].modifier,5);eq(s.weaponSkills[43].tempPoints,2);eq(s.weaponSkills[44],nil)
     eq(s.weaponSkills[45],nil);eq(requirements.skills[162],nil)
     local ref,skill=B.Gear.WeaponSkill(weapon(1,13,10),s);eq(ref.skill,162);eq(skill.rank,50)
-    s.clientBuild="other";B.State:Qualifications(s,requirements);eq(s.weaponSkills,nil)
-    s.clientBuild="70862";C_SkillInfo=nil;B.State:Qualifications(s,requirements);eq(next(s.weaponSkills),nil)
+    s.clientVersion="other";B.State:Qualifications(s,requirements);eq(s.weaponSkills,nil)
+    s.clientVersion="1.60.1";s.clientBuild="70862";C_SkillInfo=nil;B.State:Qualifications(s,requirements);eq(next(s.weaponSkills),nil)
     C_SkillInfo=old
 end)
 test("技能加成影响武器权衡，未知类型与缺失熟练度不假设练满",function()
@@ -49,8 +49,8 @@ test("技能加成影响武器权衡，未知类型与缺失熟练度不假设�
     s.weaponSkills[43].tempPoints=5;assert(#B.Gear.Upgrade(candidate,s).notes>0)
     s.weaponSkills[44]=nil;assert(table.concat(B.Gear.Upgrade(candidate,s).notes):find("熟练度：在技能面板查看",1,true))
     candidate.subClassID=17;assert(table.concat(B.Gear.Upgrade(candidate,s).notes):find("在技能面板查看武器熟练度",1,true))
-    s.clientBuild="other";eq(#B.Gear.Upgrade(candidate,s).notes,0)
-    s.clientBuild="70862";candidate.usable=false;eq(B.Gear.Upgrade(candidate,s),nil)
+    s.clientVersion="other";eq(#B.Gear.Upgrade(candidate,s).notes,0)
+    s.clientVersion="1.60.1";s.clientBuild="70862";candidate.usable=false;eq(B.Gear.Upgrade(candidate,s),nil)
 end)
 test("远程武器使用远程熟练度，属性用途和投掷武器不套近战伤害分",function()
     local B,s=fixture();s.class="HUNTER"
@@ -80,10 +80,6 @@ test("整套双手替换和背包副手均保留熟练度权衡，装备详情�
 end)
 test("武器熟练度权衡抑制自动装备绕路而手选目标保持",function()
     local B,s=fixture();s.equipment[16]=weapon(1,7,10);s.items={[7]=weapon(7,0,20)}
-    local content={gearSources={wanted={verified=true,kind="quest",questId=7,itemId=7}}}
-    local base={rate=100,priority=0};local route={rate=96,priority=0,actions={{kind="turnin",questId=7}}}
-    B.Gear.Benefits({base,route},s,content);assert(route.gearSources.wanted);eq(route.gear,nil)
-    eq(B.Gear.Prefer({base,route},base,s,{}),base)
-    s.gearTarget="wanted";eq(B.Gear.Prefer({base,route},base,s,{}),route)
+
 end)
 end

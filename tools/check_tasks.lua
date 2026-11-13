@@ -9,7 +9,7 @@ local A={Navigation={Distance=function(_,a,b)
 end}}
 C_Map={GetMapInfo=function(id) return {mapID=id} end}
 C_QuestLog={}
-for _,file in ipairs({"State.lua","Data/Content.lua","Data/Questie.lua","Planner/Chains.lua","Planner/Eligibility.lua","Planner/Planner.lua"}) do
+for _,file in ipairs({"State.lua","Data/Questie.lua","Planner/Chains.lua","Planner/Eligibility.lua","Planner/Planner.lua"}) do
     assert(loadfile(root.."/"..file))("AiLeveling",A)
 end
 assert(A.Data:Connect(db))

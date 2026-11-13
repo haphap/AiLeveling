@@ -20,7 +20,6 @@ Hearth.lua
 Instances.lua
 LevelingTracker.lua
 Party.lua
-Data/Content.lua
 Data/Dangers.lua
 Data/TaskFacts.lua
 Data/ItemLimits.lua

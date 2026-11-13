@@ -22,7 +22,7 @@ local function fixture()
     GetContainerItemQuestInfo=function() return {isQuestItem=true} end}
     C_Item={GetItemInfo=function(id) return "item"..id,nil,1,nil,nil,nil,nil,20,nil,nil,0 end,
         GetItemFamily=function(id) return id==100 and 32 or 0 end}
-    local B={Content={},requestedItems={}}
+    local B={requestedItems={}}
     for _,path in ipairs({"State.lua","Planner/Supplies.lua","QuestAssist.lua"}) do assert(loadfile(path))("AiLeveling",B) end
     local function snapshot()
         local s={quests={}};local key={};B.State:SnapshotBags(s,key);B.Supplies:Snapshot(s)
@@ -40,20 +40,7 @@ test("专业包与隐藏钥匙链计数进入任务缺失判断且不读取银�
     c[5].items[1].stackCount=2;local changed,nextKey=snapshot();assert(key~=nextKey)
     eq(B.QuestAssist.Requirements({requiredItems={[100]=5}},changed)[1].missing,1)
 end)
-test("专用容器消耗和新物品容量保持限制",function()
-    local B,c,snapshot=fixture()
-    c[0].free=0;c[1].free=0
-    local s=snapshot();local cursor=B.Supplies.Cursor(s)
-    local next=B.Supplies.Apply({consumeItems={[200]=1},gainItems={[100]=40}},cursor,s.itemMetadata)
-    assert(next);eq(next.bags[100],45);eq(next.inventory.bags[-2].free,11)
-    local blocked,why=B.Supplies.Apply({consumeItems={[200]=1},gainItems={[200]=1}},cursor,s.itemMetadata)
-    eq(blocked,nil);eq(why.kind,"space")
-    blocked,why=B.Supplies.Apply({minFreeSlots=1},next,s.itemMetadata);eq(blocked,nil);eq(why.kind,"space")
-    eq(cursor.bags[200],1);eq(cursor.inventory.bags[-2].free,10)
-    c[-2].family=256;s=snapshot();s.itemMetadata[200].family=256
-    next=B.Supplies.Apply({consumeItems={[200]=1},gainItems={[200]=1}},B.Supplies.Cursor(s),s.itemMetadata)
-    assert(next);eq(next.inventory.bags[-2].free,10)
-end)
+
 test("缺少额外容器能力时兼容标准包并保留空容器",function()
     local B,c,snapshot=fixture();Constants=nil;C_ActionBar=nil
     local s=snapshot();eq(s.bags[100],2);eq(s.bags[200],nil);eq(s.inventory.bags[5],nil)

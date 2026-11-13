@@ -45,7 +45,7 @@ return function(test,eq,F,A,C)
         rows=A.QuestAssist.Requirements(action,s,B.Data);eq(rows[1].kind,"key");eq(rows[1].missing,2)
         eq(#A.QuestAssist.Desired(action,s,true,B.Data),0);q.itemRules=nil
         s.quests[1].ready=true;eq(#A.QuestAssist.Desired(action,s,true,B.Data),0);s.quests[1].ready=nil
-        s.clientBuild="other";eq(#A.QuestAssist.Desired(action,s,true,B.Data),0);s.clientBuild="70862"
+        s.clientVersion="other";eq(#A.QuestAssist.Desired(action,s,true,B.Data),0);s.clientVersion="1.60.1";s.clientBuild="70862"
         q.questLevel=11;eq(#A.QuestAssist.Desired(action,s,true,B.Data),0);q.questLevel=10
         eq(#A.QuestAssist.Desired({kind="turnin",questId=1},s,true,B.Data),0)
         eq(#A.QuestAssist.Desired({kind="accept",questId=1},s,true,B.Data),0)

@@ -31,19 +31,6 @@ function N:Distance(from, to)
     return self.hbd:GetZoneDistance(from.map, from.x, from.y, to.map, to.x, to.y)
 end
 
-function N:AttachNode(position)
-    if not position then return end
-    local nearest, best
-    for id, node in pairs(A.Content.nodes) do
-        -- Authored accessRadius certifies the short connection inside this open area.
-        if node.accessRadius and node.position.map == position.map then
-            local distance = self:Distance(position, node.position)
-            if distance and distance <= node.accessRadius and (not best or distance < best) then nearest, best = id, distance end
-        end
-    end
-    position.node = nearest
-end
-
 function N:SetPlan(plan)
     self.plan=plan
     local current=self.actions and self.actions[self.index]
@@ -59,11 +46,6 @@ function N:SetPlan(plan)
     end
     self.index = 1
     self.actions = nextActions
-    local node = A.state.position and A.state.position.node
-    for i, action in ipairs(self.actions) do
-        if action.kind ~= "move" then break end
-        if node and action.node == node then self.index = i + 1 end
-    end
     self.transitDeparted = nil
     local pos=A.state.position
     self.taskOrigin=pos and {map=pos.map,x=pos.x,y=pos.y}
@@ -71,18 +53,8 @@ function N:SetPlan(plan)
     A.QuestAssist:Update()
 end
 
-function N.OnApproach(plan, node)
-    if not node or not plan or not plan.best then return false end
-    for _, action in ipairs(plan.best.actions or {}) do
-        if action.node == node then return true end
-        if action.kind ~= "move" and action.kind ~= "transit" then break end
-    end
-    return false
-end
-
 function N:Advance()
     local action = self.actions and self.actions[self.index]
-    if A.Dungeon then A.Dungeon:Arrived(action) end
     self.index, self.transitDeparted = self.index + 1, nil
     self:RefreshPins()
     A.QuestAssist:Update()
@@ -292,14 +264,13 @@ function N:Update()
     end
     if pos then
         local changedMap = self.lastMap and self.lastMap ~= pos.map
-        local offRoad = pos.node and pos.node ~= self.lastNode and not N.OnApproach(A.plan, pos.node)
         local expectedTransit = action and action.kind == "transit" and action.position and action.position.map == pos.map
-        if not publicTravel and not self.manual and not A.char.paused and ((changedMap and not expectedTransit) or offRoad) and
+        if not publicTravel and not self.manual and not A.char.paused and (changedMap and not expectedTransit) and
             (not self.replanAt or GetTime() >= self.replanAt) then
             self.replanAt = GetTime() + 2
             A:Replan()
         end
-        self.lastMap, self.lastNode = pos.map, pos.node
+        self.lastMap = pos.map
     end
     if action and action.kind=="service" and not A.char.paused and A.Supplies and A.Supplies.Done(action,A.state) then
         self:Advance();return

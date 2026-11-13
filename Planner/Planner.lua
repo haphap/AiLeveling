@@ -9,13 +9,6 @@ local function copy(map)
     return result
 end
 
-local function rank(a, b)
-    if (a.priority or 0) ~= (b.priority or 0) then return (a.priority or 0) > (b.priority or 0) end
-    if a.rate ~= b.rate then return a.rate > b.rate end
-    if a.seconds ~= b.seconds then return a.seconds < b.seconds end
-    return tostring(a.id) < tostring(b.id)
-end
-
 -- Task ordering depends on destinations and movement, not execution-time estimates.
 function P.TaskChoices(state,data,ids,onlySelected,options)
     local choices,seen={},{}
@@ -297,16 +290,16 @@ end
 
 function P.Build(state, data, options)
     state=copy(state);state.objectiveTargets={}
-    if state.level >= 60 and (not state.dungeon or state.dungeon.phase=="complete") then return { revision = state.revision, complete = true, alternatives = {} } end
+    if state.level >= 60 then return { revision = state.revision, complete = true } end
     local gearSource=state.gearTarget and A.Gear.GetSource and A.Gear.GetSource(state.gearTarget,data,state)
     if type(state.gearTarget)=="string" and (state.gearTarget:match("^reward:") or state.gearTarget:match("^drop:")) and not gearSource then
         local reason="所选装备来源暂不可用；可恢复升级目标。"
-        return {revision=state.revision,alternatives={},taskChoices={},selectionBlocked=reason,
+        return {revision=state.revision,taskChoices={},selectionBlocked=reason,
             fallback={kind="selectionBlocked",title="装备目标暂不可用",text=reason}}
     end
     if gearSource and gearSource.reference and gearSource.kind=="quest" then state=copy(state);state.locked=gearSource.questId end
     local preparation,preparationReason
-    if state.locked and (not state.dungeon or state.dungeon.phase=="complete") and A.Chains and A.Chains.Preparation then
+    if state.locked and A.Chains and A.Chains.Preparation then
         local root=data:GetQuest(state.locked)
         if root then
             local allowed,reason=A.Eligibility.Check(root,state,data)
@@ -327,15 +320,7 @@ function P.Build(state, data, options)
     local batchChoices,batch
     if state.taskBatch and A.Dungeon.TaskBatchChoices then batchChoices,batch=A.Dungeon.TaskBatchChoices(state,data) end
     local ids=batch and {} or data:Candidates(state)
-    local alternatives={}
-    for _,dungeon in pairs(not batch and data.content.dungeons or {}) do
-        local candidate=A.Dungeon.Evaluate(dungeon,state,options,data)
-        if candidate then alternatives[#alternatives+1]=candidate end
-    end
-    table.sort(alternatives,rank)
-    A.Gear.Benefits(alternatives,state,data.content)
-    local result={revision=state.revision,best=alternatives[1],alternatives=alternatives,preparingQuest=preparation,
-        origin=state.position and {map=state.position.map,node=state.position.node}}
+    local result={revision=state.revision,preparingQuest=preparation,origin=state.position and {map=state.position.map}}
     result.taskChoices=batchChoices or P.TaskChoices(state,data,ids,nil,options)
     local preferred=not batch and A.Gear.PreferTask and A.Gear.PreferTask(result.taskChoices,state,options)
     if preferred then
@@ -348,32 +333,10 @@ function P.Build(state, data, options)
         result.fallback={kind="dungeonLeave",title="离开"..batch.title,text="任务已交齐，离开副本后继续练级。"}
         return result
     end
-    if state.locked then result.best=nil end
-    if result.best and result.best.requiresAcceptance then
-        result.suggestedDungeon=result.best;result.best=nil
-    end
-    if not state.locked then
-        local previous=result.best
-        result.best,result.gearTargetBlocked=A.Gear.Prefer(alternatives,result.best,state,options)
-        result.preferenceApplied=result.preferenceApplied or state.gearTarget~=nil or previous~=result.best
-    end
-    if state.dungeon and state.dungeon.phase~="complete" then
-        local d = data.content.dungeons[state.dungeon.id]
-        local actions = d and A.Dungeon.ActivePlan(d,state,data)
-        if actions then
-            result.best = {id="accepted:"..d.id..":"..state.dungeon.round,title=d.title,
-                kind="dungeon",dungeonId=d.id,actions=actions,seconds=0,xp=0,rate=0}
-            result.sessionActive = true
-        else
-            result.fallback = {title="副本资料暂不可用",kind="dungeonBlocked",text="保留已选行程，可结束行程后恢复练级"}
-            result.best=nil
-            result.sessionActive=true
-        end
-    end
-    if not result.sessionActive and gearSource and gearSource.reference and gearSource.kind=="dungeon" then
+    if gearSource and gearSource.reference and gearSource.kind=="dungeon" then
         A.Gear.PlanDungeonTarget(result,gearSource,state,data)
     end
-    if not result.sessionActive and A.Supplies and (not result.best or state.serviceStop and
+    if A.Supplies and (not result.best or state.serviceStop and
         (state.freeSlots==0 or state.durability and state.durability<0.2)) then
         local maintenance,why=A.Supplies.Fallback(state,data)
         result.supplyIssue=not maintenance and why or nil
@@ -389,7 +352,7 @@ function P.Build(state, data, options)
         local choices=batch and A.Dungeon.TaskBatchStage(result.taskChoices,state,data) or result.taskChoices
         result.taskOrder,result.taskQueue=P.TaskOrder(state,choices,data)
     end
-    if not result.best and not result.sessionActive and not result.maintenance and not result.serviceStop and not result.gearPlan then
+    if not result.best and not result.maintenance and not result.serviceStop and not result.gearPlan then
         -- Reference quests use straight-line travel estimates.
         result.unverified = true
         local choices=batch and A.Dungeon.TaskBatchStage(result.taskChoices,state,data) or result.taskChoices
@@ -465,7 +428,7 @@ function P.Build(state, data, options)
     if A.Dungeon.TaskBatchWaitPlan then A.Dungeon.TaskBatchWaitPlan(result,state,data,options) end
     if A.Services then result.bindingChoices=A.Services.PlanBindings(result,state,data) end
     if A.Services then result.automaticService=A.Services.AutomaticBinding(result,state) end
-    if (state.serviceStop or result.automaticService) and A.Services and not result.sessionActive and not result.maintenance then
+    if (state.serviceStop or result.automaticService) and A.Services and not result.maintenance then
         local stop=A.Services.Build(state,result,result.automaticService)
         if stop then
             result.serviceResume=A.Services.TaskDestination(result)

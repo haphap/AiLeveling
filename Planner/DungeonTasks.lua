@@ -3,7 +3,7 @@ local D=A.Dungeon
 
 local function pvpFor(state)
     local catalog=A.PvPCatalog
-    if catalog and state.clientVersion==catalog.version and tostring(state.clientBuild)==catalog.build then return catalog.entries end
+    if catalog and state.clientVersion==catalog.version then return catalog.entries end
 end
 
 function D.TaskPvP(position,state,data,areaId)
@@ -190,26 +190,17 @@ function D.TaskEntryIssue(choice,state,data,options)
     end
 end
 
-function D.Catalog(state,content)
-    local entries,instances={},{}
-    for id,d in pairs(content.dungeons) do entries[id]=d;instances[d.instanceId]=true end
+function D.Catalog()
     local catalog=A.DungeonCatalog
-    if catalog then
-        for id,d in pairs(catalog.entries) do if not instances[d.instanceId] then entries[id]=d end end
-    end
-    return entries
+    return catalog and catalog.entries or {}
 end
 
 function D.Tasks(d,state,data,targets)
     targets=targets or {}
     local refs={}
-    if d.reference then
-        for id,kind in pairs(d.quests[state.faction] or {}) do refs[id]=kind end
-        for _,area in ipairs(d.areas or {}) do
-            for _,id in ipairs(data.byArea and data.byArea[area] or {}) do refs[id]=refs[id] or "category" end
-        end
-    else
-        for _,action in ipairs(d.actions or {}) do if action.questId then refs[action.questId]="inside" end end
+    for id,kind in pairs(d.quests[state.faction] or {}) do refs[id]=kind end
+    for _,area in ipairs(d.areas or {}) do
+        for _,id in ipairs(data.byArea and data.byArea[area] or {}) do refs[id]=refs[id] or "category" end
     end
     if state.taskBatch and state.taskBatch.id==d.id then
         for id in pairs(state.taskBatch.baselines) do refs[id]=refs[id] or "selected" end
@@ -299,10 +290,9 @@ end
 
 -- Recommend a task group before the player opens the dungeon tab.
 function D.SuggestTaskBatch(state,data,options)
-    if not options.dungeons or state.inInstance or state.taskBatch or state.gearTarget or
-        state.dungeon and state.dungeon.phase~="complete" then return end
+    if not options.dungeons or state.inInstance or state.taskBatch or state.gearTarget then return end
     local candidates,targets={},{}
-    for _,d in pairs(D.Catalog(state,data.content)) do
+    for _,d in pairs(D.Catalog()) do
         if d.reference and (not d.minLevel or state.level>=d.minLevel) then
             local entry=D.TaskApproach({kind="dungeonEnter",title=d.title,areaId=d.areas[1]},state,data)
             local seconds
@@ -424,8 +414,7 @@ function D:TaskBatchSnapshot(state)
     self:UpdateTaskActivity(state)
     local batch=A.char.taskBatch
     if not batch then return "" end
-    if not D.ValidTaskBatch(batch) or A.char.locked or
-        A.char.dungeon and A.char.dungeon.phase~="complete" then A.char.taskBatch=nil;return "" end
+    if not D.ValidTaskBatch(batch) or A.char.locked then A.char.taskBatch=nil;return "" end
     local ids,baselines={},{}
     for id,n in pairs(batch.baselines) do
         local q=A.Data:GetQuest(id)
@@ -435,7 +424,7 @@ function D:TaskBatchSnapshot(state)
         else ids[#ids+1]=id;baselines[id]=n end
     end
     -- A quest picked up during the trip joins the same batch, including quests absent at departure.
-    local d=D.Catalog(state,A.Content)[batch.id]
+    local d=D.Catalog()[batch.id]
     for _,row in ipairs(d and D.Tasks(d,state,A.Data) or {}) do
         if state.quests[row.id] and not (A.State.confirmed and A.State.confirmed[row.id]) and
             baselines[row.id]==nil and D.CanContinueTask(row) then
@@ -457,8 +446,7 @@ end
 function D:StartTaskBatch(id)
     if not A.ready or A.refreshAt then return false,"任务状态正在更新" end
     if A.Transport and A.Transport:InFlight() then return false,"落地后再安排任务" end
-    if A.char.dungeon and A.char.dungeon.phase~="complete" then return false,"先结束当前副本行程" end
-    local d=D.Catalog(A.state,A.Content)[id]
+    local d=D.Catalog()[id]
     if not d then return false,"当前构建没有这项副本目录" end
     local baselines={}
     for _,row in ipairs(D.Tasks(d,A.state,A.Data)) do
@@ -528,7 +516,7 @@ end
 -- Expand only today's executable prerequisites; real turn-ins unlock the next frontier.
 function D.TaskBatchChoices(state,data)
     local batch=state.taskBatch
-    local d=D.Catalog(state,data.content)[batch.id]
+    local d=D.Catalog()[batch.id]
     local info={id=batch.id,title=d and d.title or "所选副本",remaining=0,blocked={},returning=batch.returning}
     if batch.returning then return {},info end
     local ids,roots,seen={},{},{}

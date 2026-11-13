@@ -12,7 +12,7 @@ C_Map={GetMapInfo=function(id)
     local types={[1436]=3,[1453]=3,[1454]=3,[1456]=3,[291]=4,[213]=4}
     return {mapID=id,mapType=types[id]}
 end};C_QuestLog={}
-for _,file in ipairs({"State.lua","Data/Content.lua","Data/Dungeons.lua","Data/Questie.lua",
+for _,file in ipairs({"State.lua","Data/Dungeons.lua","Data/Questie.lua",
     "Planner/Chains.lua","Planner/Eligibility.lua","Planner/Dungeon.lua","Planner/DungeonTasks.lua",
     "Planner/Travel.lua","Planner/Gear.lua","Planner/Progression.lua","Planner/Supplies.lua",
     "Planner/TaskGuide.lua","Planner/TaskQueue.lua","Planner/Planner.lua","Planner/Selection.lua"}) do

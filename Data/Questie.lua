@@ -31,9 +31,7 @@ function D:Connect(db)
     self.servicesByMap,self.serviceCount={},0
     self.amenitiesByMap,self.amenityCount={},0
     self.ids={}
-    local seen={}
-    for _,id in ipairs(db.Quest.GetAllIds()) do self.ids[#self.ids+1]=id;seen[id]=true end
-    for id in pairs(A.Content.quests) do if not seen[id] then self.ids[#self.ids+1]=id end end
+    for _,id in ipairs(db.Quest.GetAllIds()) do self.ids[#self.ids+1]=id end
     table.sort(self.ids)
     local zones = db.Support.Get("ZoneDB")
     self.maps = D.ParseMap(zones and zones.private and zones.private.areaIdToUiMapId)
@@ -42,7 +40,6 @@ function D:Connect(db)
     end
     local xp = db.Support.Get("QuestXP")
     self.xp = xp and xp.db or {}
-    self.content = A.Content
     return true
 end
 
@@ -196,8 +193,7 @@ end
 function D:GetQuest(id,state)
     if self.cache[id] then return self.cache[id] end
     local values = self.db.Quest.GetAll(id, fields)
-    local overlay = self.content.quests[id]
-    if not values and not overlay then
+    if not values then
         for _,offers in pairs(state and state.questOffers or {}) do
             if type(offers[id])=="table" then return offers[id] end
         end
@@ -213,7 +209,6 @@ function D:GetQuest(id,state)
         q.referenceXPLevel,q.referenceXP=xp[1],xp[2]
     end
     q.taskFacts=A.TaskFacts and A.TaskFacts.quests[id]
-    if overlay then for k, v in pairs(overlay) do q[k] = v end end
     self.cache[id] = q
     return q
 end
@@ -416,7 +411,7 @@ end
 function D:CacheQuest(q,state)
     local cache=A.TaskFacts and A.TaskFacts.cacheXP
     if not cache or (state.clientVersion or A.clientVersion)~=cache.version or
-        tostring(state.clientBuild or A.build)~=cache.build or (state.interface or A.interface)~=cache.interface then return end
+        (state.interface or A.interface)~=cache.interface then return end
     local facts=cache.quests[q.id]
     -- Scaling quests retain their objective requirements; their XP still needs a matching level in TaskGuide.XP.
     if facts and (facts.level==q.questLevel or q.questLevel==-1) and
@@ -704,7 +699,7 @@ end
 function D:UnmappedTargetArea(q,state,objectiveIndex)
     local catalog=A.DungeonCatalog
     local objectiveAreas=catalog and (state.clientVersion or A.clientVersion)==catalog.version and
-        tostring(state.clientBuild or A.build)==catalog.build and catalog.objectiveAreas and catalog.objectiveAreas[q.id]
+        catalog.objectiveAreas and catalog.objectiveAreas[q.id]
     local function areaOf(lists)
         local found
         for _,spawns in ipairs(lists) do
@@ -885,12 +880,6 @@ function D:ReferenceObjectiveTargets(q,state)
         if not positions[index] then areas[index]=self:UnmappedTargetArea(q,virtual,index) end
     end
     return descriptions,positions,complex,areas
-end
-
-function D:NodeCount()
-    local n = 0
-    for _ in pairs(A.Content.nodes) do n = n + 1 end
-    return n
 end
 
 function D:Audit()

@@ -151,7 +151,6 @@ end
 function C:Defer(preview)
     if type(preview)~="table" or not valid(preview.root) or type(preview.ids)~="table" or not A.ready or not A.Data.chainIndex or preview.index~=A.Data.chainIndex or
         preview.revision~=A.state.revision or A.refreshAt then return false,"任务状态已变化，请重新查看暂缓范围" end
-    if A.char.dungeon and A.char.dungeon.phase~="complete" then return false,"先结束当前副本行程，再暂缓整链" end
     local actual=C.Descendants(preview.root,A.Data.chainIndex)
     if #actual.ids~=#preview.ids then return false,"暂缓范围已变化，请重新查看" end
     for i,id in ipairs(actual.ids) do if id~=preview.ids[i] then return false,"暂缓范围已变化，请重新查看" end end
@@ -159,7 +158,7 @@ function C:Defer(preview)
     A.char.deferredChains[preview.root]=true
     local clear=A.char.locked and actual.members[A.char.locked]
     if clear then A.Selection:Clear() end
-    local source=(A.Content.gearSources or {})[A.char.gearTarget]
+    local source=A.Gear and A.Gear.GetSource(A.char.gearTarget)
     if source and source.questId and actual.members[source.questId] then A.char.gearTarget,A.char.gearBaseline=nil,nil end
     A.State:Refresh(true)
     return true

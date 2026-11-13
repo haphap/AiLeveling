@@ -225,8 +225,7 @@ function S:Refresh()
             c.button.text:SetText(c.label.."："..value)
         else c.button:SetChecked(A.settings[c.key]) end
     end
-    local nodes=A.Data and A.Data.NodeCount and A.Data:NodeCount() or 0
-    self.summary:SetText("版本："..A.version.."\n已索引任务："..(A.Data.count or 0).."\n自有目的地："..nodes..
+    self.summary:SetText("版本："..A.version.."\n已索引任务："..(A.Data.count or 0)..
         "\n任务／奖励／经验："..(A.TaskGuide and table.concat({A.TaskGuide.Counts()},"／") or "0／0／0")..
         "\n服务 NPC："..(A.Data.serviceCount or 0))
     if self.groups[5]:IsShown() then self:RefreshBags() end

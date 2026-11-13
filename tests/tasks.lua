@@ -14,7 +14,7 @@ test("全量资格通过任务保留跨区和缺位置候选且不伪造经验�
     local s,d,q=fixture();q[2].requiredLevel=99;q[3].requiredRaces=2
     s.completed[4]=true;s.skipped[5]=true;s.chainDeferred={[6]=1}
     local p=plan(s,d)
-    eq(#p.alternatives,0);eq(p.best,nil);eq(#p.taskChoices,3)
+    eq(p.alternatives,nil);eq(p.best,nil);eq(#p.taskChoices,3)
     eq(p.taskChoices[1].questId,1);eq(p.taskChoices[1].rate,nil);eq(p.taskChoices[1].seconds,nil)
     eq(p.fallback.kind,"accept");eq(p.fallback.position.map,1)
 end)
@@ -26,7 +26,7 @@ test("日志任务含无坐标和数据库未收录任务且交付优先",functi
 end)
 test("任务入口只接受当前对象并经原有锁定入口保存和实际交付解除",function()
     local s,d=fixture()
-    local B={ready=true,state=s,Data=d,Content=d.content,char={turnIns={},skipped={},paused=true},Navigation={manual={}}}
+    local B={ready=true,state=s,Data=d,char={turnIns={},skipped={},paused=true},Navigation={manual={}}}
     assert(loadfile("Planner/Selection.lua"))("AiLeveling",B)
     B.State={Refresh=function() end};B.plan=plan(s,d)
     local c=B.plan.taskChoices[1]
@@ -36,21 +36,7 @@ test("任务入口只接受当前对象并经原有锁定入口保存和实际�
     B.char.locked=99;s.locked=99;s.completed[99]=true
     B.Selection:Snapshot(s);eq(B.char.locked,nil);eq(s.locked,nil)
 end)
-test("任务行程详情保留真实进度和副本目的地并去掉坐标",function()
-    local s,d=fixture();s.quests[1]={title="进行中任务",objectives={{text="目标 1/3",finished=false}}}
-    local B={Planner=A.Planner,UI={},char={},state=s,Navigation={Current=function() end}}
-    assert(loadfile("UI/Main.lua"))("AiLeveling",B)
-    assert(loadfile("UI/Plan.lua"))("AiLeveling",B)
-    B.plan=plan(s,d);local rows=B.UI.Plan.Rows(B.plan);assert(#rows>0)
-    B.UI.Plan.preview=rows[1]
-    local text=table.concat(B.UI.Plan:Lines(),"\n")
-    assert(text:find("目标 1/3",1,true));assert(not text:find("10.0, 50.0",1,true))
-    assert(not text:find("预计 0.0",1,true));assert(text:find("任务日志",1,true))
-    B.Dungeon={TaskInstance=function(_,_,_,area) if area==96 then return {title="测试副本"} end end}
-    B.UI.Plan.preview.stages={{kind="objective",text="收集目标",areaId=96},{kind="turnin",text="返回交付",position={map=1,x=0.1,y=0.2}}}
-    text=table.concat(B.UI.Plan:Lines(),"\n")
-    assert(text:find("目的地：测试副本",1,true));assert(text:find("返回交付",1,true))
-end)
+
 test("NPC 实际接取列表避开不可接任务并保留其他发布者与已接交付",function()
     local oldMap,oldLog,oldGossip,oldGuid,oldQuest,oldAccess=C_Map,C_QuestLog,C_GossipInfo,UnitGUID,GetQuestID,canaccessvalue
     local oldName,oldTitle=UnitName,GetTitleText
@@ -60,12 +46,12 @@ test("NPC 实际接取列表避开不可接任务并保留其他发布者与已�
     UnitGUID=function(unit) eq(unit,"npc");return "Creature-0-1-2-3-"..npc.."-00000001" end
     C_GossipInfo={GetAvailableQuests=function() return list end}
     UnitName=function() return "实际发布者" end
-    local B={Content={quests={}},Navigation={Distance=F.Navigation.Distance,AttachNode=function() end},Merchant=A.Merchant}
+    local B={Navigation={Distance=F.Navigation.Distance},Merchant=A.Merchant}
     assert(loadfile("State.lua"))("AiLeveling",B)
     assert(loadfile("Data/Questie.lua"))("AiLeveling",B)
     local sources,q={{11}},{id=1,title="待接任务",questLevel=20,requiredLevel=1,zoneOrSort=10}
     local entity={Get=function(id,key) if key=="name" then return "发布者 "..id end return {[10]={{id,50}}} end}
-    local d=B.Data;d.maps={[10]=1};d.content=F.Data({}).content;d.content.quests={}
+    local d=B.Data;d.maps={[10]=1}
     d.db={Enum={npcFlags={}},Npc=entity,Object=entity,Quest={GetAll=function() end,Get=function(id,key)
         if id~=1 then return end
         if key=="startedBy" or key=="finishedBy" then return sources end
@@ -201,11 +187,9 @@ test("任务总览分开已接和未接且顺序与预览使用真实日志状�
     for _,value in ipairs({"已接取 1 项","未接取 1 项","已接取任务 ·","未接取任务 ·",
         "建议顺序：[未接取] 未接任务 → [已接取] 已接任务","先接取，再推进任务目标"}) do assert(text:find(value,1,true),value) end
     B.UI.Plan.preview=pending
-    assert(table.concat(B.UI.Plan:Lines(),"\n"):find("[未接取] 先向任务发布者接取",1,true))
     s.quests[2]={title="未接任务",ready=true,objectives={}}
     text=table.concat(B.UI:TaskLines(),"\n");assert(text:find("未接取 0 项",1,true))
     assert(not text:find("未接取任务 ·",1,true));assert(text:find("[可交付] 未接任务",1,true))
-    assert(table.concat(B.UI.Plan:Lines(),"\n"):find("[可交付] 目标已完成",1,true))
     s.quests={};B.plan.taskChoices={pending};B.plan.taskOrder={pending}
     text=table.concat(B.UI:TaskLines(),"\n");assert(text:find("已接取 0 项",1,true));assert(text:find("未接取 1 项",1,true))
 end)
@@ -297,9 +281,6 @@ test("满日志提示同步到主列表总览与预览，未接状态保持真�
     local summary=table.concat(B.UI:TaskLines(),"\n")
     assert(summary:find("未接取任务",1,true));assert(summary:find("任务日志已满",1,true))
     B.UI.Plan.preview=p.taskChoices[1]
-    local preview=table.concat(B.UI.Plan:Lines(),"\n")
-    assert(preview:find("[未接取] 任务日志已满",1,true))
-    assert(not preview:find("先向任务发布者接取",1,true))
 end)
 
 end

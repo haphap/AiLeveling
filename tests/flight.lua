@@ -14,9 +14,7 @@ UnitAffectingCombat=function() return false end
 local function position(x,map,node) return {map=map or 1,x=x,y=0,node=node} end
 local function fixture(actions)
     now,flying=0,false
-    local content={version="v1",nodes={a={position=position(0),accessRadius=20},b={position=position(1)}},
-        edges={},transit={f={from="a",to="b",kind="flight",seconds=10,cost=0,verified=true,title="飞往乙地"}}}
-    local B={Content=content,Travel=A.Travel,settings={learn=true,pins=false},char={samples={}},jobs={},
+    local B={Travel=A.Travel,settings={learn=true,pins=false},char={samples={}},jobs={},
         state={position=position(0,1,"a"),quests={},completed={},onTaxi=false},wakes=0,refreshes=0,replans=0,messages=0}
     B.RequestRefresh=function(self) self.wakes=self.wakes+1 end
     B.Replan=function(self) self.replans=self.replans+1 end
@@ -28,8 +26,8 @@ local function fixture(actions)
     end}
     assert(loadfile("Transport.lua"))("AiLeveling",B)
     assert(loadfile("Navigation.lua"))("AiLeveling",B)
-    local route=A.Travel.Route(content,"a","b",{now=0,money=100})
-    B.plan={best={actions=actions or route.actions}}
+    B.plan={best={actions=actions or {{kind="transit",mode="flight",title="飞往乙地",
+        position=position(1),departure=position(0),departureRadius=20,arrival=12,travelSeconds=10,timeSampleKey="flighttime:test:1:2"}}}}
     B.Navigation:SetPlan(B.plan)
     B.Navigation.lastMap,B.Navigation.lastNode=1,"a"
     B.Navigation.hbd={GetZoneDistance=function(_,m,x,y,tm,tx,ty)
@@ -73,8 +71,8 @@ end)
 test("确认落地只结算对应航线且按真实状态刷新",function()
     local B=fixture();start(B);finish(B)
     eq(B.Navigation.index,2);eq(B.refreshes,1);eq(B.Transport.flight,nil)
-    local sample=B.char.samples["flight:v1:f"]
-    eq(sample.n,1);eq(sample.mean,1);eq(sample.unit,"ratio");eq(B.char.samples.move,nil)
+    local sample=B.char.samples["flighttime:test:1:2"]
+    eq(sample.n,1);eq(sample.mean,10);eq(sample.unit,"seconds");eq(B.char.samples.move,nil)
     B.Transport:Update();eq(B.refreshes,1);eq(sample.n,1)
     local hooks,selected=0,nil
     hooksecurefunc=function(name,callback) eq(name,"TakeTaxiNode");hooks=hooks+1;selected=callback end
@@ -192,7 +190,7 @@ test("出发点附近未处理的移动动作可接续真实起飞",function()
     local B=fixture();local flight=B.plan.best.actions[1]
     B.Navigation.actions={{kind="move",node="a",position=position(0)},flight}
     B.Navigation.index=1;start(B);eq(B.Navigation.index,2);eq(B.Transport.flight.action,flight)
-    finish(B);eq(B.Navigation.index,3);eq(B.char.samples["flight:v1:f"].n,1)
+    finish(B);eq(B.Navigation.index,3);eq(B.char.samples["flighttime:test:1:2"].n,1)
 end)
 test("落地无坐标时等待定位且等待时间不算飞行耗时",function()
     local B=fixture();start(B)
@@ -201,7 +199,7 @@ test("落地无坐标时等待定位且等待时间不算飞行耗时",function(
     local ended=B.Navigation:Current().text;assert(ended:find("飞行用时 0:10",1,true))
     for t=12,20 do step(B,t,false,nil) end
     eq(B.Navigation:Current().text,ended)
-    step(B,21,false,position(1,1,"b"));eq(B.refreshes,1);eq(B.char.samples["flight:v1:f"].mean,1)
+    step(B,21,false,position(1,1,"b"));eq(B.refreshes,1);eq(B.char.samples["flighttime:test:1:2"].mean,10)
 end)
 test("飞行暂停关闭学习重载和帧中断排除耗时样本",function()
     for _,change in ipairs({

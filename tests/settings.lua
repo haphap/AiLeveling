@@ -84,7 +84,7 @@ local function setup(fullUI)
     B.char={samples={},skipped={},deferredChains={},turnIns={}}
     B.state=F.State();B.state.bags[500]=2;B.state.quests[1]={objectives={}}
     local q=F.Quest(1);q.itemRules={[500]={kind="use",count=5,recovery="找 NPC 补领"}}
-    B.Data=F.Data({[1]=q});B.Data.count=1;B.Content=B.Data.content
+    B.Data=F.Data({[1]=q});B.Data.count=1
     B.action={kind="objective",questId=1,objectiveIndex=1}
     local nav={};assert(loadfile("Navigation.lua"))("AiLeveling",nav)
     B.Navigation={Current=function() return B.action end,RefreshPins=function() end,Target=nav.Navigation.Target,StaleAction=nav.Navigation.StaleAction}

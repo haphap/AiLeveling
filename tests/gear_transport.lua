@@ -38,20 +38,12 @@ test("整套比较列出被换下装备和双手替换丢失的效果",function(
     assert(notes:find("失去",1,true));assert(notes:find("命中触发额外伤害",1,true));assert(notes:find("#42",1,true))
     eq(s.equipment[17].id,2)
 end)
-test("来源按每次概率比较且未知分配份额保留零下界",function()
-    local s=F.State();s.items={[7]=item(7,"INVTYPE_HEAD",10)}
-    local source={verified=true,kind="dungeon",itemId=7,chance=0.2}
-    local r=G.Source(source,s,{});eq(r.chanceLow,0);eq(r.chanceHigh,0.2);eq(r.expectedAttemptsHigh,nil)
-    source.shareChance=0.5;r=G.Source(source,s,{});eq(r.expectedAttemptsHigh,10)
-    s.failedDrops=99;eq(G.Source(source,s,{}).chanceHigh,0.1)
-    s.bags[7]=1;eq(G.Source(source,s,{}).owned,true)
-    s.items[7].weaponDPS=nil;s.items[7].equipLoc="INVTYPE_WEAPON";assert(G.Source(source,s,{}).upgrade.provisional)
-end)
+
 -- Native API mocks are scoped to the final scenarios and restored afterwards.
 local saved={};local globals={"C_Map","C_TaxiMap","C_Container","GetBindLocation","GetTaxiMapID","TaxiNodeCost","GetTime","C_Item","C_PlayerInfo","CanDualWield",
     "TakeTaxiNode","UnitOnTaxi","InCombatLockdown","IsShiftKeyDown"}
 for _,key in ipairs(globals) do saved[key]=_G[key] end
-local B={Content={nodes={a={hearth=true,verified=true,bindName="Inn",position={map=1,x=0,y=0},accessRadius=10}},edges={},transit={}},char={},state={position={map=1}},Navigation={Distance=function() return 2 end},RequestRefresh=function(self) self.wakes=(self.wakes or 0)+1 end}
+local B={char={},state={position={map=1}},Navigation={Distance=function() return 2 end},RequestRefresh=function(self) self.wakes=(self.wakes or 0)+1 end}
 assert(loadfile("Transport.lua"))("AiLeveling",B)
 C_Map={GetBestMapForUnit=function() return 1 end,GetMapInfo=function() return {parentMapID=0} end}
 C_TaxiMap={GetTaxiNodesForMap=function() return {{nodeID=1,faction=2,isUndiscovered=false},{nodeID=2,faction=2,isUndiscovered=true},{nodeID=3,faction=1,isUndiscovered=false},{nodeID=4,faction=2}} end}
@@ -66,9 +58,6 @@ test("交通发现过滤阵营与未知节点并忽略费用",function()
     C_TaxiMap.GetAllTaxiNodes=function() return {{nodeID=1,state=0,slotIndex=1},{nodeID=5,state=1,slotIndex=2}} end
     TaxiNodeCost=function(slot) eq(slot,2);return 20 end
     B.Transport:CaptureTaxi();s=snapshot();s.money=20
-    local flight={verified=true,kind="flight",fromTaxi=1,toTaxi=5,cost=100,seconds=30}
-    eq(A.Travel.Transit(flight,120,s),30)
-    s.money=0;eq(A.Travel.Transit(flight,120,s),30)
     local calls,shift,combat,flying=0,false,false,false
     TakeTaxiNode=function(slot) eq(slot,2);calls=calls+1 end
     IsShiftKeyDown=function() return shift end;InCombatLockdown=function() return combat end
@@ -98,15 +87,12 @@ test("交通发现过滤阵营与未知节点并忽略费用",function()
     B.ready,B.settings,B.Navigation.actions,B.Navigation.index=nil,nil,nil,nil
 end)
 test("飞行点已发现仍须尊重当前起点不可达",function()
-    local flight={verified=true,kind="flight",fromTaxi=1,toTaxi=5,cost=100,seconds=30}
     C_TaxiMap.GetAllTaxiNodes=function() return {{nodeID=1,state=0,slotIndex=1},{nodeID=5,state=2,slotIndex=2}} end
     B.Transport:CaptureTaxi();local s=snapshot();s.money=100
     eq(s.unlocked["taxi:5"],true);eq(s.taxiAvailability["1:5"],false)
-    eq(A.Travel.Transit(flight,120,s),nil)
     local key=B.Transport.Key(s)
     C_TaxiMap.GetAllTaxiNodes=function() return {{nodeID=1,state=0,slotIndex=1},{nodeID=5,state=1,slotIndex=2}} end
     B.Transport:CaptureTaxi();local fresh=snapshot();fresh.money=100
-    eq(A.Travel.Transit(flight,120,fresh),30);assert(B.Transport.Key(fresh)~=key)
     eq(s.taxiAvailability["1:5"],false)
 end)
 test("飞行地图切层图标不能当作实际飞行连接或询价",function()
@@ -118,21 +104,13 @@ test("飞行地图切层图标不能当作实际飞行连接或询价",function(
     TaxiNodeCost=original
 end)
 test("炉石读取实际冷却且到期只唤醒一次",function()
-    local s=snapshot();eq(s.hearthReady,160);eq(s.hearthNode,"a")
+    local s=snapshot();eq(s.hearthReady,160)
     eq(B.Transport.Key(s),B.Transport.Key(snapshot(130)))
     GetTime=function() return 160 end;B.Transport:Update();B.Transport:Update();eq(B.wakes,1)
     C_Container.GetItemCooldown=function() return 0,0,1 end
     eq(B.Transport.Key(snapshot(200)),B.Transport.Key(snapshot(210)))
-    local hearth={verified=true,kind="hearth",to="b",seconds=10,cooldown=3600}
-    eq(A.Travel.Transit(hearth,120,s),nil);hearth.to="a";eq(A.Travel.Transit(hearth,120,s),50)
 end)
-test("重复炉石地名需要实际绑定位置且炉石可以从当前节点使用",function()
-    B.Content.nodes.b={hearth=true,verified=true,bindName="Inn",position={map=2},accessRadius=10}
-    eq(snapshot().hearthNode,nil);B.Transport:Bound();eq(snapshot().hearthNode,"a")
-    local c={nodes={a=F.Node(0,1),c=F.Node(0,2)},edges={},transit={h={verified=true,kind="hearth",to="a",seconds=10,cooldown=3600}}}
-    local s=snapshot();s.now=200;s.hearthReady=200
-    eq(A.Travel.Route(c,"c","a",s).seconds,10);eq(A.Travel.Route(c,nil,"a",s),nil)
-end)
+
 test("原生装备读取保留背包独立实例与未加载状态",function()
     local calls=0
     C_Item={GetItemInfo=function(link)
@@ -141,7 +119,7 @@ test("原生装备读取保留背包独立实例与未加载状态",function()
     end,GetItemStats=function(link) return {ITEM_MOD_STRENGTH_SHORT=link=="enchanted" and 20 or 10} end,
         GetItemInfoInstant=function() return 7,nil,nil,"INVTYPE_WEAPON" end,RequestLoadItemDataByID=function() calls=calls+1 end}
     C_PlayerInfo={CanUseItem=function() return true end};CanDualWield=function() return false end
-    local E={Content={items={},sources={},gearSources={}},requestedItems={}}
+    local E={requestedItems={}}
     assert(loadfile("Items.lua"))("AiLeveling",E)
     local s=F.State();s.bagEntries={{id=7,link="plain",key="0:1"},{id=7,link="enchanted",key="0:2"}}
     E.Items:Snapshot(s);eq(#s.bagEquipment,2);eq(s.bagEquipment[2].stats.ITEM_MOD_STRENGTH_SHORT,20);eq(s.capabilities.dualWield,false)
@@ -157,14 +135,7 @@ test("双手改双持时缺少搭配武器伤害不能认定为确定提升",fun
     local r=G.Upgrade(candidate,s);eq(r.delta,10);assert(r.provisional)
     assert(table.concat(r.notes):find("武器伤害加载中",1,true))
     local direct=G.Loadout({[16]=companion,[17]=candidate},s);assert(direct.provisional)
-    local content={gearSources={target={verified=true,kind="quest",questId=7,itemId=2}}}
-    s.items={[2]=candidate}
-    local route={rate=96,actions={{kind="turnin",questId=7}}}
-    local base={rate=100,actions={}}
-    G.Benefits({base,route},s,content);eq(route.gear,nil)
-    eq(G.Prefer({base,route},base,s,{}),base)
     companion.weaponDPS=5;r=G.Upgrade(candidate,s);assert(not r.provisional)
-    G.Benefits({base,route},s,content);assert(route.gear)
 end)
 test("整套伤害完整性覆盖新旧替换槽位，未变槽位与属性武器不阻断",function()
     local s=F.State();s.capabilities={dualWield=true}

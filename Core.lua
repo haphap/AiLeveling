@@ -49,7 +49,7 @@ function A:NormalizeCharacter(char)
         if type(id)~="number" or id<=0 or id>=2147483648 or id%1~=0 or type(value)~="boolean" then char.junk[id]=nil end
     end
     char.sampleContext=nil
-    for _,key in ipairs({"skipped","deferredChains","samples","turnIns","pendingResets","ignoredGear"}) do if type(char[key])~="table" then char[key]={} end end
+    for _,key in ipairs({"skipped","deferredChains","samples","turnIns","ignoredGear"}) do if type(char[key])~="table" then char[key]={} end end
     for key,value in pairs(char.ignoredGear) do
         if type(key)~="string" or #key>1024 or value~=true then char.ignoredGear[key]=nil end
     end
@@ -80,17 +80,10 @@ function A:NormalizeCharacter(char)
     for id,count in pairs(char.turnIns) do
         if type(id)~="number" or id<=0 or type(count)~="number" or count<0 or count%1~=0 then char.turnIns[id]=nil end
     end
-    for id,value in pairs(char.pendingResets) do
-        if type(id)~="number" or id<=0 or id%1~=0 or type(value)~="table" or
-            (value.name~=nil and type(value.name)~="string") then char.pendingResets[id]=nil end
-    end
-    if char.dungeon and not self.Dungeon.ValidSession(char.dungeon) then char.dungeon=nil end
+    char.dungeon,char.pendingResets,char.hearthBinding=nil,nil,nil
     local target=char.gearTarget
     if (type(target)~="string" or target=="") and (type(target)~="number" or target<=0 or target>=math.huge or target%1~=0) then char.gearTarget=nil end
     if type(char.gearBaseline)~="number" or char.gearBaseline<0 or char.gearBaseline>19 or char.gearBaseline%1~=0 then char.gearBaseline=nil;char.gearTarget=nil end
-    local binding=char.hearthBinding
-    if binding and (type(binding)~="table" or type(binding.name)~="string" or
-        (type(binding.node)~="string" and type(binding.node)~="number")) then char.hearthBinding=nil end
     if char.itinerary then char.itinerary=nil;char.locked=nil end
     if char.taskBatch and (not self.Dungeon.ValidTaskBatch or not self.Dungeon.ValidTaskBatch(char.taskBatch)) then char.taskBatch=nil end
     if type(char.serviceStop)=="table" then char.serviceStop.afterTask=nil end
@@ -195,12 +188,8 @@ function A:Replan()
         local result = self.Planner.Build(snapshot, self.Data, options)
         if self.Transport and self.Transport:InFlight() then return end
         if self.state.revision ~= revision then return end
-        if snapshot.position and self.state.position and snapshot.position.node ~= self.state.position.node then
-            if (self.state.position.node or snapshot.position.map ~= self.state.position.map) and
-                not self.Navigation.OnApproach(result, self.state.position.node) then
-                self:Replan()
-                return
-            end
+        if snapshot.position and self.state.position and snapshot.position.map~=self.state.position.map then
+            self:Replan();return
         end
         self.plan = result
         self.dirty = true
@@ -213,7 +202,7 @@ function A:SetOption(key, value)
     self.settings[key] = value
     if key=="levelingStats" and self.LevelingTracker then self.LevelingTracker:Update("option") end
     if key=="learn" then
-        self.Dungeon.runSample=nil;self.Dungeon.taskActivity=nil;self.Transport:InvalidateSample()
+        self.Dungeon.taskActivity=nil;self.Transport:InvalidateSample()
         if self.Hearth then self.Hearth:InvalidateSample() end
     end
     self.UI:ApplyStyle()
@@ -282,7 +271,6 @@ function A:Diagnostics()
         "角色决策版本: " .. tostring(self.state and self.state.revision),
         "已索引任务: " .. tostring(self.Data.count or 0),
         "参考服务 NPC: " .. tostring(self.Data.serviceCount or 0),
-        "自有目的地: " .. tostring(self.Data:NodeCount()),
         "地面移动估时: 直线距离 ÷ 当前跑速",
         "参考任务／奖励／经验模型: " .. (self.TaskGuide and table.concat({self.TaskGuide.Counts()},"／") or "0／0／0"),
         "副本锁定信息: " .. tostring(self.state and self.state.instanceLocksKnown),
@@ -293,8 +281,8 @@ function A:Diagnostics()
         "原生飞行状态: "..tostring(self.state and self.state.onTaxi),
         "实机验证: 待完成" }
     if self.Progression and self.state and self.Experience then
-        local curve,source=self.Progression.Curve(self.state,self.Content)
-        lines[#lines+1]="升级经验门槛: "..(curve and (source=="authored" and "自有已验证曲线" or "当前构建参考表已匹配") or source)
+        local curve,source=self.Progression.Curve(self.state)
+        lines[#lines+1]="升级经验门槛: "..(curve and "参考表与当前门槛已匹配" or source)
     end
     for _, missing in ipairs(self.missing or {}) do lines[#lines + 1] = "缺少接口: " .. missing end
     return table.concat(lines, "\n")
@@ -392,7 +380,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
         for _, name in ipairs({"SKILL_LINES_CHANGED", "UPDATE_FACTION", "SPELLS_CHANGED"}) do
             frame:RegisterEvent(name)
         end
-        for _,name in ipairs({"TAXIMAP_OPENED","TAXIMAP_CLOSED","TAXI_NODE_STATUS_CHANGED","HEARTHSTONE_BOUND","UPDATE_INSTANCE_INFO","CHAT_MSG_SYSTEM","UI_ERROR_MESSAGE","UI_INFO_MESSAGE"}) do frame:RegisterEvent(name) end
+        for _,name in ipairs({"TAXIMAP_OPENED","TAXIMAP_CLOSED","TAXI_NODE_STATUS_CHANGED","HEARTHSTONE_BOUND","UPDATE_INSTANCE_INFO","UI_ERROR_MESSAGE","UI_INFO_MESSAGE"}) do frame:RegisterEvent(name) end
         for _,name in ipairs({"TRAINER_SHOW","TRAINER_UPDATE","TRAINER_CLOSED","TRAINER_DESCRIPTION_UPDATE","TRAINER_SERVICE_INFO_NAME_UPDATE","CONFIRM_BINDER"}) do frame:RegisterEvent(name) end
         for _,name in ipairs({"ENCOUNTER_START","ENCOUNTER_END"}) do frame:RegisterEvent(name) end
         for _,name in ipairs({"UNIT_SPELLCAST_START","UNIT_SPELLCAST_SUCCEEDED","UNIT_SPELLCAST_FAILED","UNIT_SPELLCAST_FAILED_QUIET","UNIT_SPELLCAST_INTERRUPTED"}) do frame:RegisterEvent(name) end
@@ -407,8 +395,6 @@ frame:SetScript("OnEvent", function(_, event, ...)
         A.QuestAssist:RewardDialog(false)
     elseif event=="UPDATE_INSTANCE_INFO" then
         A.Instances:Capture();A:RequestRefresh()
-    elseif event=="CHAT_MSG_SYSTEM" then
-        A.Instances:SystemMessage(...)
     elseif event=="UI_ERROR_MESSAGE" or event=="UI_INFO_MESSAGE" then
         A.Instances:Error(...)
     elseif event == "QUEST_ACCEPTED" then
@@ -455,7 +441,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
     elseif event=="TAXIMAP_CLOSED" then
         A.Transport.taxiSelected=nil
     elseif event=="HEARTHSTONE_BOUND" then
-        A.State:Position();A.Transport:Bound();A:RequestRefresh()
+        A.State:Position();A:RequestRefresh()
     elseif event == "BAG_OPEN" or event == "BAG_CLOSED" then
         A.QuestAssist:Highlight()
     elseif event == "TOOLTIP_DATA_UPDATE" or event == "SPELL_TEXT_UPDATE" then
@@ -477,7 +463,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
             A.Transport.dirty=true
             if event=="UPDATE_FACTION" or event=="TAXI_NODE_STATUS_CHANGED" then A.Transport:InvalidateFlights() end
         end
-        if event=="PLAYER_ENTERING_WORLD" then A.Dungeon.lastTick=nil;A.Instances:Request();A.Transport:World() end
+        if event=="PLAYER_ENTERING_WORLD" then A.Instances:Request();A.Transport:World() end
         A:RequestRefresh()
     end
     if A.ready and A.QuestAssist and A.QuestAssist.DialogEvent then A.QuestAssist:DialogEvent(event) end
@@ -519,7 +505,7 @@ frame:SetScript("OnUpdate", function(_, elapsed)
         A.Transport:Update()
         if A.Hearth then A.Hearth:Update() end
         A.Instances:Update()
-        A.Dungeon:Update()
+        A.Dungeon:UpdateTaskActivity(A.state)
         if A.LevelingTracker then A.LevelingTracker:Update() end
         A.Navigation:Update()
         if A.Party then A.Party:Update() end

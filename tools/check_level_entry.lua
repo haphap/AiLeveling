@@ -26,7 +26,7 @@ local A={Navigation={Distance=function(_,a,b)
     if ai and ai==bi then return math.sqrt((ax-bx)^2+(ay-by)^2) end
 end}}
 C_Map={GetMapInfo=function(id) return maps[id] and {mapID=id} end};C_QuestLog={}
-for _,file in ipairs({"State.lua","Hearth.lua","Data/Content.lua","Data/TaskFacts.lua","Data/Experience.lua","Data/Flights.lua","Data/Questie.lua",
+for _,file in ipairs({"State.lua","Hearth.lua","Data/TaskFacts.lua","Data/Experience.lua","Data/Flights.lua","Data/Questie.lua",
     "Planner/Eligibility.lua","Planner/Chains.lua","Planner/TaskGuide.lua","Planner/TaskQueue.lua","Planner/Estimates.lua","Planner/Gear.lua",
     "Planner/Progression.lua","Planner/Travel.lua","Planner/Flights.lua","Planner/Supplies.lua","Planner/Dungeon.lua","Planner/Planner.lua"}) do
     assert(loadfile(root.."/"..file))("AiLeveling",A)

@@ -175,7 +175,7 @@ box=function(w)
     local value={x=x,y=y,w=ww,h=hh};boxes[w]=value;return value
 end
 if dungeonPreview then
-    A.ready=true;A.Content={dungeons={}}
+    A.ready=true
     if arg[2]=="entry-blocked" then A.state.instanceEntryError="客户端提示近期进入实例次数过多，待限制解除后重新检查" end
     A.state.clientVersion,A.state.clientBuild,A.state.faction="1.60.1","70888","Alliance"
     A.state.level=20;A.state.raceMask=1;A.state.classMask=1
@@ -186,7 +186,6 @@ if dungeonPreview then
         [168]={id=168,title="收集记忆",questLevel=18},
         [214]={id=214,title="红色丝质面罩",questLevel=17,preQuestSingle={155}},
     }
-    A.Content.gearSources={}
     A.state.equipment,A.state.bags,A.state.skills={},{},{}
     A.state.items={[100]={id=100,name="示例任务奖励",usable=true,equipLoc="INVTYPE_HEAD",stats={ITEM_MOD_STRENGTH_SHORT=7}}}
     for _,quest in pairs(quests) do quest.taskFacts={level=quest.questLevel,xp={{1,1500}},rewards={}} end
@@ -194,7 +193,7 @@ if dungeonPreview then
     A.state.position={map=1453,x=0.5,y=0.5};A.state.runSpeed=7
     C_Map.GetMapInfo=function(id) return {name=({[1453]="暴风城",[1436]="西部荒野",[9999]="死亡矿井"})[id] or "任务区域",mapType=id==9999 and 4 or 3} end
     A.Navigation.Distance=function() return 1400 end
-    A.Data={content=A.Content,maps={[40]=1436,[1581]=9999},GetQuest=function(_,id) return quests[id] end,
+    A.Data={maps={[40]=1436,[1581]=9999},GetQuest=function(_,id) return quests[id] end,
         Target=function(_,q,state)
             local active=state.quests[q.id]
             return {map=active and not active.ready and 9999 or 1453,x=0.6,y=0.5,entityKind="npc",entityId=q.id,
@@ -218,7 +217,7 @@ if dungeonPreview then
             for _,stage in ipairs(stages) do if stage.kind=="objective" then stage.position=nil;stage.areaId=1581 end end
             choices[#choices+1]={questId=id,stages=stages,actions={first}}
         end
-        local d=A.Dungeon.Catalog(A.state,A.Content)["reference:36"]
+        local d=A.Dungeon.Catalog()["reference:36"]
         A.plan={revision=1,taskChoices=choices,taskBatch={id=d.id,journey=A.Dungeon.TaskJourney(d,choices,A.state,A.Data)}}
     end
     local selected="reference:36"
@@ -351,10 +350,7 @@ if arg[1]=="assist" then
 end
 end
 if A.previewTab then
-    for _,file in ipairs({"Plan","Gear","Chains","Services","Browser"}) do assert(loadfile("UI/"..file..".lua"))("AiLeveling",A) end
-    if not A.UI.Dungeon then
-        A.UI.Dungeon={Create=function(self,parent) self.frame=CreateFrame("Frame",nil,parent);self.frame:Hide() end}
-    end
+    for _,file in ipairs({"Plan","Gear","Chains","Services","Dungeon","Browser"}) do assert(loadfile("UI/"..file..".lua"))("AiLeveling",A) end
     A.UI.Settings={Create=function(self,parent) self.frame=CreateFrame("Frame",nil,parent);self.frame:Hide() end}
     A.settings.scale,A.settings.alpha=1,1
     A.UI:Create();A.UI.frame:Hide();A.UI.details:Show();A.UI.details:ClearAllPoints();A.UI.details:SetPoint("TOPLEFT",40,-50)

@@ -15,7 +15,7 @@ end
 
 local function effects(item,link)
     local reference=A.ItemEffects
-    local record=reference and A.clientVersion==reference.version and tostring(A.build)==reference.build and
+    local record=reference and A.clientVersion==reference.version and
         A.interface==reference.interface and reference.items[item.id]
     local covered=record and not record.complex
     if covered then
@@ -72,12 +72,8 @@ end
 
 function I:Read(id,link)
     local item={id=id,link=link}
-    local overlay=A.Content.items and A.Content.items[id]
-    if overlay and overlay.verified and A.Content.sources[overlay.source] then
-        for key,value in pairs(overlay) do item[key]=value end
-    end
     local sets=A.ItemSets
-    if sets and A.clientVersion==sets.version and tostring(A.build)==sets.build and A.interface==sets.interface then
+    if sets and A.clientVersion==sets.version and A.interface==sets.interface then
         item.setId=item.setId or sets.items[id]
         item.setInfo=item.setId and sets.sets[item.setId]
         item.setUnknown=not item.setId and sets.ambiguous[id] or nil
@@ -134,7 +130,6 @@ function I:Snapshot(state)
             state.bagEquipment[#state.bagEquipment+1]=item
         end
     end
-    for _,source in pairs(A.Content.gearSources or {}) do ids[source.itemId]=true end
     local target=A.char and A.char.gearTarget and A.Gear and A.Gear.GetSource and A.Gear.GetSource(A.char.gearTarget,nil,state)
     if target then ids[target.itemId]=true end
     for id in pairs(ids) do state.items[id]=self:Read(id) end

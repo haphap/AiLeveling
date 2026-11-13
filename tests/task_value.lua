@@ -63,7 +63,7 @@ test("持有上限下缺少完整收集路线仍先交付而不等待整组",fun
     s.quests[1]={ready=true,objectives={}};eq(B.TaskGuide.LowValue(q,s,d),nil);s.quests={}
     s.bags[18250]=0;eq(B.TaskGuide.LowValue(q,s,d),nil);s.bags[18250]=1
     q.taskFacts.rewards.choices={{id=18250,count=1}};eq(B.TaskGuide.LowValue(q,s,d),nil)
-    q.taskFacts.rewards.choices={};s.clientBuild="other";eq(B.TaskGuide.LowValue(q,s,d),nil)
+    q.taskFacts.rewards.choices={};s.clientVersion="other";eq(B.TaskGuide.LowValue(q,s,d),nil)
 end)
 test("低等级低经验无装备收益无任务关联才建议放弃",function()
     local B,s,q,d=fixture()
@@ -87,7 +87,7 @@ test("已完成锁定职业法术和装备目标不建议放弃",function()
     s.locked=1;eq(B.TaskGuide.LowValue(q,s,d),nil);s.locked=nil
     q.requiredClasses=1;eq(B.TaskGuide.LowValue(q,s,d),nil);q.requiredClasses=0
     q.taskFacts.rewards.spell=10;eq(B.TaskGuide.LowValue(q,s,d),nil);q.taskFacts.rewards.spell=nil
-    d.content.gearSources={target={questId=1}};s.gearTarget="target";eq(B.TaskGuide.LowValue(q,s,d),nil)
+    B.Gear={GetSource=function(id) if id=="target" then return {questId=1} end end};s.gearTarget="target";eq(B.TaskGuide.LowValue(q,s,d),nil)
 end)
 test("关键职业能力与坐骑从可接前置优先接续并尊重已学会和手动选择",function()
     local B,s,q,d=fixture();assert(loadfile("Planner/Flights.lua"))("AiLeveling",B)

@@ -70,7 +70,7 @@ run("其他战场区域来源楼层和构建识别互不混淆",function()
     s.inInstance=true;s.instanceId=2997;s.locked=1
     s.quests[1]={objectives={{text="目标"}}};s.position={map=3,x=0,y=0}
     local p=plan(s,data,nil,B);eq(p.fallback.kind,"pvpEnter");assert(p.fallback.text:find("离开当前实例",1,true))
-    s.clientBuild="70840";eq(B.Dungeon.TaskPvP({map=2,x=0,y=0},s,data),nil)
+    s.clientVersion="other";eq(B.Dungeon.TaskPvP({map=2,x=0,y=0},s,data),nil)
 end)
 run("战场内接取可用任务并优先当前地图的剩余目标",function()
     local B,s,data=fixture();s.inInstance=true;s.instanceId=529;s.position={map=2,x=0,y=0}

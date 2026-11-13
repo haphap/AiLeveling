@@ -1,7 +1,7 @@
 io.stdout:setvbuf("line")
 local A, passed = {}, 0
 local function load(path) assert(loadfile(path))("AiLeveling", A) end
-for _, path in ipairs({"State.lua","Items.lua","Merchant.lua","Services.lua","Transport.lua","Instances.lua","Data/Content.lua","Data/Questie.lua","Planner/Eligibility.lua",
+for _, path in ipairs({"State.lua","Items.lua","Merchant.lua","Services.lua","Transport.lua","Instances.lua","Data/Questie.lua","Planner/Eligibility.lua",
     "Planner/Chains.lua","Planner/Travel.lua","Planner/Gear.lua","Planner/Progression.lua","Planner/Supplies.lua","Planner/Dungeon.lua","Planner/Planner.lua",
     "Planner/Selection.lua","QuestAssist.lua", "Data/Audit.lua","Data/Experience.lua","Planner/Estimates.lua"}) do load(path) end
 local F = dofile("tests/fixtures.lua")
@@ -33,10 +33,6 @@ test("重复交付事件只结算一次",function()
     eq(A.char.turnIns[1],1);eq(A.state.completed[1],true)
 end)
 
-test("炉石冷却与船只时刻纳入未来出发时间",function()
-    eq(A.Travel.Transit({kind="hearth",verified=true,seconds=10,cooldown=3600},100,{hearthReady=160}),70)
-    eq(A.Travel.Transit({kind="boat",verified=true,seconds=30,period=60},70,{}),80)
-end)
 test("地图支持表只解析数值不执行源码",function()
     local maps=A.Data.ParseMap("return {[1]=2, -- [3]=4\n [9]=0}; error('never execute')")
     eq(maps[1],2);eq(maps[3],nil);eq(maps[9],0)
@@ -49,7 +45,7 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     A.settings={role="DAMAGER",gearPreference="xp",minutes=60,dungeons=true}
     A.indexReady=true;A.requestedItems={};A.State.confirmed={}
     local pins=0
-    A.Navigation={AttachNode=function() end,RefreshPins=function() pins=pins+1;assert(A.state.quests[42]) end}
+    A.Navigation={RefreshPins=function() pins=pins+1;assert(A.state.quests[42]) end}
     A.QuestAssist.Update=function() end
     A.Replan=function() end
     local x=0.1
@@ -195,15 +191,7 @@ test("任务完成历史未就绪时不放行新前置",function()
     eq(A.State.Status(s,1),"unknown");eq(A.Eligibility.Check(q,s),false)
     s.quests[1]={};eq(A.Eligibility.Check(q,s),true)
 end)
-test("交通连续衔接只比较耗时并保留炉石冷却",function()
-    local content={nodes={a=F.Node(0,1),b=F.Node(0,2),c=F.Node(0,3),d=F.Node(0,4)},edges={},transit={
-        ship={from="a",to="b",kind="boat",seconds=20,verified=true},
-        flight={from="b",to="c",kind="flight",seconds=30,cost=40,verified=true},
-        hearth={from="c",to="d",kind="hearth",seconds=10,cooldown=3600,verified=true}}}
-    local r=A.Travel.Route(content,"a","d",{now=100,money=100,hearthReady=200})
-    eq(r.seconds,110);eq(r.money,nil);eq(r.hearthReady,3810);eq(#r.actions,3)
-    eq(A.Travel.Route(content,"a","d",{now=100,money=0,hearthReady=200}).seconds,110)
-end)
+
 test("带符号组前置区分指定交付与互斥分支替代",function()
     local q,pre,alt,s=F.Quest(3),F.Quest(1),F.Quest(2),F.State()
     pre.exclusiveTo={2};q.preQuestGroup={1};s.completed[2]=true
@@ -218,24 +206,25 @@ test("有效审计将空接取集合记为缺口并保留任务 ID",function()
     local db={contractVersion=4,Npc=none,Object=none,Item=none,
         Quest={GetAllIds=function() return {1} end,Exists=function(id) return id==1 end,
             Get=function(_,key) return q[key] end},Support={Get=function() return {private={}} end}}
-    local report=A.Audit.Build({db=db,ids={1},maps={},xp={},content={quests={},nodes={},dungeons={}}},true)
+    local report=A.Audit.Build({db=db,ids={1},maps={},xp={}},true)
     eq(report.total,1);eq(report.gaps["starter-location"],1)
     eq(report.gaps["missing-prerequisite"],1);eq(report.signedPrerequisiteEntries,1)
     eq(report.gaps["verified-action-chain"],nil)
     eq(report.gaps["signed-prerequisite-rule"],nil);eq(report.quests["1"].id,1)
 end)
-test("导航重接沿途节点且隐藏标记仍推进到达",function()
-    local B={Content={nodes={}},state={position={map=1,x=0,y=0,node="near"}},
+test("导航隐藏标记仍按距离推进到达",function()
+    local B={state={position={map=1,x=0,y=0,node="near"}},
         settings={pins=false,arrow=true},char={},QuestAssist={Update=function() end},
         UI={SetNavigation=function() end},Replan=function() error("不应沿路重算") end}
     assert(loadfile("Navigation.lua"))("AiLeveling",B)
     B.plan={best={actions={{kind="move",node="near",position={map=1,x=0,y=0}},
         {kind="move",node="goal",position={map=1,x=1,y=0}},
         {kind="objective",node="goal",position={map=1,x=1,y=0}}}}}
-    B.Navigation:SetPlan(B.plan);eq(B.Navigation.index,2)
+    B.Navigation:SetPlan(B.plan);eq(B.Navigation.index,1)
     B.Navigation.hbd={GetZoneDistance=function() return 0 end,
         GetWorldCoordinatesFromZone=function() return 0,0,1 end,GetWorldVector=function() return 0 end}
-    B.state.position.node="goal";B.Navigation:Update();eq(B.Navigation.index,3)
+    B.Navigation:Update();eq(B.Navigation.index,2)
+    B.Navigation:Update();eq(B.Navigation.index,3)
     GetPlayerFacing=function() return 0 end
     B.Navigation:Update();eq(B.Navigation.index,3)
 end)
@@ -322,7 +311,7 @@ test("Forever 接任务事件与规划期间沿路移动保留有效结果",func
     eq(C.State.confirmed[42],nil)
     C.ready=true;C.state={revision=1,position={map=1,node="start"}};C.char={}
     C.Queue=function(_,_,fn) fn() end
-    C.Navigation={OnApproach=function(_,node) return node=="near" end,SetPlan=function() end}
+    C.Navigation={SetPlan=function() end}
     C.Planner={Build=function()
         C.state={revision=1,position={map=1,node="near"}}
         return {best={id=1},alternatives={}}
@@ -345,7 +334,6 @@ dofile("tests/reward_gear.lua")(test,eq,F,A,plan)
 dofile("tests/item_sets.lua")(test,eq,F,A,plan)
 dofile("tests/item_effects.lua")(test,eq,F,A,plan)
 dofile("tests/weapon_skills.lua")(test,eq,F,A,plan)
-dofile("tests/resources.lua")(test,eq,F,A,plan)
 dofile("tests/instances.lua")(test,eq,F)
 dofile("tests/supplies.lua")(test,eq,F,A,plan)
 dofile("tests/flight.lua")(test,eq,F,A)

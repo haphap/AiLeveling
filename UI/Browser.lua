@@ -150,7 +150,7 @@ end
 
 function B:DungeonRows()
     local rows,targets={},{}
-    local entries=A.Dungeon.Catalog(A.state,A.Content)
+    local entries=A.Dungeon.Catalog()
     for id,d in pairs(entries) do
         local tasks=A.Dungeon.Tasks(d,A.state,A.Data,targets)
         local rewards=A.Dungeon.TaskRewards(tasks)
@@ -187,7 +187,7 @@ function B:GearRows()
     end
     for _,id in ipairs(A.UI.Gear:Ids()) do
         local source=A.Gear.GetSource(id)
-        local value=source and A.Gear.Source(source,A.state,A.Content)
+        local value=source and A.Gear.Source(source,A.state,A.Data)
         if value then rows[#rows+1]={key="source:"..id,title=value.item.name or source.title,sub=(source.kind=="quest" and "任务奖励" or "副本掉落")..(value.upgrade.provisional and " · 属性加载中" or string.format(" · 评分 %+.1f",value.upgrade.delta)),
             icon="turnin",item=value.item,comparison=value.upgrade,source=source,sourceId=id} end
     end
@@ -249,7 +249,6 @@ function B:Refresh(mode,reuse)
     if mode==1 then
         local status=A.char.paused and "引导已暂停" or A.char.locked and "单任务锁定" or
             A.Navigation.manual and "手动导航" or A.char.taskBatch and "副本任务安排" or
-            A.char.dungeon and A.char.dungeon.phase~="complete" and "副本行程" or
             A.char.gearTarget and "装备目标" or "自动安排"
         summary=status.." · "..#rows.." 项可查看"
     end
@@ -370,18 +369,28 @@ function B:Detail()
         self:Action(2,"查看任务链",function() A.UI.Chains:Focus(e.questId) end)
         self:Action(3,"恢复自动安排",function() A.Selection:Automatic();self:Refresh(self.mode) end)
     elseif e.dungeon then
-        A.UI.Dungeon.selected=e.key;A.UI.Dungeon:Refresh()
-        local d=A.UI.Dungeon
-        self:Action(1,A.char.taskBatch and A.char.taskBatch.id==e.key and "结束整组指引" or "开始整组指引",function() d.taskBatch:Click() end,d.taskBatch:IsEnabled())
+        A.UI.Dungeon.selected=e.key
         local batch=A.char.taskBatch
-        if batch and batch.id==e.key then self:Action(2,d.ready.text:GetText(),function() d.ready:Click() end,d.ready:IsEnabled()) end
-        self:Action(3,"副本控制…",function()
-            MenuUtil.CreateContextMenu(self.buttons[3],function(_,menu)
-                for _,button in ipairs({d.accept,d.ready,d.finish,d.again,d.stop,d.confirmReset,d.retry,d.taskChain,d.taskGo}) do
-                    if button:IsEnabled() then menu:CreateButton(button.text:GetText(),function() button:Click() end) end
-                end
-            end)
-        end)
+        local current=batch and batch.id==e.key
+        local preparable=current or false
+        for _,task in ipairs(e.tasks) do if A.Dungeon.CanContinueTask(task) then preparable=true;break end end
+        self:Action(1,current and "结束整组指引" or "开始整组指引",function()
+            local ok,why
+            if current then ok,why=A.Selection:Automatic() else ok,why=A.Dungeon:StartTaskBatch(e.key) end
+            self.message=not ok and why or nil;self:Refresh(self.mode)
+        end,A.ready and not A.refreshAt and preparable)
+        if current then
+            self:Action(2,batch.waiting and "出发去副本" or "等队做任务",function()
+                local ok,why=A.Dungeon:ToggleTaskBatchWait()
+                self.message=not ok and why or nil;self:Refresh(self.mode)
+            end,A.ready and not A.refreshAt and not A.state.inInstance)
+        end
+        if A.state.instanceEntryError then
+            self:Action(3,"重新检查",function()
+                local ok,why=A.Instances:Retry()
+                self.message=not ok and why or nil;self:Refresh(self.mode)
+            end,not A.state.inInstance)
+        end
         self:DungeonDetail(e)
         return
     elseif e.region then
@@ -469,7 +478,8 @@ function B:DungeonDetail(e)
     view.tasksLabel:ClearAllPoints();view.tasksLabel:SetPoint("TOPLEFT",0,-y);view.tasksLabel:SetText(current and "已安排任务" or "可安排任务")
     view.xpLabel:ClearAllPoints();view.xpLabel:SetPoint("TOPLEFT",164,-y)
     y=y+view.tasksLabel:GetStringHeight()+16
-    local hint=d.statusText
+    local hint=not A.state.inInstance and A.state.instanceEntryError or current and
+        (batch.returning and "任务已交齐，离开副本后继续练级。" or batch.waiting and "等队时做附近任务；集合后点击「出发去副本」。")
     local journey=choices and plan.taskBatch.journey
     local nextStep=journey and (journey.before[1] or journey.inside[1] or journey.after[1])
     if (not hint or hint=="") and nextStep then
@@ -487,7 +497,7 @@ function B:DungeonDetail(e)
     view.heading:SetText("关联任务");y=y+view.heading:GetStringHeight()+6
     local _,group=A.Dungeon.GroupStatus(e.dungeon,A.state)
     view.tip={self.message or hint,group}
-    for _,line in pairs({A.Dungeon.EncounterProgress(e.dungeon,A.state),A.Dungeon:TaskActivityText(e.key),d:RepeatText()}) do
+    for _,line in pairs({A.Dungeon.EncounterProgress(e.dungeon,A.state),A.Dungeon:TaskActivityText(e.key)}) do
         view.tip[#view.tip+1]=line
     end
     local tones={colors.turnin,colors.objective,colors.accept,colors.muted,colors.muted}

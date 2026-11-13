@@ -37,7 +37,7 @@ end
 function G.WeaponSkill(item,state)
     local data=A.WeaponSkills
     if not item or item.classID~=2 or not data or state.clientVersion~=data.version or
-        tostring(state.clientBuild)~=data.build or state.interface~=data.interface then return end
+        state.interface~=data.interface then return end
     local reference=data.subclasses[item.subClassID]
     return reference,reference and (state.weaponSkills or {})[reference.skill],true
 end
@@ -363,7 +363,7 @@ end
 
 function G.DungeonSources(state,instanceId)
     local catalog=A.DungeonCatalog
-    if not catalog or not state or state.clientVersion~=catalog.version or tostring(state.clientBuild)~=catalog.build then return {} end
+    if not catalog or not state or state.clientVersion~=catalog.version then return {} end
     local sources={}
     for id,source in pairs(catalog.loot or {}) do
         if not instanceId or source.instanceId==instanceId then sources[id]=source end
@@ -373,9 +373,6 @@ end
 
 function G.GetSource(id,data,state)
     data=data or A.Data
-    local content=data and data.content or A.Content
-    local authored=content and content.gearSources and content.gearSources[id]
-    if authored then return authored end
     if type(id)~="string" then return end
     if id:match("^drop:") then return G.DungeonSources(state or A.state)[id] end
     if not data or not data.GetQuest then return end
@@ -383,15 +380,13 @@ function G.GetSource(id,data,state)
     if quest and item then return G.RewardSources(data:GetQuest(tonumber(quest)))[id] end
 end
 
-function G.Source(source,state,content,data)
-    if not source.verified then
-        local reference=source.reference and G.GetSource(source.id,data,state)
-        if not reference or not reference.reference or reference.kind~=source.kind or reference.questId~=source.questId or
-            reference.itemId~=source.itemId or reference.dungeonId~=source.dungeonId or reference.encounterId~=source.encounterId then
-            return nil,"当前暂无可用的装备来源"
-        end
-        source=reference
+function G.Source(source,state,data)
+    local reference=source.reference and G.GetSource(source.id,data,state)
+    if not reference or not reference.reference or reference.kind~=source.kind or reference.questId~=source.questId or
+        reference.itemId~=source.itemId or reference.dungeonId~=source.dungeonId or reference.encounterId~=source.encounterId then
+        return nil,"当前暂无可用的装备来源"
     end
+    source=reference
     local item=state.items and state.items[source.itemId]
     if not item and source.reference and A.Items and C_Item and C_Item.GetItemInfo then item=A.Items:Read(source.itemId) end
     if not item then return nil,"物品数据加载中" end
@@ -414,10 +409,9 @@ function G.Source(source,state,content,data)
 end
 
 function G:SetTarget(id)
-    if A.char.dungeon and A.char.dungeon.phase~="complete" then return false,"先结束当前副本行程，再选择装备目标" end
     local source=G.GetSource(id)
     if not source then return false,"装备来源不存在" end
-    local value,reason=G.Source(source,A.state,A.Content)
+    local value,reason=G.Source(source,A.state,A.Data)
     if not value then return false,reason end
     if source.reference and source.kind=="quest" then
         local q=A.Data:GetQuest(source.questId)
@@ -459,7 +453,7 @@ end
 function G.DungeonBenefits(d,state,data)
     local values={}
     for id,source in pairs(G.DungeonSources(state,d.instanceId)) do
-        local value=G.Source(source,state,data.content,data)
+        local value=G.Source(source,state,data)
         if value and not value.owned and (value.upgrade.delta>0 or #(value.upgrade.notes or {})>0) then
             value.sourceId=id;values[#values+1]=value
         end
@@ -500,7 +494,7 @@ function G.TaskBenefits(choice,q,state,data)
     choice.gearSources,choice.rewardPick={},nil
     local rewardPending,rewardManual
     for id,source in pairs(G.RewardSources(q)) do
-        local value,_,item=G.Source(source,state,data.content,data)
+        local value,_,item=G.Source(source,state,data)
         if source.choice then
             item=value and value.item or item
             if not item or item.pending or item.usable==nil or value and value.upgrade.provisional then rewardPending=true end
@@ -531,56 +525,4 @@ function G.PreferTask(choices,state,options)
         end
     end
     if best~=base then return best end
-end
-
-function G.Benefits(candidates,state,content)
-    local sources=G.DungeonSources(state)
-    for id,source in pairs(content.gearSources or {}) do sources[id]=source end
-    for _,candidate in ipairs(candidates) do
-        local best
-        candidate.gearSources={}
-        for id,source in pairs(sources) do
-            local dungeon=candidate.dungeonId and content.dungeons[candidate.dungeonId]
-            local matches=source.kind=="dungeon" and (candidate.dungeonId==source.dungeonId or
-                source.instanceId and dungeon and dungeon.instanceId==source.instanceId)
-            if source.kind=="quest" then
-                for _,action in ipairs(candidate.actions or {}) do
-                    if action.kind=="turnin" and action.questId==source.questId then matches=true;break end
-                end
-            end
-            if matches then
-                local value=G.Source(source,state,content)
-                if value and not value.owned and (value.upgrade.delta>0 or #(value.upgrade.notes or {})>0) and not value.upgrade.provisional then
-                    value.sourceId=id
-                    candidate.gearSources[id]=value
-                    if #(value.upgrade.notes or {})==0 and
-                        (not best or value.upgrade.delta*value.chanceLow>best.upgrade.delta*best.chanceLow) then best=value end
-                end
-            end
-        end
-        candidate.gear=best
-    end
-end
-
-function G.Prefer(candidates,base,state,options)
-    if state.gearTarget then
-        for _,candidate in ipairs(candidates) do
-            if candidate.gearSources and candidate.gearSources[state.gearTarget] then
-                if candidate.requiresAcceptance then return base,"请在副本页明确接受装备来源行程" end
-                return candidate
-            end
-        end
-        return base,"装备目标暂无可执行行程"
-    end
-    if not base then return nil end
-    if options.gearPreference=="xp" then return base end
-    local best,gain=base,0
-    for _,candidate in ipairs(candidates) do
-        if not candidate.requiresAcceptance and (candidate.priority or 0)==(base.priority or 0) and candidate.rate>=base.rate*0.95 then
-            local value=candidate.gear
-            local delta=value and value.upgrade.delta*value.chanceLow or 0
-            if delta>gain then best,gain=candidate,delta end
-        end
-    end
-    return best
 end

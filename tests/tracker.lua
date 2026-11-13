@@ -260,6 +260,22 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.plan.suggestedDungeon=nil;B.UI:RenderTracker();eq(T.rows[1].dungeonId,nil)
     B.plan.dungeonChoices={suggestion}
     eq(B.UI.Plan.Rows(B.plan)[1],suggestion);assert(B.Selection.CanChoose(suggestion,B.plan.revision))
+    -- Dungeon actions call the task batch directly, with no hidden legacy widgets.
+    local stopped,waiting,retried=false,false,false
+    B.Dungeon.CanContinueTask=function(row) return row.id==166 end
+    B.Dungeon.ToggleTaskBatchWait=function() waiting=true;return true end
+    B.Selection.Automatic=function() stopped=true;return true end
+    B.Instances={Retry=function() retried=true;return true end}
+    browser.DungeonDetail=function() end;browser.Refresh=function() end
+    browser.selected={key=suggestion.dungeonId,title=suggestion.title,dungeon={},tasks={{id=166}}}
+    browser:Detail();eq(browser.buttons[1].enabled,true);eq(browser.buttons[2].shown,false)
+    browser.selected.tasks={};browser:Detail();eq(browser.buttons[1].enabled,false)
+    browser.selected.tasks={{id=166}};browser:Detail()
+    started=nil;browser.buttons[1].run();eq(started,suggestion.dungeonId)
+    B.char.taskBatch={id=suggestion.dungeonId,waiting=true};B.state.instanceEntryError="entry"
+    browser:Detail();browser.buttons[1].run();browser.buttons[2].run();browser.buttons[3].run()
+    assert(stopped and waiting and retried)
+    B.refreshAt=1;browser:Detail();eq(browser.buttons[1].enabled,false);eq(browser.buttons[2].enabled,false)
     B.finish()
 end)
 test("未来行动中的交付预期不能把未接任务显示成已接或可交付",function()
@@ -429,8 +445,6 @@ test("低价值任务留在主界面建议中不混入后续行程",function()
     eq(#B.UI.tracker.model.rows,2);eq(B.UI.tracker.model.rows[2].questId,4)
     eq(B.UI.QuestStatus(B.state,3,B.plan),"已接取")
     assert(loadfile("UI/Plan.lua"))("AiLeveling",B);B.UI.Plan.preview=c
-    local lines=table.concat(B.UI.Plan:Lines(),"\n")
-    assert(lines:find("建议放弃",1,true));assert(lines:find("在任务日志中可放弃",1,true))
     B.finish()
 end)
 

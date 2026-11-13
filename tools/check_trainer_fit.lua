@@ -5,7 +5,7 @@ client.install({expansion="Forever",faction="Horde",classFile="PRIEST",locale="z
 metadata.load(package.."/QuestieDB_Forever.toc","QuestieDB")
 local db=metadata.loadAddon(package.."/QuestieDB_Forever.toc","QuestieDB",package)
 local A={Navigation={Distance=function(_,a,b) return a.map==b.map and math.abs(a.x-b.x)*1000 or nil end}}
-for _,file in ipairs({"Services.lua","Data/Content.lua","Data/Trainers.lua","Data/Questie.lua"}) do assert(loadfile(root.."/"..file))("AiLeveling",A) end
+for _,file in ipairs({"Services.lua","Data/Trainers.lua","Data/Questie.lua"}) do assert(loadfile(root.."/"..file))("AiLeveling",A) end
 assert(A.Data:Connect(db))
 C_Map={GetMapInfo=function(id) return {mapID=id,mapType=3} end}
 local co=coroutine.create(function() A.Data:BuildServices() end)

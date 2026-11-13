@@ -2,7 +2,7 @@ return function(test,eq,F,A,plan)
 local function fixture(quests)
     local data=F.Data(quests)
     local state=F.State()
-    local B={Data=data,Content=data.content,Eligibility=A.Eligibility,ready=true,char={deferredChains={},skipped={},turnIns={}},
+    local B={Data=data,Eligibility=A.Eligibility,ready=true,char={deferredChains={},skipped={},turnIns={}},
         state=state,Navigation={Current=function() return {questId=1} end},UI={},refreshes=0}
     state.skipped=B.char.skipped
     B.State={Status=A.State.Status,Refresh=function(_,force)
@@ -68,55 +68,18 @@ test("整链暂缓应用拒绝过期预览篡改范围与活动副本冲突",fun
     B.state.revision=B.state.revision+1;eq(B.Chains:Defer(p),false)
     p=B.Chains.Preview(1,B.Data,B.state);B.refreshAt=1;eq(B.Chains:Defer(p),false);B.refreshAt=nil
     p.ids[1]=99;eq(B.Chains:Defer(p),false)
-    p=B.Chains.Preview(1,B.Data,B.state);B.char.dungeon={phase="running"};eq(B.Chains:Defer(p),false)
     eq(B.refreshes,0);eq(next(B.char.deferredChains),nil)
     eq(B.Chains:Defer({root=1}),false);eq(B.Chains.Preview(999,B.Data,B.state),nil)
 end)
 test("暂缓整链解除冲突行程和装备目标且不放弃原生任务",function()
     local B=fixture(linked(3));B.char.locked=3
-    B.char.gearTarget="wanted";B.char.gearBaseline=0;B.Content.gearSources={wanted={questId=3}}
+    B.char.gearTarget="wanted";B.char.gearBaseline=0;B.Gear={GetSource=function(id) if id=="wanted" then return {questId=3} end end}
     B.state.quests[3]={objectives={}}
     assert(B.Chains:Defer(B.Chains.Preview(1,B.Data,B.state)))
     eq(B.char.itinerary,nil);eq(B.char.locked,nil);eq(B.char.gearTarget,nil);assert(B.state.quests[3])
     eq(B.Selection:LockQuest(3),false)
 end)
-test("自有新增任务进入等级资格和关系索引且不改上游 ID 表",function()
-    local B={Content={quests={[2]={title="自有任务",questLevel=21,requiredSkill={123,5},preQuestGroup={1}},
-        [3]={title="随等级任务",questLevel=-1,requiredLevel=20}}}}
-    assert(loadfile("Planner/Chains.lua"))("AiLeveling",B)
-    assert(loadfile("Data/Questie.lua"))("AiLeveling",B)
-    local ids={1};local source={name="上游任务",questLevel=20,requiredLevel=1,zoneOrSort=100}
-    local db={RequireContract=function() return true end,Support={Get=function(name)
-        return name=="QuestXP" and {db={[1]={20,1234}}} or {}
-    end},
-        Enum={npcFlags={VENDOR=4,REPAIR=16384}},Npc={GetAllIds=function() return {} end},Quest={
-        Get=function(id,key) if id==1 and key=="objectives" then return {[4]={72,3000}} end end,
-        GetAllIds=function() return ids end,GetAll=function(id,fields)
-            if id~=1 then return end
-            local values={};for i,key in ipairs(fields) do values[i]=source[key] end;return values
-        end}}
-    assert(B.Data:Connect(db));eq(#ids,1);eq(#B.Data.ids,3)
-    local co=coroutine.create(function() B.Data:BuildIndex() end)
-    repeat local ok,why=coroutine.resume(co);assert(ok,why) until coroutine.status(co)=="dead"
-    eq(B.Data.byArea[100][1],1)
-    eq(B.Data.count,3);eq(B.Data.ids[2],2);eq(B.Data.requirements.skills[123],true)
-    -- The displayed quest level is not its minimum acceptance level.
-    source.questLevel,source.requiredLevel=22,14;B.Data.cache={};B.Data.ids={1}
-    eq(table.concat(B.Data:Candidates({level=14,quests={}}),","),"1")
-    eq(#B.Data:Candidates({level=13,quests={}}),0)
-    source.questLevel,source.requiredLevel=20,1;B.Data.cache={};B.Data.ids={1,2,3}
-    local candidates=B.Data:Candidates({level=30,quests={}});eq(table.concat(candidates,","),"1,2,3")
-    candidates=B.Data:Candidates({level=30,quests={},completed={[1]=true}});eq(table.concat(candidates,","),"2,3")
-    candidates=B.Data:Candidates({level=30,quests={[1]={}},completed={}});eq(table.concat(candidates,","),"1,2,3")
-    candidates=B.Data:Candidates({level=30,quests={},completed={[1]=true,[2]=true}});eq(table.concat(candidates,","),"3")
-    eq(B.Data.requirements.reputations[72],true)
-    assert(edge(B.Data.chainIndex,1,2,"all"));eq(B.Data:GetQuest(2).title,"自有任务")
-    source.name="另一个角色上下文";assert(B.Data:Connect(db));eq(B.Data:GetQuest(1).title,"另一个角色上下文")
-    eq(B.Data:GetQuest(1).referenceXP,1234);eq(B.Data:GetQuest(1).referenceXPLevel,20)
-    for _,bad in ipairs({{0,100},{20,-1},{20,math.huge},{20,"100"},{1.5,100},{61,100}}) do
-        B.Data.xp[1]=bad;B.Data.cache={};eq(B.Data:GetQuest(1).referenceXP,nil)
-    end
-end)
+
 
 local function widget()
     local w={scripts={}}
@@ -193,7 +156,7 @@ local function preparationFixture()
     for id=1,5 do quests[id]=F.Quest(id);quests[id].verified=false end
     local data,state=F.Data(quests),F.State()
     data.Target=function(_,q) return {map=q.id==1 and 1 or 2,x=q.id/10,y=0.5} end
-    local B={Navigation=F.Navigation,Data=data,Content=data.content,state=state,char={locked=1,skipped={}},ready=true,
+    local B={Navigation=F.Navigation,Data=data,state=state,char={locked=1,skipped={}},ready=true,
         settings={minutes=60,gearPreference="xp",dungeons=true,role="DAMAGER"}}
     for _,file in ipairs({"State.lua","Planner/Eligibility.lua","Planner/Chains.lua","Planner/Travel.lua","Planner/Gear.lua",
         "Planner/Progression.lua","Planner/Supplies.lua","Planner/Dungeon.lua","Planner/DungeonTasks.lua",

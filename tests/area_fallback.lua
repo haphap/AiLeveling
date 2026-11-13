@@ -80,8 +80,8 @@ test("同构建确认仅交付时未绑定日志目标的辅助提示不拦住�
     stages,complete=B.TaskGuide.Stages(q,s,B.Data,{kind="accept",position=B.Data:Target(q,s)})
     eq(complete,true);eq(#stages,2);eq(stages[2].position.entityId,9)
     eq(s.quests[1],nil);eq(s.completed[1],nil)
-    s.clientBuild="other";eq(B.Data:DeliveryOnly(q,s),false)
-    s.clientBuild="70862";q.questLevel=10;rows.finishedBy={{9,10}}
+    s.clientVersion="other";eq(B.Data:DeliveryOnly(q,s),false)
+    s.clientVersion="1.60.1";s.clientBuild="70862";q.questLevel=10;rows.finishedBy={{9,10}}
     npcs[10]={name="另一交付者",spawns={[12]={{20,30}}}}
     eq(B.Data:DeliveryOnly(q,s),true);eq(B.Data:Recipient(q),nil)
     stages,complete=B.TaskGuide.Stages(q,s,B.Data,{kind="accept",position=B.Data:Target(q,s)})
@@ -109,7 +109,7 @@ test("事件物品付款与未知资料不被归为仅交付任务",function()
     B.TaskFacts={cacheXP={version="1.60.1",build="70862",interface=16001,quests={[1]=facts}}}
     s.clientVersion,s.clientBuild,s.interface="1.60.1","70862",16001;eq(B.Data:DeliveryOnly(q,s),true)
     facts.itemUses={[500]={spellId=123}};eq(B.Data:DeliveryOnly(q,s),false);facts.itemUses=nil
-    s.clientBuild="old";eq(B.Data:DeliveryOnly(q,s),false)
+    s.clientVersion="other";eq(B.Data:DeliveryOnly(q,s),false)
 end)
 test("接取时发放的单件交付物品不重复规划收集且不写入背包",function()
     local B,q,s,rows=fixture();s.quests={};s.bags={};rows.objectives={[3]={{100,count=1}}}
@@ -150,7 +150,7 @@ test("已有目标身份仅补匹配缓存数量且保留明确数量及版本�
     rows.objectives[3][1].count=2;eq(B.Data:ReferenceObjectiveTargets(q,s)[1].numRequired,2)
     rows.objectives[3][1].count=nil;q.taskFacts={objectives={{kind="item",id=100,count=3}}}
     eq(B.Data:ReferenceObjectiveTargets(q,s)[1].numRequired,3);q.taskFacts=nil
-    s.clientBuild="old";eq(B.Data:ReferenceObjectiveTargets(q,s)[1].numRequired,nil);s.clientBuild="70862"
+    s.clientVersion="other";eq(B.Data:ReferenceObjectiveTargets(q,s)[1].numRequired,nil);s.clientVersion="1.60.1";s.clientBuild="70862"
     q.questLevel=11;eq(B.Data:ReferenceObjectiveTargets(q,s)[1].numRequired,nil);q.questLevel=10
     facts.objectives[3]={kind="item",id=100,count=4};eq(B.Data:ReferenceObjectiveTargets(q,s)[1].numRequired,nil)
 end)
@@ -182,12 +182,12 @@ test("缓存目标按构建与任务等级隔离且不覆盖Questie修正",funct
         [1]={level=10,objectives={{kind="item",id=100,count=2}},complex=false}}}}
     s.clientVersion,s.clientBuild,s.interface="1.60.1","70862",16001
     eq(B.Data:ObjectiveEntries(q,s)[3][1][1],100)
-    for key,value in pairs({clientVersion="other",clientBuild="other",interface=1}) do
+    for key,value in pairs({clientVersion="other",interface=1}) do
         local old=s[key];s[key]=value;eq(next(B.Data:ObjectiveEntries(q,s)),nil);s[key]=old
     end
     q.questLevel=11;eq(next(B.Data:ObjectiveEntries(q,s)),nil);q.questLevel=10
     q.questLevel=-1;s.level=30;eq(B.Data:ObjectiveEntries(q,s)[3][1].count,2)
-    s.clientBuild="other";eq(next(B.Data:ObjectiveEntries(q,s)),nil);s.clientBuild="70862"
+    s.clientVersion="other";eq(next(B.Data:ObjectiveEntries(q,s)),nil);s.clientVersion="1.60.1";s.clientBuild="70862"
     rows.objectives={{{6}}};eq(B.Data:ObjectiveEntries(q,s),rows.objectives)
 end)
 test("缓存未支持要求保留复杂标记且不按单目标猜测身份",function()
@@ -212,7 +212,7 @@ test("同构建目标进度位置补区域兜底并按身份数量匹配且不�
     npcs[6].spawns={[12]={{-1,-1}}};eq(B.Data:Target(q,s).x,0.8)
     C_QuestLog.GetNextWaypoint=function() return 1,0.9,0.4 end
     eq(B.Data:Target(q,s).x,0.9);C_QuestLog.GetNextWaypoint=nil
-    s.clientBuild="other";eq(B.Data:Target(q,s).x,0.5);s.clientBuild="70862"
+    s.clientVersion="other";eq(B.Data:Target(q,s).x,0.5);s.clientVersion="1.60.1";s.clientBuild="70862"
     q.questLevel=11;eq(B.Data:Target(q,s).x,0.5);q.questLevel=10
     s.quests[1].objectives[1].numRequired=4;eq(B.Data:Target(q,s).x,0.5)
     s.quests[1].objectives[1].numRequired=3;fact.id=7;eq(B.Data:Target(q,s).x,0.5);fact.id=6

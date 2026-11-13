@@ -51,7 +51,6 @@ function T:RefreshKnown(map,faction)
         local info=C_Map.GetMapInfo(map)
         map=info and info.parentMapID
     end
-    for _,option in pairs(A.Content.transit) do if option.taxiMap then maps[#maps+1]=option.taxiMap end end
     local side=faction=="Alliance" and 2 or faction=="Horde" and 1
     for _,id in ipairs(maps) do
         for _,node in ipairs(C_TaxiMap.GetTaxiNodesForMap(id) or {}) do
@@ -187,26 +186,11 @@ function T:SyncFlightSpeed(state)
     end
 end
 
-function T:Bound()
-    local name=GetBindLocation and GetBindLocation()
-    local position=A.state.position
-    A.char.hearthBinding=nil
-    for id,node in pairs(A.Content.nodes) do
-        if position and node.position.map==position.map and node.hearth and node.verified and node.bindName==name and node.accessRadius then
-            local distance=A.Navigation:Distance(position,node.position)
-            if distance and distance<=node.accessRadius then
-                A.char.hearthBinding={name=name,node=id}
-                break
-            end
-        end
-    end
-end
-
 function T:Snapshot(state)
     self:SyncFlightSpeed(state)
     state.taxiSpeed=self.taxiSpeed
     state.onTaxi=self:IsFlying()
-    state.hearthReady,state.hearthNode=nil,nil
+    state.hearthReady=nil
     self.readyAt=nil
     local map=C_Map.GetBestMapForUnit("player")
     if self.dirty or self.map~=map then self:RefreshKnown(map,state.faction);self.dirty=false;self.map=map end
@@ -224,26 +208,7 @@ function T:Snapshot(state)
     if origin and state.now>=origin.at and state.now-origin.at<=120 then
         state.taxiOrigin={id=origin.id,at=origin.at,position={map=origin.position.map,x=origin.position.x,y=origin.position.y}}
     end
-    if not self.requiredUnlocks then
-        self.requiredUnlocks={}
-        local function add(option)
-            local id=type(option.unlock)=="string" and option.unlock:match("^quest:(%d+)$")
-            if id then self.requiredUnlocks[option.unlock]=tonumber(id) end
-        end
-        for _,option in pairs(A.Content.transit) do add(option) end
-    end
-    for key,id in pairs(self.requiredUnlocks) do state.unlocked[key]=state.completed[id]==true end
     state.bindName=GetBindLocation and GetBindLocation()
-    local binding=A.char.hearthBinding
-    local candidates={}
-    for id,node in pairs(A.Content.nodes) do
-        if node.hearth and node.verified and node.bindName==state.bindName then candidates[#candidates+1]=id end
-    end
-    if binding and type(binding)=="table" and binding.name==state.bindName then
-        local node=A.Content.nodes[binding.node]
-        if node and node.hearth and node.verified and node.bindName==state.bindName then state.hearthNode=binding.node end
-    end
-    if not state.hearthNode and #candidates==1 then state.hearthNode=candidates[1] end
     if (state.bags[6948] or 0)>0 and C_Container.GetItemCooldown then
         local start,duration,enabled=C_Container.GetItemCooldown(6948)
         if start and duration and (enabled==1 or enabled==true) then
@@ -266,7 +231,7 @@ function T.Key(state)
     end
     table.sort(keys)
     local hearth=state.hearthReady and (state.hearthReady<=state.now and "ready" or tostring(state.hearthReady)) or "unknown"
-    return table.concat(keys,",")..":"..hearth..":"..tostring(state.hearthNode)..":"..tostring(state.bindName)..":"..tostring(state.onTaxi)..
+    return table.concat(keys,",")..":"..hearth..":"..tostring(state.bindName)..":"..tostring(state.onTaxi)..
         ":origin:"..tostring(state.taxiOrigin and state.taxiOrigin.id)..":speed:"..tostring(state.taxiSpeed)
 end
 
@@ -345,18 +310,9 @@ function T:Update()
                         A.State.Observe(samples,key,elapsed)
                         if samples[key] then samples[key].unit="seconds" end
                     end
-                    local reference=action.referenceSeconds
-                    local ratio=reference and reference>0 and (flight.ended-flight.started)/reference
-                    if ratio and type(action.sampleKind)=="string" and flight.ended-flight.started>=1 and ratio>=0.25 and ratio<=4 then
-                        local key=action.sampleKind
-                        local samples=A.char.samples
-                        if samples[key] and samples[key].unit~="ratio" then samples[key]=nil end
-                        A.State.Observe(samples,key,ratio)
-                        if samples[key] then samples[key].unit="ratio" end
-                    end
                 end
                 self.flight=nil
-                A.Navigation.lastMap,A.Navigation.lastNode=A.state.position.map,A.state.position.node
+                A.Navigation.lastMap=A.state.position.map
                 A.Navigation:RefreshPins()
                 A.State:Refresh(true)
             end

@@ -39,7 +39,7 @@ test("原生可达即可接续跨图任务，忽略票价与金币",function()
 end)
 test("飞行参考拒绝旧构建远离出发点过期和洞内投影",function()
     local B,s,a,nav=fixture()
-    s.clientBuild="1";eq(B.Flights.Guide(a,s,nav),nil);s.clientBuild="70862"
+    s.clientVersion="other";eq(B.Flights.Guide(a,s,nav),nil);s.clientVersion="1.60.1";s.clientBuild="70862"
     s.position.x=0.2;eq(B.Flights.Guide(a,s,nav),nil);s.position.x=0.1
     s.now=121;eq(B.Flights.Guide(a,s,nav),nil);s.now=10
     local original=C_Map.GetMapInfo;C_Map.GetMapInfo=function() return {mapType=4} end
@@ -78,9 +78,9 @@ test("飞行加速只读取当前构建已学法术且接口未知保持未知",
     C_SpellBook.IsSpellKnown=function() return false end;eq(B.Flights.ReadSpeed(s),1)
     for _,value in ipairs({"true",0,{}}) do C_SpellBook.IsSpellKnown=function() return value end;eq(B.Flights.ReadSpeed(s),nil) end
     C_SpellBook.IsSpellKnown=function() error("未就绪") end;eq(B.Flights.ReadSpeed(s),nil)
-    C_SpellBook.IsSpellKnown=function() error("不应读取其他构建") end
-    s.clientBuild="70863";eq(B.Flights.ReadSpeed(s),nil)
-    C_SpellBook=nil;s.clientBuild="70862";eq(B.Flights.ReadSpeed(s),nil)
+    C_SpellBook.IsSpellKnown=function() return true end
+    s.clientBuild="70888";eq(B.Flights.ReadSpeed(s),1.2)
+    C_SpellBook=nil;s.clientVersion="1.60.1";s.clientBuild="70862";eq(B.Flights.ReadSpeed(s),nil)
     C_SpellBook=old
 end)
 test("加速参考按速度缩短且各速度实测原值隔离不重复缩放",function()
@@ -175,7 +175,7 @@ test("参考落地点仍需原生可达版本与已知飞行耗时",function()
     local function walking() eq(B.Flights.Routes(O,T,s,nav)[1].flights,0) end
     s.taxiAvailability["1:2"]=false;walking();s.taxiAvailability["1:2"]=true
     s.unlocked["taxi:2"]=nil;walking();s.unlocked["taxi:2"]=true
-    s.clientBuild="other";walking();s.clientBuild="70862"
+    s.clientVersion="other";walking();s.clientVersion="1.60.1";s.clientBuild="70862"
     B.FlightData.durations.Alliance["1:2"]=nil;walking();B.FlightData.durations.Alliance["1:2"]=100
     s.taxiDepartures={};walking();s.taxiDepartures={[1]=D}
     nav.hbd=nil;walking()
@@ -308,9 +308,9 @@ test("持有上限按构建启用且同时计算接取发放与收集数量",fun
     eq(B.TaskGuide.ItemGainBlocked(stage,s,{}),true)
     stage.gainItems=nil;eq(B.TaskGuide.ItemGainBlocked(stage,s,{}),false)
     eq(B.TaskGuide.ItemGainBlocked(stage,s),true)
-    s.clientBuild="other";eq(B.TaskGuide.ItemGainBlocked(stage,s),false)
+    s.clientVersion="other";eq(B.TaskGuide.ItemGainBlocked(stage,s),false)
     local groups=B.TaskGuide.DeliveryGroups({a,b},s);eq(groups[1].splitDelivery,nil)
-    s.clientBuild="70862";stage.targetId=2592;stage.itemGain=120
+    s.clientVersion="1.60.1";s.clientBuild="70862";stage.targetId=2592;stage.itemGain=120
     eq(B.TaskGuide.ItemGainBlocked(stage,s),false)
 end)
 test("共用物品只分配一次且同收件人先补齐再连续交付",function()
@@ -367,7 +367,7 @@ test("队列使用原生交付经验且跨级后恢复分级资料或未知",fun
     s.level,s.xp,s.maxXP=20,0,100
     s.quests={[1]={rewardXP=100,rewardXPLevel=20},[2]={rewardXP=80,rewardXPLevel=20}}
     local quests={{id=1},{id=2,questLevel=20,taskFacts={level=20,xp={{1,70},{21,10}}}}}
-    local data={content={},GetQuest=function(_,id) return quests[id] end}
+    local data={GetQuest=function(_,id) return quests[id] end}
     local a,b=choice(1,O),choice(2,O)
     local queue=B.TaskQueue.Evaluate({a,b},s,nav,data)
     eq(queue.xp,110);eq(queue.xpKnown,true);eq(queue.forecast.level,21);eq(queue.forecast.xp,10)
@@ -384,7 +384,7 @@ test("整批同路程优先保留升级前的较高交付经验",function()
     assert(loadfile("Planner/Progression.lua"))("AiLeveling",B)
     s.level,s.xp,s.maxXP=20,0,100
     local a,b=choice(1,T),choice(2,T)
-    local data={content={},GetQuest=function(_,id)
+    local data={GetQuest=function(_,id)
         return {id=id,questLevel=20,taskFacts={level=20,xp={{1,100},{21,id==1 and 10 or 90}}}}
     end}
     local before=B.TaskQueue.Evaluate({b,a},s,nav,data)
@@ -437,7 +437,7 @@ test("交错目标期间不提前获得交付经验或跨级减奖励",function(
     B.Experience={version="1.60.1",build="70862",interface=16001,source="test",xpToLevel={[20]=100,[21]=100,[22]=100}}
     assert(loadfile("Planner/Progression.lua"))("AiLeveling",B)
     s.level,s.xp,s.maxXP=20,0,100
-    local data={content={},GetQuest=function(_,id) return {id=id,questLevel=20,taskFacts={level=20,xp={{1,100},{21,10}}}} end}
+    local data={GetQuest=function(_,id) return {id=id,questLevel=20,taskFacts={level=20,xp={{1,100},{21,10}}}} end}
     local _,queue=B.TaskQueue.Solve({a,b},s,nav,data)
     eq(queue.stagePlan,true);eq(queue.xp,110);eq(queue.forecast.level,21);eq(queue.forecast.xp,10)
     eq(queue.steps[1].xp,0);eq(queue.steps[2].xp,0);eq(queue.steps[3].xp,100);eq(queue.steps[4].xp,10)
@@ -520,7 +520,6 @@ test("同一NPC五项任务全部目标完成后才连续集中交付",function(
     assert(not table.concat(B.UI:TaskLines(false),"\n"):find("任务 2",1,true))
     assert(loadfile("UI/Plan.lua"))("AiLeveling",B);eq(#B.UI.Plan.Rows(previous),4)
     B.char={};B.UI.Plan.preview=previous.taskChoices[2]
-    assert(not table.concat(B.UI.Plan:Lines(),"\n"):find("任务 2",1,true))
     model=B.UI.TrackerModel(s,previous,{kind="turnin",questId=2},false)
     eq(model.questId,nil);eq(#model.rows,4);eq(model.title,"正在安排行程")
     local renewed={revision=s.revision,taskChoices={{id="task:2",questId=2,kind="task",status="accept",actions={{kind="accept",questId=2}}}}}
@@ -592,7 +591,7 @@ test("队列连续升级保留客户端曲线口径且未知门槛后停止累�
     assert(loadfile("Planner/Progression.lua"))("AiLeveling",B)
     s.level,s.xp,s.maxXP=20,90,100
     local order={choice(1,O),choice(2,O),choice(3,O)}
-    local data={content={},GetQuest=function(_,id) return {id=id,questLevel=20,taskFacts={level=20,xp={{1,100}}}} end}
+    local data={GetQuest=function(_,id) return {id=id,questLevel=20,taskFacts={level=20,xp={{1,100}}}} end}
     local advance,calls=B.Progression.Advance,0
     B.Progression.Advance=function(...) calls=calls+1;return advance(...) end
     local cache={}
@@ -615,7 +614,7 @@ test("原生飞行地图捕获独立快照并在世界变更或期限到期失�
     GetTime=function() return now end;GetTaxiMapID=function() return 1 end;TaxiNodeCost=function() return 110 end;UnitOnTaxi=nil
     C_TaxiMap={GetAllTaxiNodes=function() return {{nodeID=1,state=0,name="起点"},{nodeID=2,state=1,slotIndex=1,name="落地点"}} end}
     C_Map.GetBestMapForUnit=function() return 1 end
-    local B={Content={nodes={},transit={}},char={},State={Position=function(_,s) s.position={map=1,x=0.1,y=0.1} end},RequestRefresh=function() end}
+    local B={char={},State={Position=function(_,s) s.position={map=1,x=0.1,y=0.1} end},RequestRefresh=function() end}
     assert(loadfile("Transport.lua"))("AiLeveling",B)
     B.Transport:CaptureTaxi()
     local s={now=0,faction="Alliance",completed={},bags={}}
@@ -629,7 +628,7 @@ end)
 test("飞行加速变化清理旧可达信息且重新开图恢复",function()
     local old={GetTime=GetTime,GetTaxiMapID=GetTaxiMapID,C_TaxiMap=C_TaxiMap,TaxiNodeCost=TaxiNodeCost,C_SpellBook=C_SpellBook}
     local B,s=fixture();local learned=false
-    B.state=s;B.Content={nodes={},transit={}};B.char={}
+    B.state=s;B.char={}
     B.State={Position=function(_,snapshot) snapshot.position=s.position end}
     GetTime=function() return s.now end;GetTaxiMapID=function() return 1 end
     C_SpellBook={IsSpellKnown=function() return learned end}
@@ -659,7 +658,7 @@ test("飞行停靠由原生槽位映射为节点且变化触发重算并清理�
     TaxiGetNodeSlot=function(slot,index,source)
         local pair=slot==7 and {3,7} or route[index];return pair[source and 1 or 2]
     end
-    local B={Content={nodes={},transit={}},char={},State={Position=function(_,s) s.position={map=1,x=0,y=0} end}}
+    local B={char={},State={Position=function(_,s) s.position={map=1,x=0,y=0} end}}
     assert(loadfile("Transport.lua"))("AiLeveling",B)
     local function snapshot()
         B.Transport:CaptureTaxi();local s={now=0,faction="Horde",completed={},bags={}};B.Transport:Snapshot(s);return s

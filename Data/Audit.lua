@@ -18,7 +18,6 @@ function Audit.Build(data, details)
     local report = { scope = "effective QuestieDB public API", contract = db.contractVersion,
         total = 0, entities = {}, byLevel = {}, byZone = {}, byClassMask = {}, byRaceMask = {},
         gaps = {}, quests = {}, dungeons = {}, signedPrerequisiteEntries = 0,
-        authored = {quests = 0, nodes = 0, dungeons = 0},
         referenceServices={source="effective QuestieDB NPC API",clientVerified=false,npcs=data.serviceCount or 0,idsByMap={}},
         referenceAmenities={source="effective QuestieDB NPC API",clientVerified=false,npcs=data.amenityCount or 0,idsByMap={}} }
     for map,ids in pairs(data.servicesByMap or {}) do
@@ -119,8 +118,6 @@ function Audit.Build(data, details)
         end
         local xp = data.xp[id]
         if not xp or xp[2] == nil then gap(row, "xp-reference") end
-        local authored = data.content.quests[id]
-        if (row.sourceItemId or 0) > 0 and not (authored and authored.itemRules) then gap(row, "item-use-rule") end
         local dungeon = dungeonByArea[row.zone]
         if dungeon then
             local list = report.dungeons[tostring(dungeon)].questIds
@@ -129,9 +126,6 @@ function Audit.Build(data, details)
         if details then report.quests[tostring(id)] = row end
         yieldBatch(i)
     end
-    for _ in pairs(data.content.quests) do report.authored.quests = report.authored.quests + 1 end
-    for _ in pairs(data.content.nodes) do report.authored.nodes = report.authored.nodes + 1 end
-    for _, d in pairs(data.content.dungeons) do if d.verified then report.authored.dungeons = report.authored.dungeons + 1 end end
     return report
 end
 
@@ -140,11 +134,9 @@ function Audit.Text(report)
         ["item-starter-needs-source"]="开启任务物品来源待核对", ["objective-location"]="任务目标地点缺失",
         ["objective-item-source"]="目标物品来源缺失", ["special-objective-rule"]="特殊目标规则待补",
         ["objective-or-delivery-rule"]="目标或送信规则待补", ["missing-prerequisite"]="前置任务 ID 缺失",
-        ["signed-alternative-prerequisite"]="特殊备选前置待核对", ["xp-reference"]="经验参考缺失",
-        ["item-use-rule"]="道具使用条件待补" }
+        ["signed-alternative-prerequisite"]="特殊备选前置待核对", ["xp-reference"]="经验参考缺失" }
     local lines = {"QuestieDB 有效数据盘点（含上游修正）", "任务总数：" .. report.total,
         "实体 NPC／对象／物品：" .. report.entities.Npc .. "／" .. report.entities.Object .. "／" .. report.entities.Item,
-        "任务补充／目的地／副本：" .. report.authored.quests .. "／" .. report.authored.nodes .. "／" .. report.authored.dungeons,
         "存在字段缺口的任务数（同一任务可有多项）："}
     local keys = {}
     for key in pairs(report.gaps) do keys[#keys + 1] = key end

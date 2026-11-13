@@ -45,7 +45,7 @@ test("同状态含未知经验时按移动排序且保留手动和已接任务",
         {id=1,questLevel=20,taskFacts={level=20,xp={{1,100}}}},
         {id=2,questLevel=20,taskFacts={level=20,xp={{1,1000}}}},
         {id=3,questLevel=20}, {id=4,questLevel=20}}
-    local data={content={},GetQuest=function(_,id) return quests[id] end,
+    local data={GetQuest=function(_,id) return quests[id] end,
         Target=function(_,q) return {map=1,x=q.id==3 and 0 or q.id*7} end,
         ReferenceObjectiveTargets=function(_,q) return {{text="目标"}},{{map=1,x=q.id==3 and 0 or q.id*7}},false end}
     for _,ids in ipairs({{1,2,3,4},{4,3,2,1},{3,1,4,2}}) do

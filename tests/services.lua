@@ -203,7 +203,6 @@ test("服务选择拒绝过期对象飞行死亡副本和不可学项目且持�
     local rows=B.Services:Choices("learn");eq(B.Services:CanPick(rows[2],B.state.revision),false)
     B.refreshAt=1;eq(B.Services:Pick(rows[1],B.state.revision),false);B.refreshAt=nil
     B.flying=true;eq(B.Services:Pick(rows[1],B.state.revision),false);B.flying=false
-    B.char.dungeon={};eq(B.Services:Pick(rows[1],B.state.revision),false);B.char.dungeon=nil
     B.state.dead=true;eq(B.Services:Pick(rows[1],B.state.revision),false);B.state.dead=false
     B.Services:Choices("learn");eq(B.Services:Pick(rows[1],B.state.revision),false)
     rows=B.Services:Choices("learn");assert(B.Services:Pick(rows[1],B.state.revision));local p=B.char.serviceStop.position
@@ -285,7 +284,6 @@ test("服务点比较接续任务的总直线距离且过期规划不参与",fun
     B.plan.revision=B.state.revision;B.jobs.plan={};check(1);B.jobs.plan=nil
     B.refreshAt=1;check(1);B.refreshAt=nil
     B.plan.maintenance=true;check(1);B.plan.maintenance=nil
-    B.plan.sessionActive=true;check(1);B.plan.sessionActive=nil
     B.plan.fallback={kind="service",position={map=1,x=0.45,y=0.5}};B.plan.serviceResume=target;check(2)
     -- An unknown onward distance cannot beat a complete two-leg comparison.
     local distance=B.Navigation.Distance
@@ -370,7 +368,7 @@ test("炉石只在交接据点附近建议绑定并保护当前任务和维护",
     for _,field in ipairs({"locked","gearTarget","taskBatch","serviceStop","dead","onTaxi","inInstance"}) do
         s[field]=true;eq(S.AutomaticBinding(p,s),nil);s[field]=nil
     end
-    for _,field in ipairs({"best","sessionActive","maintenance"}) do
+    for _,field in ipairs({"best","maintenance"}) do
         p[field]=true;eq(S.AutomaticBinding(p,s),nil);p[field]=nil
     end
     finish()
@@ -492,7 +490,7 @@ test("手选未发现飞行点使用实际交通，到达后等待原生开通�
     local stop=S.Build(s,p);eq(stop.fallback.taxiId,1);eq(stop.referenceJourney.flights,0)
     eq(s.unlocked["taxi:1"],false);eq(next(s.taxiAvailability),nil)
     B.char.serviceStop.taxiId=0;eq(S.ValidStop(B.char.serviceStop),false);B.char.serviceStop.taxiId=1
-    s.clientBuild="1";eq(S.Build(s,p).fallback.kind,"selectionBlocked");s.clientBuild="70862"
+    s.clientVersion="other";eq(S.Build(s,p).fallback.kind,"selectionBlocked");s.clientVersion="1.60.1";s.clientBuild="70862"
     s.position={map=1,x=0.2,y=0};S:Snapshot(s);assert(s.serviceStop)
     s.unlocked["taxi:2"]=true;S:Snapshot(s);assert(s.serviceStop)
     s.unlocked["taxi:1"]=true;S:Snapshot(s);eq(s.serviceStop,nil);eq(B.char.serviceStop,nil);eq(B.char.locked,42)
@@ -504,7 +502,7 @@ test("开点候选限当前构建原生明确未发现的友方室外飞行点",
     s.unlocked["taxi:1"]=false;node.factionMask=2;eq(#S:Choices("unlockFlight"),0)
     node.factionMask=1;node.condition=8;eq(#S:Choices("unlockFlight"),0)
     node.condition=0;node.visibility=8;eq(#S:Choices("unlockFlight"),0);node.visibility=0
-    s.clientBuild="1";eq(#S:Choices("unlockFlight"),0);s.clientBuild="70862"
+    s.clientVersion="other";eq(#S:Choices("unlockFlight"),0);s.clientVersion="1.60.1";s.clientBuild="70862"
     s.inInstance=true;eq(#S:Choices("unlockFlight"),0);s.inInstance=false
     local rows=S:Choices("unlockFlight");eq(#rows,1)
     s.unlocked["taxi:1"]=true;eq(S:CanPick(rows[1],s.revision),false)
@@ -516,7 +514,7 @@ test("原生明确未发现的飞行点进入状态指纹，未知标记不推�
     C_TaxiMap={GetTaxiNodesForMap=function() return {
         {nodeID=1,faction=2,isUndiscovered=true},{nodeID=2,faction=2,isUndiscovered=false},
         {nodeID=3,faction=2,isUndiscovered=0},{nodeID=4,faction=1,isUndiscovered=true}} end}
-    local B={Content={transit={}}};assert(loadfile("Transport.lua"))("AiLeveling",B)
+    local B={};assert(loadfile("Transport.lua"))("AiLeveling",B)
     local s={unlocked={},now=0};local key=B.Transport.Key(s)
     B.Transport:RefreshKnown(1,"Alliance");s.unlocked=B.Transport.known
     eq(s.unlocked["taxi:1"],false);eq(s.unlocked["taxi:2"],true);eq(s.unlocked["taxi:3"],nil);eq(s.unlocked["taxi:4"],nil)
@@ -610,9 +608,9 @@ test("训练师按本职业和已学专业优先，未知与未学专业保留�
     s.classMask=128;s.skills[165]=0;s.skills[202]=25
     rows=B.Services:Choices("train");eq(rows[1].npcId,3047);eq(rows[2].npcId,3412)
     s.classMask=nil;s.skills={};eq(B.Services.TrainerFit(s,3047),1);eq(B.Services.TrainerFit(s,3365),1)
-    s.clientBuild="other";rows=B.Services:Choices("train");eq(rows[1].npcId,3047)
+    s.clientVersion="other";rows=B.Services:Choices("train");eq(rows[1].npcId,3047)
     for _,row in ipairs(rows) do eq(row.trainingRank,1);eq(row.trainingText,nil) end
-    s.clientBuild="70862";rows=B.Services:Choices("bind");eq(rows[1].npcId,3047);eq(rows[1].trainingRank,nil)
+    s.clientVersion="1.60.1";s.clientBuild="70862";rows=B.Services:Choices("bind");eq(rows[1].npcId,3047);eq(rows[1].trainingRank,nil)
     finish()
 end)
 test("训练专业按当前构建读取原生技能且缺接口保持未知",function()
@@ -625,7 +623,7 @@ test("训练专业按当前构建读取原生技能且缺接口保持未知",fun
     B.State:Qualifications(s,{skills={[999]=true}});eq(s.skills[165],75);eq(s.skills[202],0);assert(calls[999])
     local count=0;for id in pairs(B.Trainers.skills) do assert(calls[id]);count=count+1 end;eq(count,7)
     C_SkillInfo=nil;B.State:Qualifications(s,{});eq(s.skills[165],nil);eq(B.Services.TrainerFit(s,3365),1)
-    calls={};C_SkillInfo={GetSkillLineInfoByID=function(id) calls[id]=true end};s.clientBuild="other"
+    calls={};C_SkillInfo={GetSkillLineInfoByID=function(id) calls[id]=true end};s.clientVersion="other"
     B.State:Qualifications(s,{});eq(next(calls),nil)
     C_SkillInfo=old;finish()
 end)
