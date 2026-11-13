@@ -774,8 +774,9 @@ test("练级统计按原生经验跨级结算，暂停AFK离线不计时并保�
     local event=B.frame.scripts.OnEvent
     event(nil,"PLAYER_XP_UPDATE","player")
     eq(B.char.leveling.levels[20].partial,true)
+    B.state.level=level;B.refreshAt=nil
     B.time(20);xp=950;event(nil,"PLAYER_XP_UPDATE","target");eq(T.last.xp,900)
-    event(nil,"PLAYER_XP_UPDATE","player");eq(B.char.leveling.levels[20].xp,50)
+    event(nil,"PLAYER_XP_UPDATE","player");eq(B.char.leveling.levels[20].xp,50);eq(B.refreshAt,nil);eq(B.state.xp,950)
     B.time(30);xp=40;event(nil,"PLAYER_XP_UPDATE","player");eq(T.last.xp,950)
     level=21;maxXP=2000;event(nil,"PLAYER_LEVEL_UP",21);event(nil,"PLAYER_XP_UPDATE","player")
     eq(B.char.leveling.levels[20].xp,100);eq(B.char.leveling.levels[21].xp,40)

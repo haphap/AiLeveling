@@ -261,7 +261,7 @@ local function alongTasks(state,plan,action,paused,byQuest)
     return along
 end
 
-function UI.TrackerModel(state,plan,action,paused)
+function UI.TrackerModel(state,plan,action,paused,along)
     state,plan=state or {},plan or {}
     local quests=state.quests or {}
     local journey=not paused and not A.error and UI.TrackerJourney(state,action) or nil
@@ -401,7 +401,8 @@ function UI.TrackerModel(state,plan,action,paused)
             if step.kind~="move" then add(step.questId,step) end
         end
     end
-    local along=alongTasks(state,plan,action,paused,byQuest)
+    along=along or alongTasks(state,plan,action,paused,byQuest)
+    model.along,model.deliveryGroups=along,byQuest
     for _,choice in ipairs(plan.taskChoices or {}) do
         local side=along[choice.questId]
         if side then add(choice.questId,side.action) end
@@ -710,7 +711,7 @@ function UI:CreateTracker()
     notice:Hide()
     f:SetScript("OnUpdate",function(_,elapsed)
         T.nearbyElapsed=(T.nearbyElapsed or 0)+elapsed
-        if T.nearbyElapsed>=1 then T.nearbyElapsed=0;self:UpdateNearby() end
+        if T.nearbyElapsed>=1 then T.nearbyElapsed=0;self:UpdateTrackerDynamic() end
     end)
     T.header=f:CreateTexture(nil,"BACKGROUND");T.header:SetTexture(media.."hud-header.tga")
     T.header:SetPoint("TOPLEFT",4,-4);T.header:SetPoint("TOPRIGHT",-4,-4)
@@ -855,10 +856,6 @@ function UI:CreateTracker()
     T.journeySummary=text(T.journeyHeader,"caption",palette.white);T.journeySummary:SetPoint("RIGHT");T.journeySummary:SetJustifyH("RIGHT")
     T.journeyHeader:SetScript("OnClick",function() T.journeyClosed=not T.journeyClosed;self:LayoutTracker() end)
     T.journeyRows={}
-    T.journey:SetScript("OnUpdate",function(_,elapsed)
-        T.journeyElapsed=(T.journeyElapsed or 0)+elapsed
-        if T.journeyElapsed>=1 then T.journeyElapsed=0;self:RenderTracker() end
-    end)
     T.questTitle.progress=self.body
     T.thenText=text(T.currentChild,"caption",palette.muted)
     T.thenDivider=T.currentChild:CreateTexture(nil,"BACKGROUND");T.thenDivider:SetColorTexture(unpack(palette.line))
@@ -982,7 +979,7 @@ function UI:TrackerRow(index,parent)
     return row
 end
 
-function UI:UpdateNearby()
+function UI:UpdateNearby(along)
     local notice=self.tracker and self.tracker.nearby
     if not notice then return end
     local state,plan,navigation=A.state,A.plan or {},A.Navigation
@@ -995,7 +992,7 @@ function UI:UpdateNearby()
         local action=navigation:Current()
         local journey=self.TrackerJourney(state,action)
         action=journey and journey.goal or action
-        for id,side in pairs(alongTasks(state,plan,action,false)) do
+        for id,side in pairs(along or alongTasks(state,plan,action,false)) do
             local q=(state.quests or {})[id]
             local objective=q and (q.objectives or {})[side.action.objectiveIndex]
             if side.action.kind=="objective" and objective and not objective.finished and side.distance<=180 and
@@ -1044,14 +1041,73 @@ function UI:UpdateNearby()
     notice:Show()
 end
 
-function UI:RenderTracker()
+function UI:RenderJourney(journey,dynamic)
+    local T=self.tracker
+    T.journeyTime=journey and clockText(journey.seconds) or ""
+    if journey and journey.distance and journey.distance>0 then
+        local meters=A.settings.distanceUnits=="meters"
+        local distance=journey.distance*(meters and 0.9144 or 1)
+        T.journeyTime=T.journeyTime.." · 步行 "..(distance>=1000 and string.format("%.1f",distance/1000)..(meters and "公里" or "k码") or string.format("%.0f",distance)..(meters and "米" or "码"))
+    end
+    for i,step in ipairs(journey and journey.steps or {}) do
+        local row=T.journeyRows[i]
+        if not row then
+            row=CreateFrame("Frame",nil,T.journey)
+            row.number=text(row,"caption",palette.muted)
+            row.icon=row:CreateTexture(nil,"ARTWORK")
+            row.title=text(row,"body",palette.white)
+            row.time=text(row,"caption",palette.white);row.time:SetJustifyH("RIGHT")
+            row.detail=text(row,"caption",palette.muted)
+            T.journeyRows[i]=row
+        end
+        if not dynamic then
+            row.number:SetText(i)
+            row.icon:SetTexture(media.."hud-"..(({walk="location",zeppelin="boat",flight="flight",boat="boat",tram="tram",hearth="hearth",accept="accept",objective="objective",turnin="turnin"})[step.kind] or "location")..".tga")
+            row.icon:SetVertexColor(unpack(i==1 and palette.gold or palette.blue))
+            row.title:SetText(step.title);row.title:SetTextColor(unpack(i==1 and palette.gold or palette.white))
+            row.detail:SetText(step.detail or "")
+            row:SetShown(not T.journeyClosed)
+        end
+        row.time:SetText(step.task and "" or clockText(step.seconds))
+    end
+    for i=#(journey and journey.steps or {})+1,#T.journeyRows do T.journeyRows[i]:Hide() end
+    T.journeySummary:SetText((T.journeyTime or "")..(T.journeyClosed and "  +" or "  −"))
+end
+
+function UI:UpdateTrackerDynamic()
+    local T=self.tracker
+    if not T or not T.model then return end
+    local state,plan=A.state,A.plan or {}
+    local action=A.Navigation:Current()
+    local journey=not A.char.paused and not A.error and self.TrackerJourney(state,action)
+    local goal=journey and journey.goal or action
+    local along=alongTasks(state,plan,goal,A.char.paused,T.model.deliveryGroups)
+    local previous=T.model.along or {}
+    for id,side in pairs(along) do
+        if not previous[id] or previous[id].action~=side.action then self:RenderTracker(along);return end
+    end
+    for id in pairs(previous) do if not along[id] then self:RenderTracker(along);return end end
+    T.model.along=along
+    self:UpdateNearby(along)
+    local old=T.model.journey
+    local layout=(journey~=nil)~=(old~=nil) or #(journey and journey.steps or {})~=#(old and old.steps or {})
+    for i,step in ipairs(journey and journey.steps or {}) do
+        local before=old and old.steps[i]
+        if not before or before.title~=step.title or before.detail~=step.detail then layout=true end
+    end
+    T.model.journey=journey
+    self:RenderJourney(journey,not layout)
+    if layout then self:LayoutTracker() end
+end
+
+function UI:RenderTracker(along)
     local T=self.tracker
     if not T then return end
     local state,plan=A.state or {},A.plan or {}
     local action=A.Navigation:Current()
-    local model=UI.TrackerModel(state,plan,action,A.char.paused)
+    local model=UI.TrackerModel(state,plan,action,A.char.paused,along)
     T.model,T.action=model,action
-    self:UpdateNearby()
+    self:UpdateNearby(model.along)
     local reminder=self.ClassReminders(state,plan)
     local notice={}
     T.career.heading:SetText("")
@@ -1178,32 +1234,7 @@ function UI:RenderTracker()
     end
     T.progressRatio=goals>0 and progress/goals or nil
     T.progressText:SetText(T.progressRatio and string.format("%.0f%%",T.progressRatio*100) or "")
-    local journey=model.journey
-    T.journeyTime=journey and clockText(journey.seconds) or ""
-    if journey and journey.distance and journey.distance>0 then
-        local meters=A.settings.distanceUnits=="meters"
-        local distance=journey.distance*(meters and 0.9144 or 1)
-        T.journeyTime=T.journeyTime.." · 步行 "..(distance>=1000 and string.format("%.1f",distance/1000)..(meters and "公里" or "k码") or string.format("%.0f",distance)..(meters and "米" or "码"))
-    end
-    for i,step in ipairs(journey and journey.steps or {}) do
-        local row=T.journeyRows[i]
-        if not row then
-            row=CreateFrame("Frame",nil,T.journey)
-            row.number=text(row,"caption",palette.muted)
-            row.icon=row:CreateTexture(nil,"ARTWORK")
-            row.title=text(row,"body",palette.white)
-            row.time=text(row,"caption",palette.white);row.time:SetJustifyH("RIGHT")
-            row.detail=text(row,"caption",palette.muted)
-            T.journeyRows[i]=row
-        end
-        row.number:SetText(i)
-        row.icon:SetTexture(media.."hud-"..(({walk="location",zeppelin="boat",flight="flight",boat="boat",tram="tram",hearth="hearth",accept="accept",objective="objective",turnin="turnin"})[step.kind] or "location")..".tga")
-        row.icon:SetVertexColor(unpack(i==1 and palette.gold or palette.blue))
-        row.title:SetText(step.title);row.title:SetTextColor(unpack(i==1 and palette.gold or palette.white))
-        row.time:SetText(step.task and "" or clockText(step.seconds));row.detail:SetText(step.detail or "")
-        row:Show()
-    end
-    for i=#(journey and journey.steps or {})+1,#T.journeyRows do T.journeyRows[i]:Hide() end
+    self:RenderJourney(model.journey)
     for i,item in ipairs(model.rows) do
         local row=self:TrackerRow(i)
         local isCurrent=item.questId and item.questId==model.questId

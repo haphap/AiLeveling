@@ -169,8 +169,12 @@ function A:Queue(key, callback)
     self.jobs[key] = coroutine.create(callback)
 end
 
-function A:RequestRefresh()
+function A:RequestRefresh(redraw)
     self.refreshAt = self.refreshAt or (GetTime() + 0.1)
+    if redraw then
+        self.dirty=true
+        if self.UI and self.UI.Browser then self.UI.Browser.entriesRevision=nil end
+    end
 end
 
 function A:Replan()
@@ -433,7 +437,19 @@ frame:SetScript("OnEvent", function(_, event, ...)
         A.UI:Combat(true)
     elseif event == "BAG_UPDATE_COOLDOWN" then
         A.QuestAssist:Cooldowns()
-        A:RequestRefresh()
+        if (A.state.bags[6948] or 0)>0 and C_Container and C_Container.GetItemCooldown then
+            local start,duration,enabled=C_Container.GetItemCooldown(6948)
+            local now,old=GetTime(),A.state.hearthReady
+            local ready=start and duration and (enabled==1 or enabled==true) and start+duration or nil
+            if ready and ready<=now then ready=0 end
+            if old and old<=now then old=0 end
+            if ready~=old then A:RequestRefresh() end
+        end
+    elseif event == "PLAYER_XP_UPDATE" then
+        if (...)=="player" then
+            A.state.xp,A.state.maxXP=UnitXP("player"),UnitXPMax("player")
+            if UnitLevel("player")~=A.state.level then A:RequestRefresh() end
+        end
     elseif event=="TAXIMAP_OPENED" then
         A.Transport:CaptureTaxi();A:RequestRefresh()
     elseif event=="TAXIMAP_CLOSED" then
@@ -447,12 +463,14 @@ frame:SetScript("OnEvent", function(_, event, ...)
         local pending=A.Items and (event=="TOOLTIP_DATA_UPDATE" and A.Items.tooltipData or event=="SPELL_TEXT_UPDATE" and A.Items.spellData)
         if id and pending and pending[id] then
             pending[id]=nil
-            A:RequestRefresh()
+            A:RequestRefresh(true)
         end
     elseif event == "GET_ITEM_INFO_RECEIVED" then
         local id = ...
-        A.requestedItems[id] = nil
-        A:RequestRefresh()
+        if A.requestedItems[id] then
+            A.requestedItems[id] = nil
+            A:RequestRefresh(true)
+        end
     else
         if A.Merchant then A.Merchant:Event(event) end
         if event=="TAXI_NODE_STATUS_CHANGED" or event=="PLAYER_ENTERING_WORLD" or event=="UPDATE_FACTION" then

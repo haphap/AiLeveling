@@ -593,7 +593,18 @@ test("队列连续升级保留客户端曲线口径且未知门槛后停止累�
     s.level,s.xp,s.maxXP=20,90,100
     local order={choice(1,O),choice(2,O),choice(3,O)}
     local data={content={},GetQuest=function(_,id) return {id=id,questLevel=20,taskFacts={level=20,xp={{1,100}}}} end}
-    local queue=B.TaskQueue.Evaluate(order,s,nav,data)
+    local advance,calls=B.Progression.Advance,0
+    B.Progression.Advance=function(...) calls=calls+1;return advance(...) end
+    local cache={}
+    local queue=B.TaskQueue.Evaluate(order,s,nav,data,cache)
+    local firstCalls=calls
+    queue=B.TaskQueue.Evaluate(order,s,nav,data,cache);eq(calls,firstCalls)
+    order[2],order[3]=order[3],order[2]
+    local changed=B.TaskQueue.Evaluate(order,s,nav,data,cache)
+    local fresh=B.TaskQueue.Evaluate(order,s,nav,data)
+    eq(changed.seconds,fresh.seconds);eq(changed.xp,fresh.xp);eq(changed.forecast.level,fresh.forecast.level)
+    for i,step in ipairs(fresh.steps) do eq(changed.steps[i].choice.questId,step.choice.questId) end
+    B.Progression.Advance=advance
     eq(queue.forecast.level,23);eq(queue.forecast.xp,90);eq(queue.xp,300);eq(queue.xpKnown,true)
     B.Experience.xpToLevel[21]=nil;queue=B.TaskQueue.Evaluate(order,s,nav,data)
     eq(queue.xpKnown,false);eq(queue.xp,100);eq(queue.forecast.uncertain,true);eq(s.level,20);eq(s.xp,90)

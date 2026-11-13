@@ -296,6 +296,7 @@ function P.TaskRegions(state,plan,data)
 end
 
 function P.Build(state, data, options)
+    state=copy(state);state.objectiveTargets={}
     if state.level >= 60 and (not state.dungeon or state.dungeon.phase=="complete") then return { revision = state.revision, complete = true, alternatives = {} } end
     local gearSource=state.gearTarget and A.Gear.GetSource and A.Gear.GetSource(state.gearTarget,data,state)
     if type(state.gearTarget)=="string" and (state.gearTarget:match("^reward:") or state.gearTarget:match("^drop:")) and not gearSource then

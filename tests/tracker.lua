@@ -151,7 +151,22 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     local row
     for _,card in ipairs(B.UI.Browser.rows) do if card.questId==4 then row=card end end
     assert(B.UI.Browser.detail.value:find("|Hquest:4:0|h",1,true))
-    row.scripts.OnClick(row,"LeftButton")
+    local browser=B.UI.Browser
+    local build,builds=browser.TaskRows,0
+    browser.TaskRows=function(...) builds=builds+1;return build(...) end
+    for _,other in ipairs(browser.rows) do
+        if other.questId and other.questId~=4 then
+            other.scripts.OnClick(other,"LeftButton");eq(B.UI.Plan.preview.questId,other.questId);break
+        end
+    end
+    row.scripts.OnClick(row,"LeftButton");eq(B.UI.Plan.preview.questId,4)
+    browser.search:SetText("未接");browser.search.scripts.OnTextChanged(browser.search)
+    eq(builds,0);eq(browser.selected.questId,4)
+    browser.search:SetText("");browser.search.scripts.OnTextChanged(browser.search);eq(builds,0)
+    B.state.revision=B.state.revision+1
+    browser:Refresh(1,true);eq(builds,1)
+    B.state.revision=B.plan.revision;browser:Refresh(1)
+    browser.TaskRows=build
     eq(B.UI.Plan.preview.questId,4);eq(B.char.locked,nil)
     local tooltip={}
     GameTooltip={SetOwner=function() end,SetText=function(_,v) tooltip[#tooltip+1]=v end,
@@ -329,10 +344,17 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     eq(#journey.steps,4);eq(journey.seconds,140);eq(journey.distance,280)
     eq(journey.steps[1].title,"走到 暴风城地铁入口");eq(journey.steps[2].detail,"平均等候 0:40 · 乘坐 1:00")
     eq(journey.steps[4].title,"接取 新的任务");eq(T.journey.shown,true)
+    local model,models,layout,layouts=U.TrackerModel,0,U.LayoutTracker,0
+    U.TrackerModel=function(...) models=models+1;return model(...) end
+    U.LayoutTracker=function(...) layouts=layouts+1;return layout(...) end
+    for _=1,10 do U.frame.scripts.OnUpdate(nil,1) end
+    eq(models,0);eq(layouts,0)
     T.journeyHeader.scripts.OnClick();eq(T.journeyRows[1].shown,false);eq(U.title.value,"新的任务")
+    U.frame.scripts.OnUpdate(nil,1);eq(T.journeyRows[1].shown,false)
     T.journeyHeader.scripts.OnClick();eq(T.journeyRows[1].shown,true)
-    B.state.position=transit.departure;T.journey.scripts.OnUpdate(nil,1)
-    eq(#T.model.journey.steps,3);eq(T.model.journey.seconds,130)
+    B.state.position=transit.departure;U.frame.scripts.OnUpdate(nil,1)
+    eq(#T.model.journey.steps,3);eq(T.model.journey.seconds,130);eq(models,0)
+    U.TrackerModel,U.LayoutTracker=model,layout
     transit.atDeparture=true;B.state.position={map=1,x=0.2,y=0};U:RenderTracker()
     eq(#T.model.journey.steps,3);eq(T.model.journey.steps[1].kind,"tram")
     B.char.paused=true;U:RenderTracker();eq(T.journey.shown,false);B.char.paused=false

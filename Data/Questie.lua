@@ -582,6 +582,10 @@ end
 function D:ObjectiveTargets(q,state)
     local active=state.quests[q.id]
     if not active then return {} end
+    -- Shared only by the immutable snapshot of one planning pass.
+    local cache=state.objectiveTargets
+    local cached=cache and cache[active]
+    if cached and cached.position==state.position then return cached.points end
     local identities=self:ObjectiveIdentities(q,state)
     local chosen,distances={},{}
     local thread,main=coroutine.running()
@@ -678,6 +682,7 @@ function D:ObjectiveTargets(q,state)
             end
         end
     end
+    if cache then cache[active]={position=state.position,points=result} end
     return result
 end
 

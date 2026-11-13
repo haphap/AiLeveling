@@ -280,7 +280,7 @@ function UI:ShowText(text)
     self.copyBox:SetFocus(); self.copyBox:HighlightText()
 end
 
-function UI:SelectTab(index)
+function UI:SelectTab(index,reuse)
     self.exporting = false
     self.copyBox:ClearFocus(); self.copyBox:Hide(); self.detailText:Show()
     if self.selectedTab~=index then self.scroll:SetVerticalScroll(0) end
@@ -308,7 +308,7 @@ function UI:SelectTab(index)
     self.Browser.frame:SetShown(browse)
     self.scroll:SetShown(not browse and index~=5 and index~=2)
     self.scroll:SetPoint("TOPLEFT",194,index==7 and -178 or -96)
-    if browse then self.Browser:Refresh(index);return end
+    if browse then self.Browser:Refresh(index,reuse);return end
     if index == 5 then self.Settings:Refresh(); return end
     if index == 2 then self.Chains:Refresh();return end
     local lines={}
@@ -324,7 +324,7 @@ function UI:Combat(inCombat)
 end
 
 function UI:RefreshDetails()
-    if self.details:IsShown() and self.selectedTab ~= 5 and not self.exporting then self:SelectTab(self.selectedTab) end
+    if self.details:IsShown() and self.selectedTab ~= 5 and not self.exporting then self:SelectTab(self.selectedTab,true) end
 end
 
 function UI.ActionText(action,settings)

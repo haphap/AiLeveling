@@ -200,7 +200,8 @@ function D.Catalog(state,content)
     return entries
 end
 
-function D.Tasks(d,state,data)
+function D.Tasks(d,state,data,targets)
+    targets=targets or {}
     local refs={}
     if d.reference then
         for id,kind in pairs(d.quests[state.faction] or {}) do refs[id]=kind end
@@ -215,10 +216,14 @@ function D.Tasks(d,state,data)
     end
     for id,active in pairs(state.quests) do
         if not refs[id] then
-            local q=data:GetQuest(id) or {id=id,title=active.title,questLevel=active.level}
-            local position=data:Target(q,state)
-            local area=not position and data.UnmappedTargetArea and data:UnmappedTargetArea(q,state)
-            local instance=D.TaskInstance(position,state,data,area)
+            local instance=targets[id]
+            if instance==nil then
+                local q=data:GetQuest(id) or {id=id,title=active.title,questLevel=active.level}
+                local position=data:Target(q,state)
+                local area=not position and data.UnmappedTargetArea and data:UnmappedTargetArea(q,state)
+                instance=D.TaskInstance(position,state,data,area)
+                targets[id]=instance or false
+            end
             if instance and instance.instanceId==d.instanceId then refs[id]="inside" end
         end
     end
@@ -296,7 +301,7 @@ end
 function D.SuggestTaskBatch(state,data,options)
     if not options.dungeons or state.inInstance or state.taskBatch or state.gearTarget or
         state.dungeon and state.dungeon.phase~="complete" then return end
-    local candidates={}
+    local candidates,targets={},{}
     for _,d in pairs(D.Catalog(state,data.content)) do
         if d.reference and (not d.minLevel or state.level>=d.minLevel) then
             local entry=D.TaskApproach({kind="dungeonEnter",title=d.title,areaId=d.areas[1]},state,data)
@@ -308,7 +313,7 @@ function D.SuggestTaskBatch(state,data,options)
                     end
                 else seconds=A.Travel.Walk(state.position,entry.position,state,A.Navigation) end
             end
-            local rows=D.Tasks(d,state,data)
+            local rows=D.Tasks(d,state,data,targets)
             local rewards=D.TaskRewards(rows)
             local insideDelivery=false
             for _,row in ipairs(rows) do

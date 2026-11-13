@@ -94,80 +94,94 @@ function Q.Evaluate(order,state,navigation,data,cache)
     local paths={{position=state.position,seconds=0,low=0,high=0,xp=0,xpKnown=true,
         forecast=state,steps={},initial=false,hearthReady=state.hearthReady}}
     cache=cache or {}
-    for _,choice in ipairs(order) do
+    -- Keep only the last trial's prefixes; local swaps reuse the unchanged work.
+    local previous=cache.prefixState==state and cache.prefixes or {}
+    local prefixes,same={},true
+    cache.prefixState,cache.prefixes=state,prefixes
+    for index,choice in ipairs(order) do
         if not choice.stagesComplete then return end
-        local staged=copy(choice);staged.stages={}
-        for _,original in ipairs(choice.stages or {}) do
-            local stage=original
-            if A.TaskGuide.ItemGainBlocked(stage,state,bags) then return end
-            for id,count in pairs(stage.gainItems or {}) do bags[id]=(bags[id] or 0)+count end
-            if stage.itemGain and stage.itemGain>0 then
-                stage=copy(stage);stage.have=bags[stage.targetId] or 0;stage.need=stage.have+stage.itemGain
-                bags[stage.targetId]=stage.need
-            end
-            for id,count in pairs(stage.consumeItems or {}) do
-                if (bags[id] or 0)<count then return end
-                bags[id]=bags[id]-count
-            end
-            staged.stages[#staged.stages+1]=stage
-        end
-        local evaluated=staged
-        local last=choice.stages and choice.stages[#choice.stages]
-        if not last or not last.position then return end
-        local nextPaths={}
-        for _,path in ipairs(paths) do
-            local context=copy(state)
-            context.position=path.position
-            context.hearthReady=path.hearthReady
-            context.now=(state.now or 0)+path.seconds
-            context.maxSeconds=state.maxSeconds and math.max(0,state.maxSeconds-path.seconds)
-            context.level,context.xp,context.maxXP=path.forecast.level,path.forecast.xp,path.forecast.maxXP
-            context.xpUncertain=path.forecast.uncertain or path.forecast.xpUncertain
-            local p=path.position
-            if not p then return end
-            local key=table.concat({choice.questId,tostring(choice.itemOriginal and choice.itemOriginal.stages or choice.stages),
-                choice.itemAllocationKey or "",choice.stageIndex or "task",p.map,string.format("%.9f",p.x),string.format("%.9f",p.y),
-                tostring(context.level),tostring(context.maxSeconds),tostring(context.hearthReady),
-                state.hearthPoint and tostring(context.now) or ""},":")
-            local timing=cache[key]
-            if timing==nil then
-                timing=A.TaskGuide.Timing(p,evaluated,context,navigation)
-                cache[key]=timing or false
-            end
-            if timing and timing.seconds and timing.travelRoutes then
-                local xp
-                if choice.stageIndex and last.kind~="turnin" then xp=0
-                elseif not context.xpUncertain then
-                    local quest=data and data:GetQuest(choice.questId)
-                    xp=quest and A.TaskGuide.XP(quest,context.level,context) or
-                        (context.level==state.level and choice.remainingXP or nil)
+        local source=choice.itemOriginal or choice
+        local key=table.concat({choice.questId,tostring(source.stages),choice.stageIndex or "task",choice.itemAllocationKey or ""},":")
+        local saved=previous[index]
+        if same and saved and saved.key==key then
+            paths,bags=saved.paths,copy(saved.bags)
+            prefixes[index]=saved
+        else
+            same=false
+            local staged=copy(choice);staged.stages={}
+            for _,original in ipairs(choice.stages or {}) do
+                local stage=original
+                if A.TaskGuide.ItemGainBlocked(stage,state,bags) then return end
+                for id,count in pairs(stage.gainItems or {}) do bags[id]=(bags[id] or 0)+count end
+                if stage.itemGain and stage.itemGain>0 then
+                    stage=copy(stage);stage.have=bags[stage.targetId] or 0;stage.need=stage.have+stage.itemGain
+                    bags[stage.targetId]=stage.need
                 end
-                local forecast=xp and A.Progression and A.Progression.Advance(context,xp) or path.forecast
-                if xp==nil then forecast=copy(path.forecast);forecast.uncertain=true end
-                for _,route in ipairs(timing.travelRoutes) do
-                    local stepTiming=copy(timing)
-                    stepTiming.travelPlan,stepTiming.travel=route,route.seconds
-                    stepTiming.coarse=route.coarse
-                    stepTiming.travelLow,stepTiming.travelHigh=route.low,route.high
-                    stepTiming.flightCount=route.flights
-                    stepTiming.hearthReady,stepTiming.hearthCount=route.hearthReady,route.hearths
-                    stepTiming.seconds=route.seconds
-                    stepTiming.low=route.low
-                    stepTiming.high=route.high
-                    stepTiming.initial=route.initial
-                    if not state.maxSeconds or path.seconds+stepTiming.seconds<=state.maxSeconds then
-                        nextPaths[#nextPaths+1]={position=last.position,
-                            seconds=path.seconds+stepTiming.seconds,low=path.low+stepTiming.low,high=path.high+stepTiming.high,
-                            xp=path.xp+(xp or 0),xpKnown=path.xpKnown and xp~=nil,forecast=forecast,
-                            steps=append(path.steps,{choice=choice.sourceChoice or choice,stage=choice.stageIndex and evaluated.stages[1] or nil,timing=stepTiming,xp=xp}),initial=path.initial or stepTiming.initial,
-                            hearthReady=route.hearthReady}
+                for id,count in pairs(stage.consumeItems or {}) do
+                    if (bags[id] or 0)<count then return end
+                    bags[id]=bags[id]-count
+                end
+                staged.stages[#staged.stages+1]=stage
+            end
+            local evaluated=staged
+            local last=choice.stages and choice.stages[#choice.stages]
+            if not last or not last.position then return end
+            local nextPaths={}
+            for _,path in ipairs(paths) do
+                local context=copy(state)
+                context.position=path.position
+                context.hearthReady=path.hearthReady
+                context.now=(state.now or 0)+path.seconds
+                context.maxSeconds=state.maxSeconds and math.max(0,state.maxSeconds-path.seconds)
+                context.level,context.xp,context.maxXP=path.forecast.level,path.forecast.xp,path.forecast.maxXP
+                context.xpUncertain=path.forecast.uncertain or path.forecast.xpUncertain
+                local p=path.position
+                if not p then return end
+                local key=table.concat({choice.questId,tostring(choice.itemOriginal and choice.itemOriginal.stages or choice.stages),
+                    choice.itemAllocationKey or "",choice.stageIndex or "task",p.map,string.format("%.9f",p.x),string.format("%.9f",p.y),
+                    tostring(context.level),tostring(context.maxSeconds),tostring(context.hearthReady),
+                    state.hearthPoint and tostring(context.now) or ""},":")
+                local timing=cache[key]
+                if timing==nil then
+                    timing=A.TaskGuide.Timing(p,evaluated,context,navigation)
+                    cache[key]=timing or false
+                end
+                if timing and timing.seconds and timing.travelRoutes then
+                    local xp
+                    if choice.stageIndex and last.kind~="turnin" then xp=0
+                    elseif not context.xpUncertain then
+                        local quest=data and data:GetQuest(choice.questId)
+                        xp=quest and A.TaskGuide.XP(quest,context.level,context) or
+                            (context.level==state.level and choice.remainingXP or nil)
+                    end
+                    local forecast=xp and A.Progression and A.Progression.Advance(context,xp) or path.forecast
+                    if xp==nil then forecast=copy(path.forecast);forecast.uncertain=true end
+                    for _,route in ipairs(timing.travelRoutes) do
+                        local stepTiming=copy(timing)
+                        stepTiming.travelPlan,stepTiming.travel=route,route.seconds
+                        stepTiming.coarse=route.coarse
+                        stepTiming.travelLow,stepTiming.travelHigh=route.low,route.high
+                        stepTiming.flightCount=route.flights
+                        stepTiming.hearthReady,stepTiming.hearthCount=route.hearthReady,route.hearths
+                        stepTiming.seconds=route.seconds
+                        stepTiming.low=route.low
+                        stepTiming.high=route.high
+                        stepTiming.initial=route.initial
+                        if not state.maxSeconds or path.seconds+stepTiming.seconds<=state.maxSeconds then
+                            nextPaths[#nextPaths+1]={position=last.position,
+                                seconds=path.seconds+stepTiming.seconds,low=path.low+stepTiming.low,high=path.high+stepTiming.high,
+                                xp=path.xp+(xp or 0),xpKnown=path.xpKnown and xp~=nil,forecast=forecast,
+                                steps=append(path.steps,{choice=choice.sourceChoice or choice,stage=choice.stageIndex and evaluated.stages[1] or nil,timing=stepTiming,xp=xp}),initial=path.initial or stepTiming.initial,
+                                hearthReady=route.hearthReady}
+                        end
                     end
                 end
+                checkpoint()
             end
-            checkpoint()
+            paths=A.Travel.Prune(nextPaths,state.now)
+            if #paths==0 then return end
+            prefixes[index]={key=key,paths=paths,bags=copy(bags)}
         end
-        paths=A.Travel.Prune(nextPaths,state.now)
-        if #paths==0 then return end
     end
     if paths[1] then paths[1].bags=bags end
     return paths[1]

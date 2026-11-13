@@ -58,7 +58,7 @@ function B:Create(parent)
     self.search:SetScript("OnEscapePressed",function(box) box:SetText("");box:ClearFocus() end)
     self.search:SetScript("OnTextChanged",function(box)
         self.query=box:GetText():lower();self.searchHint:SetShown(self.query=="")
-        if self.mode then self.list:SetVerticalScroll(0);self:Refresh(self.mode) end
+        if self.mode then self.list:SetVerticalScroll(0);self:Refresh(self.mode,true) end
     end)
     self.list=CreateFrame("ScrollFrame",nil,self.frame,"UIPanelScrollFrameTemplate")
     self.list:SetPoint("TOPLEFT",0,-70);self.list:SetSize(382,420)
@@ -149,10 +149,10 @@ function B:TaskRows(mode)
 end
 
 function B:DungeonRows()
-    local rows={}
+    local rows,targets={},{}
     local entries=A.Dungeon.Catalog(A.state,A.Content)
     for id,d in pairs(entries) do
-        local tasks=A.Dungeon.Tasks(d,A.state,A.Data)
+        local tasks=A.Dungeon.Tasks(d,A.state,A.Data,targets)
         local rewards=A.Dungeon.TaskRewards(tasks)
         local low,high=d.minLevel,d.maxLevel
         if not low then
@@ -202,14 +202,16 @@ function B:GearRows()
     return rows
 end
 
-function B:Refresh(mode)
+function B:Refresh(mode,reuse)
+    reuse=reuse and self.mode==mode and self.entriesRevision==A.state.revision and self.entriesPlan==A.plan
     if self.mode~=mode then self.list:SetVerticalScroll(0);self.info:SetVerticalScroll(0) end
     self.mode=mode
     local origin,pos=A.plan and A.plan.origin,A.state.position
     if origin and pos and (origin.map~=pos.map or origin.node~=pos.node) and A.ready and A.jobs and not A.jobs.plan and
         not A.refreshAt and not (A.Transport and A.Transport:InFlight()) then A:Replan() end
     local rows
-    if mode==4 then rows=self:DungeonRows()
+    if reuse then rows=self.entries
+    elseif mode==4 then rows=self:DungeonRows()
     elseif mode==3 then rows=self:GearRows()
     elseif mode==10 then
         rows={}
@@ -222,6 +224,7 @@ function B:Refresh(mode)
         rows=self:TaskRows(mode)
     end
     self.entries=rows
+    self.entriesRevision,self.entriesPlan=A.state.revision,A.plan
     if self.query and self.query~="" then
         local filtered={}
         for _,row in ipairs(rows) do
@@ -266,9 +269,16 @@ function B:Refresh(mode)
             row:SetScript("OnClick",function(f,button)
                 if button=="RightButton" and f.entry.questId then A.UI:TrackerMenu(f);return end
                 self.selected=f.entry;self.selection[self.mode]=f.entry.key;self.info:SetVerticalScroll(0)
-                if self.mode==1 then A.UI.Plan.key=A.UI.Plan.Key(f.entry.choice or f.entry.dungeonCandidate) end
+                if self.mode==1 then
+                    A.UI.Plan.key=A.UI.Plan.Key(f.entry.choice or f.entry.dungeonCandidate)
+                    A.UI.Plan.preview=f.entry.choice
+                end
                 if self.mode==4 then A.UI.Dungeon.selected=f.entry.key end
-                self:Refresh(self.mode)
+                for _,r in ipairs(self.rows) do
+                    r.baseColor=r.entry==self.selected and colors.selected or colors.panel
+                    r:SetBackdropColor(unpack(r.baseColor));r.marker:SetShown(r.entry==self.selected)
+                end
+                self:Detail()
             end)
             row:SetScript("OnEnter",function(f)
                 f:SetBackdropColor(unpack(colors.rowHover))

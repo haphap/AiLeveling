@@ -82,6 +82,10 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     before=A.state;objectiveType="event";A.State:Refresh();eq(A.state.revision,before.revision+1)
     before=A.state;A.State:Refresh();eq(A.state.revision,before.revision)
     eq(pins,4)
+    local oldXP=UnitXP
+    A.dirty=false;UnitXP=function() return 150 end
+    A.State:Refresh();eq(A.state.xp,150);eq(A.state.revision,before.revision);eq(A.dirty,false)
+    UnitXP=oldXP
     local oldInfo,oldInside=GetInstanceInfo,IsInInstance
     local difficulty,calls=1,0
     IsInInstance=function() return true end
@@ -287,6 +291,21 @@ test("本轮装备提示更新合并刷新请求且由实际内容决定重算",
     scripts.OnEvent(nil,"SPELL_TEXT_UPDATE",42);eq(refreshes,1)
     scripts.OnEvent(nil,"SPELL_TEXT_UPDATE",15600);eq(refreshes,2);eq(C.Items.spellData[15600],nil)
     scripts.OnEvent(nil,"SPELL_TEXT_UPDATE",15600);eq(refreshes,2)
+    C.requestedItems[101]=true
+    scripts.OnEvent(nil,"GET_ITEM_INFO_RECEIVED",100,true);eq(refreshes,2)
+    scripts.OnEvent(nil,"GET_ITEM_INFO_RECEIVED",101,true);eq(refreshes,3);eq(C.requestedItems[101],nil)
+    scripts.OnEvent(nil,"GET_ITEM_INFO_RECEIVED",101,true);eq(refreshes,3)
+    local cooldowns=0
+    C.QuestAssist={Cooldowns=function() cooldowns=cooldowns+1 end}
+    C.state={bags={}}
+    scripts.OnEvent(nil,"BAG_UPDATE_COOLDOWN");eq(cooldowns,1);eq(refreshes,3)
+    local container=C_Container
+    C.state.bags[6948]=1;C.state.hearthReady=GetTime()+60
+    C_Container={GetItemCooldown=function() return GetTime(),60,1 end}
+    scripts.OnEvent(nil,"BAG_UPDATE_COOLDOWN");eq(refreshes,3)
+    C_Container.GetItemCooldown=function() return GetTime(),120,1 end
+    scripts.OnEvent(nil,"BAG_UPDATE_COOLDOWN");eq(refreshes,4)
+    C_Container=container
     C_Spell=nil;events.SPELL_TEXT_UPDATE=nil
     C_TooltipInfo=nil;events.TOOLTIP_DATA_UPDATE=nil
     scripts.OnEvent(nil,"ADDON_LOADED","AiLeveling");eq(events.TOOLTIP_DATA_UPDATE,nil)

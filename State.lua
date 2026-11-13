@@ -330,7 +330,7 @@ function State:Refresh(force)
         table.sort(done)
         fingerprint[#fingerprint+1] = table.concat({d.id,d.round,d.phase,tostring(d.settled),math.floor(d.elapsed/30),table.concat(done,",")},":")
     end
-    fingerprint[#fingerprint + 1] = table.concat({s.level, s.xp, tostring(s.maxXP), s.classId, s.raceId, s.groupSize,
+    fingerprint[#fingerprint + 1] = table.concat({s.level, tostring(s.maxXP), s.classId, s.raceId, s.groupSize,
         tostring(s.inInstance), A.settings.role, A.settings.minutes,
         tostring(A.settings.dungeons), tostring(s.locked), tostring(s.instanceId), tostring(s.instanceDifficultyId), tostring(s.dead),
         tostring(A.settings.waitMinutes),s.damageStyle,tostring(s.gearTarget),tostring(A.settings.gearPreference),
@@ -344,9 +344,9 @@ function State:Refresh(force)
         self.fingerprint = key
         if A.indexReady then A:Replan() end
         A.Navigation:RefreshPins()
+        A.dirty = true
     end
     A.QuestAssist:Update()
-    A.dirty = true
 end
 
 function State.Observe(samples, kind, seconds)
