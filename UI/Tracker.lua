@@ -675,8 +675,8 @@ function UI:CreateTracker()
     notice:SetBackdropColor(unpack(palette.hud));notice:SetBackdropBorderColor(unpack(palette.line))
     notice.mark=notice:CreateTexture(nil,"ARTWORK");notice.mark:SetColorTexture(unpack(palette.gold))
     notice.icon=notice:CreateTexture(nil,"ARTWORK");notice.icon:SetVertexColor(unpack(palette.gold))
-    notice.heading=self:Text(notice,11,palette.gold);notice.heading:SetText("顺便完成")
-    notice.body=self:Text(notice,12,palette.white);notice.body:SetMaxLines(1)
+    notice.heading=self:Text(notice,"caption",palette.gold);notice.heading:SetText("顺便完成")
+    notice.body=self:Text(notice,"body",palette.white);notice.body:SetMaxLines(1)
     for _,label in ipairs({notice.heading,notice.body}) do
         label:SetShadowColor(0,0,0,0.6);label:SetShadowOffset(1,-1)
     end
@@ -757,8 +757,8 @@ function UI:CreateTracker()
         button:SetScript("OnLeave",function() button:SetBackdropColor(0,0,0,0);GameTooltip:Hide() end)
     end
     T.divider=T.content:CreateTexture(nil,"BACKGROUND");T.divider:SetColorTexture(unpack(palette.line))
-    T.career=noticeLine(T.content)
-    T.career.text:SetTextColor(unpack(palette.gold))
+    T.career=noticeLine(T.content,"body",palette.white)
+    T.career.heading=text(T.career,"caption",palette.gold)
     T.career.view=self:Button(T.career,"查看",48,function() self:ClassReminderMenu(T.career) end,"caption")
     T.career.train=self:Button(T.career,"去训练",64,function()
         local rows=A.Services:Choices("classTrain")
@@ -777,7 +777,7 @@ function UI:CreateTracker()
         GameTooltip:SetOwner(button,"ANCHOR_TOP");GameTooltip:SetText("本级不再提醒；可在行程菜单恢复");GameTooltip:Show()
     end)
     T.career.later:SetScript("OnLeave",function() GameTooltip:Hide() end)
-    T.gear=noticeLine(T.content,"caption",palette.white)
+    T.gear=noticeLine(T.content,"body",palette.white)
     T.gear.text:SetNonSpaceWrap(false)
     T.gear.shade=T.gear:CreateTexture(nil,"BACKGROUND");T.gear.shade:SetAllPoints()
     T.gear.shade:SetColorTexture(unpack(palette.gearShade))
@@ -844,12 +844,12 @@ function UI:CreateTracker()
     T.reward.icon=T.reward:CreateTexture(nil,"ARTWORK");T.reward.icon:SetTexture(media.."hud-chevron-up.tga")
     T.reward.icon:SetVertexColor(unpack(palette.green))
     T.objectiveFrame=CreateFrame("Frame",nil,T.currentChild)
-    self.body=text(T.currentChild,"body",palette.muted);self.body:SetMaxLines(2)
+    self.body=text(T.currentChild,"caption",palette.muted);self.body:SetMaxLines(2)
     T.objectives={}
     T.footer=text(T.currentChild,"caption",palette.muted)
     T.journey=CreateFrame("Frame",nil,T.currentChild)
     T.journeyHeader=CreateFrame("Button",nil,T.journey)
-    T.journeyLabel=text(T.journeyHeader,"body",palette.muted);T.journeyLabel:SetPoint("LEFT");T.journeyLabel:SetText("行程")
+    T.journeyLabel=text(T.journeyHeader,"caption",palette.muted);T.journeyLabel:SetPoint("LEFT");T.journeyLabel:SetText("行程")
     T.journeySummary=text(T.journeyHeader,"caption",palette.white);T.journeySummary:SetPoint("RIGHT");T.journeySummary:SetJustifyH("RIGHT")
     T.journeyHeader:SetScript("OnClick",function() T.journeyClosed=not T.journeyClosed;self:LayoutTracker() end)
     T.journeyRows={}
@@ -916,7 +916,7 @@ local function renderObjectives(owner,parent,pool,objectives)
             row:SetScript("OnLeave",function() GameTooltip:Hide() end)
             row.text=text(row,"body",palette.white);row.text:SetPoint("TOPLEFT");row.text:SetNonSpaceWrap(false)
             row.icon=row:CreateTexture(nil,"ARTWORK")
-            row.count=text(row,"caption",palette.white);row.count:SetJustifyH("RIGHT")
+            row.count=text(row,"body",palette.white);row.count:SetJustifyH("RIGHT")
             row.check=text(row,"task",palette.muted);row.check:SetJustifyH("RIGHT")
             row.active=row:CreateTexture(nil,"ARTWORK");row.active:SetColorTexture(unpack(palette.gold))
             pool[i]=row
@@ -1034,11 +1034,11 @@ function UI:UpdateNearby()
     notice.body:SetText(title..string.format("  ·  %d %s",distance,meters and "米" or "码"))
     notice.icon:SetTexture(media.."hud-"..(goal.type=="item" and "collect" or "objective")..".tga")
     local scale=A.settings.fontScale or 1
-    notice:SetSize(320*scale,46*scale)
     notice.mark:ClearAllPoints();notice.mark:SetPoint("TOPLEFT",1,-1);notice.mark:SetPoint("BOTTOMLEFT",1,1);notice.mark:SetWidth(2*scale)
     notice.icon:ClearAllPoints();notice.icon:SetPoint("LEFT",14*scale,0);notice.icon:SetSize(16*scale,16*scale)
     notice.heading:ClearAllPoints();notice.heading:SetPoint("TOPLEFT",44*scale,-8*scale)
-    notice.body:ClearAllPoints();notice.body:SetPoint("BOTTOMLEFT",44*scale,8*scale);notice.body:SetWidth(264*scale)
+    notice.body:ClearAllPoints();notice.body:SetPoint("TOPLEFT",44*scale,-8*scale-notice.heading:GetStringHeight()-spacing.tight*scale);notice.body:SetWidth(264*scale)
+    notice:SetSize(320*scale,16*scale+notice.heading:GetStringHeight()+spacing.tight*scale+notice.body:GetStringHeight())
     notice:Show()
 end
 
@@ -1052,8 +1052,9 @@ function UI:RenderTracker()
     self:UpdateNearby()
     local reminder=self.ClassReminders(state,plan)
     local notice={}
+    T.career.heading:SetText("")
     if (#reminder.spells>0 or #reminder.quests>0) and A.char.classReminderLevel~=state.level then
-        notice[1]=self:Icon("class",14).." "..state.level.."级 · 职业成长"
+        T.career.heading:SetText(self:Icon("class",12).." "..state.level.."级 · 职业成长")
         if #reminder.spells>0 then
             local links={};for i=1,math.min(2,#reminder.spells) do links[i]=reminder.spells[i].link end
             notice[#notice+1]="可学："..table.concat(links,"、")..(#reminder.spells>2 and (" 等"..#reminder.spells.."项") or "")
@@ -1164,7 +1165,7 @@ function UI:RenderTracker()
         guidance=model.deliverySummary or model.hint or ""
     end
     self.body:SetText(guidance)
-    self.body:SetTextColor(unpack(model.kind=="turnin" and palette.green or model.kind=="accept" and palette.blue or palette.muted))
+    self.body:SetTextColor(unpack(model.kind=="turnin" and palette.green or palette.muted))
     T.questTitle.detail=(place and (place.."\n") or "")..table.concat(lines,"\n")
     renderObjectives(T.questTitle,T.objectiveFrame,T.objectives,
         (model.kind=="objective" or current and not current.ready) and model.objectives or {})
@@ -1296,8 +1297,10 @@ function UI:LayoutTracker()
     local cardTop=36*scale
     T.divider:ClearAllPoints();T.divider:SetPoint("TOPLEFT",0,-cardTop+7);T.divider:SetSize(width,1)
     T.career:ClearAllPoints();T.career:SetPoint("TOPLEFT",0,-cardTop);T.career:SetWidth(width)
-    T.career.text:SetWidth(width)
-    local noticeHeight=T.career.text:GetStringHeight()+6*scale
+    T.career.heading:ClearAllPoints();T.career.heading:SetPoint("TOPLEFT");T.career.heading:SetWidth(width)
+    local noticeHeight=T.career.heading:GetStringHeight()+spacing.tight*scale
+    T.career.text:ClearAllPoints();T.career.text:SetPoint("TOPLEFT",indent,-noticeHeight);T.career.text:SetWidth(width-indent)
+    noticeHeight=noticeHeight+T.career.text:GetStringHeight()+spacing.tight*scale
     local noticeX=indent
     for _,button in ipairs({T.career.view,T.career.train,T.career.later}) do
         local buttonWidth=(button==T.career.train and 64 or 48)*scale
