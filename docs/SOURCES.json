@@ -217,16 +217,17 @@
       "asset_license": "GPL-3.0; docs/LICENSE.Polestar.txt"
     },
     {
-      "name": "Polestar While Here Chinese wording",
+      "name": "Polestar While Here wording and toast layout",
       "url": "https://github.com/fitzforge/polestar/tree/c0c99712a7b907455dd49cc928484aa0114765d8/addon/Polestar",
       "checked": "2026-11-13",
       "files": [
         "UI/WhileHere.lua",
         "UI/UI.lua",
         "Core/Engine.lua",
-        "../Polestar_zhCN/Interface.lua"
+        "../Polestar_zhCN/Interface.lua",
+        "Theme/Theme.lua"
       ],
-      "scope": "Chinese action/source text, remaining-count sentence, distance rounded to five units and mouse instructions for the existing nearby objective toast. Uses AILeveling quest log, chosen objective source and existing distance units; no guide engine or alert behavior imported.",
+      "scope": "Chinese action/source text, remaining-count sentence, distance rounded to five units and mouse instructions. Toast layout follows 320x46, top offset 150, 1px border, 2px accent edge, 16px glyph, 11px gold heading and 12px white body. Retains AILeveling 60% transparency, font scale, quest facts, navigation and dismissal behavior; no guide engine or alert framework imported.",
       "wording_copied": true,
       "code_copied": false,
       "assets_copied": false,

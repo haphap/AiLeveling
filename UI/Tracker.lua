@@ -669,15 +669,20 @@ function UI:CreateTracker()
     local T=self.tracker
     T.nearby=CreateFrame("Button",nil,f,"BackdropTemplate")
     local notice=T.nearby
-    notice:SetPoint("TOP",UIParent,"TOP",0,-180);notice:SetClampedToScreen(true)
-    self:Rounded(notice,spacing.controlRadius);notice:SetBackdropColor(unpack(palette.hud));notice.material:Hide()
+    notice:SetPoint("TOP",UIParent,"TOP",0,-150);notice:SetClampedToScreen(true);notice:SetFrameStrata("HIGH")
+    notice:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1,
+        insets={left=1,right=1,top=1,bottom=1}})
+    notice:SetBackdropColor(unpack(palette.hud));notice:SetBackdropBorderColor(unpack(palette.line))
     notice.mark=notice:CreateTexture(nil,"ARTWORK");notice.mark:SetColorTexture(unpack(palette.gold))
     notice.icon=notice:CreateTexture(nil,"ARTWORK");notice.icon:SetVertexColor(unpack(palette.gold))
-    notice.heading=text(notice,"caption",palette.gold);notice.heading:SetText("顺便完成")
-    notice.body=text(notice,"body",palette.blue);notice.body:SetMaxLines(1)
+    notice.heading=self:Text(notice,11,palette.gold);notice.heading:SetText("顺便完成")
+    notice.body=self:Text(notice,12,palette.white);notice.body:SetMaxLines(1)
+    for _,label in ipairs({notice.heading,notice.body}) do
+        label:SetShadowColor(0,0,0,0.6);label:SetShadowOffset(1,-1)
+    end
     notice.ignored={};notice:RegisterForClicks("LeftButtonUp","RightButtonUp")
     notice:SetScript("OnEnter",function()
-        GameTooltip:SetOwner(notice,"ANCHOR_TOP");GameTooltip:SetText("顺便完成")
+        GameTooltip:SetOwner(notice,"ANCHOR_BOTTOM");GameTooltip:SetText("顺便完成")
         GameTooltip:AddLine(notice.title or "",1,1,1,true)
         GameTooltip:AddLine("点击让箭头指向此处",unpack(palette.gold))
         GameTooltip:AddLine("右键：在这附近忽略（忽略两次后，本地区内不再提示）。",palette.muted[1],palette.muted[2],palette.muted[3],true)
@@ -1029,11 +1034,11 @@ function UI:UpdateNearby()
     notice.body:SetText(title..string.format("  ·  %d %s",distance,meters and "米" or "码"))
     notice.icon:SetTexture(media.."hud-"..(goal.type=="item" and "collect" or "objective")..".tga")
     local scale=A.settings.fontScale or 1
-    notice:SetSize(340*scale,52*scale)
-    notice.mark:ClearAllPoints();notice.mark:SetPoint("TOPLEFT",0,-4*scale);notice.mark:SetPoint("BOTTOMLEFT",0,4*scale);notice.mark:SetWidth(2*scale)
-    notice.icon:ClearAllPoints();notice.icon:SetPoint("LEFT",12*scale,0);notice.icon:SetSize(16*scale,16*scale)
-    notice.heading:ClearAllPoints();notice.heading:SetPoint("TOPLEFT",36*scale,-7*scale)
-    notice.body:ClearAllPoints();notice.body:SetPoint("TOPLEFT",36*scale,-26*scale);notice.body:SetWidth(292*scale)
+    notice:SetSize(320*scale,46*scale)
+    notice.mark:ClearAllPoints();notice.mark:SetPoint("TOPLEFT",1,-1);notice.mark:SetPoint("BOTTOMLEFT",1,1);notice.mark:SetWidth(2*scale)
+    notice.icon:ClearAllPoints();notice.icon:SetPoint("LEFT",14*scale,0);notice.icon:SetSize(16*scale,16*scale)
+    notice.heading:ClearAllPoints();notice.heading:SetPoint("TOPLEFT",44*scale,-8*scale)
+    notice.body:ClearAllPoints();notice.body:SetPoint("BOTTOMLEFT",44*scale,8*scale);notice.body:SetWidth(264*scale)
     notice:Show()
 end
 
