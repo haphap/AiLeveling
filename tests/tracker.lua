@@ -189,10 +189,10 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     eq(T.model.questId,1);eq(B.state.locked,1)
     -- Nearby work and ready hand-ins share the optional section without changing the main action.
     starter.position.x=0.525;starter.kind="objective";starter.objectiveIndex=1
-    B.state.quests[4]={objectives={{type="item",text="收集 1/5",numRequired=5,numFulfilled=1}}}
+    B.state.quests[4]={objectives={{type="item",text="物资：1/5",numRequired=5,numFulfilled=1}}}
     B.UI:RenderTracker();eq(T.model.rows[1].along,true);eq(T.rows[1].objectives[1].count.value,"1/5");eq(T.rows[1].progress.shown,false)
     local notice=T.nearby
-    eq(notice.shown,true);eq(notice.body.value,"收集 · 还差 4")
+    eq(notice.shown,true);eq(notice.body.value,"从 焦焚残骸 收集 物资，还差 4  ·  100 码")
     notice.scripts.OnClick(nil,"RightButton");B.UI:UpdateNearby();eq(notice.shown,false);eq(B.state.skipped[4],nil)
     local position,mainPoint=B.state.position,B.action.position
     B.state.position={map=1,x=0.56,y=0.5};starter.position.x=0.58;B.action.position={map=1,x=0.65,y=0.5}
@@ -202,7 +202,7 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.UI:UpdateNearby();eq(notice.shown,false)
     B.state.position.map=2;starter.position.map=2;B.action.position.map=2
     B.UI:UpdateNearby();eq(notice.shown,true)
-    notice.scripts.OnClick(nil,"LeftButton");eq(B.Navigation.manual.x,0.66);eq(B.Navigation.manual.title,"收集 · 还差 4")
+    notice.scripts.OnClick(nil,"LeftButton");eq(B.Navigation.manual.x,0.66);eq(B.Navigation.manual.title,"从 焦焚残骸 收集 物资，还差 4")
     eq(B.char.locked,nil);eq(B.state.locked,1);eq(B.action.questId,1);eq(notice.shown,false)
     B.Navigation.manual=nil;B.state.position=position;B.action.position=mainPoint;starter.position={map=1,x=0.525,y=0.5}
     B.UI:UpdateNearby();eq(notice.shown,true)

@@ -215,6 +215,22 @@
         }
       ],
       "asset_license": "GPL-3.0; docs/LICENSE.Polestar.txt"
+    },
+    {
+      "name": "Polestar While Here Chinese wording",
+      "url": "https://github.com/fitzforge/polestar/tree/c0c99712a7b907455dd49cc928484aa0114765d8/addon/Polestar",
+      "checked": "2026-11-13",
+      "files": [
+        "UI/WhileHere.lua",
+        "UI/UI.lua",
+        "Core/Engine.lua",
+        "../Polestar_zhCN/Interface.lua"
+      ],
+      "scope": "Chinese action/source text, remaining-count sentence, distance rounded to five units and mouse instructions for the existing nearby objective toast. Uses AILeveling quest log, chosen objective source and existing distance units; no guide engine or alert behavior imported.",
+      "wording_copied": true,
+      "code_copied": false,
+      "assets_copied": false,
+      "license": "GPL-3.0; docs/LICENSE.Polestar.txt"
     }
   ],
   "api_references": [

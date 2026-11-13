@@ -680,7 +680,7 @@ function UI:CreateTracker()
         GameTooltip:SetOwner(notice,"ANCHOR_TOP");GameTooltip:SetText("顺便完成")
         GameTooltip:AddLine(notice.title or "",1,1,1,true)
         GameTooltip:AddLine("点击让箭头指向此处",unpack(palette.gold))
-        GameTooltip:AddLine("右键：在这附近忽略；再次忽略后，本地图内不再提示此目标。",palette.muted[1],palette.muted[2],palette.muted[3],true)
+        GameTooltip:AddLine("右键：在这附近忽略（忽略两次后，本地区内不再提示）。",palette.muted[1],palette.muted[2],palette.muted[3],true)
         GameTooltip:Show()
     end)
     notice:SetScript("OnLeave",function() GameTooltip:Hide() end)
@@ -1005,10 +1005,28 @@ function UI:UpdateNearby()
     end
     if not best then notice:Hide();return end
     local title=(goal.text or "完成任务目标"):gsub("%s*%d+%s*/%s*%d+",""):gsub("：%s*$",""):gsub(":%s*$","")
+    local step,point=best.action,best.action.position
+    local db=A.Data and A.Data.db
+    local entity=db and (point.entityKind=="npc" and db.Npc or point.entityKind=="object" and db.Object)
+    local source=point.entityName or entity and point.entityId and entity.Get(point.entityId,"name")
+    local kind,id=step.targetKind or point.targetKind,step.targetId or point.targetId
+    local item=point.targetName or kind=="item" and db and db.Item and id and db.Item.Get(id,"name")
+    if not item and goal.type=="item" then item=title:gsub("^收集%s*","") end
+    if item then
+        if point.sourceKind=="vendor" then title="购买 "..item
+        elseif source and source~=item then
+            local faction=point.entityKind=="npc" and entity and point.entityId and entity.Get(point.entityId,"friendlyToFaction")
+            local friendly=faction=="AH" or faction==(state.faction=="Alliance" and "A" or state.faction=="Horde" and "H")
+            title=point.entityKind=="npc" and not friendly and ("为 "..item.." 击杀 "..source) or
+                ("从 "..source.." 收集 "..item)
+        else title="收集 "..item end
+    elseif source and (kind=="npc" or goal.type=="monster") then title="击杀 "..source end
     local need,have=goal.numRequired,goal.numFulfilled or 0
-    if type(need)=="number" and need>0 then title=title.." · 还差 "..math.max(0,need-have) end
+    if type(need)=="number" and need>0 then title=string.format("%s，还差 %d",title,math.max(0,need-have)) end
     notice.key,notice.action,notice.title=bestKey,best.action,title
-    notice.body:SetText(title)
+    local meters=A.settings.distanceUnits=="meters"
+    local distance=math.floor((best.distance*(meters and 0.9144 or 1))/5+0.5)*5
+    notice.body:SetText(title..string.format("  ·  %d %s",distance,meters and "米" or "码"))
     notice.icon:SetTexture(media.."hud-"..(goal.type=="item" and "collect" or "objective")..".tga")
     local scale=A.settings.fontScale or 1
     notice:SetSize(340*scale,52*scale)

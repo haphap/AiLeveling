@@ -147,7 +147,7 @@ A.plan.taskQueue.steps[#A.plan.taskQueue.steps+1]={choice=pickup,stage=pickup.ac
 if arg[1]=="nearby" then
     for _,choice in ipairs(A.plan.taskChoices) do
         if choice.questId==33 then
-            choice.actions[1].position={map=1429,x=0.48,y=0.45,entityName="北郡树林"}
+            choice.actions[1].position={map=1429,x=0.48,y=0.45,entityKind="npc",entityName="灰狼",targetName="狼肉"}
             choice.actions[1].objectiveIndex=1
         end
     end
