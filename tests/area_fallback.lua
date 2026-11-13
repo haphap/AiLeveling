@@ -297,6 +297,17 @@ test("购买型任务使用友好商人坐标并保留物品身份和参考阶�
     local text=B.UI.ActionText({kind="objective",position=p},{})
     assert(text:find("向发布者购买饲料",1,true));assert(not text:find("库存",1,true))
     eq(B.UI.ActionText({kind="turnin",position=p},{}),"交付任务")
+    local stages=B.TaskGuide.Stages(q,s,d,{kind="objective",objectiveIndex=1,position=p})
+    eq(stages[1].purchase.npcId,8);eq(stages[1].purchase.map,1)
+    -- A closer drop source must not suppress the buying alternative.
+    npcs[6].spawns={[12]={{1,1}}}
+    d.db.Item.Get=function(_,key)
+        if key=="vendors" then return {9,8} elseif key=="npcDrops" then return {6} elseif key=="name" then return "饲料" end
+    end
+    p=d:Target(q,s);eq(p.entityId,6);eq(p.purchase.npcId,8)
+    stages=B.TaskGuide.Stages(q,s,d,{kind="objective",objectiveIndex=1,position={map=1,x=0.01,y=0.01,label="客户端任务目标"}})
+    eq(stages[1].purchase.npcId,8)
+    npcs[6].spawns=nil
     s.quests={};local descriptions,positions=d:ReferenceObjectiveTargets(q,s)
     eq(positions[1].entityId,8);eq(descriptions[1].targetId,100)
     s.faction="Horde";descriptions,positions=d:ReferenceObjectiveTargets(q,s);eq(positions[1].entityId,9)

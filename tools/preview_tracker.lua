@@ -144,6 +144,11 @@ pickup.stages=pickup.actions
 A.plan.taskChoices[#A.plan.taskChoices+1]=pickup
 A.plan.taskOrder[#A.plan.taskOrder+1]=pickup
 A.plan.taskQueue.steps[#A.plan.taskQueue.steps+1]={choice=pickup,stage=pickup.actions[1]}
+if arg[1]=="purchase" then
+    action.objectiveIndex=1
+    A.state.quests[7].objectives={{text="任务物资",type="item",numRequired=5,numFulfilled=1}}
+    table.insert(A.plan.taskChoices[1].stages,1,{kind="objective",objectiveIndex=1,purchase={npcId=8,name="示例商人",map=1429}})
+end
 if arg[1]=="nearby" then
     for _,choice in ipairs(A.plan.taskChoices) do
         if choice.questId==33 then

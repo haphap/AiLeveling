@@ -88,7 +88,7 @@ function G.ItemRequirements(q,state,data,reference)
                     point=data.QuestAreaTarget and data:QuestAreaTarget(q,state) or data.AreaTarget and data:AreaTarget(q)
                 end
                 old={kind="objective",questId=q.id,title=q.title,text=o.text,position=point,areaId=areaId,
-                    objectiveIndex=active and index or nil,expected=not active,targetKind="item",targetId=identity.id,
+                    objectiveIndex=active and index or nil,expected=not active,targetKind="item",targetId=identity.id,purchase=point and point.purchase,
                     need=need,providedOnAccept=o.providedOnAccept}
                 byId[identity.id]=old;result[#result+1]=old
             else old.need=math.max(old.need,need) end
@@ -119,10 +119,12 @@ function G.Stages(q,state,data,first)
     if not active then stages[#stages+1]=copy(first);if not first.position then complete=false end end
     local added,described=0,false
     if active then
-        local located={}
+        local located,purchases={},{}
         local identities=data.ObjectiveIdentities and data:ObjectiveIdentities(q,state) or {}
         if data.ObjectiveTargets then
-            for _,point in ipairs(data:ObjectiveTargets(q,state)) do located[point.objectiveIndex]=point end
+            local targets,vendors=data:ObjectiveTargets(q,state)
+            purchases=vendors or {}
+            for _,point in ipairs(targets) do located[point.objectiveIndex]=point end
         end
         local currentIndex=first.objectiveIndex
         if not currentIndex and first.position and first.position.label=="客户端任务目标" then
@@ -140,6 +142,7 @@ function G.Stages(q,state,data,first)
             local areaId=not position and data.UnmappedTargetArea and data:UnmappedTargetArea(q,state,index)
             local stage=add("objective",position,o.text or "按任务日志完成目标",index,false,areaId)
             stage.have,stage.need=o.numFulfilled,o.numRequired
+            stage.purchase=purchases[index]
             local identity=identities[index]
             if identity then stage.targetKind,stage.targetId,stage.objectiveType,stage.npcIds=identity.kind,identity.id,identity.objectiveType,identity.npcIds end
             added=added+1
@@ -147,13 +150,14 @@ function G.Stages(q,state,data,first)
         if currentIndex then objective(currentIndex,(active.objectives or {})[currentIndex]) end
         for index,o in ipairs(active.objectives or {}) do if index~=currentIndex then objective(index,o) end end
     elseif data.ReferenceObjectiveTargets then
-        local descriptions,positions,complex,areas=data:ReferenceObjectiveTargets(q,state)
+        local descriptions,positions,complex,areas,purchases=data:ReferenceObjectiveTargets(q,state)
         reference={descriptions=descriptions,positions=positions,areas=areas}
         described=#descriptions>0
         for index,o in ipairs(descriptions) do
             if not o.finished and not o.providedOnAccept then
                 local stage=add("objective",positions[index],o.text,nil,true,areas and areas[index])
                 stage.targetKind,stage.targetId=o.targetKind,o.targetId
+                stage.purchase=purchases and purchases[index]
                 stage.areaTriggerId=o.areaTriggerId
                 stage.criteriaTreeId=o.criteriaTreeId
                 stage.have,stage.need=o.numFulfilled,o.numRequired

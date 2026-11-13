@@ -580,9 +580,9 @@ function D:ObjectiveTargets(q,state)
     -- Shared only by the immutable snapshot of one planning pass.
     local cache=state.objectiveTargets
     local cached=cache and cache[active]
-    if cached and cached.position==state.position then return cached.points end
+    if cached and cached.position==state.position then return cached.points,cached.purchases end
     local identities=self:ObjectiveIdentities(q,state)
-    local chosen,distances={},{}
+    local chosen,distances,purchases={},{},{}
     local thread,main=coroutine.running()
     local work=0
     local function checkpoint()
@@ -593,6 +593,12 @@ function D:ObjectiveTargets(q,state)
         for _,point in ipairs(points or self:EntityPoints(entity,id,true)) do
             local best,bestDistance=chosen[index],distances[index]
             local distance=A.Navigation:Distance(state.position,point)
+            if sourceKind=="vendor" then
+                local old=purchases[index]
+                if not old or not old.map or distance and (not old.distance or distance<old.distance) then
+                    purchases[index]={npcId=id,name=entity.Get(id,"name"),map=point.map,distance=distance}
+                end
+            end
             local same=state.position and point.map==state.position.map
             local bestSame=best and state.position and best.map==state.position.map
             local precise=best and best.approximate and not point.approximate
@@ -629,6 +635,7 @@ function D:ObjectiveTargets(q,state)
             for _,id in ipairs(self.db.Item.Get(entry.id,"vendors") or {}) do
                 local faction=self.db.Npc.Get(id,"friendlyToFaction")
                 if faction=="AH" or faction==(state.faction=="Alliance" and "A" or state.faction=="Horde" and "H") then
+                    purchases[index]=purchases[index] or {npcId=id,name=self.db.Npc.Get(id,"name")}
                     consider(self.db.Npc,id,"任务物品商人",index,"npc",entry,"vendor")
                 end
             end
@@ -673,12 +680,12 @@ function D:ObjectiveTargets(q,state)
             if not point and not unmapped then point=self:QuestAreaTarget(q,state) end
             if point then
                 if identity then point.targetKind,point.targetId=identity.kind,identity.id end
-                point.objectiveIndex=index;result[#result+1]=point
+                point.objectiveIndex=index;point.purchase=purchases[index];result[#result+1]=point
             end
         end
     end
-    if cache then cache[active]={position=state.position,points=result} end
-    return result
+    if cache then cache[active]={position=state.position,points=result,purchases=purchases} end
+    return result,purchases
 end
 
 function D:ObjectiveTarget(q,state)
@@ -874,12 +881,13 @@ function D:ReferenceObjectiveTargets(q,state)
     local virtual={position=state.position,faction=state.faction,referenceIndexUnknown=complex,quests={[q.id]={objectives=descriptions}},
         clientVersion=state.clientVersion,clientBuild=state.clientBuild,interface=state.interface}
     local positions={}
-    for _,point in ipairs(self:ObjectiveTargets(q,virtual)) do positions[point.objectiveIndex]=point end
+    local targets,purchases=self:ObjectiveTargets(q,virtual)
+    for _,point in ipairs(targets) do positions[point.objectiveIndex]=point end
     local areas={}
     for index in ipairs(descriptions) do
         if not positions[index] then areas[index]=self:UnmappedTargetArea(q,virtual,index) end
     end
-    return descriptions,positions,complex,areas
+    return descriptions,positions,complex,areas,purchases
 end
 
 function D:Audit()

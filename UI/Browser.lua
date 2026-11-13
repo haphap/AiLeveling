@@ -347,6 +347,10 @@ function B:Detail()
         local timing=e.choice.executionTiming or e.choice.timing
         if timing and timing.seconds then lines[#lines+1]="路程  "..time(timing.seconds) end
         for _,stage in ipairs(e.choice.stages or {}) do
+            if stage.purchase and (not stage.need or stage.need<=0 or (stage.have or 0)<stage.need) then
+                local item=A.Data.db and A.Data.db.Item.Get(stage.targetId,"name") or stage.text or "任务物品"
+                lines[#lines+1]=color(gold,(item or "任务物品").." · "..A.UI.PurchaseText(stage.purchase))
+            end
             local where=stage.recipient or stage.position
             if stage.kind~="objective" and where and where.entityName then
                 lines[#lines+1]=A.UI:Icon(stage.kind,16).." "..(stage.kind=="turnin" and "交付给 " or "接取于 ")..color(blue,where.entityName)

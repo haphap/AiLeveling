@@ -110,6 +110,18 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     B.state.quests[3].objectives[1].text="收集物品";B.state.quests[3].objectives[1].type="item";B.UI:RenderTracker()
     eq(T.rows[2].objectives[1].text.value,"收集物品");eq(T.rows[2].objectives[1].count.value,"2/4")
     eq(T.rows[2].objectives[1].check.value,"□");assert(T.rows[2].objectives[1].text.color[1]>T.rows[2].objectives[1].text.color[2])
+    for _,id in ipairs({1,3}) do
+        B.plan.taskChoices[id].stages={{kind="objective",objectiveIndex=1,purchase={npcId=8,name="任务商人",map=1}}}
+    end
+    B.UI:RenderTracker()
+    assert(T.objectives[1].text.value:find("可购买",1,true))
+    local purchaseRow=T.thenButton.questId==3 and T.thenButton or T.rows[2]
+    assert(purchaseRow.objectives[1].text.value:find("可购买",1,true),purchaseRow.objectives[1].text.value)
+    assert(purchaseRow.objectives[1].purchase:find("任务商人",1,true))
+    B.state.quests[3].objectives[1].numFulfilled=4;B.UI:RenderTracker()
+    eq(purchaseRow.objectives[1].purchase,nil);eq(purchaseRow.objectives[1].text.value,"收集物品")
+    B.state.quests[3].objectives[1].numFulfilled=2
+    B.plan.taskChoices[1].stages=nil;B.plan.taskChoices[3].stages=nil;B.UI:RenderTracker()
     local shown,inserted,opened,modified,focused=nil,nil,nil,false,true
     C_QuestLog.GetLogIndexForQuestID=function(id) return id<=3 and id+10 end
     QuestMapFrame_OpenToQuestDetails=function(id) shown=id end

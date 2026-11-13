@@ -324,6 +324,12 @@ function UI:RefreshDetails()
     if self.details:IsShown() and self.selectedTab ~= 5 and not self.exporting then self:SelectTab(self.selectedTab,true) end
 end
 
+function UI.PurchaseText(purchase)
+    if not purchase then return end
+    local map=purchase.map and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(purchase.map)
+    return "可购买 · "..(purchase.name or ("商人 #"..purchase.npcId))..(map and map.name and (" · "..map.name) or "")
+end
+
 function UI.ActionText(action,settings)
     local point=action.position
     if action.kind=="objective" and point and point.sourceKind=="vendor" then

@@ -302,7 +302,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
         local need=math.max(have+action.itemGain,total)
         local limit=A.TaskGuide and A.TaskGuide.ItemLimit and A.TaskGuide.ItemLimit(action.targetId,state)
         if limit then need=math.min(need,limit) end
-        model.objectives[#model.objectives+1]={text="本次所需物品",done=false,have=have,need=need}
+        model.objectives[#model.objectives+1]={text="本次所需物品",done=false,have=have,need=need,purchase=action.purchase}
     end
     if plan.preparingQuest then model.hint="先完成「"..plan.preparingQuest.title.."」的前置准备"
     elseif action and action.pickupResume then model.hint="顺路接取，与「"..action.pickupResume.."」一并安排"
@@ -319,6 +319,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
     end
     if action and choices[action.questId] then
         local choice=choices[action.questId]
+        model.choice=choice
         model.metrics=metrics(choice,journey)
         model.unlock=choice.unlock
         local pick=choice.rewardPick
@@ -902,7 +903,7 @@ local function questTitle(id,title,candidate)
     return (level and level>0 and ("["..level.."] ") or "")..title
 end
 
-local function renderObjectives(owner,parent,pool,objectives)
+local function renderObjectives(owner,parent,pool,objectives,sharedIndex)
     for i,objective in ipairs(objectives) do
         local row=pool[i]
         if not row then
@@ -911,7 +912,10 @@ local function renderObjectives(owner,parent,pool,objectives)
             row:SetScript("OnClick",function(_,button)
                 if button=="RightButton" then UI:TrackerMenu(owner) else UI:QuestClick(owner.questId,button) end
             end)
-            row:SetScript("OnEnter",function() questTooltip(owner) end)
+            row:SetScript("OnEnter",function(f)
+                questTooltip(owner)
+                if f.purchase then GameTooltip:AddLine(f.purchase,1,0.82,0.35,true);GameTooltip:Show() end
+            end)
             row:SetScript("OnLeave",function() GameTooltip:Hide() end)
             row.text=text(row,"body",palette.white);row.text:SetPoint("TOPLEFT");row.text:SetNonSpaceWrap(false)
             row.icon=row:CreateTexture(nil,"ARTWORK")
@@ -924,7 +928,13 @@ local function renderObjectives(owner,parent,pool,objectives)
         local need,have=objective.need or objective.numRequired,objective.have or objective.numFulfilled or 0
         row.known=type(need)=="number" and need>0
         row.ratio=done and 1 or row.known and math.max(0,math.min(1,have/need)) or 0
-        row.text:SetText((objective.text or "任务目标"):gsub("%s*%d+%s*/%s*%d+",""):gsub("^%s+",""))
+        local purchase=objective.purchase
+        for _,stage in ipairs(owner.candidate and owner.candidate.stages or {}) do
+            if stage.kind=="objective" and stage.objectiveIndex==(sharedIndex or i) then purchase=stage.purchase;break end
+        end
+        row.purchase=not done and (not row.known or have<need) and UI.PurchaseText(purchase) or nil
+        row.text:SetText((objective.text or "任务目标"):gsub("%s*%d+%s*/%s*%d+",""):gsub("^%s+","")..
+            (row.purchase and (" |cff"..UI.hex.gold.."· 可购买|r") or ""))
         row.text:SetTextColor(unpack(done and palette.muted or objective.type=="item" and palette.purple or palette.blue))
         row.icon:SetTexture(media.."hud-"..(done and "turnin" or objective.type=="item" and "collect" or "objective")..".tga")
         row.icon:SetVertexColor(unpack(done and palette.green or objective.type=="item" and palette.purple or palette.gold))
@@ -1146,7 +1156,7 @@ function UI:RenderTracker(along)
     action=model.action
     T.questTitle.questId=model.questId
     T.questTitle.activeObjective=action and action.objectiveIndex
-    T.questTitle.candidate,T.questTitle.revision=nil,nil
+    T.questTitle.candidate,T.questTitle.revision=model.choice,plan.revision
     T.questTitle.deferred=model.questId and ((state.skipped or {})[model.questId] or (state.chainDeferred or {})[model.questId])
     local current=(state.quests or {})[model.questId]
     local count=0;for _ in pairs(state.quests or {}) do count=count+1 end
@@ -1268,7 +1278,7 @@ function UI:RenderTracker(along)
         local objectives=item.accepted and item.kind~="turnin" and not item.deferred and
             not (item.candidate and (item.candidate.lowValue or item.candidate.entryBlocked)) and native and native.objectives or {}
         if item.sharedObjective then objectives={objectives[item.sharedObjective]} end
-        renderObjectives(row,row.objectiveFrame,row.objectives,objectives)
+        renderObjectives(row,row.objectiveFrame,row.objectives,objectives,item.sharedObjective)
         if #objectives>0 and not item.delivery and not (item.candidate and item.candidate.itemShortage) then row.progress:SetText("") end
         row.detail=table.concat({row.status,item.groupTitle or "",item.delivery or item.progress},"\n")
         if isCurrent then T.questTitle.candidate=item.candidate;T.questTitle.revision=plan.revision end
