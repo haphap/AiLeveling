@@ -38,7 +38,7 @@ function S:Lock(candidate,revision)
     if candidate.requiresAcceptance then return false,"副本须通过接受副本行程入口确认" end
     if candidate.kind=="task" then
         A.char.paused=false
-        return self:LockQuest(candidate.questId)
+        return self:LockQuest(candidate.unlock and candidate.unlock.questId or candidate.questId)
     end
     return false,"当前行动由自动规划安排"
 end

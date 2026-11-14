@@ -538,31 +538,41 @@ local function noticeLine(parent,size,color)
 end
 
 function UI.ClassReminders(state,plan)
-    local quests={}
+    local quests,other={},{}
     if A.TaskGuide and plan.revision==state.revision then
         for _,choice in ipairs(plan.taskChoices or {}) do
             local id=choice.questId
-            if id and not (state.quests or {})[id] and not (state.completed or {})[id] and
+            if id and (choice.unlock or not (state.quests or {})[id]) and not (state.completed or {})[id] and
                 not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] and
                 not choice.lowValue and not choice.entryBlocked and not choice.acceptBlocked and not choice.requireCheck then
                 if choice.unlock or A.TaskGuide.IsClassQuest(A.Data:GetQuest(id),state,A.Data) then
-                    quests[#quests+1]=choice
+                    local list=choice.unlock and quests or other
+                    list[#list+1]=choice
                 end
             end
         end
     end
+    for _,choice in ipairs(other) do quests[#quests+1]=choice end
     return {spells=state.trainableSpells or {},quests=quests}
 end
 
 function UI:ClassReminderMenu(owner)
-    local reminder=self.ClassReminders(A.state,A.plan or {})
+    local plan=A.plan or {}
+    local reminder=self.ClassReminders(A.state,plan)
     GameTooltip:Hide()
     MenuUtil.CreateContextMenu(owner,function(_,menu)
         for _,spell in ipairs(reminder.spells) do
             menu:CreateButton(spell.name.." · "..spell.level.."级",function() SetItemRef("spell:"..spell.id,spell.link,"LeftButton") end)
         end
         for _,choice in ipairs(reminder.quests) do
-            menu:CreateButton("待接："..choice.title,function() self:QuestClick(choice.questId,"LeftButton") end)
+            if choice.unlock then
+                local choose=menu:CreateButton("切换任务线："..choice.unlock.title,function()
+                    local ok,why=A.Selection:Lock(choice,plan.revision)
+                    if not ok then A:Message(why) end
+                end)
+                choose:SetEnabled(A.Selection.CanChoose(choice,plan.revision)==true)
+            end
+            menu:CreateButton((choice.unlock and "查看：" or "待接：")..choice.title,function() self:QuestClick(choice.questId,"LeftButton") end)
         end
         menu:CreateButton("查看职业任务",function() self.details:Show();self:SelectTab(9) end)
     end)
@@ -600,7 +610,7 @@ function UI:TrackerMenu(owner)
             menu:CreateButton("忽略维修",function() A.Supplies:IgnoreRepair() end)
         elseif id then
             menu:CreateButton("查看任务详情",function() self:QuestClick(id,"RightButton") end)
-            local choose=menu:CreateButton("优先做此任务",function()
+            local choose=menu:CreateButton(candidate and candidate.unlock and "切换到解锁任务线" or "优先做此任务",function()
                 local ok,why
                 if candidate then ok,why=A.Selection:Lock(candidate,revision)
                 else ok,why=A.Selection:LockQuest(id) end
@@ -1129,7 +1139,7 @@ function UI:RenderTracker(along)
         end
         local quest=reminder.quests[1]
         if quest then
-            notice[#notice+1]="待接：|cff"..UI.hex.accept.."|Hquest:"..quest.questId..":"..(quest.level or state.level).."|h["..quest.title.."]|h|r"..
+            notice[#notice+1]=(quest.unlock and (A.TaskGuide.UnlockText(quest.unlock).."：") or "待接：").."|cff"..UI.hex.accept.."|Hquest:"..quest.questId..":"..(quest.level or state.level).."|h["..quest.title.."]|h|r"..
                 (#reminder.quests>1 and (" 等"..#reminder.quests.."项") or "")
         end
     end

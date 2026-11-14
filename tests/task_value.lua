@@ -89,7 +89,7 @@ test("已完成锁定职业法术和装备目标不建议放弃",function()
     q.taskFacts.rewards.spell=10;eq(B.TaskGuide.LowValue(q,s,d),nil);q.taskFacts.rewards.spell=nil
     B.Gear={GetSource=function(id) if id=="target" then return {questId=1} end end};s.gearTarget="target";eq(B.TaskGuide.LowValue(q,s,d),nil)
 end)
-test("关键职业能力与坐骑从可接前置优先接续并尊重已学会和手动选择",function()
+test("职业与坐骑只推荐，选择后接续整条解锁任务线",function()
     local B,s,q,d=fixture();assert(loadfile("Planner/Flights.lua"))("AiLeveling",B)
     s.level,s.spells,s.currentTask=9,{},1;q.taskFacts.xp={{1,1000}}
     local pre,reward=F.Quest(2),F.Quest(3)
@@ -100,13 +100,16 @@ test("关键职业能力与坐骑从可接前置优先接续并尊重已学会�
     local quests={[1]=q,[2]=pre,[3]=reward}
     d.GetQuest=function(_,id) return quests[id] end;d.Candidates=function() return {1,2,3} end
     A.Chains.IndexQuest(d.chainIndex,pre,d);A.Chains.IndexQuest(d.chainIndex,reward,d)
-    eq(plan(s,d,nil,B).fallback.questId,1)
+    local function recommendation(result)
+        for _,c in ipairs(result.taskChoices) do if c.unlock then return c end end
+    end
+    eq(recommendation(plan(s,d,nil,B)),nil)
     s.level=10
     local result=plan(s,d,nil,B)
-    eq(result.fallback.questId,2);eq(result.fallback.kind,"accept");eq(result.taskOrder[1].questId,2)
-    eq(result.taskChoices[1].unlock.questId,3);eq(s.locked,nil);eq(s.completed[2],nil)
-    if result.taskQueue then eq(result.taskQueue.steps[1].choice.questId,2) end
-    -- A class unlock on another continent must not displace local work or pickups.
+    eq(result.fallback.questId,1);eq(result.taskOrder[1].questId,1)
+    local candidate=recommendation(result)
+    eq(candidate.questId,2);eq(candidate.unlock.questId,3);eq(s.locked,nil);eq(s.completed[2],nil)
+    -- Recommendations must not displace local work or disable ordinary pickups.
     local target,objectives,reference,candidates=d.Target,d.ObjectiveTargets,d.ReferenceObjectiveTargets,d.Candidates
     local nearby=F.Quest(4);nearby.questLevel=10;nearby.taskFacts={level=10,xp={{1,1000}}};quests[4]=nearby
     d.Candidates=function() return {1,2,3,4} end
@@ -116,26 +119,34 @@ test("关键职业能力与坐骑从可接前置优先接续并尊重已学会�
     d.ObjectiveTargets=function(self,quest) local p=self:Target(quest);p.objectiveIndex=1;return {p} end
     d.ReferenceObjectiveTargets=function(self,quest) return {{text="本地目标"}},{self:Target(quest)},false end
     s.quests[4]={objectives={{text="本地目标",numRequired=1,numFulfilled=0}}}
-    result=plan(s,d,nil,B);eq(result.fallback.questId,4)
-    for _,c in ipairs(result.taskChoices) do if c.questId==2 then assert(c.unlock);eq(c.unlockPriority,nil) end end
+    result=plan(s,d,nil,B);eq(result.fallback.questId,4);assert(recommendation(result))
     s.quests[4]=nil
     result=plan(s,d,nil,B);eq(result.fallback.questId,4);eq(result.fallback.kind,"accept")
     eq(result.taskQueue.remaining,1);eq(s.quests[4],nil);eq(s.skipped[1],nil)
-    s.locked=2;eq(plan(s,d,nil,B).fallback.questId,2);s.locked=nil
     quests[4]=nil;d.Target,d.ObjectiveTargets,d.ReferenceObjectiveTargets,d.Candidates=target,objectives,reference,candidates
     s.locked=1;eq(plan(s,d,nil,B).fallback.questId,1);s.locked=nil
-    s.skipped[2]=true;eq(plan(s,d,nil,B).fallback.questId,1);s.skipped[2]=nil
-    s.spells={[355]=true,[71]=true};eq(plan(s,d,nil,B).fallback.questId,1);s.spells={}
+    s.skipped[2]=true;eq(recommendation(plan(s,d,nil,B)),nil);s.skipped[2]=nil
+    s.spells={[355]=true,[71]=true};eq(recommendation(plan(s,d,nil,B)),nil);s.spells={}
+    B.state,B.Data,B.ready,B.char=s,d,true,{skipped={}}
+    B.State={Refresh=function() s.locked=B.char.locked;s.revision=s.revision+1 end}
+    assert(loadfile("Planner/Selection.lua"))("AiLeveling",B)
+    B.plan=plan(s,d,nil,B)
+    assert(B.Selection:Lock(recommendation(B.plan),B.plan.revision));eq(B.char.locked,3)
+    result=plan(s,d,nil,B);eq(result.fallback.questId,2);eq(result.fallback.kind,"accept");eq(result.preparingQuest.id,3)
     s.quests[2]={ready=true,objectives={}}
     result=plan(s,d,nil,B);eq(result.fallback.questId,2);eq(result.fallback.kind,"turnin")
-    s.quests[2]=nil;s.completed[2]=true
+    s.quests[2]=nil;s.completed[2]=true;B.Selection:Snapshot(s);eq(B.char.locked,3)
     result=plan(s,d,nil,B);eq(result.fallback.questId,3);eq(result.fallback.kind,"accept")
-    s.completed[3]=true;eq(plan(s,d,nil,B).fallback.questId,1);s.completed[3]=nil
+    s.completed[3]=true;B.Selection:Snapshot(s);eq(B.char.locked,nil);eq(s.locked,nil)
+    eq(plan(s,d,nil,B).fallback.questId,1);s.completed[3]=nil
     reward.taskFacts.learnedSpells=nil;reward.taskFacts.mountReward=13819
-    result=plan(s,d,nil,B);eq(result.fallback.questId,3);eq(result.taskOrder[1].unlock.kind,"mount")
-    s.spells[13819]=true;eq(plan(s,d,nil,B).fallback.questId,1);s.spells={}
-    s.inInstance=true;eq(plan(s,d,nil,B).fallback.questId,1);s.inInstance=nil
-    reward.requiredClasses=2;eq(plan(s,d,nil,B).fallback.questId,1)
+    result=plan(s,d,nil,B);eq(result.fallback.questId,1);eq(recommendation(result).unlock.kind,"mount")
+    B.plan=result;assert(B.Selection:Lock(recommendation(result),result.revision));eq(B.char.locked,3)
+    eq(plan(s,d,nil,B).fallback.questId,3)
+    assert(B.Selection:Automatic());eq(s.locked,nil);eq(plan(s,d,nil,B).fallback.questId,1)
+    s.spells[13819]=true;eq(recommendation(plan(s,d,nil,B)),nil);s.spells={}
+    s.inInstance=true;eq(recommendation(plan(s,d,nil,B)),nil);s.inInstance=nil
+    reward.requiredClasses=2;eq(recommendation(plan(s,d,nil,B)),nil)
     reward.requiredClasses=1;s.completed={}
     local supplier=F.Quest(4);supplier.requiredClasses=1;supplier.taskFacts={level=10,xp={{1,0}}}
     quests[4]=supplier;d.Candidates=function() return {1,2,3,4} end
@@ -145,9 +156,12 @@ test("关键职业能力与坐骑从可接前置优先接续并尊重已学会�
     d.Target=function(self,quest,state)
         if quest.id~=2 or ((state.bags or {})[700] or 0)>0 then return target(self,quest,state) end
     end
+    B.plan=plan(s,d,nil,B);eq(B.plan.fallback.questId,1)
+    eq(recommendation(B.plan).questId,4)
+    assert(B.Selection:Lock(recommendation(B.plan),B.plan.revision))
     eq(plan(s,d,nil,B).fallback.questId,4)
     s.completed[4]=true;s.bags[700]=1
-    eq(plan(s,d,nil,B).fallback.questId,2)
+    eq(plan(s,d,nil,B).fallback.questId,2);eq(B.char.locked,3)
 end)
 test("装备提升未知缓存特殊效果及武器资料缺失保护低等级任务",function()
     local B,s,q,d=fixture();B.Items=nil

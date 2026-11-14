@@ -313,7 +313,7 @@ if arg[1]=="class" then
     A.state.trainableSpells={{id=101,level=22,name="圣光术 · 等级 4",link="|cff9acbff|Hspell:101|h[圣光术 · 等级 4]|h|r"},
         {id=102,level=22,name="奉献 · 等级 2",link="|cff9acbff|Hspell:102|h[奉献 · 等级 2]|h|r"}}
     A.plan.taskChoices[#A.plan.taskChoices+1]={questId=1641,title="圣洁之书",level=12,kind="task",actions={},
-        unlock={kind="class",spell=7328,questId=1788}}
+        unlock={kind="class",spell=7328,questId=1788,title="生命符记"}}
 end
 A.UI:CreateTracker();A.UI:RenderTracker();A.UI:SetTrackerNavigation(285,0.25,true)
 if arg[1]=="class" then

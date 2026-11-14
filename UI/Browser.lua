@@ -140,6 +140,7 @@ function B:TaskRows(mode)
         end
         table.sort(rows,function(a,b)
             if a.allowed~=b.allowed then return a.allowed end
+            if (a.choice.unlock~=nil)~=(b.choice.unlock~=nil) then return a.choice.unlock~=nil end
             local al,bl=a.q.requiredLevel or 0,b.q.requiredLevel or 0
             if al~=bl then return al<bl end
             return a.questId<b.questId
@@ -363,7 +364,7 @@ function B:Detail()
         local planned=false
         for _,c in ipairs(A.plan and A.plan.taskChoices or {}) do if c==e.choice then planned=true;break end end
         local can=not planned or A.Selection.CanChoose(e.choice,A.plan.revision)
-        self:Action(1,e.allowed==false and e.prerequisite and "查看前置任务" or "优先做此任务",function()
+        self:Action(1,e.allowed==false and e.prerequisite and "查看前置任务" or e.choice.unlock and "切换到解锁任务线" or "优先做此任务",function()
             if not e.allowed and e.prerequisite then A.UI.Chains:Focus(e.prerequisite);return end
             local ok,why
             if planned then ok,why=A.UI.Plan:Choose(e.choice,A.plan.revision)

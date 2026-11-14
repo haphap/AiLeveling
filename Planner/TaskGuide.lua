@@ -346,7 +346,7 @@ function G.IsClassQuest(q,state,data)
     return q and ((q.requiredClasses or 0)>0 or sorts[state.class] and sorts[state.class]==q.zoneOrSort)
 end
 
-function G.UnlockPriorities(state,data,ids)
+function G.UnlockRecommendations(state,data,ids)
     local result={}
     if state.locked or state.preparingQuest or state.gearTarget or state.taskBatch or state.inInstance then return result end
     local thread,main=coroutine.running()

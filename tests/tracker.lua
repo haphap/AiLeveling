@@ -567,6 +567,13 @@ test("职业提醒随可学技能和待接任务更新，稍后保留行程并�
     T.career.train:Click();eq(B.char.serviceStop.npcId,9)
     spells[2].itemType=1;spells[3].itemType=1;B.Services:Snapshot(B.state);B.UI:RenderTracker();eq(T.career.shown,false)
     eq(B.char.serviceStop,nil);eq(B.char.locked,1)
+    local unlock={questId=900,title="职业技能解锁",kind="class",spell=355}
+    quest.unlock=unlock;B.char.classReminderLevel=nil
+    B.plan.revision=B.state.revision
+    B.UI:RenderTracker();eq(T.career.shown,true)
+    assert(T.career.text.value:find("解锁职业技能",1,true));eq(T.model.questId,1)
+    eq(B.UI.ClassReminders(B.state,B.plan).quests[1],quest)
+    T.career.view:Click();B.menu["切换任务线：职业技能解锁"].callback();eq(B.char.locked,900)
     B.finish()
 end)
 
