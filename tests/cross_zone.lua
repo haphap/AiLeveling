@@ -55,6 +55,36 @@ test("跨区未接任务按完整移动收益比较并从接取衔接到交付�
     s.quests[2].ready=true;p=plan(s,d,nil,B);eq(p.fallback.kind,"turnin")
     s.quests[2]=nil;s.completed[2]=true;eq(plan(s,d,nil,B).fallback,nil)
     s.level=40;p=plan(s,d,nil,B);eq(p.fallback.questId,3);eq(p.fallback.kind,"accept");eq(s.completed[3],nil)
+    -- One visit: finish local work, hand it in, then take the next region's quests.
+    B,s,d,q=fixture();q[3].questLevel=24;q[3].taskFacts.level=24
+    local target=d.Target
+    d.Target=function(self,quest,context)
+        if quest.id==3 then return {map=1,x=0.2,y=0} end
+        return target(self,quest,context)
+    end
+    s.quests[1]={objectives={{text="本轮目标",numRequired=1,numFulfilled=0}}}
+    p=plan(s,d,nil,B);eq(p.fallback.questId,1)
+    eq(p.regionPlan.handins[1].questId,1);eq(p.regionPlan.destination.map,2)
+    eq(p.regionPlan.destination.pickups[1].questId,2)
+    eq(p.regionPlan.revisit[1].choice.questId,3);eq(p.regionPlan.revisit[1].level,22)
+    eq(#p.taskOrder,1);eq(choice(p,3).revisitLevel,22)
+    s.quests[1].ready=true;p=plan(s,d,nil,B)
+    eq(p.fallback.questId,1);eq(p.fallback.kind,"turnin");eq(p.regionPlan.destination.map,2)
+    s.quests[1]=nil;s.completed[1]=true;p=plan(s,d,nil,B)
+    eq(p.fallback.questId,2);eq(p.fallback.kind,"accept");eq(#p.regionPlan.handins,0)
+    s.locked=3;p=plan(s,d,nil,B);eq(p.fallback.questId,3);eq(p.regionPlan,nil)
+    s.locked=nil;s.completed[2]=true;s.level=22;p=plan(s,d,nil,B)
+    eq(p.fallback.questId,3);eq(choice(p,3).revisitLevel,nil);eq(s.skipped[3],nil)
+    -- Shared pickups and hand-ins pay for the transfer once, rather than one round trip per quest.
+    B,s,d,q=fixture();s.completed[3]=true
+    d.Target=function(_,quest,context)
+        local active=context and context.quests[quest.id]
+        return {map=2,x=active and not active.ready and 0.8 or 0.1,y=0}
+    end
+    d.ReferenceObjectiveTargets=function() return {{text="共同目标"}},{{map=2,x=0.8,y=0}},false end
+    p=plan(s,d,nil,B);local region=p.regionPlan.destination
+    eq(#region.pickups,2)
+    assert(region.travelSeconds<choice(p,1).timing.seconds+choice(p,2).timing.seconds)
 end)
 
 test("自动行程顺路接取合算任务并按原生进度继续整组交付",function()

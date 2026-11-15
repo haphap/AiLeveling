@@ -82,12 +82,13 @@ local function widget(kind,parent)
 end
 local dungeonPreview=arg[1]=="dungeon"
 local planPreview=arg[1]=="plan"
-local canvasWidth=(dungeonPreview or planPreview or arg[1]=="nearby") and 1080 or 560
-local canvasHeight=(dungeonPreview or planPreview) and 700 or 1100
-if (arg[1]=="gear" or arg[1]=="class") and arg[2]=="large" then canvasHeight=1450 end
+local regionDetail=arg[1]=="region-detail"
+local canvasWidth=(dungeonPreview or planPreview or regionDetail or arg[1]=="nearby") and 1080 or 560
+local canvasHeight=(dungeonPreview or planPreview or regionDetail) and 700 or 1100
+if (arg[1]=="gear" or arg[1]=="class" or arg[1]=="region") and arg[2]=="large" then canvasHeight=1450 end
 UIParent=widget("Root");UIParent:SetSize(canvasWidth,canvasHeight)
 CreateFrame=function(kind,_,parent) return widget(kind,parent) end
-if not dungeonPreview and not planPreview then
+if not dungeonPreview and not planPreview and not regionDetail then
     MinimapCluster=widget("Frame",UIParent);MinimapCluster:SetSize(280,160)
     MinimapCluster:SetPoint("TOPRIGHT",UIParent,"TOPRIGHT",-100,-88)
     MinimapCluster:SetBackdropColor(0.1,0.18,0.18,0.6)
@@ -315,7 +316,25 @@ if arg[1]=="class" then
     A.plan.taskChoices[#A.plan.taskChoices+1]={questId=1641,title="圣洁之书",level=12,kind="task",actions={},
         unlock={kind="class",spell=7328,questId=1788,title="生命符记"}}
 end
-A.UI:CreateTracker();A.UI:RenderTracker();A.UI:SetTrackerNavigation(285,0.25,true)
+if arg[1]=="region" or arg[1]=="region-detail" then
+    local current={map=1429,title="艾尔文森林",current=true,choices=A.plan.taskChoices,handins={},pickups={},revisit={},xp=1850,unknownXP=0}
+    for _,c in ipairs(A.plan.taskChoices) do
+        local live=A.state.quests[c.questId]
+        c.status=live and (live.ready and "turnin" or "objective") or "accept"
+        if live then current.handins[#current.handins+1]=c end
+    end
+    local nextChoice={questId=12,title="西部荒野人民军",status="accept",remainingXP=975,
+        actions={{kind="accept",position={map=1436,entityName="格里安·斯托曼"}}}}
+    nextChoice.stages=nextChoice.actions
+    local nextRegion={map=1436,title="西部荒野",choices={nextChoice},pickups={nextChoice},handins={nextChoice},
+        revisit={},xp=975,unknownXP=0,seconds=210,first=nextChoice}
+    current.revisit={{choice={questId=76,title="玉石矿洞",status="accept"},level=10}}
+    A.plan.regions={current,nextRegion}
+    A.plan.regionPlan={current=current,destination=nextRegion,handins=current.handins,revisit=current.revisit}
+    A.Data={GetQuest=function(_,id) return {id=id,title="示例任务"} end}
+    if arg[1]=="region-detail" then A.previewTab=10;A.previewRegion="map:1436" end
+end
+if not regionDetail then A.UI:CreateTracker();A.UI:RenderTracker();A.UI:SetTrackerNavigation(285,0.25,true) end
 if arg[1]=="class" then
     assert(A.UI.tracker.career:IsShown() and A.UI.tracker.career.text:GetText():find("圣洁之书",1,true))
 end
@@ -331,7 +350,7 @@ if arg[1]=="journey" then
     assert(T.model.rows[2].questId==65 and T.model.rows[2].status=="已接取")
     assert(T.model.rows[3].questId==66 and T.model.rows[3].status=="可交付")
 end
-A.UI.navFrame:ClearAllPoints();A.UI.navFrame:SetPoint("TOP",A.UI.frame,"BOTTOM",0,-54)
+if not regionDetail then A.UI.navFrame:ClearAllPoints();A.UI.navFrame:SetPoint("TOP",A.UI.frame,"BOTTOM",0,-54) end
 if arg[1]=="assist" then
     A.UI.navFrame:Hide()
     InCombatLockdown=function() return false end
@@ -360,6 +379,7 @@ if A.previewTab then
     A.settings.scale,A.settings.alpha=1,1
     A.UI:Create();A.UI.frame:Hide();A.UI.details:Show();A.UI.details:ClearAllPoints();A.UI.details:SetPoint("TOPLEFT",40,-50)
     A.UI.Dungeon.selected=A.previewSelected
+    if A.previewRegion then A.UI.Browser.selection[10]=A.previewRegion end
     A.UI:SelectTab(A.previewTab)
     if dungeonPreview then
         local browser=A.UI.Browser

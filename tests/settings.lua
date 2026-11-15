@@ -1,5 +1,5 @@
 return function(test,eq,F,A,plan)
-local names={"CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","SlashCmdList","InCombatLockdown","GetTime","UnitClass","RAID_CLASS_COLORS",
+local names={"DaylightUI","CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFontHighlight","SlashCmdList","InCombatLockdown","GetTime","UnitClass","RAID_CLASS_COLORS",
     "geterrorhandler","C_Item","C_PlayerInfo","C_Container","GetQuestID","GetNumQuestChoices","GetQuestItemLink","GetQuestReward",
     "AcceptQuest","CompleteQuest","GetQuestMoneyToGet","IsQuestCompletable","IsShiftKeyDown","C_GossipInfo","UnitGUID","UnitLevel","UnitXP","UnitXPMax","UnitIsAFK",
     "PlaySound","SOUNDKIT","NUM_CONTAINER_FRAMES","ContainerFrameCombinedBags","AiLeveling",
@@ -29,7 +29,7 @@ local function widget()
     w.GetStringWidth=function(self) return #(self.value or "")/3*(self.fontSize or 12) end
     w.SetFont=function(self,face,size,flags)
         assert(self.kind~="EditBox" or type(flags)=="string","bad argument #3 to SetFont: EditBox requires flags")
-        self.fontSize,self.fontFlags=size,flags
+        self.fontFace,self.fontSize,self.fontFlags=face,size,flags
         return true
     end
     w.SetAtlas=function(self,atlas) self.atlas=atlas end
@@ -39,6 +39,10 @@ local function widget()
     w.SetBackdropColor=w.SetTextColor
     w.SetScale=function(self,v) self.scale=v end;w.SetAlpha=function(self,v) self.alpha=v end
     w.SetScript=function(self,event,callback) self.scripts[event]=callback end
+    w.HookScript=function(self,event,callback)
+        local previous=self.scripts[event]
+        self.scripts[event]=function(...) if previous then previous(...) end;callback(...) end
+    end
     w.RegisterForClicks=function(self,...) self.clicks={...} end
     w.RegisterEvent=function(self,event) self.events=self.events or {};self.events[event]=true end
     w.SetResizeBounds=function(self,...) self.resizeBounds={...} end
@@ -59,8 +63,9 @@ local function widget()
     w.CreateLine=function() local line=widget();line.SetThickness=function() end;line.SetStartPoint=function() end;line.SetEndPoint=function() end;return line end
     return w
 end
-local function setup(fullUI)
+local function setup(fullUI,daylight)
     local saved={};for _,name in ipairs(names) do saved[name]=_G[name] end
+    DaylightUI=daylight and {API=daylight}
     local clock,combat=10,false
     UIParent=widget();STANDARD_TEXT_FONT="font";GameFontHighlight={};SlashCmdList={};NUM_CONTAINER_FRAMES=0;ContainerFrameCombinedBags=nil
     MinimapCluster=widget();MinimapCluster:SetSize(280,280);ObjectiveTrackerFrame=widget()
@@ -175,6 +180,24 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     eq(B:Start(),false)
     assert(B.UI.startupPanel.copy:GetText():find("模拟文字创建失败",1,true))
     B.finish()
+    -- The optional skin uses the public controls and reacts to style changes without rebuilding tasks.
+    local listeners,face={},"DaylightFont"
+    local api={major=1,Colors=function() return {TEXT={1,1,1},LABEL={0.8,0.7,0.6},WARN={1,0.8,0.3},GOOD={0.5,0.9,0.5},BAD={1,0.3,0.3}} end,
+        Accent=function() return 0.8,0.4,0.6 end,Font=function() return face end,
+        GetSetting=function(_,key) return key=="textOutline" and "OUTLINE" or nil end,
+        On=function(event,fn) listeners[event]=fn end,
+        Skin=function(frame,opts) frame.daylightOpts=opts;frame.skinCalls=(frame.skinCalls or 0)+1 end,
+        Text=function(parent) return parent:CreateFontString() end,
+        Button=function(parent,label) local b=CreateFrame("Button",nil,parent);b.text=b:CreateFontString();b.text:SetText(label);return b end,
+        Close=function(parent,click) local b=CreateFrame("Button",nil,parent);b:SetScript("OnClick",click);return b end,
+        Input=function(parent) return CreateFrame("EditBox",nil,parent) end}
+    B=setup(true,api);B.UI:Render();local choice=B.action
+    assert(B.UI.frame.daylightOpts and B.UI.details.daylightOpts)
+    eq(B.UI.frame.daylightOpts.bgAlpha,0.4);eq(B.UI.title.fontFace,face);eq(B.UI.tracker.header.shown,false)
+    local before=B.UI.frame.skinCalls;B.UI.frame.scripts.OnSizeChanged();eq(B.UI.frame.skinCalls,before+1)
+    face="UpdatedDaylightFont";listeners.StyleChanged();eq(B.UI.title.fontFace,face);eq(B.action,choice)
+    B.UI:ToggleDetails();assert(B.UI.Browser.frame:IsShown());B.finish()
+
 end)
 test("设置开关跨归一化保留且清除已取消的旧采样",function()
     local B=setup()

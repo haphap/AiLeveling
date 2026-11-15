@@ -12,12 +12,29 @@ UI.colors={
     gearShade={0.90,0.73,0.40,0.10}, gearText={0.765,0.793,0.868},
 }
 local colors=UI.colors
-colors.accent=colors.gold
+UI.daylight=DaylightUI and DaylightUI.API and DaylightUI.API.major==1 and DaylightUI.API
+colors.accent={unpack(colors.gold)}
 colors.accept=colors.blue;colors.objective=colors.gold;colors.turnin=colors.green
 UI.hex={}
-for name,color in pairs(colors) do
-    UI.hex[name]=string.format("%02x%02x%02x",math.floor(color[1]*255+0.5),math.floor(color[2]*255+0.5),math.floor(color[3]*255+0.5))
+function UI:RefreshPalette()
+    local api=self.daylight
+    if api then
+        local ink=api.Colors()
+        local function set(key,value,alpha)
+            for i=1,3 do colors[key][i]=value[i] end
+            colors[key][4]=alpha
+        end
+        for key,role in pairs({white="TEXT",muted="LABEL",gold="WARN",green="GOOD",red="BAD",gearText="TEXT"}) do set(key,ink[role]) end
+        set("accent",{api.Accent()})
+        set("sidebar",{0,0,0},0.12);set("button",{0,0,0},0.18)
+        set("hover",colors.accent,0.12);set("rowHover",colors.accent,0.12);set("selected",colors.accent,0.20)
+        set("line",ink.LABEL,0.18);set("border",ink.LABEL,0.25)
+    end
+    for name,color in pairs(colors) do
+        self.hex[name]=string.format("%02x%02x%02x",math.floor(color[1]*255+0.5),math.floor(color[2]*255+0.5),math.floor(color[3]*255+0.5))
+    end
 end
+UI:RefreshPalette()
 UI.fontSizes={caption=12,body=14,task=15,brand=18,title=20}
 UI.metrics={tight=4,gap=8,padding=12,section=16,indent=24,icon=16,smallIcon=12,
     button=28,hit=24,scrollbar=16,radius=6,controlRadius=4}
@@ -31,10 +48,21 @@ function UI:Accent()
     return 1,1,1
 end
 
+function UI:StyleFont(entry)
+    local api=self.daylight
+    local face=api and api.Font() or STANDARD_TEXT_FONT
+    local flags=api and api.GetSetting("general","textOutline") or entry.flags or ""
+    entry.text:SetFont(face,entry.size*(A.settings.fontScale or 1),flags or "")
+    if api then
+        entry.text:SetShadowOffset(1,-1)
+        entry.text:SetShadowColor(0,0,0,api.GetSetting("general","textShadow")==false and 0 or 0.6)
+    end
+end
+
 function UI:RegisterFont(text,size,role,flags)
     size=type(size)=="string" and self.fontSizes[size] or size
     self.fonts[#self.fonts+1]={text=text,size=size,role=role,flags=flags}
-    text:SetFont(STANDARD_TEXT_FONT,size*(A.settings.fontScale or 1),flags or "")
+    self:StyleFont(self.fonts[#self.fonts])
 end
 
 function UI:Icon(name,size)
@@ -84,6 +112,7 @@ function UI:Rounded(frame,radius,border)
             t:SetTexture("Interface\\FrameGeneral\\UIFrameSimpleMetalVertical");t:SetTexCoord(4/128,9/128,0,1)
         end
     end
+    if self.daylight then material:Hide() end
     frame.SetBackdropColor=function(self,...)
         for _,t in ipairs(self.surface) do t:SetVertexColor(...) end
         local _,_,_,alpha=...
@@ -94,24 +123,43 @@ function UI:Rounded(frame,radius,border)
     end
 end
 
+function UI:DaylightShell(frame,alpha)
+    local api=self.daylight
+    if not api then return end
+    local opts={window=true,bgAlpha=alpha}
+    api.Skin(frame,opts)
+    frame:HookScript("OnSizeChanged",function() api.Skin(frame,opts) end)
+end
+
 function UI:Panel(name, parent, width, height)
     local f = CreateFrame("Frame", name, parent or UIParent, "BackdropTemplate")
     f:SetSize(width, height)
-    self:Rounded(f,metrics.radius,colors.border)
-    f:SetBackdropColor(unpack(colors.bg))
+    if self.daylight then self:DaylightShell(f)
+    else self:Rounded(f,metrics.radius,colors.border);f:SetBackdropColor(unpack(colors.bg)) end
     return f
 end
 
 function UI:Text(parent, size, color, flags)
-    local text = parent:CreateFontString(nil, "OVERLAY")
+    local text = self.daylight and self.daylight.Text(parent,"body") or parent:CreateFontString(nil, "OVERLAY")
     self:RegisterFont(text,size,color=="accent" and "accent" or nil,flags)
     if color=="accent" then text:SetTextColor(self:Accent()) else text:SetTextColor(unpack(color or colors.white)) end
+    self.fonts[#self.fonts].color=color~="accent" and (color or colors.white) or nil
     text:SetJustifyH("LEFT")
     text:SetJustifyV("TOP")
     return text
 end
 
 function UI:Button(parent, label, width, callback, fontSize)
+    if self.daylight and label~="" then
+        local b=self.daylight.Button(parent,label,metrics.button)
+        b:SetWidth(width);b:SetScript("OnClick",callback)
+        self:RegisterFont(b.text,fontSize or "caption")
+        local selection=b:CreateTexture(nil,"BACKGROUND",nil,-2);selection:SetAllPoints()
+        b.SetBackdropColor=function(_,r,g,blue,alpha)
+            selection:SetColorTexture(r,g,blue,alpha and alpha<=0.20 and alpha or 0)
+        end
+        return b
+    end
     local b = CreateFrame("Button", nil, parent, "BackdropTemplate")
     b:SetSize(width,metrics.button)
     self:Rounded(b,metrics.controlRadius,colors.border)
@@ -181,7 +229,8 @@ function UI:Create()
     self:Movable(self.details,"detailPosition")
     self.details:SetFrameStrata("DIALOG")
     self.details:Hide()
-    local close = self:Button(self.details, "×", 26, function() self.details:Hide() end,"title")
+    local close = self.daylight and self.daylight.Close(self.details,function() self.details:Hide() end,26) or
+        self:Button(self.details, "×", 26, function() self.details:Hide() end,"title")
     close:SetPoint("TOPRIGHT", -14, -14)
     self.tabs = {}
     local side=CreateFrame("Frame",nil,self.details);side:SetSize(164,584)
@@ -229,20 +278,29 @@ function UI:Create()
     self.selectedTab = 1
     self.inCombat=InCombatLockdown()
     self:ApplyStyle()
+    if self.daylight then
+        self.daylight.On("StyleChanged",function()
+            self:ApplyStyle();self:RenderTracker()
+            if self.details:IsShown() then self:SelectTab(self.selectedTab or 1) end
+        end,"AiLeveling")
+    end
 end
 
 function UI:ApplyStyle()
     if not self.frame then return end
+    self:RefreshPalette()
     self.frame:SetScale(A.settings.scale)
     self.frame:SetAlpha(1)
     self.details:SetScale(A.settings.scale)
     self.details:SetAlpha(A.settings.alpha)
     for _,entry in ipairs(self.fonts) do
-        entry.text:SetFont(STANDARD_TEXT_FONT,entry.size*(A.settings.fontScale or 1),entry.flags or "")
-        if entry.role=="accent" then entry.text:SetTextColor(self:Accent()) end
+        self:StyleFont(entry)
+        if entry.role=="accent" then entry.text:SetTextColor(self:Accent())
+        elseif entry.color then entry.text:SetTextColor(unpack(entry.color)) end
     end
     if self.accent then local r,g,b=self:Accent();self.accent:SetColorTexture(r,g,b,1) end
     if self.detailMark then self.detailMark:SetVertexColor(unpack(colors.accent)) end
+    if self.tracker and self.tracker.headerLine then self.tracker.headerLine:SetColorTexture(unpack(colors.accent)) end
     if A.settings.lockWindow then self.frame:StopMovingOrSizing();self.details:StopMovingOrSizing() end
     if self.navFrame then
         self.navFrame:SetScale(A.settings.scale);self.navFrame:SetAlpha(A.settings.alpha)

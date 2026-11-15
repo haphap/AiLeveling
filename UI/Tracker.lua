@@ -148,7 +148,7 @@ local function deliveryAdvice(state,plan,action,choices,byQuest)
     for id,choice in pairs(choices) do
         local active=(state.quests or {})[id]
         local name=recipient(choice)
-        if active and active.ready and name and not choice.itemShortage and not choice.lowValue and not choice.entryBlocked and
+        if active and active.ready and name and not choice.itemShortage and not choice.lowValue and not choice.revisitLevel and not choice.entryBlocked and
             not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] then
             local group=waiting(id)
             if group then
@@ -236,7 +236,7 @@ local function alongTasks(state,plan,action,paused,byQuest)
             local id=choice.questId
             local q=quests[id]
             if id~=action.questId and not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] and
-                not choice.lowValue and not choice.acceptBlocked and not choice.entryBlocked and not choice.requireCheck then
+                not choice.lowValue and not choice.revisitLevel and not choice.acceptBlocked and not choice.entryBlocked and not choice.requireCheck then
                 local kind=not q and "accept" or q.ready and not choice.itemShortage and "turnin" or "objective"
                 local step=choice.executionAction or (choice.actions or {})[1]
                 for _,stage in ipairs(choice.stages or {}) do
@@ -290,7 +290,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
         local total,seen=0,{}
         for _,choice in ipairs(plan.taskOrder or plan.taskChoices or {}) do
             local id=choice.questId
-            if quests[id] and not seen[id] and not choice.lowValue and not choice.entryBlocked and
+            if quests[id] and not seen[id] and not choice.lowValue and not choice.revisitLevel and not choice.entryBlocked and
                 not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] and (not state.locked or state.locked==id) then
                 seen[id]=true
                 local last=choice.stages and choice.stages[#choice.stages]
@@ -327,7 +327,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
             not (state.chainDeferred or {})[action.questId] and pick and
             (model.kind=="turnin" or model.kind=="accept" and pick.upgrade.delta>0) then model.reward=pick end
     end
-    if A.TaskGuide then groups,byQuest=A.TaskGuide.DeliveryGroups(plan.taskChoices,state,plan.taskOrder) end
+    if A.TaskGuide then groups,byQuest=A.TaskGuide.DeliveryGroups(plan.taskPool or plan.taskChoices,state,plan.taskOrder) end
     local currentGroup=action and byQuest[action.questId]
     model.includesCurrent=currentGroup~=nil
     if currentGroup and not state.locked then
@@ -463,7 +463,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
     local visible={}
     for _,row in ipairs(model.rows) do
         local candidate=row.candidate or {}
-        local eligible=not row.deferred and not candidate.lowValue and not candidate.acceptBlocked and
+        local eligible=not row.deferred and not candidate.lowValue and not candidate.revisitLevel and not candidate.acceptBlocked and
             not candidate.entryBlocked and not candidate.requireCheck
         if row.questId==model.questId or row.atStop or row.along or
             eligible and (row.planOrder or not action and row.accepted) and row.questId~=model.nextId then
@@ -540,7 +540,7 @@ function UI.ClassReminders(state,plan)
             local id=choice.questId
             if id and (choice.unlock or not (state.quests or {})[id]) and not (state.completed or {})[id] and
                 not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] and
-                not choice.lowValue and not choice.entryBlocked and not choice.acceptBlocked and not choice.requireCheck then
+                not choice.lowValue and not choice.revisitLevel and not choice.entryBlocked and not choice.acceptBlocked and not choice.requireCheck then
                 if choice.unlock or A.TaskGuide.IsClassQuest(A.Data:GetQuest(id),state,A.Data) then
                     local list=choice.unlock and quests or other
                     list[#list+1]=choice
@@ -675,14 +675,16 @@ function UI:CreateTracker()
         GameTooltip:AddLine("左键拖动面板，右下角调整宽高\n右键：字号、暂停、收起与详细面板",1,1,1,true);GameTooltip:Show()
     end)
     f:SetScript("OnLeave",function() GameTooltip:Hide() end)
-    self:Rounded(f,spacing.radius);f:SetBackdropColor(unpack(palette.hud));f.material:Hide()
+    if self.daylight then self:DaylightShell(f,palette.hud[4])
+    else self:Rounded(f,spacing.radius);f:SetBackdropColor(unpack(palette.hud));f.material:Hide() end
     local T=self.tracker
     T.nearby=CreateFrame("Button",nil,f,"BackdropTemplate")
     local notice=T.nearby
     notice:SetPoint("TOP",UIParent,"TOP",0,-150);notice:SetClampedToScreen(true);notice:SetFrameStrata("HIGH")
     notice:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1,
         insets={left=1,right=1,top=1,bottom=1}})
-    notice:SetBackdropColor(unpack(palette.hud));notice:SetBackdropBorderColor(unpack(palette.line))
+    if self.daylight then notice:SetBackdrop(nil);self:DaylightShell(notice,palette.hud[4])
+    else notice:SetBackdropColor(unpack(palette.hud));notice:SetBackdropBorderColor(unpack(palette.line)) end
     notice.mark=notice:CreateTexture(nil,"ARTWORK");notice.mark:SetColorTexture(unpack(palette.gold))
     notice.icon=notice:CreateTexture(nil,"ARTWORK");notice.icon:SetVertexColor(unpack(palette.gold))
     notice.heading=self:Text(notice,"caption",palette.gold);notice.heading:SetText("顺便完成")
@@ -722,7 +724,8 @@ function UI:CreateTracker()
     end)
     T.header=f:CreateTexture(nil,"BACKGROUND");T.header:SetTexture(media.."hud-header.tga")
     T.header:SetPoint("TOPLEFT",4,-4);T.header:SetPoint("TOPRIGHT",-4,-4)
-    T.headerLine=f:CreateTexture(nil,"ARTWORK");T.headerLine:SetColorTexture(unpack(palette.gold))
+    if self.daylight then T.header:Hide() end
+    T.headerLine=f:CreateTexture(nil,"ARTWORK");T.headerLine:SetColorTexture(unpack(palette.accent))
     T.headerLine:SetPoint("TOPLEFT",8,0);T.headerLine:SetPoint("TOPRIGHT",-8,0);T.headerLine:SetHeight(2)
     f:SetResizable(true);f:SetClampedToScreen(true)
     T.resize=CreateFrame("Button",nil,f);T.resize:SetSize(18,18);T.resize:SetPoint("BOTTOMRIGHT",-2,2)
@@ -867,8 +870,13 @@ function UI:CreateTracker()
     T.thenText=text(T.currentChild,"caption",palette.muted)
     T.thenDivider=T.currentChild:CreateTexture(nil,"BACKGROUND");T.thenDivider:SetColorTexture(unpack(palette.line))
     T.thenButton=self:TrackerRow(nil,T.currentChild)
-    T.region=self:Button(T.currentChild,"",250,function() self.details:Show();self:SelectTab(10) end,"caption")
+    T.region=self:Button(T.currentChild,"",250,function()
+        local region=T.region.region
+        if region then self.Browser.selection[10]="map:"..region.map end
+        self.details:Show();self:SelectTab(10)
+    end,"caption")
     T.region.baseColor={0,0,0,0};T.region:SetBackdropColor(0,0,0,0)
+    T.region.summary=text(T.region,"body",palette.white);T.region.summary:SetSpacing(4)
     T.queuePanel=CreateFrame("Frame",nil,T.currentChild)
     T.queueLabel=text(T.currentChild,"caption",palette.muted);T.queueLabel:SetText("后续行程")
     T.queueScroll=CreateFrame("Frame",nil,T.queuePanel)
@@ -1202,12 +1210,34 @@ function UI:RenderTracker(along)
     nextRow.icon:SetVertexColor(unpack(palette[tone]));nextRow.progress:SetText(instruction)
     nextRow.detail=(nextRow.status or "").."\n"..instruction
     renderObjectives(nextRow,nextRow.objectiveFrame,nextRow.objectives,taskStep and nextQuest and not nextQuest.ready and nextQuest.objectives or {})
-    local region
-    for _,candidate in ipairs(plan.regions or {}) do
-        if not candidate.current and #candidate.choices>=3 then region=candidate;break end
+    local visit=not paused and plan.regionPlan
+    local region=visit and (visit.destination or visit.current)
+    local function names(list,revisit)
+        local titles={}
+        for i=1,math.min(2,#(list or {})) do
+            local entry=list[i];local c=revisit and entry.choice or entry
+            titles[#titles+1]=c.title..(revisit and ("（"..entry.level.."级）") or "")
+        end
+        return table.concat(titles,"、")..(#(list or {})>2 and ("等"..#list.."项") or "")
     end
-    T.region.text:SetText(region and "可考虑："..region.title.."  ›" or "")
-    T.region.region=region
+    local summary={}
+    if visit and #visit.handins>0 then
+        local ready=true
+        for _,c in ipairs(visit.handins) do ready=ready and (state.quests[c.questId] or {}).ready and not c.itemShortage end
+        summary[#summary+1]="|cff"..self.hex[ready and "green" or "gold"]..
+            (ready and "出发前交付：" or "完成后交付：")..names(visit.handins).."|r"
+    end
+    if visit and visit.destination then
+        local nextRegion=visit.destination
+        local tasks=#nextRegion.pickups>0 and nextRegion.pickups or nextRegion.choices
+        summary[#summary+1]="|cff"..self.hex.blue..nextRegion.title.." · "..(#nextRegion.pickups>0 and "接取：" or "继续：")..names(tasks).."|r"
+    end
+    if visit and #visit.revisit>0 then summary[#summary+1]="|cff"..self.hex.muted.."回访："..names(visit.revisit,true).."|r" end
+    T.region.text:SetText(region and (visit.destination and (#visit.handins>0 and "本轮收尾 · 下一站  ›" or "下一站  ›") or
+        (#visit.revisit>0 and "本轮收尾 · 留待回访  ›" or "本轮交付  ›")) or "")
+    T.region.text:SetTextColor(unpack(palette.muted))
+    T.region.summary:SetText(table.concat(summary,"\n"))
+    T.region.region=#summary>0 and region or nil
 
     local instruction=model.instruction
     if model.kind=="objective" and #model.objectives>0 and not A.char.paused and not A.error and
@@ -1474,9 +1504,12 @@ function UI:LayoutTracker()
     local alongVisible=alongHeight
     T.alongScroll:SetHeight(math.max(1,alongVisible));T.alongScroll:SetShown(not collapsed and alongCount>0)
     if T.alongScroll:IsShown() then bottom=bottom+alongVisible+spacing.gap*scale end
-    T.region:ClearAllPoints();T.region:SetPoint("TOPLEFT",indent,-bottom);T.region:SetSize(width-indent,20*scale)
-    T.region.text:SetWidth(width-indent);T.region.text:SetMaxLines(1);T.region:SetShown(not collapsed and T.region.region~=nil)
-    if T.region:IsShown() then bottom=bottom+24*scale end
+    T.region:ClearAllPoints();T.region:SetPoint("TOPLEFT",0,-bottom);T.region:SetWidth(inner)
+    T.region.text:ClearAllPoints();T.region.text:SetPoint("TOPLEFT");T.region.text:SetWidth(inner);T.region.text:SetMaxLines(1)
+    T.region.summary:ClearAllPoints();T.region.summary:SetPoint("TOPLEFT",indent,-20*scale);T.region.summary:SetWidth(bodyWidth)
+    local regionHeight=20*scale+T.region.summary:GetStringHeight()+spacing.gap*scale
+    T.region:SetHeight(regionHeight);T.region:SetShown(not collapsed and T.region.region~=nil)
+    if T.region:IsShown() then bottom=bottom+regionHeight end
     T.progress:SetShown(not collapsed and T.progressRatio~=nil)
     local progressWidth=width-62*scale
     T.progressText:SetWidth(40*scale)

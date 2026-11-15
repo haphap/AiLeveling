@@ -48,18 +48,22 @@ function B:Create(parent)
     divider:SetPoint("TOPLEFT",410,0);divider:SetPoint("BOTTOMLEFT",410,0);divider:SetWidth(1)
     divider:SetColorTexture(unpack(colors.line))
     self.summary=A.UI:Text(self.frame,"body",colors.muted);self.summary:SetPoint("TOPLEFT");self.summary:SetWidth(392)
-    self.search=CreateFrame("EditBox",nil,self.frame,"BackdropTemplate")
+    self.search=A.UI.daylight and A.UI.daylight.Input(self.frame,{search=true}) or CreateFrame("EditBox",nil,self.frame,"BackdropTemplate")
     self.search:SetPoint("TOPLEFT",0,-32);self.search:SetSize(392,28);self.search:SetAutoFocus(false)
-    self.search:SetTextInsets(10,10,0,0)
-    A.UI:Rounded(self.search,metrics.controlRadius,colors.border);self.search:SetBackdropColor(unpack(colors.button))
+    if not A.UI.daylight then
+        self.search:SetTextInsets(10,10,0,0)
+        A.UI:Rounded(self.search,metrics.controlRadius,colors.border);self.search:SetBackdropColor(unpack(colors.button))
+    end
     A.UI:RegisterFont(self.search,"body")
     self.search:SetTextColor(unpack(colors.white))
-    self.searchHint=A.UI:Text(self.frame,"caption",colors.muted);self.searchHint:SetPoint("TOPLEFT",10,-38);self.searchHint:SetText("搜索名称或任务编号")
+    self.searchHint=A.UI:Text(self.frame,"caption",colors.muted);self.searchHint:SetPoint("TOPLEFT",A.UI.daylight and 26 or 10,-38);self.searchHint:SetText("搜索名称或任务编号")
     self.search:SetScript("OnEscapePressed",function(box) box:SetText("");box:ClearFocus() end)
-    self.search:SetScript("OnTextChanged",function(box)
+    local onTextChanged=function(box)
         self.query=box:GetText():lower();self.searchHint:SetShown(self.query=="")
         if self.mode then self.list:SetVerticalScroll(0);self:Refresh(self.mode,true) end
-    end)
+    end
+    if A.UI.daylight then self.search:HookScript("OnTextChanged",onTextChanged)
+    else self.search:SetScript("OnTextChanged",onTextChanged) end
     self.list=CreateFrame("ScrollFrame",nil,self.frame,"UIPanelScrollFrameTemplate")
     self.list:SetPoint("TOPLEFT",0,-70);self.list:SetSize(382,420)
     self.child=CreateFrame("Frame",nil,self.list);self.child:SetSize(382,460);self.list:SetScrollChild(self.child)
@@ -103,6 +107,7 @@ function B:TaskRows(mode)
         local c=status=="可交付" and green or state.quests[id] and gold or allowed and blue or muted
         local meta={color(c,status)}
         if id==currentId then table.insert(meta,1,color(gold,currentLabel)) end
+        if choice.revisitLevel then meta[#meta+1]=color(muted,choice.revisitLevel.."级回访") end
         if choice.unlock then meta[#meta+1]=color(gold,A.TaskGuide.UnlockText(choice.unlock)) end
         if q and q.requiredLevel then meta[#meta+1]="接取 "..q.requiredLevel.."级" end
         if choice.remainingXP then meta[#meta+1]=color(gold,choice.remainingXP.." 经验") end
@@ -204,6 +209,7 @@ function B:GearRows()
 end
 
 function B:Refresh(mode,reuse)
+    gold,blue,green,muted=A.UI.hex.gold,A.UI.hex.blue,A.UI.hex.green,A.UI.hex.muted
     reuse=reuse and self.mode==mode and self.entriesRevision==A.state.revision and self.entriesPlan==A.plan
     if self.mode~=mode then self.list:SetVerticalScroll(0);self.info:SetVerticalScroll(0) end
     self.mode=mode
@@ -218,7 +224,7 @@ function B:Refresh(mode,reuse)
         rows={}
         for _,region in ipairs(A.plan and A.plan.regions or A.Planner.TaskRegions(A.state,A.plan,A.Data)) do
             rows[#rows+1]={key="map:"..region.map,title=region.title,icon="entry",region=region,
-                sub=string.format("%d项适级任务 · %s",#region.choices,color(gold,region.xp..(region.unknownXP>0 and "+经验" or "经验")))..(region.current and " · 当前区域" or "")}
+                sub=string.format("%d项适级任务 · %s",#region.choices,color(gold,region.xp..(region.unknownXP>0 and "+经验" or "经验")))..(region.current and " · 当前区域" or "")..(#(region.revisit or {})>0 and (" · 回访"..#region.revisit.."项") or "")}
         end
     else
         if mode==11 then self:IndexMounts() end
@@ -400,12 +406,34 @@ function B:Detail()
         return
     elseif e.region then
         local r=e.region
-        lines[#lines+1]=color(gold,string.format("%d—%d级任务 · %d项",r.minLevel,r.maxLevel,#r.choices))
-        lines[#lines+1]=r.current and "当前区域，可继续集中完成任务。" or "可考虑前往，先接取下列任务。"
-        if r.seconds then lines[#lines+1]="前往首个接取点  "..time(r.seconds) end
-        if r.travelSeconds then lines[#lines+1]="区域任务总路程  "..time(r.travelSeconds) end
-        for _,c in ipairs(r.choices) do lines[#lines+1]=questLink(c.questId,c.title)..(c.remainingXP and "  "..color(gold,c.remainingXP.."经验") or "") end
-        self:Action(1,"前往首个任务",function()
+        local visit=A.plan and A.plan.regionPlan
+        local nextStop=visit and visit.destination==r
+        lines[#lines+1]=color(gold,string.format("本轮 %d项 · %s",#r.choices,r.xp..(r.unknownXP>0 and "+经验" or "经验")))
+        local function tasks(label,choices,kind)
+            if #choices==0 then return end
+            lines[#lines+1]=color(kind=="turnin" and green or kind=="accept" and blue or muted,label)
+            local items={}
+            for _,entry in ipairs(choices) do
+                local c=kind=="revisit" and entry.choice or entry
+                local stage=kind=="turnin" and c.stages and c.stages[#c.stages] or c.actions and c.actions[1]
+                local point=stage and (stage.recipient or stage.position)
+                local status=A.state.quests[c.questId] and (A.state.quests[c.questId].ready and "可交付" or "已接取") or "未接取"
+                local detail=kind=="revisit" and (entry.level.."级回访 · "..status) or
+                    kind=="turnin" and (c.status=="turnin" and "现在交付" or "本轮完成后交付") or status
+                items[#items+1]=questLink(c.questId,c.title).."\n"..color(muted,detail..(kind~="revisit" and point and point.entityName and (" · "..point.entityName) or ""))
+            end
+            lines[#lines+1]=table.concat(items,"\n")
+        end
+        if nextStop then tasks("出发前交付",visit.handins,"turnin") end
+        if r.seconds then lines[#lines+1]="前往首个任务  "..time(r.seconds) end
+        tasks("到达后接取",r.pickups,"accept")
+        local active={}
+        for _,c in ipairs(r.choices) do if c.status=="objective" then active[#active+1]=c end end
+        tasks("本轮继续完成",active,"objective")
+        tasks("本轮集中交付",r.handins,"turnin")
+        tasks("留待回访",r.revisit,"revisit")
+        if nextStop and visit.current~=r then tasks("离开本区后留待回访",visit.revisit,"revisit") end
+        self:Action(1,r.current and "指引本轮任务" or "前往首个任务",function()
             local ok,why=A.Selection:LockQuest(r.first.questId);self.message=not ok and why or nil;self:Refresh(self.mode)
         end,r.first~=nil)
     elseif e.item then

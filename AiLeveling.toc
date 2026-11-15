@@ -6,7 +6,7 @@
 ## Author: AiLeveling
 ## Version: 0.1.140-dev
 ## Dependencies: QuestieDB, HereBeDragons
-## OptionalDeps: WaypointUI
+## OptionalDeps: WaypointUI, DaylightUI
 ## SavedVariables: AiLevelingDB
 ## SavedVariablesPerCharacter: AiLevelingCharDB
 

@@ -105,14 +105,14 @@ test("NPC 实际接取列表避开不可接任务并保留其他发布者与已�
     s.quests[1].ready=true;eq(plan(s,d).fallback.kind,"turnin");eq(s.completed[1],nil)
     -- A server-offered task absent from the database enters at this NPC, then the native log takes over.
     s.quests={};s.completed[1]=true;B.State:QuestOffersEvent("PLAYER_LEVEL_UP")
-    npc=11;list={{questID=99,title="服务器新任务",questLevel=38}}
+    npc=11;list={{questID=99,title="服务器新任务",questLevel=20}}
     B.State:QuestOffersEvent("GOSSIP_SHOW");s.questOffers=B.State.questOffers
     local fresh=plan(s,d);eq(fresh.fallback.kind,"accept");eq(fresh.fallback.questId,99)
-    eq(fresh.fallback.title,"服务器新任务");eq(fresh.taskChoices[1].level,38)
+    eq(fresh.fallback.title,"服务器新任务");eq(fresh.taskChoices[1].level,20)
     eq(fresh.fallback.position.entityId,11);eq(fresh.fallback.position.entityName,"实际发布者")
     eq(d:GetQuest(99),nil)
     B.State:QuestOffersEvent("QUEST_ACCEPTED");s.questOffers=B.State.questOffers
-    s.quests[99]={title="服务器新任务",level=38,objectives={{text="目标",numRequired=1,numFulfilled=0}}}
+    s.quests[99]={title="服务器新任务",level=20,objectives={{text="目标",numRequired=1,numFulfilled=0}}}
     C_QuestLog.GetNextWaypoint=function() return 1,0.8,0.9 end
     eq(plan(s,d).fallback.kind,"objective")
     s.quests[99].ready=true;C_QuestLog.ReadyForTurnIn=function() return true end

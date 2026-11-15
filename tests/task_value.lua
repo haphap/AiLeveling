@@ -127,7 +127,7 @@ test("职业与坐骑只推荐，选择后接续整条解锁任务线",function(
     result=plan(s,d,nil,B);eq(result.fallback.questId,4);assert(recommendation(result))
     s.quests[4]=nil
     result=plan(s,d,nil,B);eq(result.fallback.questId,4);eq(result.fallback.kind,"accept")
-    eq(result.taskQueue.remaining,1);eq(s.quests[4],nil);eq(s.skipped[1],nil)
+    eq(#result.taskOrder,1);assert(recommendation(result));eq(s.quests[4],nil);eq(s.skipped[1],nil)
     quests[4]=nil;d.Target,d.ObjectiveTargets,d.ReferenceObjectiveTargets,d.Candidates=target,objectives,reference,candidates
     s.locked=1;eq(plan(s,d,nil,B).fallback.questId,1);s.locked=nil
     s.skipped[2]=true;eq(recommendation(plan(s,d,nil,B)),nil);s.skipped[2]=nil

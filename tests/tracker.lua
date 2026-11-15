@@ -188,6 +188,22 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     row.scripts.OnClick(row,"RightButton")
     assert(B.menu["优先做此任务"].enabled);B.menu["优先做此任务"].callback();eq(B.char.locked,4)
     B.Selection:Automatic();eq(B.char.locked,nil)
+    local current={map=1,title="当前区域",choices={B.plan.taskChoices[1]},current=true}
+    local region={map=2,title="下一站",choices={B.plan.taskChoices[4]},pickups={B.plan.taskChoices[4]},
+        handins={B.plan.taskChoices[4]},revisit={},xp=1000,unknownXP=0,minLevel=20,maxLevel=20,first=B.plan.taskChoices[4]}
+    local revisit={choice=B.plan.taskChoices[3],level=22}
+    current.revisit={revisit}
+    B.plan.regions={region}
+    B.plan.regionPlan={current=current,destination=region,handins={B.plan.taskChoices[1]},revisit={revisit}}
+    B.UI:RenderTracker();assert(T.region.summary.value:find("交付：",1,true))
+    assert(T.region.summary.value:find("下一站 · 接取：未接任务",1,true))
+    assert(T.region.summary.value:find("22级",1,true));eq(T.region.shown,true)
+    T.region.scripts.OnClick();eq(browser.selection[10],"map:2")
+    assert(browser.detail.value:find("出发前交付",1,true))
+    assert(browser.detail.value:find("到达后接取",1,true))
+    assert(browser.detail.value:find("22级回访",1,true))
+    assert(browser.detail.value:find("|Hquest:4:0|h",1,true))
+    B.plan.regionPlan=nil;B.UI:RenderTracker();eq(T.region.shown,false)
     B.UI:SelectTab(5);eq(B.UI.Browser.frame.shown,false)
     B.UI:SelectTab(1);eq(B.UI.Browser.frame.shown,true)
     B.UI:ShowText("导出内容");eq(B.UI.Browser.frame.shown,false)

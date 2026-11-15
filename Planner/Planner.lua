@@ -265,62 +265,128 @@ function P.TaskOrder(state,choices,data)
     return order
 end
 
--- Region suggestions use the same eligible tasks and straight-line travel model.
+-- Compare one visit per region: pickups, nearby work, then grouped hand-ins.
 function P.TaskRegions(state,plan,data)
-    plan=plan or {}
     local regions,byMap={},{}
-    for _,c in ipairs(plan.taskChoices or {}) do
+    local automatic=state.position and not (state.locked or state.taskBatch or state.gearTarget or state.inInstance)
+    for _,c in ipairs(plan and plan.taskChoices or {}) do
         local q=data:GetQuest(c.questId)
         local level=c.level or q and q.questLevel or state.level
-        local action=c.actions and c.actions[1]
-        local map=q and q.zoneOrSort and data.maps and data.maps[q.zoneOrSort] or action and action.position and action.position.map
-        if map and level>=state.level-4 and level<=state.level+3 and not c.lowValue and not c.entryBlocked and
-            not (q and (q.requiredSkill or q.requiredRanks)) and not (state.quests[c.questId] or {}).ready then
+        local point=c.actions and c.actions[1] and c.actions[1].position
+        for _,stage in ipairs(c.stages or {}) do
+            if stage.kind=="objective" and stage.position then point=stage.position;break end
+        end
+        local map=point and point.map
+        c.revisitLevel=nil
+        if map and not c.lowValue and not c.entryBlocked and not c.requireCheck and
+            not (q and (q.requiredSkill or q.requiredRanks)) then
             local r=byMap[map]
             if not r then
                 local info=C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(map)
-                r={map=map,title=info and info.name or "区域 #"..map,choices={},xp=0,unknownXP=0,
-                    minLevel=level,maxLevel=level,current=state.position and state.position.map==map}
+                r={map=map,title=info and info.name or "区域 #"..map,choices={},pickups={},handins={},revisit={},
+                    xp=0,unknownXP=0,active=0,work=0,
+                    current=state.position and state.position.map==map}
                 byMap[map]=r;regions[#regions+1]=r
             end
-            r.choices[#r.choices+1]=c;r.xp=r.xp+(c.remainingXP or 0)
-            if not c.remainingXP then r.unknownXP=r.unknownXP+1 end
-            r.minLevel=math.min(r.minLevel,level);r.maxLevel=math.max(r.maxLevel,level)
+            if c.status~="turnin" and level>state.level+2 then
+                local entry={choice=c,level=math.max(q and q.requiredLevel or 0,level-2)}
+                r.revisit[#r.revisit+1]=entry
+                if automatic then c.revisitLevel=entry.level end
+            elseif not c.acceptBlocked then
+                r.choices[#r.choices+1]=c
+                if c.status=="objective" then r.active=r.active+1 end
+            end
         end
     end
     for _,r in ipairs(regions) do
-        table.sort(r.choices,function(a,b)
-            local at,bt=a.timing and a.timing.seconds,b.timing and b.timing.seconds
-            if at and bt and at~=bt then return at<bt end
-            if (at~=nil)~=(bt~=nil) then return at~=nil end
-            if (a.remainingXP or 0)~=(b.remainingXP or 0) then return (a.remainingXP or 0)>(b.remainingXP or 0) end
-            return a.questId<b.questId
-        end)
-        local origin=state.position
-        local total,known=0,true
+        local routable,priced={},{}
+        local pricedXP,pricedKnown=0,true
         for _,c in ipairs(r.choices) do
-            local timing=A.TaskGuide and A.TaskGuide.Timing(origin,c,state,A.Navigation)
-            if timing and timing.seconds then total=total+timing.seconds else known=false end
-            local last=c.stages and c.stages[#c.stages]
-            origin=last and last.position or origin
-            if not r.first and not c.requireCheck and c.actions and c.actions[1] and c.actions[1].position then r.first=c end
+            if c.stagesComplete and c.timing and c.timing.seconds~=nil then
+                routable[#routable+1]=c;priced[c.questId]=true
+                pricedXP=pricedXP+(c.remainingXP or 0);pricedKnown=pricedKnown and c.remainingXP~=nil
+            end
         end
-        r.first=r.first or r.choices[1]
-        local point=r.first and r.first.actions and r.first.actions[1] and r.first.actions[1].position
+        -- Keep accepted members together even when one member's route is still unknown.
+        if #routable>0 then
+            local available={}
+            for _,c in ipairs(r.choices) do
+                if priced[c.questId] or state.quests[c.questId] then available[#available+1]=c end
+            end
+            r.choices=available
+        end
+        r.xp,r.unknownXP,r.work=0,0,0
+        for _,c in ipairs(r.choices) do
+            r.xp=r.xp+(c.remainingXP or 0)
+            if c.remainingXP==nil then r.unknownXP=r.unknownXP+1 end
+            if c.status~="turnin" then r.work=r.work+1 end
+        end
+        table.sort(r.revisit,function(a,b)
+            if a.level~=b.level then return a.level<b.level end
+            return a.choice.questId<b.choice.questId
+        end)
+        local stages,complete={},true
+        for _,kind in ipairs({"accept","objective","turnin"}) do
+            for _,c in ipairs(r.choices) do
+                if priced[c.questId] then
+                    complete=complete and c.stagesComplete
+                    for _,stage in ipairs(c.stages or {}) do
+                        if stage.kind==kind then stages[#stages+1]=stage end
+                    end
+                end
+                if kind=="accept" and c.status==kind then r.pickups[#r.pickups+1]=c end
+                if kind=="turnin" then r.handins[#r.handins+1]=c end
+            end
+        end
+        r.first=r.choices[1]
+        local point=r.first and r.first.actions[1].position
         if point and A.Flights then
             local routes=A.Flights.Routes(state.position,point,state,A.Navigation)
             r.seconds=routes and routes[1] and routes[1].seconds
         elseif point and A.Travel then r.seconds=A.Travel.Walk(state.position,point,state,A.Navigation) end
-        r.travelSeconds=known and total or nil
-        r.rate=known and r.unknownXP==0 and A.TaskGuide.MovementRate(total,r.xp) or nil
+        local timing=A.TaskGuide and #stages>0 and A.TaskGuide.Timing(state.position,
+            {stages=stages,stagesComplete=complete},state,A.Navigation)
+        r.travelSeconds=timing and timing.seconds
+        r.rate=pricedKnown and r.travelSeconds and A.TaskGuide.MovementRate(r.travelSeconds,pricedXP) or nil
     end
     table.sort(regions,function(a,b)
-        if a.rate and b.rate and a.rate~=b.rate then return a.rate>b.rate end
+        if (a.first~=nil)~=(b.first~=nil) then return a.first~=nil end
         if (a.rate~=nil)~=(b.rate~=nil) then return a.rate~=nil end
-        if a.xp~=b.xp then return a.xp>b.xp end
+        if a.rate and b.rate and a.rate~=b.rate then return a.rate>b.rate end
+        if a.current~=b.current then return a.current end
+        if (a.seconds or math.huge)~=(b.seconds or math.huge) then return (a.seconds or math.huge)<(b.seconds or math.huge) end
         return a.map<b.map
     end)
-    return regions
+    if not automatic then return regions end
+    local current=state.position and byMap[state.position.map]
+    local best,nextRegion
+    for _,r in ipairs(regions) do
+        if r.work>0 and r.seconds~=nil then
+            best=best or r
+            if not r.current then nextRegion=nextRegion or r end
+        end
+    end
+    -- Finish the worthwhile work already accepted here; higher-level work waits for a return.
+    local selected=current and current.active>0 and current or best or current and current.work>0 and current
+    local ready={}
+    for _,c in ipairs(current and current.choices or {}) do
+        if c.status=="turnin" then ready[#ready+1]=c end
+    end
+    local visit={current=current,destination=selected and not selected.current and selected or nextRegion,
+        choices=selected and selected.choices or {},handins={},revisit=current and current.revisit or {}}
+    if #ready>0 and selected~=current then
+        visit.choices=ready;visit.handins=ready
+    elseif selected and selected.current then visit.handins=selected.handins end
+    if not selected and #ready==0 then
+        -- Keep tasks with incomplete location data available through the existing fallback.
+        for _,c in ipairs(plan.taskChoices or {}) do
+            if not c.lowValue and not c.revisitLevel and not c.entryBlocked and not c.acceptBlocked then
+                visit.choices[#visit.choices+1]=c
+            end
+        end
+    end
+    if not current and not selected then return regions end
+    return regions,visit
 end
 
 function P.Build(state, data, options)
@@ -363,6 +429,10 @@ function P.Build(state, data, options)
         table.insert(result.taskChoices,1,preferred);result.preferenceApplied=true
     end
     result.taskBatch=batch
+    if not state.inInstance then result.regions,result.regionPlan=P.TaskRegions(state,result,data) end
+    local choices=batch and A.Dungeon.TaskBatchStage(result.taskChoices,state,data) or
+        result.regionPlan and result.regionPlan.choices or result.taskChoices
+    result.taskPool=result.regionPlan and choices or nil
     if batch and batch.returning then
         result.unverified=true
         result.fallback={kind="dungeonLeave",title="离开"..batch.title,text="任务已交齐，离开副本后继续练级。"}
@@ -384,19 +454,27 @@ function P.Build(state, data, options)
         end
     end
     if result.maintenance then
-        local choices=batch and A.Dungeon.TaskBatchStage(result.taskChoices,state,data) or result.taskChoices
         result.taskOrder,result.taskQueue=P.TaskOrder(state,choices,data)
     end
     if not result.best and not result.maintenance and not result.serviceStop and not result.gearPlan then
         -- Reference quests use straight-line travel estimates.
         result.unverified = true
-        local choices=batch and A.Dungeon.TaskBatchStage(result.taskChoices,state,data) or result.taskChoices
         result.taskOrder,result.taskQueue=P.TaskOrder(state,choices,data)
+        if result.regionPlan then
+            local handins={}
+            for _,c in ipairs(result.taskOrder or {}) do
+                local last=c.stages and c.stages[#c.stages]
+                if last and last.position and state.position and last.position.map==state.position.map then
+                    handins[#handins+1]=c
+                end
+            end
+            result.regionPlan.handins=handins
+        end
         local automatic={}
         for _,choice in ipairs(result.taskOrder) do automatic[#automatic+1]=choice end
         for _,choice in ipairs(choices) do automatic[#automatic+1]=choice end
         local deliveryGroups={}
-        if A.TaskGuide then local groups;groups,deliveryGroups=A.TaskGuide.DeliveryGroups(result.taskChoices,state,result.taskOrder) end
+        if A.TaskGuide then local groups;groups,deliveryGroups=A.TaskGuide.DeliveryGroups(result.taskPool or result.taskChoices,state,result.taskOrder) end
         local entryBlocked
         local itemBlockedQuests={}
         for _,choice in ipairs(automatic) do
@@ -451,6 +529,9 @@ function P.Build(state, data, options)
             end
         end
     end
+    if not result.best and not result.fallback and result.regionPlan and #result.regionPlan.revisit>0 then
+        result.fallback={kind="taskReview",title="这些任务留待回访",text="在练级区域中查看建议等级与下一站任务。"}
+    end
     if batch and not result.best and not result.fallback then
         result.fallback={kind="selectionBlocked",title=batch.title.."任务等待处理",
             text=(batch.blocked[1] or "当前任务尚无可执行目标").."；可在副本页查看任务条件或结束安排。"}
@@ -472,6 +553,5 @@ function P.Build(state, data, options)
             result.referenceJourney,result.referenceFlight=stop.referenceJourney,stop.referenceFlight
         end
     end
-    if not state.inInstance then result.regions=P.TaskRegions(state,result,data) end
     return result
 end

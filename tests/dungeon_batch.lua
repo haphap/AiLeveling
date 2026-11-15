@@ -118,7 +118,8 @@ run("关闭副本建议排除自动进本且不拖住同收件人的野外交付
     local row;for _,r in ipairs(model.rows) do if r.questId==1 then row=r end end
     eq(row,nil);eq(s.completed[1],nil)
     B.settings.dungeons=true;p=plan(s,data,B.settings,B)
-    eq(p.fallback.questId,1);eq(p.fallback.kind,"dungeonEnter")
+    eq(p.fallback.questId,2);eq(p.fallback.kind,"turnin") -- Hand in local work before leaving for the dungeon.
+    for _,c in ipairs(p.taskChoices) do if c.questId==1 then eq(c.entryBlocked,nil) end end
 end)
 run("关闭副本建议不自动接取含本内阶段任务但保留手选及任务组",function()
     local B,s,data=fixture();s.completed[3]=true;B.settings.dungeons=false
