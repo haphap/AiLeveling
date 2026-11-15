@@ -456,6 +456,11 @@ test("队列按整程跑路选择顺序而非只看最近首目标且无需执�
     eq(queue.remaining,0);eq(b.orderBasis,"queue-movement")
     eq(a.executionTiming.movementOnly,true)
     s.locked=1;local order=B.TaskQueue.Solve({a,b,c},s,nav);eq(order[1],a)
+    -- Keep the all-objectives-then-delivery seed beyond the three-task search window.
+    s.locked=nil
+    local batch={task(1,0.5,0),task(2,0.6,0),task(3,0.7,0),task(4,0.8,0)}
+    local _,combined=B.TaskQueue.Solve(batch,s,nav)
+    assert(combined.stagePlan);assert(math.abs(combined.seconds-160)<0.00001)
 end)
 local function stagedFixture()
     local B,s,nav,O,T,choice=queueFixture()

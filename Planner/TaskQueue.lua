@@ -242,7 +242,7 @@ local function batchStages(stages,byQuest)
 end
 
 -- Interleave nearby task stages without changing the order within any task.
-function Q.Interleave(order,state,navigation,data,cache)
+function Q.Interleave(order,state,navigation,data,cache,seedOrder,prefix)
     order=Q.PrepareItems(order,state)
     local stages,multiple={},false
     for _,choice in ipairs(order) do
@@ -264,13 +264,42 @@ function Q.Interleave(order,state,navigation,data,cache)
         local lockedGroup=byQuest[state.locked]
         if lockedGroup then for _,choice in ipairs(lockedGroup.choices) do byQuest[choice.questId]=nil end end
     end
+    for i=1,prefix or 0 do
+        local group=byQuest[order[i].questId]
+        if group then for _,choice in ipairs(group.choices) do byQuest[choice.questId]=nil end end
+    end
     local batched=next(byQuest)~=nil
     if not multiple and not batched then return end
     if batched then stages=batchStages(stages,byQuest) end
     local best=Q.Evaluate(stages,state,navigation,data,cache)
-    if not best then return nil,batched end
     local first=state.locked and (#order[1].stages+1) or (order[1].orderHeld and 2 or 1)
+    local fixed=0
+    for i=1,prefix or 0 do fixed=fixed+#order[i].stages end
+    first=math.max(first,fixed+1)
     local changed=batched
+    -- Retain the regional pickup/work/hand-in candidate before local permutations.
+    if not state.locked and not order[1].orderHeld then
+        local phased={}
+        for i=1,fixed do phased[#phased+1]=stages[i] end
+        for _,kind in ipairs({"accept","objective","turnin"}) do
+            for i,choice in ipairs(seedOrder or order) do
+                if i>(prefix or 0) then
+                    for index,stage in ipairs(choice.stages) do
+                        if stage.kind==kind then
+                            phased[#phased+1]={questId=choice.questId,stagesComplete=true,stages={stage},
+                                stageIndex=index,sourceChoice=choice,remainingXP=choice.remainingXP}
+                        end
+                    end
+                end
+            end
+        end
+        if batched then phased=batchStages(phased,byQuest) end
+        if #phased==#stages then
+            local candidate=Q.Evaluate(phased,state,navigation,data,cache)
+            if better(candidate,best,state) then stages,best,changed=phased,candidate,true end
+        end
+    end
+    if not best then return nil,batched end
     -- shortcut: two passes across at most three tasks; enlarge only if route replay shows a need.
     for pass=1,2 do
         local improved=false
@@ -300,9 +329,9 @@ function Q.Interleave(order,state,navigation,data,cache)
     if changed then best.stagePlan=true;best.deliveryBatches=batched and groups or nil;return best end
 end
 
-function Q.Solve(order,state,navigation,data)
+function Q.Solve(order,state,navigation,data,prefix)
     operations,deadline=0,clock()+1
-    if #order<2 or not A.Flights or not A.TaskGuide or not A.Travel then return end
+    if #order==0 or not A.Flights or not A.TaskGuide or not A.Travel then return end
     order=Q.PrepareItems(order,state)
     local base,pending={},{}
     local groups,byQuest=A.TaskGuide.DeliveryGroups(order,state,nil,true)
@@ -322,7 +351,8 @@ function Q.Solve(order,state,navigation,data)
     if #base==0 or state.locked and base[1]~=order[1] then return end
     local cache={}
     local best=Q.Evaluate(base,state,navigation,data,cache)
-    local first=(state.locked or best and base[1].orderHeld) and 2 or 1
+    local seed={};for i,c in ipairs(base) do seed[i]=c end
+    local first=math.max((state.locked or best and base[1].orderHeld) and 2 or 1,(prefix or 0)+1)
     do
         -- Three-task rolling windows keep the existing short planning horizon; every trial funds the whole queue.
         for start=math.max(first,#base-2),first,-1 do
@@ -346,7 +376,7 @@ function Q.Solve(order,state,navigation,data)
             if best then for i,step in ipairs(best.steps) do base[i]=step.choice end end
         end
     end
-    local interleaved,batchBlocked=Q.Interleave(base,state,navigation,data,cache)
+    local interleaved,batchBlocked=Q.Interleave(base,state,navigation,data,cache,seed,prefix)
     if batchBlocked then return end
     best=interleaved or best
     if not best then return end

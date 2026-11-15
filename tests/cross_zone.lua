@@ -1,7 +1,7 @@
 return function(test,eq,F,A,plan)
 local function fixture()
     local B={};for k,v in pairs(A) do B[k]=v end
-    for _,file in ipairs({"Planner/TaskGuide.lua","Planner/Flights.lua","Planner/Planner.lua"}) do
+    for _,file in ipairs({"Planner/TaskGuide.lua","Planner/Flights.lua","Planner/TaskQueue.lua","Planner/Planner.lua"}) do
         assert(loadfile(file))("AiLeveling",B)
     end
     B.Navigation={Distance=function(_,a,b)
@@ -63,6 +63,8 @@ test("跨区未接任务按完整移动收益比较并从接取衔接到交付�
         return target(self,quest,context)
     end
     s.quests[1]={objectives={{text="本轮目标",numRequired=1,numFulfilled=0}}}
+    p=plan(s,d,nil,B);eq(p.fallback.questId,2) -- A much better region wins over accepted local work.
+    s.position={map=1,x=0.2,y=0}
     p=plan(s,d,nil,B);eq(p.fallback.questId,1)
     eq(p.regionPlan.handins[1].questId,1);eq(p.regionPlan.destination.map,2)
     eq(p.regionPlan.destination.pickups[1].questId,2)
@@ -70,6 +72,8 @@ test("跨区未接任务按完整移动收益比较并从接取衔接到交付�
     eq(#p.taskOrder,1);eq(choice(p,3).revisitLevel,22)
     s.quests[1].ready=true;p=plan(s,d,nil,B)
     eq(p.fallback.questId,1);eq(p.fallback.kind,"turnin");eq(p.regionPlan.destination.map,2)
+    eq(p.taskQueue,p.regionPlan.destination.queue);eq(p.taskQueue.steps[1].choice.questId,1)
+    eq(p.regionPlan.destination.first.questId,2);eq(#p.regionPlan.destination.choices,1)
     s.quests[1]=nil;s.completed[1]=true;p=plan(s,d,nil,B)
     eq(p.fallback.questId,2);eq(p.fallback.kind,"accept");eq(#p.regionPlan.handins,0)
     s.locked=3;p=plan(s,d,nil,B);eq(p.fallback.questId,3);eq(p.regionPlan,nil)
@@ -85,6 +89,16 @@ test("跨区未接任务按完整移动收益比较并从接取衔接到交付�
     p=plan(s,d,nil,B);local region=p.regionPlan.destination
     eq(#region.pickups,2)
     assert(region.travelSeconds<choice(p,1).timing.seconds+choice(p,2).timing.seconds)
+    eq(p.taskQueue,region.queue);eq(p.taskOrder,region.order)
+    eq(region.travelSeconds,p.taskQueue.seconds)
+    -- Missing reward data cannot erase the other task's priced batch.
+    q[2].taskFacts.xp=nil
+    p=plan(s,d,nil,B);region=p.regionPlan.destination
+    assert(choice(p,2));eq(#region.pickups,1);assert(region.rate>0)
+    s.quests[2]={objectives={{text="共同目标",numRequired=1,numFulfilled=0}}}
+    p=plan(s,d,nil,B);region=p.regionPlan.destination
+    eq(region.unknownXP,1);assert(region.rate>0);eq(p.taskQueue,region.queue)
+    eq(#p.taskOrder,2);eq(region.rate,B.TaskGuide.MovementRate(region.queue.seconds,1000))
 end)
 
 test("自动行程顺路接取合算任务并按原生进度继续整组交付",function()

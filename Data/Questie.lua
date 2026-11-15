@@ -237,7 +237,21 @@ function D:Candidates(snapshot)
 end
 
 function D:EntityPoints(entity, id, allowArea)
-    return self:SpawnPoints(entity.Get(id,"spawns"),allowArea)
+    local spawns=entity.Get(id,"spawns")
+    local points=self:SpawnPoints(spawns,allowArea)
+    -- The two tram quests have no zone map. Guide to the existing entrance, then name the platform.
+    local map=entity==self.db.Npc and ({[12997]=1455,[13016]=1455,[13018]=1453})[id]
+    if #points==0 and map and spawns and spawns[2257] then
+        for _,leg in ipairs(A.PublicTransitData and A.PublicTransitData.legs or {}) do
+            if leg.kind=="tram" and leg.from.map==map then
+                local city=map==1455 and "铁炉堡" or "暴风城"
+                points[1]={map=map,x=leg.from.x,y=leg.from.y,sourceAreaId=2257,approximate=true,
+                    label=leg.fromName,travelHint="进入地铁，在"..city.."一侧站台寻找"..(entity.Get(id,"name") or "任务目标").."。"}
+                break
+            end
+        end
+    end
+    return points
 end
 
 function D:SpawnPoints(spawnList,allowArea)
@@ -361,7 +375,7 @@ function D:Target(q, state)
                     if not best or precise or comparable and (distance and (not bestDistance or distance<bestDistance) or
                         not distance and not bestDistance and same and not bestSame) then
                         best, bestDistance = point, distance
-                        best.label=best.approximate and "区域参考点" or (kind==1 and "QuestieDB NPC 位置" or "QuestieDB 对象位置")
+                        best.label=best.travelHint and best.label or best.approximate and "区域参考点" or (kind==1 and "QuestieDB NPC 位置" or "QuestieDB 对象位置")
                         best.entityKind,best.entityId=kind==1 and "npc" or "object",id
                         best.entityName=entity.Get(id,"name")
                     end
@@ -606,7 +620,7 @@ function D:ObjectiveTargets(q,state)
             if not best or precise or comparable and (distance and (not bestDistance or distance<bestDistance) or
                 not distance and not bestDistance and same and not bestSame) then
                 chosen[index],distances[index]=point,distance
-                point.label,point.objectiveIndex=point.approximate and "区域参考点" or label,index
+                point.label,point.objectiveIndex=point.travelHint and point.label or point.approximate and "区域参考点" or label,index
                 point.entityKind,point.entityId=kind,id
                 point.targetKind,point.targetId=identity.kind,identity.id
                 point.sourceKind=sourceKind

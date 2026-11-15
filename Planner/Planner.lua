@@ -37,6 +37,7 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         if kind=="objective" and data.DeliveryOnly and data:DeliveryOnly(q,state) then
             action.text="前往任务交付者对话，按游戏提示完成任务。"
         end
+        if position and position.travelHint then action.text=position.travelHint end
         local choice={id="task:"..id,kind="task",questId=id,title=action.title,actions={action},
             status=kind,level=q.questLevel,referenceXP=q.referenceXP,
             requireCheck=not active and (unavailable or not position and not areaId) or nil,
@@ -175,6 +176,10 @@ function P.TaskOrder(state,choices,data)
     end
     if #pending==0 then
         for _,choice in ipairs(choices) do if not choice.lowValue then order[#order+1]=choice end end
+        if A.TaskQueue then
+            local joint,queue=A.TaskQueue.Solve(order,state,A.Navigation,data)
+            if joint then return joint,queue end
+        end
         return order
     end
     if A.TaskQueue then pending=A.TaskQueue.PrepareItems(pending,state) end
@@ -298,67 +303,88 @@ function P.TaskRegions(state,plan,data)
             end
         end
     end
+    local current=state.position and byMap[state.position.map]
+    local ready={}
+    for _,c in ipairs(current and current.choices or {}) do
+        if c.status=="turnin" then ready[#ready+1]=c end
+    end
     for _,r in ipairs(regions) do
-        local routable,priced={},{}
-        local pricedXP,pricedKnown=0,true
+        local priced,known,unknownActive={},false,false
         for _,c in ipairs(r.choices) do
+            unknownActive=unknownActive or state.quests[c.questId] and c.remainingXP==nil
             if c.stagesComplete and c.timing and c.timing.seconds~=nil then
-                routable[#routable+1]=c;priced[c.questId]=true
-                pricedXP=pricedXP+(c.remainingXP or 0);pricedKnown=pricedKnown and c.remainingXP~=nil
+                priced[c.questId]=true
+                known=known or c.remainingXP~=nil
             end
         end
-        -- Keep accepted members together even when one member's route is still unknown.
-        if #routable>0 then
-            local available={}
-            for _,c in ipairs(r.choices) do
-                if priced[c.questId] or state.quests[c.questId] then available[#available+1]=c end
-            end
-            r.choices=available
-        end
-        r.xp,r.unknownXP,r.work=0,0,0
+        local available={}
         for _,c in ipairs(r.choices) do
-            r.xp=r.xp+(c.remainingXP or 0)
-            if c.remainingXP==nil then r.unknownXP=r.unknownXP+1 end
-            if c.status~="turnin" then r.work=r.work+1 end
+            -- Unknown rewards remain visible, but do not dilute a priced pickup batch.
+            if state.quests[c.questId] or priced[c.questId] and (not known or c.remainingXP~=nil) then
+                available[#available+1]=c
+            end
         end
+        if next(priced) then r.choices=available end
         table.sort(r.revisit,function(a,b)
             if a.level~=b.level then return a.level<b.level end
             return a.choice.questId<b.choice.questId
         end)
-        local stages,complete={},true
-        for _,kind in ipairs({"accept","objective","turnin"}) do
-            for _,c in ipairs(r.choices) do
-                if priced[c.questId] then
-                    complete=complete and c.stagesComplete
-                    for _,stage in ipairs(c.stages or {}) do
-                        if stage.kind==kind then stages[#stages+1]=stage end
-                    end
-                end
-                if kind=="accept" and c.status==kind then r.pickups[#r.pickups+1]=c end
-                if kind=="turnin" then r.handins[#r.handins+1]=c end
+        local batch={}
+        if not r.current then for _,c in ipairs(ready) do batch[#batch+1]=copy(c) end end
+        local prefix=#batch
+        for _,c in ipairs(r.choices) do batch[#batch+1]=copy(c) end
+        if #r.choices>0 and A.TaskQueue then
+            if r.active>0 and prefix==0 and not unknownActive then
+                r.order,r.queue=P.TaskOrder(state,batch,data)
+            else r.order,r.queue=A.TaskQueue.Solve(batch,state,A.Navigation,data,prefix) end
+        end
+        local routed={}
+        if r.queue then
+            r.travelSeconds=r.queue.seconds
+            for _,step in ipairs(r.queue.steps) do routed[step.choice.questId]=true end
+        else
+            -- Keep tasks with incomplete routes available through the existing fallback.
+            r.order=r.choices
+        end
+        local members={};for _,c in ipairs(r.choices) do members[c.questId]=true end
+        r.choices={}
+        r.xp,r.unknownXP,r.work,r.active=0,0,0,0
+        local reward,knownRewards=0,0
+        for _,c in ipairs(r.order or {}) do
+            if members[c.questId] then
+                r.choices[#r.choices+1]=c
+                r.xp=r.xp+(c.remainingXP or 0)
+                if c.remainingXP==nil then r.unknownXP=r.unknownXP+1 end
+                if c.status~="turnin" then r.work=r.work+1 end
+                if c.status=="objective" then r.active=r.active+1 end
+                if c.status=="accept" then r.pickups[#r.pickups+1]=c end
+                r.handins[#r.handins+1]=c
+            end
+        end
+        for _,c in ipairs(batch) do
+            if routed[c.questId] and c.remainingXP~=nil then
+                reward=reward+c.remainingXP;knownRewards=knownRewards+1
             end
         end
         r.first=r.choices[1]
-        local point=r.first and r.first.actions[1].position
+        local point=r.first and (r.first.executionAction or r.first.actions[1]).position
         if point and A.Flights then
             local routes=A.Flights.Routes(state.position,point,state,A.Navigation)
             r.seconds=routes and routes[1] and routes[1].seconds
         elseif point and A.Travel then r.seconds=A.Travel.Walk(state.position,point,state,A.Navigation) end
-        local timing=A.TaskGuide and #stages>0 and A.TaskGuide.Timing(state.position,
-            {stages=stages,stagesComplete=complete},state,A.Navigation)
-        r.travelSeconds=timing and timing.seconds
-        r.rate=pricedKnown and r.travelSeconds and A.TaskGuide.MovementRate(r.travelSeconds,pricedXP) or nil
+        if r.queue and r.queue.xpKnown then reward=r.queue.xp end
+        r.rate=knownRewards>0 and r.travelSeconds and A.TaskGuide.MovementRate(r.travelSeconds,reward) or nil
     end
     table.sort(regions,function(a,b)
         if (a.first~=nil)~=(b.first~=nil) then return a.first~=nil end
         if (a.rate~=nil)~=(b.rate~=nil) then return a.rate~=nil end
         if a.rate and b.rate and a.rate~=b.rate then return a.rate>b.rate end
         if a.current~=b.current then return a.current end
-        if (a.seconds or math.huge)~=(b.seconds or math.huge) then return (a.seconds or math.huge)<(b.seconds or math.huge) end
+        local at,bt=a.travelSeconds or a.seconds or math.huge,b.travelSeconds or b.seconds or math.huge
+        if at~=bt then return at<bt end
         return a.map<b.map
     end)
     if not automatic then return regions end
-    local current=state.position and byMap[state.position.map]
     local best,nextRegion
     for _,r in ipairs(regions) do
         if r.work>0 and r.seconds~=nil then
@@ -366,16 +392,17 @@ function P.TaskRegions(state,plan,data)
             if not r.current then nextRegion=nextRegion or r end
         end
     end
-    -- Finish the worthwhile work already accepted here; higher-level work waits for a return.
-    local selected=current and current.active>0 and current or best or current and current.work>0 and current
-    local ready={}
-    for _,c in ipairs(current and current.choices or {}) do
-        if c.status=="turnin" then ready[#ready+1]=c end
+    local selected=best or current and current.work>0 and current
+    -- Keep local accepted work only while its batch reward is within the existing 10% tolerance.
+    if current and current.active>0 and current.rate and best and best.rate and current.rate>=best.rate*0.9 then
+        selected=current
     end
     local visit={current=current,destination=selected and not selected.current and selected or nextRegion,
-        choices=selected and selected.choices or {},handins={},revisit=current and current.revisit or {}}
+        choices=selected and selected.order or {},order=selected and selected.order,queue=selected and selected.queue,
+        handins={},revisit=current and current.revisit or {}}
     if #ready>0 and selected~=current then
-        visit.choices=ready;visit.handins=ready
+        visit.handins=ready
+        if not visit.queue then visit.choices=ready;visit.order=nil end
     elseif selected and selected.current then visit.handins=selected.handins end
     if not selected and #ready==0 then
         -- Keep tasks with incomplete location data available through the existing fallback.
@@ -454,12 +481,16 @@ function P.Build(state, data, options)
         end
     end
     if result.maintenance then
-        result.taskOrder,result.taskQueue=P.TaskOrder(state,choices,data)
+        if result.regionPlan and result.regionPlan.queue then
+            result.taskOrder,result.taskQueue=result.regionPlan.order,result.regionPlan.queue
+        else result.taskOrder,result.taskQueue=P.TaskOrder(state,choices,data) end
     end
     if not result.best and not result.maintenance and not result.serviceStop and not result.gearPlan then
         -- Reference quests use straight-line travel estimates.
         result.unverified = true
-        result.taskOrder,result.taskQueue=P.TaskOrder(state,choices,data)
+        if result.regionPlan and result.regionPlan.queue then
+            result.taskOrder,result.taskQueue=result.regionPlan.order,result.regionPlan.queue
+        else result.taskOrder,result.taskQueue=P.TaskOrder(state,choices,data) end
         if result.regionPlan then
             local handins={}
             for _,c in ipairs(result.taskOrder or {}) do

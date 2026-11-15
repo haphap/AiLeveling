@@ -57,6 +57,32 @@ test("跨大陆未接任务进入完整收益比较并保留真实接交事件",
     s.position=d:Target();p=plan(s,d,nil,B);eq(p.fallback.kind,"accept")
     s.quests[1]={ready=true,objectives={}};p=plan(s,d,nil,B);eq(p.fallback.kind,"turnin")
     eq(s.completed[1],nil)
+    -- QuestieDB's tram area has no map; use existing city entrances and name the platform.
+    for _,file in ipairs({"Data/PublicTransit.lua","Data/Questie.lua"}) do assert(loadfile(file))("AiLeveling",B) end
+    local oldMap,oldQuest=C_Map,C_QuestLog
+    C_Map={GetMapInfo=function(id) return {mapID=id} end};C_QuestLog={}
+    local npcs={[12997]="蒙提",[13016]="矿道老鼠",[13018]="尼普希"}
+    B.Data.maps={[2257]=0}
+    B.Data.db={Npc={Get=function(id,key)
+        if key=="name" then return npcs[id] elseif key=="spawns" and npcs[id] then return {[2257]={{-1,-1}}} end
+    end},Quest={Get=function(id,key)
+        if key=="startedBy" then return {{12997}} end
+        if key=="finishedBy" then return {{id==6661 and 12997 or 13018}} end
+        if key=="objectives" then return id==6661 and {{{13016}}} or {} end
+    end},Object={Get=function() end},Item={Get=function() end}}
+    s.quests={};s.position={map=1455,x=0.78,y=0.51}
+    for _,id in ipairs({6661,6662}) do
+        local quest=F.Quest(id);quest.questLevel=10;quest.zoneOrSort=2257
+        quest.taskFacts={level=10,complex=false,objectives=id==6661 and {{kind="npc",id=13016,count=5}} or {}}
+        local start=B.Data:Target(quest,s)
+        eq(start.map,1455);eq(start.approximate,true);assert(start.travelHint:find("蒙提",1,true))
+        local stages,complete=B.TaskGuide.Stages(quest,s,B.Data,{kind="accept",questId=id,position=start})
+        assert(complete);eq(stages[#stages].position.map,id==6661 and 1455 or 1453)
+        assert(stages[#stages].text:find(id==6661 and "铁炉堡" or "暴风城",1,true))
+        if id==6661 then eq(stages[2].targetId,13016);eq(stages[2].need,5) end
+        eq(s.quests[id],nil);eq(s.completed[id],nil)
+    end
+    C_Map,C_QuestLog=oldMap,oldQuest
 end)
 test("后续目标未定位仍安排当前跨大陆接取且不补造整程收益",function()
     local B,s=fixture();local q=F.Quest(1);q.verified=false;q.questLevel=s.level

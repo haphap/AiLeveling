@@ -104,7 +104,7 @@ function G.Stages(q,state,data,first)
     local stages,complete,reference={},true,nil
     local function add(kind,position,text,index,expected,areaId)
         if not position and not areaId then position=area end
-        local stage={kind=kind,questId=q.id,title=q.title,position=position,text=text,
+        local stage={kind=kind,questId=q.id,title=q.title,position=position,text=position and position.travelHint or text,
             objectiveIndex=index,expected=expected,areaId=areaId}
         stages[#stages+1]=stage
         if not position then complete=false end
