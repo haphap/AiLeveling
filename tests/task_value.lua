@@ -73,19 +73,24 @@ test("低等级低经验无装备收益无任务关联才建议放弃",function(
     s.level=20;q.taskFacts.xp[2][2]=400;eq(B.TaskGuide.LowValue(q,s,d),nil)
     q.taskFacts.xp=nil;eq(B.TaskGuide.LowValue(q,s,d),nil)
 end)
-test("低收益前置后续关联和未知关系索引均保留",function()
+test("仅保留有当前高收益后续的前置任务",function()
     local B,s,q,d=fixture()
-    local other=F.Quest(2);other.preQuestGroup={1};A.Chains.IndexQuest(d.chainIndex,other,d)
+    local other=F.Quest(2);other.preQuestGroup={1};other.questLevel=20
+    other.taskFacts={level=20,xp={{1,4000}},rewards={}}
+    d.GetQuest=function(_,id) if id==1 then return q elseif id==2 then return other end end
+    A.Chains.IndexQuest(d.chainIndex,other,d)
     eq(B.TaskGuide.LowValue(q,s,d),nil)
+    s.completed[2]=true;assert(B.TaskGuide.LowValue(q,s,d));s.completed[2]=nil
+    other.taskFacts.xp={{1,100}};assert(B.TaskGuide.LowValue(q,s,d))
     d.chainIndex=A.Chains.NewIndex();q.preQuestSingle={3};A.Chains.IndexQuest(d.chainIndex,q,d)
-    eq(B.TaskGuide.LowValue(q,s,d),nil)
+    assert(B.TaskGuide.LowValue(q,s,d))
     d.chainIndex=nil;eq(B.TaskGuide.LowValue(q,s,d),nil)
 end)
-test("已完成锁定职业法术和装备目标不建议放弃",function()
+test("已完成锁定法术和装备目标保留但普通职业任务也筛选",function()
     local B,s,q,d=fixture()
     s.quests[1].ready=true;eq(B.TaskGuide.LowValue(q,s,d),nil);s.quests[1].ready=false
     s.locked=1;eq(B.TaskGuide.LowValue(q,s,d),nil);s.locked=nil
-    q.requiredClasses=1;eq(B.TaskGuide.LowValue(q,s,d),nil);q.requiredClasses=0
+    q.requiredClasses=1;assert(B.TaskGuide.LowValue(q,s,d));q.requiredClasses=0
     q.taskFacts.rewards.spell=10;eq(B.TaskGuide.LowValue(q,s,d),nil);q.taskFacts.rewards.spell=nil
     B.Gear={GetSource=function(id) if id=="target" then return {questId=1} end end};s.gearTarget="target";eq(B.TaskGuide.LowValue(q,s,d),nil)
 end)
@@ -178,7 +183,7 @@ end)
 test("自动规划跳过低价值任务但保留列表与手动锁定",function()
     local B,s,q,d=fixture()
     local result=plan(s,d,nil,B)
-    eq(result.fallback.kind,"taskReview");eq(#result.taskChoices,1);assert(result.taskChoices[1].lowValue)
+    eq(result.fallback.kind,"taskReview");eq(#result.taskChoices,1);assert(result.taskChoices[1].lowValue);eq(#result.taskOrder,0)
     eq(s.quests[1].ready,nil);eq(s.completed[1],nil);eq(s.skipped[1],nil)
     s.locked=1;result=plan(s,d,nil,B);eq(result.fallback.questId,1);eq(result.taskChoices[1].lowValue,nil)
 end)
@@ -225,6 +230,30 @@ test("远处低收益目标含返程后退出自动推荐且不拖住同NPC交�
     s.quests[2]={ready=true,objectives={}}
     result=plan(s,d,nil,B);eq(result.fallback.questId,2);eq(result.fallback.kind,"turnin")
     local groups=B.TaskGuide.DeliveryGroups(result.taskChoices,s);eq(#groups,0)
+    -- At low levels, compare the whole trip against a viable nearby alternative.
+    s.level,s.maxXP,s.locked=10,10000,nil;q.questLevel,q.taskFacts.level=10,10
+    q.taskFacts.xp={{1,400}};good.questLevel=10;good.taskFacts={level=10,xp={{1,800}},rewards={}}
+    s.quests[2]={objectives={{text="附近目标",numRequired=1,numFulfilled=0}}}
+    A.Chains.IndexQuest(d.chainIndex,good,d)
+    d.Target=function(_,quest,state) return {map=1,x=state.quests[quest.id] and not state.quests[quest.id].ready and (quest.id==1 and 2 or 0.4) or 0,y=0} end
+    d.ObjectiveTargets=function(_,quest) return {{map=1,x=quest.id==1 and 2 or 0.4,y=0,objectiveIndex=1}} end
+    result=plan(s,d,nil,B);eq(result.fallback.questId,2);eq(#result.taskOrder,1)
+    local far=result.taskChoices[2];eq(far.questId,1);assert(far.lowValue.distant)
+    -- The entire unaccepted pool is filtered too, and unknown reward cache cannot restore a detour.
+    s.quests[1]=nil;q.taskFacts.rewards.choices={{id=900,count=1}}
+    d.ReferenceObjectiveTargets=function(_,quest) return {{text="目标"}},{{map=1,x=quest.id==1 and 2 or 0.4,y=0}},false end
+    result=plan(s,d,nil,B);eq(result.fallback.questId,2);assert(result.taskChoices[2].lowValue)
+    -- A profitable distant quest stays available; ready and manually chosen quests remain actionable.
+    q.taskFacts.xp={{1,2000}};result=plan(s,d,nil,B)
+    for _,c in ipairs(result.taskChoices) do if c.questId==1 then eq(c.lowValue,nil) end end
+    q.taskFacts.xp={{1,400}};s.quests[1]={ready=true,objectives={}}
+    result=plan(s,d,nil,B);eq(result.fallback.questId,1)
+    s.quests[1].ready=false
+    q.taskFacts.xp={{1,100}};good.taskFacts.xp={{1,2000}}
+    d.Target=function(_,quest,state) return {map=1,x=state.quests[quest.id] and not state.quests[quest.id].ready and 2 or 0,y=0} end
+    d.ObjectiveTargets=function() return {{map=1,x=2,y=0,objectiveIndex=1}} end
+    result=plan(s,d,nil,B);eq(#result.taskOrder,2)
+    for _,c in ipairs(result.taskChoices) do eq(c.lowValue,nil) end
     s.locked=1;result=plan(s,d,nil,B);eq(result.fallback.questId,1);eq(result.taskChoices[1].lowValue,nil)
 end)
 end

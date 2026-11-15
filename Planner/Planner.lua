@@ -89,10 +89,50 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         if thread and not isMain and clock()>=deadline then coroutine.yield();deadline=clock()+1 end
     end
     local unlocks=A.TaskGuide and A.TaskGuide.UnlockRecommendations(state,data,data.ids or ids) or {}
-    local unknownXP={}
+    local nearbyRate
     for _,choice in ipairs(choices) do
         choice.unlock=unlocks[choice.questId]
         if choice.unlock then choice.lowValue=nil end
+        local seconds=choice.timing and choice.timing.seconds
+        local point=choice.actions[1].position
+        if not choice.lowValue and not choice.unlock and not choice.acceptBlocked and not choice.entryBlocked and
+            not choice.requireCheck and choice.status~="turnin" and (choice.level or 0)<=state.level+2 and
+            point and state.position and point.map==state.position.map and seconds and seconds>=60 and seconds<300 and
+            choice.remainingXP and choice.remainingXP>0 then
+            local rate=A.TaskGuide.MovementRate(seconds,choice.remainingXP)
+            nearbyRate=math.max(nearbyRate or 0,rate)
+        end
+    end
+    for _,choice in ipairs(choices) do
+        if nearbyRate and not choice.lowValue and not choice.unlock then
+            choice.lowValue=A.TaskGuide.LowValue(data:GetQuest(choice.questId),state,data,choice,nearbyRate)
+        end
+    end
+    -- Keep a detour only when every remaining stop fits an already accepted, worthwhile trip.
+    local anchors={}
+    for _,choice in ipairs(choices) do
+        if state.quests[choice.questId] and choice.status=="objective" and not choice.lowValue and
+            not choice.entryBlocked and choice.timing and choice.timing.seconds then anchors[#anchors+1]=choice end
+    end
+    local unknownXP={}
+    for _,choice in ipairs(choices) do
+        if choice.lowValue and choice.lowValue.distant and not choice.lowValue.obsolete then
+            for _,anchor in ipairs(anchors) do
+                local cursor,extra=0,0
+                for _,stage in ipairs(choice.stages) do
+                    local found
+                    for i=cursor,#anchor.stages do
+                        local point=i==0 and state.position or anchor.stages[i].position
+                        local distance=stage.position and point and A.Navigation:Distance(stage.position,point)
+                        if distance and distance<=140 then
+                            cursor=i;extra=extra+2*distance/(state.runSpeed or 7);found=true;break
+                        end
+                    end
+                    if not found then extra=math.huge;break end
+                end
+                if extra<=60 then choice.lowValue=nil;break end
+            end
+        end
         if choice.timing and choice.timing.seconds~=nil and choice.remainingXP==nil then
             unknownXP[choice.status..(choice.lowValue and ":low" or "")]=true
         end
@@ -128,12 +168,15 @@ function P.TaskOrder(state,choices,data)
     local pending,order,optional={},{},{}
     for _,choice in ipairs(choices) do
         choice.executionTiming=nil;choice.executionAction=nil
-        if state.quests[choice.questId] or choice.questId==state.locked then
-            if (choice.lowValue or choice.entryBlocked) and choice.questId~=state.locked then optional[#optional+1]=choice
+        if not choice.lowValue and (state.quests[choice.questId] or choice.questId==state.locked) then
+            if choice.entryBlocked and choice.questId~=state.locked then optional[#optional+1]=choice
             else pending[#pending+1]=choice end
         end
     end
-    if #pending==0 then return choices end
+    if #pending==0 then
+        for _,choice in ipairs(choices) do if not choice.lowValue then order[#order+1]=choice end end
+        return order
+    end
     if A.TaskQueue then pending=A.TaskQueue.PrepareItems(pending,state) end
     local origin=state.position
     local projected=copy(state)
@@ -403,7 +446,7 @@ function P.Build(state, data, options)
     if not result.best and not result.fallback then
         for _,choice in ipairs(result.taskChoices or {}) do
             if choice.lowValue then
-                result.fallback={kind="taskReview",title="当前剩余任务收益偏低",text="可查看下方放弃／跳过建议，或点击任务手动继续。"}
+                result.fallback={kind="taskReview",title="当前剩余任务收益偏低",text="在任务面板查看跳过建议，或选择任务手动继续。"}
                 break
             end
         end

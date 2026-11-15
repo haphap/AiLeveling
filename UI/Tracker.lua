@@ -361,6 +361,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
         local status=UI.QuestStatus(state,id,plan)
         if status=="已交付" then return end
         local candidate=choices[id]
+        if candidate and candidate.lowValue then return end
         local step=source or (candidate and candidate.actions[1]) or {}
         local deferred=(state.skipped or {})[id] or (state.chainDeferred or {})[id]
         local pickup=candidate and candidate.actions[1] or step
@@ -387,10 +388,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
             local row=model.rows[#model.rows]
             row.progress=(sharedKind=="item" and "一并收集 · " or "一起推进 · ")..row.progress
         end
-        if candidate and candidate.lowValue then
-            local row=model.rows[#model.rows]
-            row.progress=candidate.lowValue.suggestion.." · "..(candidate.lowValue.summary or "低经验／无装备提升／无任务线")
-        elseif candidate and candidate.entryBlocked then
+        if candidate and candidate.entryBlocked then
             model.rows[#model.rows].progress=candidate.entryBlocked
         end
         if q then model.acceptedCount=model.acceptedCount+1 else model.unacceptedCount=model.unacceptedCount+1 end
@@ -415,9 +413,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
     for id in pairs(quests) do if not seen[id] then rest[#rest+1]=id end end
     table.sort(rest);for _,id in ipairs(rest) do add(id) end
     for _,choice in ipairs(plan.taskChoices or {}) do add(choice.questId,choice.actions[1]) end
-    local ranked={}
-    for _,row in ipairs(model.rows) do if not (row.candidate and row.candidate.lowValue) then ranked[#ranked+1]=row end end
-    for _,row in ipairs(model.rows) do if row.candidate and row.candidate.lowValue then ranked[#ranked+1]=row end end
+    local ranked=model.rows
     local grouped,emitted={},{}
     local function emit(group)
         if not group or emitted[group] then return end

@@ -373,7 +373,8 @@ function G.UnlockText(unlock)
     return (unlock.kind=="mount" and "解锁坐骑" or "解锁职业技能")..(spell and (" · "..spell.name) or "")
 end
 
-function G.LowValue(q,state,data,choice)
+function G.LowValue(q,state,data,choice,nearbyRate)
+    if not q then return end
     local active=state.quests[q.id]
     if state.locked==q.id or active and active.ready then return end
     local rewards=q.taskFacts and q.taskFacts.rewards
@@ -403,22 +404,36 @@ function G.LowValue(q,state,data,choice)
     -- Count the whole remaining journey, including the return to the recipient.
     local travel=choice and choice.timing and choice.timing.seconds
     local lowXP=xp<=base*0.5 or type(state.maxXP)=="number" and state.maxXP>0 and xp<=state.maxXP*0.02
-    local distant=gap>=3 and travel and travel>=300 and lowXP
+    local inefficient=travel and travel>=300 and nearbyRate and G.MovementRate(travel,xp)<nearbyRate/3
+    local distant=travel and travel>=300 and (lowXP or inefficient)
     if not obsolete and not distant then return end
     local index=data.chainIndex
-    if not index or not index.nodes[q.id] or #(index.incoming[q.id] or {})>0 or #(index.outgoing[q.id] or {})>0 then return end
-    if q.requiredClasses and q.requiredClasses~=0 or q.requiredSkill or (q.requiredSpell or 0)>0 then return end
+    if not index or not index.nodes[q.id] then return end
+    -- A completed predecessor or an unrelated/exclusive edge does not add value.
+    for _,id in ipairs(A.Chains.Descendants(q.id,index).ids) do
+        local nextQuest=id~=q.id and not state.completed[id] and data:GetQuest(id)
+        if nextQuest and A.Eligibility.Check(nextQuest,state,data,true) and
+            (nextQuest.questLevel or 0)<=state.level+2 then
+            local nextXP=G.XP(nextQuest,state.level,state)
+            local nextBase=G.XP(nextQuest,nextQuest.questLevel or state.level,state)
+            if nextXP and nextBase and nextXP>0 and nextXP>nextBase*0.5 and
+                (not state.maxXP or state.maxXP<=0 or nextXP>state.maxXP*0.02) then return end
+        end
+    end
     local source=A.Gear and A.Gear.GetSource and A.Gear.GetSource(state.gearTarget,data)
     if source and source.questId==q.id then return end
-    if not rewards or (rewards.spell or 0)>0 or (rewards.spellCast or 0)>0 then return end
+    if not rewards and not distant then return end
+    rewards=rewards or {}
+    if (rewards.spell or 0)>0 or (rewards.spellCast or 0)>0 then return end
     for _,list in ipairs({rewards.items or {},rewards.choices or {}}) do
         for _,entry in ipairs(list) do
             local id=entry.id
             if type(id)~="number" or id<=0 then return end
             local item=state.items and state.items[id]
             if not item and A.Items and C_Item and C_Item.GetItemInfo then item=A.Items:Read(id) end
-            if not item or item.pending or item.equipLoc==nil then return end
-            if item.equipLoc~="" then
+            if not item or item.pending or item.equipLoc==nil then
+                if not distant then return end
+            elseif item.equipLoc~="" then
                 if not A.Gear or not state.equipment then return end
                 local future=copy(item);future.futureCopy=true
                 local upgrade=A.Gear.Upgrade(future,state)
@@ -426,9 +441,10 @@ function G.LowValue(q,state,data,choice)
             end
         end
     end
-    return {xp=xp,baseXP=base,distant=distant and true or nil,
-        summary=distant and "路远收益低／无装备提升／无任务线" or "低经验／无装备提升／无任务线",
-        reason=distant and "任务地点远、等级偏低、经验收益低；奖励装备无提升，未关联任务线。" or
-            string.format("任务低于角色 %d 级，经验仅剩 %.0f%%；奖励装备无提升，未关联任务线。",gap,xp/base*100),
+    return {xp=xp,baseXP=base,obsolete=obsolete or nil,distant=distant and true or nil,
+        summary=distant and "往返远／收益低" or "任务过级／收益低",
+        reason=inefficient and "整趟跑路至少 5 分钟，经验与跑路时间之比不足附近可做任务的三分之一。" or
+            distant and "完成目标并交付需要至少 5 分钟跑路，交付经验偏低。" or
+            string.format("任务低于角色 %d 级，经验仅剩 %.0f%%，没有当前可推进的高收益后续。",gap,xp/base*100),
         suggestion=active and "建议放弃" or "建议跳过"}
 end
