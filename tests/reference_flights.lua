@@ -170,15 +170,14 @@ test("无需先飞过航线即可按参考落地点估时且实际落地点优�
     s.taxiLandings={["1:2"]=L}
     s.taxiAvailability={};eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
 end)
-test("参考落地点仍需原生可达版本与已知飞行耗时",function()
+test("参考飞行仍需已发现可达状态与坐标和已知飞行耗时",function()
     local B,s,a,nav,O,D,L,T=joint();s.taxiLandings={}
     local function walking() eq(B.Flights.Routes(O,T,s,nav)[1].flights,0) end
     s.taxiAvailability["1:2"]=false;walking();s.taxiAvailability["1:2"]=true
     s.unlocked["taxi:2"]=nil;walking();s.unlocked["taxi:2"]=true
     s.clientVersion="other";walking();s.clientVersion="1.60.1";s.clientBuild="70862"
     B.FlightData.durations.Alliance["1:2"]=nil;walking();B.FlightData.durations.Alliance["1:2"]=100
-    s.taxiDepartures={};walking();s.taxiDepartures={[1]=D}
-    nav.hbd=nil;walking()
+    nav.hbd=nil;s.taxiDepartures={};walking()
 end)
 test("参考落地点投影到区域或上级大陆且拒绝洞内和无效坐标",function()
     local B,s,a,nav,O,D,L,T=joint();s.taxiLandings={}
@@ -216,8 +215,34 @@ test("连续航班的实际转乘点按直线连接",function()
     local routes=B.Flights.Routes(O,T4,s,nav)
     eq(routes[1].flights,2);eq(routes[1].seconds,175)
 end)
-test("完整参考规划只执行选中路线的首段并等待实际交付",function()
+test("暴风城换区无需先开飞行地图即引导飞往湖畔镇并等待实际交付",function()
     local B,s,a,nav,O,D,L,T=joint()
+    local oldMap,oldTaxi=C_Map,C_TaxiMap
+    C_Map={GetBestMapForUnit=function() return 1453 end,GetMapInfo=function(map)
+        return {mapType=3,name=map==1453 and "暴风城" or "赤脊山"}
+    end}
+    C_TaxiMap={GetTaxiNodesForMap=function()
+        return {{nodeID=2,name="暴风城",faction=2,isUndiscovered=false},
+            {nodeID=5,name="湖畔镇",faction=2,isUndiscovered=false}}
+    end}
+    assert(loadfile("Data/Flights.lua"))("AiLeveling",B)
+    assert(loadfile("Transport.lua"))("AiLeveling",B)
+    O,D,L,T={map=1453,x=0.6,y=0.7},{map=1453,x=0.7,y=0.7},{map=1433,x=0.3,y=0.6},{map=1433,x=0.4,y=0.6}
+    function nav:Distance(a,b)
+        local function world(p) return p.map==1453 and p.x*1400 or p.x*2100+2310 end
+        return math.abs(world(a)-world(b))
+    end
+    nav.hbd.GetZoneCoordinatesFromWorldInstance=function(_,west,north,instance,map)
+        eq(instance,0)
+        for id,point in pairs({[2]=D,[5]=L}) do
+            local node=B.FlightData.nodes[id]
+            if node.world[1]==north and node.world[2]==west and point.map==map then return point.x,point.y end
+        end
+    end
+    s.position=O;B.state=s
+    B.Transport:Snapshot(s)
+    eq(s.taxiOrigin,nil);eq(next(s.taxiDepartures),nil);eq(next(B.Transport.availability),nil)
+    eq(s.taxiAvailability["2:5"],true);eq(s.taxiNames[5],"湖畔镇")
     assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
     local oldFlights,oldGuide,oldNav=A.Flights,A.TaskGuide,A.Navigation
     A.Flights,A.TaskGuide,A.Navigation=B.Flights,B.TaskGuide,nav
@@ -226,9 +251,22 @@ test("完整参考规划只执行选中路线的首段并等待实际交付",fun
     local result=plan(s,d)
     assert(result.referenceJourney);eq(result.referenceJourney.flights,1)
     eq(result.travelActions[1].kind,"transit");eq(result.travelActions[1].mode,"flight")
+    local flight=result.travelActions[1]
+    eq(flight.fromTaxi,2);eq(flight.toTaxi,5);eq(flight.departure.map,1453);eq(flight.position.map,1433)
+    eq(flight.title,"飞往 湖畔镇");assert(flight.text:find("飞行管理员",1,true))
     eq(result.travelActions[#result.travelActions].kind,"turnin");eq(s.completed[99],nil)
     local count=0;for _,action in ipairs(result.travelActions) do if action.kind=="turnin" then count=count+1 end end
     eq(count,1)
+    B.UI={};B.Navigation=nav;nav.actions=result.travelActions;nav.index=1
+    assert(loadfile("UI/Tracker.lua"))("AiLeveling",B)
+    local journey=B.UI.TrackerJourney(s,flight)
+    eq(journey.steps[1].title,"走到 暴风城飞行管理员");eq(journey.steps[2].title,"飞往 湖畔镇")
+    eq(journey.steps[#journey.steps].kind,"turnin")
+    B.Transport.availability["2:5"]=false;B.Transport:Snapshot(s)
+    eq(s.taxiAvailability["2:5"],false);eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
+    B.Transport.availability={};B.Transport.known["taxi:5"]=false;B.Transport:Snapshot(s)
+    eq(s.taxiAvailability["2:5"],nil);eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
+    C_Map,C_TaxiMap=oldMap,oldTaxi
     A.Flights,A.TaskGuide,A.Navigation=oldFlights,oldGuide,oldNav
 end)
 local function queueFixture()

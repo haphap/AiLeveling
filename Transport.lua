@@ -52,9 +52,11 @@ function T:RefreshKnown(map,faction)
         map=info and info.parentMapID
     end
     local side=faction=="Alliance" and 2 or faction=="Horde" and 1
+    self.taxiNames=self.taxiNames or {}
     for _,id in ipairs(maps) do
         for _,node in ipairs(C_TaxiMap.GetTaxiNodesForMap(id) or {}) do
             if node.faction==0 or node.faction==side then
+                if type(node.name)=="string" then self.taxiNames[node.nodeID]=node.name end
                 if type(node.isUndiscovered)=="boolean" then
                     local key="taxi:"..node.nodeID
                     self.known[key]=self.known[key] or node.isUndiscovered==false
@@ -197,6 +199,19 @@ function T:Snapshot(state)
     state.transportKnown,state.unlocked,state.taxiAvailability=true,{},{}
     for key,value in pairs(self.known) do state.unlocked[key]=value end
     for key,value in pairs(self.availability) do state.taxiAvailability[key]=value end
+    -- Discovered endpoints can use catalog connections before visiting a flight master.
+    -- An explicit unavailable result from the native flight map takes precedence.
+    if A.Flights and A.Flights.Matches(state) then
+        for _,path in pairs(A.FlightData.paths or {}) do
+            local from,to=path[1],path[2]
+            local source,dest=A.FlightData.nodes[from],A.FlightData.nodes[to]
+            local key=from..":"..to
+            if state.taxiAvailability[key]==nil and state.unlocked["taxi:"..from] and state.unlocked["taxi:"..to] and
+                source and dest and source.condition==0 and dest.condition==0 and source.visibility==0 and dest.visibility==0 then
+                state.taxiAvailability[key]=true
+            end
+        end
+    end
     state.taxiHops={};for key,value in pairs(self.hops) do state.taxiHops[key]=value end
     state.taxiNames={};for key,value in pairs(self.taxiNames or {}) do state.taxiNames[key]=value end
     for field,source in pairs({taxiDepartures=self.departures,taxiLandings=self.landings}) do

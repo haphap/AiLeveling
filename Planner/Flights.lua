@@ -62,7 +62,7 @@ local function checkpoint(count)
     if count%10==0 and thread and not main then coroutine.yield() end
 end
 
-local function referenceLanding(node,target,origin,hbd)
+local function referencePosition(node,target,origin,hbd)
     if not hbd or not C_Map or not C_Map.GetMapInfo then return end
     local seen={}
     for _,map in ipairs({target.map,origin.map}) do
@@ -124,7 +124,8 @@ function F.Routes(origin,target,state,navigation)
             local from,to=key:match("^(%d+):(%d+)$")
             from,to=tonumber(from),tonumber(to)
             local source,dest=A.FlightData.nodes[from],A.FlightData.nodes[to]
-            local departure=(state.taxiDepartures or {})[from]
+            local departure=(state.taxiDepartures or {})[from] or
+                source and referencePosition(source,origin,target,navigation.hbd)
             local seconds,label
             if from and to then seconds,label=F.Seconds(from,to,state) end
             if source and dest and departure and seconds and seconds>0 and source.instance==dest.instance and
@@ -132,7 +133,7 @@ function F.Routes(origin,target,state,navigation)
                 (state.unlocked or {})["taxi:"..from] and (state.unlocked or {})["taxi:"..to] and
                 available==true then
                 local observed=(state.taxiLandings or {})[key]
-                local landing=observed or referenceLanding(dest,target,departure,navigation.hbd)
+                local landing=observed or referencePosition(dest,target,departure,navigation.hbd)
                 local hops=(state.taxiHops or {})[key]
                 local sample=(state.samples or {})[F.TimeKey(from,to,state.faction,hops,state.taxiSpeed)]
                 local spread=label=="本地实测" and sample and sample.n>1 and math.sqrt(sample.m2/(sample.n-1)) or seconds*0.25
@@ -254,10 +255,11 @@ function F.Actions(route,action,navigation)
                 departure=leg.from,departureRadius=40,position=leg.to,arrival=40,travelSeconds=leg.seconds,
                 publicTransit=true,transitKey=leg.key,fromName=leg.fromName,toName=leg.toName,travelWait=leg.seconds-leg.low,travelRide=leg.low}
         elseif leg.kind=="flight" then
-            local node=A.FlightData.nodes[leg.toTaxi]
-            local name=(A.state and A.state.taxiNames or {})[leg.toTaxi] or node.name
+            local names=A.state and A.state.taxiNames or {}
+            local name=names[leg.toTaxi] or A.FlightData.nodes[leg.toTaxi].name
+            local from=names[leg.fromTaxi] or A.FlightData.nodes[leg.fromTaxi].name
             actions[#actions+1]={kind="transit",mode="flight",questId=action.questId,title="飞往 "..name,
-                text=string.format("与出发点飞行管理员交谈，飞往「%s」，落地后继续任务。",name),
+                fromName=from.."飞行管理员",text=string.format("前往%s的飞行管理员，飞往「%s」，落地后继续任务。",from,name),
                 departure=leg.from,departureRadius=12,position=leg.to,arrival=leg.arrival or 12,fromTaxi=leg.fromTaxi,toTaxi=leg.toTaxi,
                 travelSeconds=leg.seconds,timeSampleKey=F.TimeKey(leg.fromTaxi,leg.toTaxi,leg.faction,leg.hops,leg.taxiSpeed),referenceFlight=true}
         end
