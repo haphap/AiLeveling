@@ -1,6 +1,7 @@
 local _,A=...
 A.Services={}
 local S=A.Services
+local bindingRadius=500
 local function accessible(value) return not canaccessvalue or canaccessvalue(value) end
 local function text(value) return accessible(value) and type(value)=="string" and value or nil end
 local function number(value,min,max) return accessible(value) and type(value)=="number" and value>=min and value<=max and value%1==0 end
@@ -414,7 +415,7 @@ function S.PlanBindings(plan,state,data)
         local hub={deliveryCount=0,acceptCount=0,pendingCount=0,deliveryDistance=0,
             stop={kind="bind",npcId=row.npcId,title=row.title,position=copy(row.position)}}
         local seen={}
-        for _,choice in ipairs(plan.taskChoices or plan.taskOrder or {}) do
+        for _,choice in ipairs(plan.regionPlan and plan.regionPlan.choices or plan.taskOrder or plan.taskChoices or {}) do
             if not seen[choice.questId] and not choice.lowValue and not choice.entryBlocked and not choice.requireCheck and not choice.acceptBlocked then
                 seen[choice.questId]=true
                 local active=(state.quests or {})[choice.questId]
@@ -422,11 +423,18 @@ function S.PlanBindings(plan,state,data)
                 local step=active and stages[#stages] or choice.actions and choice.actions[1]
                 if step and (active and step.kind=="turnin" or not active and step.kind=="accept") and position(step.position) then
                     local distance=A.Navigation:Distance(row.position,step.position)
-                    if distance and distance<=200 then
+                    if distance and distance<=bindingRadius then
                         if active then
                             hub.deliveryCount=hub.deliveryCount+1;hub.deliveryDistance=hub.deliveryDistance+distance
                             if not active.ready then hub.pendingCount=hub.pendingCount+1 end
-                        else hub.acceptCount=hub.acceptCount+1 end
+                        else
+                            hub.acceptCount=hub.acceptCount+1
+                            local delivery=stages[#stages]
+                            if delivery and delivery.kind=="turnin" and position(delivery.position) and
+                                A.Navigation:Near(row.position,delivery.position,bindingRadius) then
+                                hub.pendingCount=hub.pendingCount+1
+                            end
+                        end
                     end
                 end
             end
@@ -438,16 +446,17 @@ end
 
 function S.AutomaticBinding(plan,state)
     if state.locked or state.gearTarget or state.taskBatch or state.serviceStop or state.dead or state.onTaxi or state.inInstance or
-        plan.best or plan.maintenance or not state.bindingTaskKey or state.bindingTaskKey=="" or
+        plan.best or plan.maintenance or not state.bindingTaskKey or
         state.declinedBinding==state.bindingTaskKey or (state.bags or {})[6948]==nil or state.bags[6948]<=0 then return end
     local current=S.TaskDestination(plan)
     if current and current.kind=="turnin" then return end
     local best,bestKey
     for key,hub in pairs(plan.bindingChoices or {}) do
-        if hub.pendingCount>0 and (not best or betterHub(hub,best) or not betterHub(best,hub) and key<bestKey) then best,bestKey=hub,key end
+        if hub.pendingCount>0 and A.Navigation:Near(state.position,hub.stop.position,bindingRadius) and
+            not (state.hearthPoint and A.Navigation:Near(state.hearthPoint,hub.stop.position,bindingRadius)) and
+            (not best or betterHub(hub,best) or not betterHub(best,hub) and key<bestKey) then best,bestKey=hub,key end
     end
-    if best and A.Navigation:Near(state.position,best.stop.position,100) and
-        not (state.hearthPoint and A.Navigation:Near(state.hearthPoint,best.stop.position,200)) then
+    if best then
         local stop=best.stop
         return {kind="bind",npcId=stop.npcId,title=stop.title,position=copy(stop.position)}
     end

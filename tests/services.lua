@@ -312,7 +312,7 @@ local function bindingFixture()
 end
 local function automaticFixture()
     local B,s,_,inns,finish,e=bindingFixture()
-    B.char.locked=nil;s.position.x=0.79
+    B.char.locked=nil;s.position.x=0.74
     for _,file in ipairs({"Planner/TaskGuide.lua","Planner/TaskQueue.lua"}) do assert(loadfile(file))("AiLeveling",B) end
     local q={id=42,title="原任务",questLevel=20}
     local d=F.Data({[42]=q})
@@ -359,7 +359,11 @@ test("炉石只在交接据点附近建议绑定并保护当前任务和维护",
     local B,s,p,inns,finish=bindingFixture();local S=B.Services;S:Snapshot(s)
     p.bindingChoices=S.PlanBindings(p,s,B.Data)
     eq(S.AutomaticBinding(p,s),nil)
-    s.position={map=1,x=0.79,y=0};assert(S.AutomaticBinding(p,s))
+    s.position={map=1,x=0.74,y=0};assert(S.AutomaticBinding(p,s))
+    local far=p.bindingChoices[S.BindingKey(inns[1])]
+    far.pendingCount,far.deliveryCount=5,5
+    eq(S.AutomaticBinding(p,s).npcId,2)
+    far.pendingCount,far.deliveryCount=0,0
     s.hearthReady=nil;assert(S.AutomaticBinding(p,s))
     s.hearthPoint={map=1,x=0.81,y=0};eq(S.AutomaticBinding(p,s),nil)
     s.hearthPoint=nil;assert(S.AutomaticBinding(p,s))
@@ -528,16 +532,28 @@ test("炉石旅店按集中交付与可接任务排序且不推演换绑行程",
     B.Flights.Itinerary=function() error("绑定建议不做整程搜索") end
     p.taskOrder[2]={questId=43,stages={{kind="turnin",position={map=1,x=0.81,y=0}}}};s.quests[43]={}
     p.taskOrder[3]=p.taskOrder[2]
-    p.taskOrder[4]={questId=44,actions={{kind="accept",position={map=1,x=0.8,y=0}}}}
+    local pickup={kind="accept",position={map=1,x=0.8,y=0}}
+    local delivery={kind="turnin",position={map=1,x=0.84,y=0}}
+    p.taskOrder[4]={questId=44,actions={pickup},stages={pickup,delivery}}
     p.bindingChoices=S.PlanBindings(p,s,B.Data)
     local hub=p.bindingChoices[S.BindingKey(inns[2])];eq(hub.deliveryCount,2);eq(hub.acceptCount,1)
+    eq(hub.pendingCount,3)
     eq(p.bindingChoices[S.BindingKey(inns[1])].deliveryCount,0)
     local rows=S:Choices("bind");eq(rows[1].npcId,2)
     eq(s.hearthBindingKey,"old");eq(s.hearthPoint.x,0);eq(s.hearthReady,0)
     B.UI={};assert(loadfile("UI/Services.lua"))("AiLeveling",B);B.UI.Services.preview=rows[1]
     local lines=table.concat(B.UI.Services:Lines(),"\n")
     assert(lines:find("2 个已接任务",1,true));assert(lines:find("1 个可接任务",1,true))
-    assert(not lines:find("预计",1,true));finish()
+    assert(not lines:find("预计",1,true))
+    -- A newly reached camp can be the return hub before its first quest is accepted.
+    p.regionPlan={choices={p.taskOrder[4]}};s.quests={};s.position.x=0.74;S:Snapshot(s)
+    p.bindingChoices=S.PlanBindings(p,s,B.Data)
+    hub=p.bindingChoices[S.BindingKey(inns[2])]
+    eq(hub.deliveryCount,0);eq(hub.acceptCount,1);eq(hub.pendingCount,1)
+    eq(s.bindingTaskKey,"");eq(S.AutomaticBinding(p,s).npcId,2)
+    delivery.position.x=0.1;p.bindingChoices=S.PlanBindings(p,s,B.Data)
+    eq(S.AutomaticBinding(p,s),nil)
+    finish()
 end)
 test("炉石交接点保留已知收件人并排除低价值受限及缺位置任务",function()
     local B,s,p,inns,finish=bindingFixture();local S=B.Services
