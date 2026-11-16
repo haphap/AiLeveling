@@ -672,6 +672,8 @@ test("装备和奖励留在任务列表，一键忽略且右键换装只处理�
     eq(T.gear.advice.item.id,100);T.gear.close:Click();eq(T.gear.advice.item.id,102)
     B.plan.taskQueue={steps={{stage={itemRequirements={{targetId=102}}}}}};refresh();eq(T.gear.shown,false)
     B.plan.taskQueue=nil;B.char.junk={[102]=true};B.state.bags[102]=2;refresh();eq(T.gear.shown,false)
+    B.char.junk[102]=false;second.quality=0;B.state.bags[102]=3;refresh();eq(T.gear.shown,false)
+    eq(B.Gear.Upgrade(second,B.state),nil);eq(B.char.junk[102],false)
     local two,one,off=item(200,10),item(201,5),item(202,20)
     two.equipLoc,one.equipLoc,off.equipLoc="INVTYPE_2HWEAPON","INVTYPE_WEAPON","INVTYPE_SHIELD"
     two.weaponDPS,one.weaponDPS=1,1

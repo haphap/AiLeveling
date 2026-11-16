@@ -77,6 +77,7 @@ function G.Score(item,state)
 end
 
 function G.Usable(item,state)
+    if item.quality==0 then return false,"粗糙品质装备不推荐" end
     if item.pending then return nil,"装备属性加载中" end
     if item.requiredLevel and item.requiredLevel>state.level then return false,"等级不足" end
     if item.classes and not item.classes[state.class] then return false,"职业不适配" end

@@ -26,6 +26,10 @@ local function position(p)
         type(p.y)=="number" and p.y>=0 and p.y<=1
 end
 local function copy(p) return {map=p.map,x=p.x,y=p.y} end
+local function alreadyBound(state,point)
+    return state.hearthPoint and A.Navigation:Near(state.hearthPoint,point,bindingRadius) or
+        state.bindName and state.bindName~="" and state.bindSubZone==state.bindName and A.Navigation:Near(state.position,point,bindingRadius)
+end
 local function requirements(row)
     row.requirements={}
     local function add(name,rank,met)
@@ -198,11 +202,12 @@ function S:Event(event,...)
             end
         end
     elseif event=="HEARTHSTONE_BOUND" then
-        local seen=self.binding;self.binding=nil
+        self.binding=nil
         A.State:Position()
-        if seen and (seen.stop==A.char.serviceStop or seen.automatic and not A.char.serviceStop) and GetTime()>=seen.time and GetTime()-seen.time<=60 and
-            A.Navigation:Near(A.state.position,seen.stop.position,25) and text(GetBindLocation and GetBindLocation())==seen.area then
-            if A.Hearth then A.Hearth:ConfirmBinding(A.state,seen.area) end
+        local name=text(GetBindLocation and GetBindLocation())
+        if name and A.Hearth then A.Hearth:ConfirmBinding(A.state,name) end
+        local stop=A.char.serviceStop or A.plan and A.plan.automaticService
+        if name and stop and stop.kind=="bind" and A.Navigation:Near(A.state.position,stop.position,25) then
             A.char.serviceStop=nil;self.message="炉石绑定已确认，继续原任务。"
         end
     end
@@ -239,11 +244,12 @@ end
 
 function S:Snapshot(state)
     state.trainer=nil
+    state.bindSubZone=text(GetSubZoneText and GetSubZoneText())
     local selected=A.char.serviceStop
     if selected and selected.learnSpellId and spellKnown(selected.learnSpellId)==true then
         A.char.serviceStop=nil;self.message="所选训练已确认完成，继续原任务。"
     end
-    local key={"services"}
+    local key={"services",state.bindSubZone or ""}
     local spellsReady
     state.trainableSpells,spellsReady=S.TrainableSpells(state)
     for _,spell in ipairs(state.trainableSpells) do key[#key+1]="learn:"..spell.id end
@@ -300,6 +306,9 @@ function S:Snapshot(state)
     end
     self:AutoTrain(state)
     local stop=A.char.serviceStop
+    if stop and stop.kind=="bind" and alreadyBound(state,stop.position) then
+        A.char.serviceStop=nil;stop=nil;self.message="炉石已绑定，继续原任务。"
+    end
     if stop and stop.kind=="unlockFlight" and (state.unlocked or {})["taxi:"..stop.taxiId]==true then
         A.char.serviceStop=nil;stop=nil;self.message="飞行点已开通，继续原任务。"
     end
@@ -453,7 +462,7 @@ function S.AutomaticBinding(plan,state)
     local best,bestKey
     for key,hub in pairs(plan.bindingChoices or {}) do
         if hub.pendingCount>0 and A.Navigation:Near(state.position,hub.stop.position,bindingRadius) and
-            not (state.hearthPoint and A.Navigation:Near(state.hearthPoint,hub.stop.position,bindingRadius)) and
+            not alreadyBound(state,hub.stop.position) and
             (not best or betterHub(hub,best) or not betterHub(best,hub) and key<bestKey) then best,bestKey=hub,key end
     end
     if best then

@@ -5,6 +5,12 @@ local function accessible(value) return not canaccessvalue or canaccessvalue(val
 local function number(value) return accessible(value) and type(value)=="number" and value==value and value>=0 and value<math.huge end
 local function text(value) return accessible(value) and type(value)=="string" and value~="" and value or nil end
 local function copy(p) return p and {map=p.map,x=p.x,y=p.y} end
+function H.ValidBinding(value)
+    local p=type(value)=="table" and value.position
+    return type(p)=="table" and number(p.map) and p.map>0 and p.map%1==0 and
+        number(p.x) and p.x<=1 and number(p.y) and p.y<=1 and
+        text(value.name)~=nil and #value.name<=512 and number(value.epoch) and value.epoch%1==0
+end
 local function usable()
     return not A.char.paused and not A.Navigation.manual and not (UnitIsDeadOrGhost and UnitIsDeadOrGhost("player"))
 end
@@ -21,6 +27,7 @@ end
 function H:Event(event,unit,guid,spell)
     if event=="HEARTHSTONE_BOUND" then
         self.epoch=self.epoch+1;self.landing,self.cast,self.pending,self.arrived=nil,nil,nil,nil
+        A.char.hearthBinding=nil
         return true
     end
     if event=="PLAYER_ENTERING_WORLD" then
@@ -66,6 +73,7 @@ function H:Snapshot(state)
             self.arrived={action=pending.action,position=copy(p)}
             if pending.learn and A.settings.learn then
                 self.landing={position=copy(p),name=pending.name,epoch=pending.epoch,build=state.clientBuild,version=state.clientVersion}
+                A.char.hearthBinding=self.landing
                 local elapsed=state.now-pending.started
                 if elapsed>=1 and elapsed<=120 then
                     local key=H.Key(state);local samples=A.char.samples
@@ -88,9 +96,12 @@ function H:Snapshot(state)
             self.cast,self.pending=nil,nil
         end
     end
+    if not self.landing and H.ValidBinding(A.char.hearthBinding) then
+        self.landing=A.char.hearthBinding;self.epoch=self.landing.epoch
+    end
     local landing=self.landing
     if landing and (landing.name~=state.bindName or landing.epoch~=self.epoch or landing.build~=state.clientBuild or
-        landing.version~=state.clientVersion) then self.landing=nil;landing=nil end
+        landing.version~=state.clientVersion) then self.landing=nil;A.char.hearthBinding=nil;landing=nil end
     state.hearthPoint,state.hearthBindingKey,state.hearthCooldown=nil,nil,nil
     if landing and (state.bags[6948] or 0)>0 and number(state.hearthReady) then
         state.hearthPoint=copy(landing.position)
@@ -131,6 +142,7 @@ end
 -- A confirmed inn visit provides a reference point until an actual hearth landing replaces it.
 function H:ConfirmBinding(state,name)
     local p=state.position
-    if not p or not number(p.map) or p.map<=0 or not number(p.x) or p.x>1 or not number(p.y) or p.y>1 then return end
-    self.landing={position=copy(p),name=name,epoch=self.epoch,build=state.clientBuild,version=state.clientVersion,reference=true}
+    local binding={position=copy(p),name=name,epoch=self.epoch,build=state.clientBuild,version=state.clientVersion,reference=true}
+    if not H.ValidBinding(binding) then return end
+    self.landing=binding;A.char.hearthBinding=binding
 end

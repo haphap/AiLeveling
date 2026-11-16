@@ -75,5 +75,9 @@ return function(test,eq,F,A,C)
         eq(char.gearTarget,nil);eq(char.gearBaseline,nil);eq(char.hearthBinding,nil)
         eq(char.itinerary,nil);eq(char.locked,nil)
         eq(char.deferredChains[1],true);eq(char.deferredChains[2],nil);eq(char.deferredChains[-3],nil)
+        local oldHearth=C.Hearth;assert(loadfile("Hearth.lua"))("AiLeveling",C)
+        char.hearthBinding={name="湖畔镇",epoch=2,position={map=1433,x=0.27,y=0.44},build="70862",version="1.60.1"}
+        C:NormalizeCharacter(char);eq(char.hearthBinding.name,"湖畔镇")
+        char.hearthBinding.position.x=0/0;C:NormalizeCharacter(char);eq(char.hearthBinding,nil);C.Hearth=oldHearth
     end)
 end

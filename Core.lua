@@ -80,7 +80,8 @@ function A:NormalizeCharacter(char)
     for id,count in pairs(char.turnIns) do
         if type(id)~="number" or id<=0 or type(count)~="number" or count<0 or count%1~=0 then char.turnIns[id]=nil end
     end
-    char.dungeon,char.pendingResets,char.hearthBinding=nil,nil,nil
+    char.dungeon,char.pendingResets=nil,nil
+    if not (self.Hearth and self.Hearth.ValidBinding(char.hearthBinding)) then char.hearthBinding=nil end
     local target=char.gearTarget
     if (type(target)~="string" or target=="") and (type(target)~="number" or target<=0 or target>=math.huge or target%1~=0) then char.gearTarget=nil end
     if type(char.gearBaseline)~="number" or char.gearBaseline<0 or char.gearBaseline>19 or char.gearBaseline%1~=0 then char.gearBaseline=nil;char.gearTarget=nil end

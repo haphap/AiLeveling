@@ -14,13 +14,19 @@ test("双手替换扣除主副手且背包搭配必须有双持能力",function(
     eq(G.Upgrade(off,s),nil)
     s.capabilities={dualWield=true};r=G.Upgrade(off,s);eq(r.delta,7);eq(r.replacements[16].id,4)
 end)
-test("戒指更换较弱槽且唯一装备类别冲突阻断",function()
+test("装备比较选择可用槽位并排除唯一冲突与灰装",function()
     local s=F.State();s.equipment={[11]=item(1,"INVTYPE_FINGER",10),[12]=item(2,"INVTYPE_FINGER",5)}
     local r=G.Upgrade(item(3,"INVTYPE_FINGER",12),s);eq(r.delta,7);assert(r.replacements[12])
     s.equipment[11].uniqueCategory=7;s.equipment[11].uniqueLimit=1
     local c=item(3,"INVTYPE_FINGER",12);c.uniqueCategory=7;c.uniqueLimit=2
     eq(G.Loadout({[12]=c},s),nil)
     c.pending=true;eq(G.Upgrade(c,s),nil);c.pending=false;c.usable=false;eq(G.Upgrade(c,s),nil)
+    s.class="PALADIN";s.equipment={[6]={id=4,equipLoc="INVTYPE_WAIST",quality=2,
+        stats={RESISTANCE0_NAME=18,ITEM_MOD_STAMINA_SHORT=2,ITEM_MOD_INTELLECT_SHORT=3}}}
+    local belt={id=5,equipLoc="INVTYPE_WAIST",quality=0,usable=true,stats={RESISTANCE0_NAME=93}}
+    for _,role in ipairs({"DAMAGER","TANK"}) do
+        s.role=role;assert(G.Score(belt,s)<G.Score(s.equipment[6],s));eq(G.Upgrade(belt,s),nil)
+    end
 end)
 test("同 ID 背包实例保留附魔且单件不能同时占两手",function()
     local s=F.State();s.capabilities={dualWield=true};s.equipment={[16]=item(1,"INVTYPE_2HWEAPON",30)}

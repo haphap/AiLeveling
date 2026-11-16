@@ -1,5 +1,5 @@
 return function(test,eq,F,A,plan)
-local names={"UnitGUID","UnitName","GetTime","GetBindLocation","C_Trainer","Enum","GetNumTrainerServices","GetTrainerServiceInfo","GetTrainerServiceCost","canaccessvalue",
+local names={"UnitGUID","UnitName","GetTime","GetBindLocation","GetSubZoneText","C_Trainer","Enum","GetNumTrainerServices","GetTrainerServiceInfo","GetTrainerServiceCost","canaccessvalue",
     "BuyTrainerService","SetTrainerServiceTypeFilter","ExpandTrainerSkillLine","ConfirmBinder",
     "GetTrainerServiceSkillReq","GetTrainerServiceNumAbilityReq","GetTrainerServiceAbilityReq","C_TooltipInfo","C_SpellBook",
     "InCombatLockdown","IsShiftKeyDown","C_PlayerInteractionManager","C_GossipInfo","HOME"}
@@ -19,6 +19,7 @@ local function setup()
     local e={npc=78,now=1,binding="旧旅店",kind=0,rows={{name="训练项目",status="available",sub="等级 1",cost=30},{name="下一等级",status="unavailable",cost=90}}}
     UnitGUID=function() return "Creature-0-1-2-3-"..e.npc.."-0001" end;UnitName=function() return "训练师" end
     GetTime=function() return e.now end;GetBindLocation=function() return e.binding end
+    GetSubZoneText=function() return e.subzone end
     InCombatLockdown=function() return e.combat end;IsShiftKeyDown=function() return e.shift end
     C_PlayerInteractionManager=nil
     Enum={TrainerType={General=0,Tradeskills=2,Pet=3}};C_Trainer={GetTrainerType=function() return e.kind end}
@@ -211,16 +212,15 @@ test("服务选择拒绝过期对象飞行死亡副本和不可学项目且持�
     B.char.serviceStop.learnKey=nil;B.char.serviceStop.position.x=0/0;eq(B.Services.ValidStop(B.char.serviceStop),false)
     finish()
 end)
-test("炉石安排须关联所选旅店确认和真实绑定事件且取消重载超时不误完成",function()
+test("真实绑定事件完成到店安排，自动确认仍检查所选旅店与交互状态",function()
     local B,e,finish=setup();local S=B.Services
     local function reset()
         B.char.serviceStop={kind="bind",npcId=78,title="旅店",position={map=1,x=0.5,y=0.5}}
         e.npc=78;e.now=1;e.binding="旧旅店";B.state.position.x=0.5
     end
-    reset();S:Event("HEARTHSTONE_BOUND");assert(B.char.serviceStop)
-    e.npc=79;S:Event("CONFIRM_BINDER","新旅店");e.binding="新旅店";S:Event("HEARTHSTONE_BOUND");assert(B.char.serviceStop)
-    reset();S:Event("CONFIRM_BINDER","新旅店");e.binding="新旅店";e.now=62;S:Event("HEARTHSTONE_BOUND");assert(B.char.serviceStop)
-    reset();S:Event("CONFIRM_BINDER","新旅店");S:Event("PLAYER_ENTERING_WORLD");e.binding="新旅店";S:Event("HEARTHSTONE_BOUND");assert(B.char.serviceStop)
+    reset();e.binding="新旅店";S:Event("HEARTHSTONE_BOUND");eq(B.char.serviceStop,nil)
+    reset();S:Event("CONFIRM_BINDER","新旅店");assert(B.char.serviceStop)
+    S:Event("PLAYER_ENTERING_WORLD");e.binding="新旅店";S:Event("HEARTHSTONE_BOUND");eq(B.char.serviceStop,nil)
     reset();S:Event("CONFIRM_BINDER","新旅店");e.binding="新旅店";B.state.position.x=0.9;S:Event("HEARTHSTONE_BOUND");assert(B.char.serviceStop)
     reset();S:Event("CONFIRM_BINDER","新旅店");e.binding="新旅店";S:Event("HEARTHSTONE_BOUND");eq(B.char.serviceStop,nil);eq(B.char.locked,42)
     reset();S:Cancel();e.binding="新旅店";S:Event("HEARTHSTONE_BOUND");eq(B.char.serviceStop,nil)
@@ -326,18 +326,23 @@ local function automaticFixture()
     end
     return B,s,inns,finish,e,rebuild
 end
-test("自动旅店安排从完整任务规划进入行动并在原生绑定后继续任务",function()
+test("自动旅店安排在手动绑定及重载后继续任务，不等待插件确认窗口",function()
     local B,s,inns,finish,e,rebuild=automaticFixture();local S=B.Services
     local p=rebuild();eq(p.automaticService.npcId,2);eq(p.fallback.serviceKind,"bind");eq(p.serviceResume.questId,42)
     eq(B.char.serviceStop,nil);eq(s.hearthPoint.x,0);eq(s.quests[42].objectives[1].finished,false)
     assert(p.fallback.text:find("做完任务后回来集中交付",1,true))
     s.position={map=1,x=0.8,y=0};e.npc=2;rebuild()
-    S:Event("HEARTHSTONE_BOUND");eq(B.Hearth.landing,nil)
-    S:Event("CONFIRM_BINDER","交付地旅店");assert(S.binding)
+    B.jobs.plan={};S:Event("CONFIRM_BINDER","交付地旅店");eq(S.binding,nil);B.jobs.plan=nil
     e.binding="交付地旅店";s.bindName=e.binding
     B.Hearth:Event("HEARTHSTONE_BOUND");S:Event("HEARTHSTONE_BOUND");B.Hearth:Snapshot(s)
     eq(s.hearthPoint.x,0.8);eq(s.quests[42].objectives[1].finished,false)
     p=rebuild();eq(p.automaticService,nil);eq(p.serviceStop,nil);eq(p.fallback.questId,42);eq(p.fallback.kind,"objective")
+    assert(B.char.hearthBinding)
+    assert(loadfile("Hearth.lua"))("AiLeveling",B);B.Hearth:Snapshot(s)
+    p=rebuild();eq(p.automaticService,nil);eq(p.fallback.questId,42);eq(s.hearthPoint.x,0.8)
+    B.Hearth.landing=nil;B.char.hearthBinding=nil;s.hearthPoint=nil;e.subzone=e.binding
+    p=rebuild();eq(p.automaticService,nil);eq(p.fallback.questId,42);eq(s.hearthPoint,nil)
+    e.subzone="另一处";p=rebuild();assert(p.automaticService)
     eq(B.char.serviceStop,nil);finish()
 end)
 test("自动换绑取消后同批任务不重复，进度走动重载保留且新任务重新评估",function()
@@ -377,7 +382,7 @@ test("炉石只在交接据点附近建议绑定并保护当前任务和维护",
     end
     finish()
 end)
-test("过期自动绑定建议和错误NPC不确认，取消或另选服务使待确认失效",function()
+test("过期建议不自动确认，实际手动绑定仍记录原生地点",function()
     local B,s,inns,finish,e,rebuild=automaticFixture();local S=B.Services
     s.position={map=1,x=0.8,y=0};rebuild();e.npc=2
     B.jobs.plan={};S:Event("CONFIRM_BINDER","新旅店");eq(S.binding,nil);B.jobs.plan=nil
@@ -385,10 +390,10 @@ test("过期自动绑定建议和错误NPC不确认，取消或另选服务使�
     B.plan.revision=s.revision-1;S:Event("CONFIRM_BINDER","新旅店");eq(S.binding,nil);rebuild()
     e.npc=3;S:Event("CONFIRM_BINDER","新旅店");eq(S.binding,nil);e.npc=2
     S:Event("CONFIRM_BINDER","新旅店");assert(S.binding);S:Cancel()
-    e.binding="新旅店";S:Event("HEARTHSTONE_BOUND");eq(B.Hearth.landing,nil)
+    e.binding="新旅店";S:Event("HEARTHSTONE_BOUND");eq(B.Hearth.landing.name,"新旅店")
     B.char.declinedBinding=nil;rebuild();S:Event("CONFIRM_BINDER","新旅店");assert(S.binding)
     local rows=S:Choices("bind");assert(S:Pick(rows[1],s.revision));eq(S.binding,nil)
-    S:Event("HEARTHSTONE_BOUND");assert(B.char.serviceStop);eq(B.Hearth.landing,nil)
+    S:Event("HEARTHSTONE_BOUND");eq(B.char.serviceStop,nil);eq(B.Hearth.landing.position.x,0.8)
     finish()
 end)
 test("手选旅店直接到店不安排延后步骤且不预测新绑定",function()
@@ -567,7 +572,7 @@ test("炉石交接点保留已知收件人并排除低价值受限及缺位置�
     p.taskOrder[1].stages[2].position=nil;eq(count(),0)
     eq(s.hearthPoint,nil);eq(s.hearthReady,nil);finish()
 end)
-test("已确认所选旅店建立炉石参考点且再次绑定清除旧点",function()
+test("原生绑定建立持久参考点，同名换绑更新位置且保留其他服务",function()
     local B,e,finish=setup();assert(loadfile("Hearth.lua"))("AiLeveling",B)
     local s=B.state;s.hearthReady=1;s.bags={[6948]=1}
     B.char.serviceStop={kind="bind",npcId=78,title="旅店",position={map=1,x=0.5,y=0.5}}
@@ -577,8 +582,12 @@ test("已确认所选旅店建立炉石参考点且再次绑定清除旧点",fun
     eq(B.char.serviceStop,nil);assert(B.Hearth.landing.reference)
     B.Hearth:Snapshot(s);eq(s.hearthPoint.x,0.5);eq(s.hearthBindingKey,"1:新旅店")
     s.hearthPoint.x=0;eq(B.Hearth.landing.position.x,0.5);eq(next(B.char.samples),nil)
+    s.position.x=0.8
+    B.char.serviceStop={kind="train",npcId=78,title="训练师",position=s.position}
     B.Hearth:Event("HEARTHSTONE_BOUND");B.Services:Event("HEARTHSTONE_BOUND")
-    B.Hearth:Snapshot(s);eq(s.hearthPoint,nil)
+    B.Hearth:Snapshot(s);eq(s.hearthPoint.x,0.8);eq(B.char.serviceStop.kind,"train")
+    assert(loadfile("Hearth.lua"))("AiLeveling",B);B.Hearth:Snapshot(s);eq(s.hearthPoint.x,0.8)
+    s.bindName="其他旅店";B.Hearth:Snapshot(s);eq(s.hearthPoint,nil);eq(B.char.hearthBinding,nil)
     finish()
 end)
 test("跨区旅店进入当前行程换绑比较且过期规划撤回扩展目录",function()
