@@ -121,7 +121,9 @@ return function(test,eq,F,plan)
     end)
 
     test("副本目录不因补丁升级隐藏",function()
-        local B,d,s,data=context()
+        local q=F.Quest(7938);q.questLevel=60
+        local B,d,s,data=context({[7938]=q})
+        s.faction="Alliance"
         B.DungeonCatalog={version="1.60.1",build="70862",entries={ref={instanceId=42},other={instanceId=99}}}
         local entries=B.Dungeon.Catalog()
         eq(entries[1],nil);assert(entries.ref);assert(entries.other)
@@ -130,6 +132,16 @@ return function(test,eq,F,plan)
         entries=B.Dungeon.Catalog()
         local count=0;for _ in pairs(entries) do count=count+1 end
         eq(count,39);eq(entries["reference:36"].title,"死亡矿井")
+        assert(loadfile("UI/Main.lua"))("AiLeveling",B)
+        assert(loadfile("UI/Browser.lua"))("AiLeveling",B)
+        local rows={};for _,row in ipairs(B.UI.Browser:DungeonRows()) do rows[row.key]=row end
+        eq(rows["reference:36"].levels,"推荐 17—26级")
+        eq(rows["reference:34"].levels,"推荐 24—32级")
+        eq(rows["reference:3065"].levels,"推荐 13—20级")
+        eq(rows["reference:3109"].levels,"查看任务")
+        eq(rows["reference:36"].tasks[1].id,7938)
+        eq(entries["reference:36"].minLevel,nil)
+        eq(B.DungeonCatalog.entryLevels[36],10)
     end)
     test("副本任务区分已接可交付前置资格和阵营并按收件人排序",function()
         local quests={}

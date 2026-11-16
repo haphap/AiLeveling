@@ -9,6 +9,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Game level ranges checked against Undying 0.33.0; provenance in docs/SOURCES.json.
+RECOMMENDED_LEVELS = {
+    33: (20, 30), 34: (24, 32), 36: (17, 26), 43: (15, 24),
+    47: (29, 38), 48: (24, 32), 70: (41, 51), 90: (29, 38),
+    109: (50, 60), 129: (37, 46), 189: (30, 46), 209: (44, 54),
+    229: (55, 60), 230: (52, 60), 289: (58, 60), 329: (58, 60),
+    349: (46, 55), 389: (13, 18), 429: (54, 60),
+    2959: (28, 35), 2998: (26, 33), 2999: (15, 22), 3065: (13, 20),
+}
+
 
 def render():
     census = json.loads((ROOT / 'docs/DUNGEON_COVERAGE.json').read_text())
@@ -60,6 +70,13 @@ def render():
             lines.append(f'        {faction}={{{pairs}}},')
         lines.append('    }},')
     lines.append('}}')
+    levels = {mid: row['levels'] for mid, row in announced.items() if mid and row.get('levels')}
+    levels.update(RECOMMENDED_LEVELS)
+    lines.append('-- Display recommendations, separate from task preparation and entrance requirements.')
+    lines.append('A.DungeonCatalog.recommendedLevels={')
+    for mid, (low, high) in sorted(levels.items()):
+        lines.append(f'    [{mid}]={{{low},{high}}},')
+    lines.append('}')
     lines.append('-- Destinations explicitly located inside by server quest text or checked task facts.')
     lines.append('A.DungeonCatalog.objectiveAreas={')
     for m in maps:

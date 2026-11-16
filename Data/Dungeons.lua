@@ -159,6 +159,37 @@ A.DungeonCatalog={version="1.60.1",build="70862",entries={
         Horde={[95928]="category"},
     }},
 }}
+-- Display recommendations, separate from task preparation and entrance requirements.
+A.DungeonCatalog.recommendedLevels={
+    [33]={20,30},
+    [34]={24,32},
+    [36]={17,26},
+    [43]={15,24},
+    [47]={29,38},
+    [48]={24,32},
+    [70]={41,51},
+    [90]={29,38},
+    [109]={50,60},
+    [129]={37,46},
+    [189]={30,46},
+    [209]={44,54},
+    [229]={55,60},
+    [230]={52,60},
+    [289]={58,60},
+    [329]={58,60},
+    [349]={46,55},
+    [389]={13,18},
+    [429]={54,60},
+    [2959]={28,35},
+    [2970]={35,40},
+    [2974]={55,60},
+    [2994]={48,53},
+    [2998]={26,33},
+    [2999]={15,22},
+    [3001]={58,60},
+    [3039]={40,45},
+    [3065]={13,20},
+}
 -- Destinations explicitly located inside by server quest text or checked task facts.
 A.DungeonCatalog.objectiveAreas={
     [96395]={["accept"]=16919,["npc:261306"]=16919,["turnin"]=16919},

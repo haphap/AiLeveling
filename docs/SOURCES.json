@@ -1020,6 +1020,19 @@
       "questItemSource": "https://ahledger.com/items/3629-mistmantle-family-ring",
       "scope": "Original addon observations locate Manor Mistmantle 3109 in Duskwood and item 3629 drops from Stalvan Mistmantle inside. QuestieDB links item 3629 to quest 98 and retains its prerequisites/recipient. Regional entrance only; no guessed door coordinates or replacement of provider objective spawns. No source code or assets copied.",
       "clientVerified": false
+    },
+    {
+      "id": "Undying-dungeon-recommended-levels",
+      "checked": "2026-11-16",
+      "version": "0.33.0",
+      "url": "https://undying.app/addon",
+      "download": "https://undying.app/downloads/Undying-0.33.0.zip",
+      "sha256": "6c7e5ed12c3aa76523ceb66679eb87409fb8400ec37364f753b2a081cfcf6289",
+      "levelReference": "https://undying.app/dungeons/deadmines",
+      "sourceFile": "Undying_Data/Loot.lua:levels",
+      "sourceLicense": "All Rights Reserved for code and artwork; LICENSE.txt and NOTICES.txt expressly exclude game facts.",
+      "scope": "23 instance IDs and recommended level pairs only. Independently recorded game facts; no addon code, UI, descriptions or assets copied. The five remaining announced Forever ranges retain the existing Blizzard source. Display ranges are separate from task preparation thresholds and client entrance minimums. Associated quest levels do not set dungeon ranges.",
+      "clientVerified": false
     }
   ]
 }

@@ -160,17 +160,11 @@ function B:DungeonRows()
     for id,d in pairs(entries) do
         local tasks=A.Dungeon.Tasks(d,A.state,A.Data,targets)
         local rewards=A.Dungeon.TaskRewards(tasks)
-        local low,high=d.minLevel,d.maxLevel
-        if not low then
-            for _,row in ipairs(tasks) do
-                local q=A.Data:GetQuest(row.id)
-                local level=q and q.questLevel
-                if level and level>0 then low=math.min(low or level,level);high=math.max(high or level,level) end
-            end
-        end
-        local levels=low and string.format("%s %d—%d级",d.minLevel and "推荐" or "任务",low,high or low) or "查看任务"
+        local range=A.DungeonCatalog.recommendedLevels and A.DungeonCatalog.recommendedLevels[d.instanceId]
+        local low,high=range and range[1],range and range[2]
+        local levels=low and string.format("推荐 %d—%d级",low,high) or "查看任务"
         local sub=levels.." · "..color(gold,rewards.count.."项任务")
-        rows[#rows+1]={key=id,title=d.title,sub=sub,icon="entry",dungeon=d,tasks=tasks,rewards=rewards,levels=levels,low=low or 60}
+        rows[#rows+1]={key=id,title=d.title,sub=sub,icon="entry",dungeon=d,tasks=tasks,rewards=rewards,levels=levels,low=low or math.huge}
     end
     table.sort(rows,function(a,b)
         local av,bv=a.rewards.count>0,b.rewards.count>0

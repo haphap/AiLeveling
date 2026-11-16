@@ -636,7 +636,8 @@ function UI:DungeonReminderMenu(owner)
     self:Menu(owner,function(_,menu)
         for _,candidate in ipairs(self.DungeonReminders(A.state,A.plan or {})) do
             local d=A.DungeonCatalog and A.DungeonCatalog.entries[candidate.dungeonId]
-            local levels=d and d.minLevel and string.format(" · %d—%d级",d.minLevel,d.maxLevel or d.minLevel) or ""
+            local range=d and A.DungeonCatalog.recommendedLevels and A.DungeonCatalog.recommendedLevels[d.instanceId]
+            local levels=range and string.format(" · %d—%d级",range[1],range[2]) or ""
             menu:CreateButton(candidate.title..levels.." · "..candidate.rewards.count.."项任务",function()
                 self.Dungeon.selected=candidate.dungeonId;self.details:Show();self:SelectTab(4)
             end)
