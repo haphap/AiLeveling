@@ -12,6 +12,8 @@ end
 -- Task ordering depends on destinations and movement, not execution-time estimates.
 function P.TaskChoices(state,data,ids,onlySelected,options)
     local choices,seen={},{}
+    local unlocks=A.TaskGuide and A.TaskGuide.UnlockRecommendations(state,data,data.ids or ids) or {}
+    local automatic=not (state.locked or state.preparingQuest or state.taskBatch or state.gearTarget or state.inInstance)
     local thread,isMain=coroutine.running()
     local deadline=clock()+1
     local function add(id)
@@ -39,7 +41,7 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         end
         if position and position.travelHint then action.text=position.travelHint end
         local choice={id="task:"..id,kind="task",questId=id,title=action.title,actions={action},
-            status=kind,level=q.questLevel,referenceXP=q.referenceXP,
+            status=kind,level=q.questLevel,referenceXP=q.referenceXP,unlock=unlocks[id],
             requireCheck=not active and (unavailable or not position and not areaId) or nil,
             distance=position and A.Navigation and A.Navigation.Distance and A.Navigation:Distance(state.position,position)}
         if state.inInstance then choice.currentInstance=currentInstance end
@@ -69,7 +71,15 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
             choice.stagesComplete=false
             action.text="向任务发布者查看此任务。"
         end
-        if A.TaskGuide then choice.timing=A.TaskGuide.Timing(state.position,choice,state,A.Navigation) end
+        if A.TaskGuide then
+            -- Reject obsolete and later-level work before pricing its complete journey.
+            if not choice.unlock then choice.lowValue=A.TaskGuide.LowValue(q,state,data,choice) end
+            if not choice.lowValue and (not automatic or kind=="turnin" or choice.unlock or
+                (q.questLevel or state.level)<=state.level+2) then
+                choice.timing=A.TaskGuide.Timing(state.position,choice,state,A.Navigation)
+                if not choice.unlock then choice.lowValue=A.TaskGuide.LowValue(q,state,data,choice) end
+            end
+        end
         if A.Dungeon and A.Dungeon.TaskEntryIssue then
             choice.entryBlocked=A.Dungeon.TaskEntryIssue(choice,state,data,options)
         end
@@ -77,7 +87,6 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
             not state.preparingQuest and not state.taskBatch then
             choice.entryBlocked=choice.entryBlocked or "任务在副本内接取，可在副本页安排。"
         end
-        if A.TaskGuide then choice.lowValue=A.TaskGuide.LowValue(q,state,data,choice) end
         if A.Gear and A.Gear.TaskBenefits then A.Gear.TaskBenefits(choice,q,state,data) end
         choices[#choices+1]=choice
     end
@@ -89,11 +98,8 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         add(id)
         if thread and not isMain and clock()>=deadline then coroutine.yield();deadline=clock()+1 end
     end
-    local unlocks=A.TaskGuide and A.TaskGuide.UnlockRecommendations(state,data,data.ids or ids) or {}
     local nearbyRate
     for _,choice in ipairs(choices) do
-        choice.unlock=unlocks[choice.questId]
-        if choice.unlock then choice.lowValue=nil end
         local seconds=choice.timing and choice.timing.seconds
         local point=choice.actions[1].position
         if not choice.lowValue and not choice.unlock and not choice.acceptBlocked and not choice.entryBlocked and
