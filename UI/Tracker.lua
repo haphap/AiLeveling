@@ -638,7 +638,8 @@ function UI:DungeonReminderMenu(owner)
             local d=A.DungeonCatalog and A.DungeonCatalog.entries[candidate.dungeonId]
             local range=d and A.DungeonCatalog.recommendedLevels and A.DungeonCatalog.recommendedLevels[d.instanceId]
             local levels=range and string.format(" · %d—%d级",range[1],range[2]) or ""
-            menu:CreateButton(candidate.title..levels.." · "..candidate.rewards.count.."项任务",function()
+            menu:CreateButton(candidate.title..levels.." · "..candidate.rewards.count.."项任务"..
+                (candidate.recommendation and " · "..candidate.recommendation or ""),function()
                 self.Dungeon.selected=candidate.dungeonId;self.details:Show();self:SelectTab(4)
             end)
         end
@@ -912,6 +913,9 @@ function UI:CreateTracker()
         end
         GameTooltip:SetText("副本建议")
         local candidate=T.dungeons.candidate
+        if candidate and candidate.recommendation then
+            GameTooltip:AddLine(candidate.recommendation.." · 当前可做 "..candidate.availableTasks.."项",1,1,1,true)
+        end
         if candidate and candidate.rewards.prepare>0 then
             GameTooltip:AddLine(candidate.rewards.prepare.."项任务需先完成前置。",unpack(palette.gold))
         end
@@ -1297,7 +1301,8 @@ function UI:RenderTracker(along)
     local dungeon=batch and A.DungeonCatalog and A.DungeonCatalog.entries[batch.id]
     T.dungeons.heading:SetText(batch and ("副本行程"..(dungeon and " · "..dungeon.title or "")) or ("副本建议 · "..#dungeons.."处  ›"))
     T.dungeons.text:SetText(batch and "返回正常练级  ›" or suggested and
-        (self:Icon("entry",16).." "..suggested.title.." · "..suggested.rewards.count.."项任务") or "")
+        (self:Icon("entry",16).." "..suggested.title.." · "..suggested.rewards.count.."项任务"..
+        (suggested.recommendation and " · "..suggested.recommendation or "")) or "")
     local bag=A.settings.rewardAdvice~=false and A.Gear and A.Gear.BagUpgrade(state,A.char.ignoredGear) or nil
     T.gear.advice=bag
     T.gear.text:SetText(bag and ("装备："..(bag.item.link or bag.item.name).." |cff"..UI.hex.green..A.Gear.UpgradeText(bag).."|r") or "")

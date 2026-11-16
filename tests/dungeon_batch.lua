@@ -232,7 +232,7 @@ run("副本整组先接齐可行任务，完成前置后入本，整组完成再
     GetTime=clock
 end)
 run("副本任务行程随前置、接取、本内完成和交付更新",function()
-    local B,s,data,_,d=fixture()
+    local B,s,data,q,d=fixture()
     d.quests.Alliance[4]="preparation"
     s.quests[4]={ready=true,objectives={}}
     data.ReferenceObjectiveTargets=function(_,q)
@@ -241,6 +241,28 @@ run("副本任务行程随前置、接取、本内完成和交付更新",functio
     data.byArea={[100]={2}};d.quests.Alliance[2]=nil
     local suggested=plan(s,data,B.settings,B).suggestedDungeon
     eq(suggested.dungeonId,"ref");eq(suggested.rewards.prepare,1);eq(s.taskBatch,nil)
+    q[1].questLevel=20;q[1].referenceXPLevel=20;q[1].referenceXP=100000
+    q[2].questLevel=20;q[2].referenceXPLevel=20;q[2].referenceXP=1000
+    B.DungeonCatalog.recommendedLevels={[42]={20,26},[43]={21,30},[44]={10,19}}
+    B.DungeonCatalog.entries.later={id="later",title="准备副本",reference=true,instanceId=43,areas={101},
+        entrances={{200,1,0}},quests={Alliance={[1]="inside"}}}
+    B.DungeonCatalog.entries.old={id="old",title="过级副本",reference=true,instanceId=44,areas={102},
+        entrances={{200,1,0}},quests={Alliance={[2]="inside"}}}
+    local ranked=plan(s,data,B.settings,B).dungeonChoices
+    eq(ranked[1].dungeonId,"ref");eq(ranked[1].remainingXP,1000);eq(ranked[1].availableTasks,1)
+    eq(ranked[2].dungeonId,"later");eq(ranked[2].recommendation,"先做准备");eq(ranked[2].remainingXP,nil)
+    eq(ranked[3].dungeonId,"old");eq(ranked[3].recommendation,"补做剩余任务")
+    q[2].questLevel=23
+    local future
+    for _,candidate in ipairs(plan(s,data,B.settings,B).dungeonChoices) do
+        if candidate.dungeonId=="ref" then future=candidate end
+    end
+    eq(future.dungeonId,"ref");eq(future.availableTasks,0);eq(future.remainingXP,nil)
+    q[2].questLevel=20;q[3].questLevel=23
+    local current=plan(s,data,B.settings,B).dungeonChoices[1]
+    eq(current.dungeonId,"ref");eq(current.rewards.prepare,0);eq(current.remainingXP,1000)
+    q[3].questLevel=nil
+    B.DungeonCatalog.entries.later=nil;B.DungeonCatalog.entries.old=nil
     d.maxLevel=s.level-1
     local navigation=B.Navigation;B.Navigation={Distance=function() end}
     local unlocated=plan(s,data,B.settings,B)

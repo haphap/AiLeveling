@@ -294,32 +294,57 @@ function D.SuggestTaskBatch(state,data,options)
     local candidates,targets={},{}
     for _,d in pairs(D.Catalog()) do
         if d.reference and (not d.minLevel or state.level>=d.minLevel) then
-            local entry=D.TaskApproach({kind="dungeonEnter",title=d.title,areaId=d.areas[1]},state,data)
-            local seconds
-            if entry.position then
-                if A.Flights then
-                    for _,route in ipairs(A.Flights.Routes(state.position,entry.position,state,A.Navigation) or {}) do
-                        if not seconds or route.seconds<seconds then seconds=route.seconds end
+            local range=A.DungeonCatalog.recommendedLevels and A.DungeonCatalog.recommendedLevels[d.instanceId]
+            local below=range and state.level<range[1]
+            local above=range and state.level>range[2]
+            local rows,current={},{}
+            for _,row in ipairs(D.Tasks(d,state,data,targets)) do
+                if not row.lowValue and not row.requireCheck and row.group~=5 and D.CanContinueTask(row) then
+                    local later=row.group~=1 and (row.questLevel or state.level)>state.level+2
+                    local prepare=false
+                    for _,id in ipairs(row.preparation or {}) do
+                        local q=data:GetQuest(id,state)
+                        if q and ((state.quests[id] or {}).ready or (q.questLevel or state.level)<=state.level+2) then
+                            prepare=true;break
+                        end
                     end
-                else seconds=A.Travel.Walk(state.position,entry.position,state,A.Navigation) end
+                    if prepare or (not later and not row.preparation) then
+                        rows[#rows+1]=row
+                        local insideDelivery=row.group==1 and row.allowed and D.TaskInstance(row.position,state,data,row.areaId)
+                        -- Rank only tasks ready to do inside; locked rewards and outdoor hand-ins do not justify a run.
+                        if (not below or row.group==1) and not row.preparation and row.relation~="preparation" and
+                            (row.group~=1 or insideDelivery and insideDelivery.instanceId==d.instanceId) then
+                            current[#current+1]=row
+                        end
+                    end
+                end
             end
-            local rows=D.Tasks(d,state,data,targets)
             local rewards=D.TaskRewards(rows)
-            local insideDelivery=false
-            for _,row in ipairs(rows) do
-                local instance=row.group==1 and row.allowed and not row.lowValue and D.TaskInstance(row.position,state,data,row.areaId)
-                if instance and instance.instanceId==d.instanceId then insideDelivery=true;break end
-            end
-            if rewards.count>rewards.ready or insideDelivery then
-                local xp=rewards.unknownXP==0 and rewards.xp or nil
+            local available=D.TaskRewards(current)
+            if rewards.count>rewards.ready or available.count>0 then
+                local entry=D.TaskApproach({kind="dungeonEnter",title=d.title,areaId=d.areas[1]},state,data)
+                local seconds
+                if entry.position then
+                    if A.Flights then
+                        for _,route in ipairs(A.Flights.Routes(state.position,entry.position,state,A.Navigation) or {}) do
+                            if not seconds or route.seconds<seconds then seconds=route.seconds end
+                        end
+                    else seconds=A.Travel.Walk(state.position,entry.position,state,A.Navigation) end
+                end
+                local preparationOnly=available.count==0
+                local xp=not preparationOnly and available.unknownXP==0 and available.xp or nil
                 candidates[#candidates+1]={id=d.id,kind="dungeon",reference=true,dungeonId=d.id,title=d.title,
                     requiresAcceptance=true,actions={entry},rewards=rewards,remainingXP=xp,
+                    priority=above and 3 or preparationOnly and 2 or 1,
+                    recommendation=preparationOnly and "先做准备" or above and "补做剩余任务" or "当前可做",
+                    availableTasks=available.count,
                     timing={seconds=seconds},rate=xp and seconds and A.TaskGuide.MovementRate(seconds,xp)}
             end
         end
         coroutine.yield()
     end
     table.sort(candidates,function(a,b)
+        if a.priority~=b.priority then return a.priority<b.priority end
         if (a.rate or -1)~=(b.rate or -1) then return (a.rate or -1)>(b.rate or -1) end
         local aa,bb=a.timing.seconds or math.huge,b.timing.seconds or math.huge
         if aa~=bb then return aa<bb end

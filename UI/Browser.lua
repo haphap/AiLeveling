@@ -123,7 +123,7 @@ function B:TaskRows(mode)
     if mode==1 then
         if choices[currentId] then add(choices[currentId]) end
         for _,c in ipairs(A.UI.Plan.Rows(A.plan)) do
-            if not c.questId then rows[#rows+1]={key=c.id,title=c.title,sub="地下城 · "..(c.requiresAcceptance and "可选建议" or "进行中"),icon="entry",dungeonCandidate=c} end
+            if not c.questId then rows[#rows+1]={key=c.id,title=c.title,sub="地下城 · "..(c.recommendation or (c.requiresAcceptance and "可选建议" or "进行中")),icon="entry",dungeonCandidate=c} end
         end
         for _,c in ipairs(A.plan and A.plan.taskOrder or {}) do add(c) end
         for _,c in ipairs(A.plan and A.plan.taskChoices or {}) do add(c) end
@@ -325,7 +325,7 @@ function B:Detail()
     elseif e.dungeonCandidate then
         local c=e.dungeonCandidate
         lines[#lines+1]=e.sub
-        if c.remainingXP or c.xp then lines[#lines+1]=color(gold,(c.remainingXP or c.xp).." 经验") end
+        if c.remainingXP or c.xp then lines[#lines+1]=color(gold,"当前可做任务："..(c.remainingXP or c.xp).." 经验") end
         local can,why=A.Selection.CanChoose(c,A.plan.revision)
         if why then lines[#lines+1]=why end
         self:Action(1,c.requiresAcceptance and "安排副本行程" or "继续当前行程",function()
