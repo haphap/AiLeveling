@@ -45,10 +45,12 @@ test("原生可交付但共用物品不足时显示补齐提示和整批数量",
             itemRequirements={{targetId=2592,need=60}}}}
     end
     B.plan.taskChoices[1].itemShortage=true
-    B.action.targetId=2592;B.action.itemGain=60;B.action.text="还需收集60块毛料"
+    B.state.quests[1].objectives={{text="毛料",type="item",numFulfilled=60,numRequired=60,finished=true}}
+    B.action.targetId=2592;B.action.itemGain=60;B.action.objectiveIndex=1;B.action.text="还需收集60块毛料"
     B.UI:RenderTracker()
     local model=B.UI.tracker.model
-    eq(model.objectives[#model.objectives].have,60);eq(model.objectives[#model.objectives].need,120)
+    eq(#model.objectives,1);eq(model.objectives[1].have,60);eq(model.objectives[1].need,120)
+    eq(model.objectives[1].text,"毛料");eq(model.objectives[1].done,false)
     assert(model.hint:find("1/2",1,true));eq(model.rows[1].progress,"共用物品不足 · 先补齐再一起交付")
     B.action.itemGain=1;B.UI:RenderTracker();eq(B.UI.tracker.model.objectives[#model.objectives].need,120)
     eq(B.state.quests[1].ready,true);B.finish()
@@ -113,14 +115,19 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     for _,id in ipairs({1,3}) do
         B.plan.taskChoices[id].stages={{kind="objective",objectiveIndex=1,purchase={npcId=8,name="任务商人",map=1}}}
     end
+    B.state.quests[1].objectives[1].type="item";B.action.itemGain=4;B.action.targetId=2455
+    B.state.quests[1].objectives[2]={text="初级坚韧药剂",type="item",numRequired=2,numFulfilled=0}
     B.UI:RenderTracker()
-    assert(T.objectives[1].text.value:find("可购买",1,true))
+    eq(#T.model.objectives,2);eq(T.objectives[3],nil);eq(T.objectives[1].count.value,"0/4")
+    assert(T.objectives[1].purchaseText.value:find("可购买 · 任务商人",1,true))
     local purchaseRow=T.thenButton.questId==3 and T.thenButton or T.rows[2]
-    assert(purchaseRow.objectives[1].text.value:find("可购买",1,true),purchaseRow.objectives[1].text.value)
+    assert(purchaseRow.objectives[1].purchaseText.value:find("可购买",1,true))
     assert(purchaseRow.objectives[1].purchase:find("任务商人",1,true))
     B.state.quests[3].objectives[1].numFulfilled=4;B.UI:RenderTracker()
     eq(purchaseRow.objectives[1].purchase,nil);eq(purchaseRow.objectives[1].text.value,"收集物品")
+    eq(purchaseRow.objectives[1].purchaseText.shown,false)
     B.state.quests[3].objectives[1].numFulfilled=2
+    B.action.itemGain=nil;B.action.targetId=nil;B.state.quests[1].objectives[2]=nil
     B.plan.taskChoices[1].stages=nil;B.plan.taskChoices[3].stages=nil;B.UI:RenderTracker()
     local shown,inserted,opened,modified,focused=nil,nil,nil,false,true
     C_QuestLog.GetLogIndexForQuestID=function(id) return id<=3 and id+10 end
@@ -480,9 +487,10 @@ end)
 test("交错行程按任务数汇总并显示每个目标与交付步骤",function()
     local B=ready();local a,b=B.plan.taskChoices[1],B.plan.taskChoices[3]
     B.state.quests[3].level=9;B.state.quests[3].objectives[1].type="item"
-    local oa={kind="objective",questId=1,text="目标甲"};local ob={kind="objective",questId=3,text="目标乙",position={entityName="林地"}}
+    local oa={kind="objective",questId=1,objectiveIndex=1,text="目标甲"};local ob={kind="objective",questId=3,text="目标乙",position={entityName="林地"}}
+    local oa2={kind="objective",questId=1,objectiveIndex=2,text="第二件物品"}
     B.plan.taskQueue={stagePlan=true,taskCount=2,seconds=180,low=180,high=180,xp=200,xpKnown=true,
-        steps={{choice=a,stage=oa},{choice=b,stage=ob},{choice=a,stage={kind="turnin"}},{choice=b,stage={kind="turnin"}}}}
+        steps={{choice=a,stage=oa},{choice=a,stage=oa2},{choice=b,stage=ob},{choice=a,stage={kind="turnin"}},{choice=b,stage={kind="turnin"}}}}
     a.executionAction=oa;a.executionTiming={seconds=80,low=80,high=80};B.action=oa
     B.UI:RenderTracker();assert(B.UI.tracker.objectives[1].text.value:find("狗头人",1,true))
     assert(not B.UI.body.value:find("先完成附近目标，再集中交付",1,true))
@@ -496,6 +504,11 @@ test("交错行程按任务数汇总并显示每个目标与交付步骤",functi
     eq(T.thenButton.objectives[1].text.color[1],B.UI.colors.purple[1])
     eq(T.thenText.shown,true);eq(T.thenButton.questId,3)
     assert(T.thenText.point[3]>T.queuePanel.point[3],"下一步应在其他任务之前")
+    local steps=B.plan.taskQueue.steps
+    B.plan.taskQueue.steps={steps[1],steps[2],{choice=a,stage={kind="turnin",position={entityName="收件人"}}}}
+    B.UI:RenderTracker();eq(T.thenButton.title.value,"完成后交付 · 收件人")
+    eq(T.thenButton.objectiveFrame.shown,false);eq(T.thenButton.progress.value,"")
+    B.plan.taskQueue.steps=steps
     B.action=ob;B.UI:RenderTracker();eq(T.thenButton.title.value,"当前任务")
     eq(T.thenButton.status,"已接取");eq(T.thenButton.progress.value,"完成后交付")
     B.char.paused=true;B.UI:RenderTracker();eq(T.thenText.shown,false);eq(T.thenButton.shown,false)

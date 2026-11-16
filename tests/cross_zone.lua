@@ -123,7 +123,7 @@ test("自动行程顺路接取合算任务并按原生进度继续整组交付",
     assert(loadfile("UI/Main.lua"))("AiLeveling",B);assert(loadfile("UI/Tracker.lua"))("AiLeveling",B)
     local model=B.UI.TrackerModel(s,p,p.fallback,false)
     eq(model.questId,2);eq(model.kind,"accept");assert(model.hint)
-    eq(model.rows[1].questId,1);eq(model.rows[1].accepted,true)
+    eq(model.nextId,1);eq(model.nextStep.kind,"objective")
     local objective,delivery=0,math.huge
     for index,step in ipairs(p.taskQueue.steps) do
         local stage=step.stage or step.choice.stages[1]

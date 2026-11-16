@@ -185,9 +185,16 @@ A.plan.taskChoices[#A.plan.taskChoices+1]=pickup
 A.plan.taskOrder[#A.plan.taskOrder+1]=pickup
 A.plan.taskQueue.steps[#A.plan.taskQueue.steps+1]={choice=pickup,stage=pickup.actions[1]}
 if arg[1]=="purchase" then
-    action.objectiveIndex=1
-    A.state.quests[7].objectives={{text="任务物资",type="item",numRequired=5,numFulfilled=1}}
-    table.insert(A.plan.taskChoices[1].stages,1,{kind="objective",objectiveIndex=1,purchase={npcId=8,name="示例商人",map=1429}})
+    action.objectiveIndex=1;action.targetId=2455;action.itemGain=4;action.text="收集初级法力药水"
+    A.state.quests[7].title="失职+药剂=快乐";A.state.quests[7].level=21
+    A.state.quests[7].objectives={{text="初级法力药水",type="item",numRequired=4,numFulfilled=0},
+        {text="初级坚韧药剂",type="item",numRequired=2,numFulfilled=0}}
+    local choice=A.plan.taskChoices[1];choice.title=A.state.quests[7].title;choice.remainingXP=1650
+    choice.stages={action,{kind="objective",questId=7,objectiveIndex=2},
+        {kind="turnin",questId=7,position={entityKind="npc",entityId=4081,entityName="洛玛克·链带"}}}
+    action.purchase={npcId=958,name="当恩·布赖特斯塔",map=1429}
+    action.position={map=1433,x=.2443,y=.3788}
+    table.insert(A.plan.taskQueue.steps,2,{choice=choice,stage=choice.stages[2]})
 end
 if arg[1]=="nearby" then
     for _,choice in ipairs(A.plan.taskChoices) do
@@ -382,6 +389,12 @@ if arg[1]=="gear" then
     assert(T.gear:IsShown() and T.reward:IsShown() and T.objectiveFrame:IsShown())
     assert(T.gear.parent==T.currentChild and T.gear:GetHeight()==A.UI.metrics.hit*A.UI:FontScale())
     assert(T.gear.text:GetText():find("+50%%") and T.reward.text:GetText():find("大幅提升",1,true))
+end
+if arg[1]=="purchase" then
+    local T=A.UI.tracker
+    assert(#T.model.objectives==2 and T.model.nextId~=T.model.questId)
+    assert(T.objectives[1].count:GetText()=="0/4" and T.objectives[2].count:GetText()=="0/2")
+    assert(T.objectives[1].purchaseText:IsShown() and not T.objectives[2].purchaseText:IsShown())
 end
 if arg[1]=="journey" then
     local T=A.UI.tracker

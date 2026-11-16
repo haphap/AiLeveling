@@ -103,6 +103,7 @@ end
 local function nextAction(action,plan,state,rows)
     if not action or action.kind=="manual" then return end
     local function listed(stage,id)
+        if id and id==action.questId and (stage.kind~="turnin" or action.kind=="turnin") then return true end
         for _,row in ipairs(rows) do
             if (row.atStop or row.along) and row.questId==id and row.kind==stage.kind and
                 (stage.kind~="objective" or stage.objectiveIndex==(row.sharedObjective or row.sideAction and row.sideAction.objectiveIndex)) then return true end
@@ -302,7 +303,14 @@ function UI.TrackerModel(state,plan,action,paused,along)
         local need=math.max(have+action.itemGain,total)
         local limit=A.TaskGuide and A.TaskGuide.ItemLimit and A.TaskGuide.ItemLimit(action.targetId,state)
         if limit then need=math.min(need,limit) end
-        model.objectives[#model.objectives+1]={text="本次所需物品",done=false,have=have,need=need,purchase=action.purchase}
+        local objective=action.objectiveIndex and model.objectives[action.objectiveIndex]
+        if objective and objective.type=="item" then
+            objective.done,objective.have,objective.need=false,have,need
+            objective.purchase=action.purchase
+        else
+            model.objectives[#model.objectives+1]={text=action.position and action.position.targetName or action.text or "本次所需物品",
+                type="item",done=false,have=have,need=need,purchase=action.purchase}
+        end
     end
     if plan.preparingQuest then model.hint="先完成「"..plan.preparingQuest.title.."」的前置准备"
     elseif action and action.pickupResume then model.hint="顺路接取，与「"..action.pickupResume.."」一并安排"
@@ -936,6 +944,7 @@ local function renderObjectives(owner,parent,pool,objectives,sharedIndex)
             end)
             row:SetScript("OnLeave",function() GameTooltip:Hide() end)
             row.text=text(row,UI.daylight and "caption" or "body",palette.white);row.text:SetPoint("TOPLEFT");row.text:SetNonSpaceWrap(false)
+            row.purchaseText=text(row,"caption",palette.gold);row.purchaseText:SetMaxLines(1)
             row.icon=row:CreateTexture(nil,"ARTWORK")
             row.count=text(row,UI.daylight and "caption" or "body",palette.white);row.count:SetJustifyH("RIGHT")
             row.check=text(row,"task",palette.muted);row.check:SetJustifyH("RIGHT")
@@ -948,11 +957,12 @@ local function renderObjectives(owner,parent,pool,objectives,sharedIndex)
         row.ratio=done and 1 or row.known and math.max(0,math.min(1,have/need)) or 0
         local purchase=objective.purchase
         for _,stage in ipairs(owner.candidate and owner.candidate.stages or {}) do
-            if stage.kind=="objective" and stage.objectiveIndex==(sharedIndex or i) then purchase=stage.purchase;break end
+            if stage.kind=="objective" and stage.objectiveIndex==(sharedIndex or i) then purchase=purchase or stage.purchase;break end
         end
         row.purchase=not done and (not row.known or have<need) and UI.PurchaseText(purchase) or nil
-        row.text:SetText((objective.text or "任务目标"):gsub("%s*%d+%s*/%s*%d+",""):gsub("^%s+","")..
-            (row.purchase and (" |cff"..UI.hex.gold.."· 可购买|r") or ""))
+        row.text:SetText((objective.text or "任务目标"):gsub("%s*%d+%s*/%s*%d+",""):gsub("^%s+",""))
+        row.purchaseText:SetText(row.purchase and ("可购买 · "..(purchase.name or ("商人 #"..purchase.npcId))) or "")
+        row.purchaseText:SetShown(row.purchase~=nil)
         row.text:SetTextColor(unpack(done and (UI.daylight and palette.green or palette.muted) or UI.daylight and palette.white or objective.type=="item" and palette.purple or palette.blue))
         row.icon:SetTexture(media.."hud-"..(done and "turnin" or objective.type=="item" and "collect" or "objective")..".tga")
         row.icon:SetVertexColor(unpack(done and palette.green or objective.type=="item" and palette.purple or palette.gold))
@@ -979,6 +989,9 @@ local function layoutObjectives(pool,width,scale)
             row.active:SetPoint("TOPLEFT",-10*scale,0);row.active:SetPoint("BOTTOMLEFT",-10*scale,6*scale)
             row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y)
             local height=math.max(18*scale,row.text:GetStringHeight())
+            row.purchaseText:ClearAllPoints();row.purchaseText:SetPoint("TOPLEFT",20*scale,-height)
+            row.purchaseText:SetWidth(width-20*scale)
+            if row.purchaseText:IsShown() then height=height+row.purchaseText:GetStringHeight()+spacing.tight*scale end
             height=height+(UI.daylight and 3 or 6)*scale
             row:SetHeight(height);y=y+height
         end
@@ -1195,6 +1208,7 @@ function UI:RenderTracker(along)
     local nextRow=T.thenButton
     local nextQuest=(state.quests or {})[nextId]
     local taskStep=nextStep and (nextStep.kind=="accept" or nextStep.kind=="objective" or nextStep.kind=="turnin")
+    local sameQuest=taskStep and nextId==model.questId
     local tone=not taskStep and "white" or nextQuest and (nextQuest.ready and "green" or "gold") or "blue"
     nextRow.questId,nextRow.candidate,nextRow.revision=nextId,model.nextChoice,plan.revision
     nextRow.status=taskStep and nextId and self.QuestStatus(state,nextId,plan)
@@ -1207,13 +1221,14 @@ function UI:RenderTracker(along)
         local target=destination(nextStep)
         instruction=target and (verb.." · "..target) or nextStep.kind=="turnin" and verb or ""
         following="接下来"..(nextRow.status and (" · |cff"..self.hex[tone]..nextRow.status.."|r") or "")
+        if sameQuest then title=instruction;instruction="";following="接下来" end
     end
     T.thenText:SetText(following)
     nextRow.title:SetText(title);nextRow.title:SetTextColor(unpack(self.daylight and tone~="green" and palette.white or palette[tone]))
     nextRow.icon:SetTexture(media..(({accept="hud-accept",objective="hud-objective",turnin="hud-turnin"})[nextStep and nextStep.kind] or "compass")..".tga")
     nextRow.icon:SetVertexColor(unpack(palette[tone]));nextRow.progress:SetText(instruction)
     nextRow.detail=(nextRow.status or "").."\n"..instruction
-    renderObjectives(nextRow,nextRow.objectiveFrame,nextRow.objectives,taskStep and nextQuest and not nextQuest.ready and nextQuest.objectives or {})
+    renderObjectives(nextRow,nextRow.objectiveFrame,nextRow.objectives,taskStep and not sameQuest and nextQuest and not nextQuest.ready and nextQuest.objectives or {})
     local visit=not paused and plan.regionPlan
     local region=visit and (visit.destination or visit.current)
     local function names(list,revisit)
