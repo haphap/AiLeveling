@@ -400,6 +400,16 @@ test("原生更新后清除旧目标和旧任务行且拒绝过期任务点击",
     B.action.itemGain=nil;B.action.kind="accept";B.UI:RenderTracker();eq(T.model.questId,nil)
     B.action.kind="turnin";B.UI:RenderTracker();eq(T.model.questId,1)
     B.state.quests[1].ready=false;B.UI:RenderTracker();eq(T.model.questId,nil)
+    B.state.quests[1].ready=true
+    B.action={kind="transit",mode="flight",fromTaxi=2,toTaxi=5,questId=1,title="飞往 湖畔镇"}
+    B.state.transportKnown=true;B.state.unlocked={["taxi:2"]=true,["taxi:5"]=true}
+    B.state.taxiAvailability={["2:5"]=true}
+    B.Navigation.actions={B.action};B.Navigation.index=1
+    B.UI:RenderTracker();eq(T.model.questId,1)
+    B.state.unlocked["taxi:5"]=false;B.UI:RenderTracker();eq(T.model.questId,nil)
+    B.state.unlocked["taxi:5"]=true;B.state.taxiAvailability["2:5"]=false
+    B.UI:RenderTracker();eq(T.model.questId,nil)
+    B.Navigation.actions=nil
     -- A first plan can still be running with a full quest log. Native empty font strings return nil.
     B.action=nil;B.plan=nil;B.jobs.plan=coroutine.create(function() coroutine.yield() end)
     for id=1,30 do

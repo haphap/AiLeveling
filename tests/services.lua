@@ -529,7 +529,7 @@ test("原生明确未发现的飞行点进入状态指纹，未知标记不推�
     eq(s.unlocked["taxi:1"],false);eq(s.unlocked["taxi:2"],true);eq(s.unlocked["taxi:3"],nil);eq(s.unlocked["taxi:4"],nil)
     assert(B.Transport.Key(s)~=key);s.unlocked["taxi:2"]=nil
     assert(B.Transport.Key(s)~=key);s.unlocked["taxi:1"]=true
-    B.Transport:RefreshKnown(1,"Alliance");eq(s.unlocked["taxi:1"],true)
+    B.Transport:RefreshKnown(1,"Alliance");eq(s.unlocked["taxi:1"],false)
     C_TaxiMap,C_Map=oldTaxi,oldMap
 end)
 test("炉石旅店按集中交付与可接任务排序且不推演换绑行程",function()

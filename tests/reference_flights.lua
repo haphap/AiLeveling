@@ -228,10 +228,9 @@ test("暴风城换区无需先开飞行地图即引导飞往湖畔镇并等待�
     C_Map={GetBestMapForUnit=function() return 1453 end,GetMapInfo=function(map)
         return {mapType=3,name=map==1453 and "暴风城" or "赤脊山"}
     end}
-    C_TaxiMap={GetTaxiNodesForMap=function()
-        return {{nodeID=2,name="暴风城",faction=2,isUndiscovered=false},
-            {nodeID=5,name="湖畔镇",faction=2,isUndiscovered=false}}
-    end}
+    local nodes={{nodeID=2,name="暴风城",faction=2,isUndiscovered=false},
+        {nodeID=5,name="湖畔镇",faction=2,isUndiscovered=false}}
+    C_TaxiMap={GetTaxiNodesForMap=function() return nodes end}
     assert(loadfile("Data/Flights.lua"))("AiLeveling",B)
     assert(loadfile("Transport.lua"))("AiLeveling",B)
     O,D,L,T={map=1453,x=0.6,y=0.7},{map=1453,x=0.7,y=0.7},{map=1433,x=0.3,y=0.6},{map=1433,x=0.4,y=0.6}
@@ -273,6 +272,16 @@ test("暴风城换区无需先开飞行地图即引导飞往湖畔镇并等待�
     eq(s.taxiAvailability["2:5"],false);eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
     B.Transport.availability={};B.Transport.known["taxi:5"]=false;B.Transport:Snapshot(s)
     eq(s.taxiAvailability["2:5"],nil);eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
+    -- A fresh undiscovered result must replace a stale unlocked flag and its flight plan.
+    B.Transport.known["taxi:5"]=true;B.Transport.availability["2:5"]=true
+    nodes[2].isUndiscovered=true;B.Transport.dirty=true;B.Transport:Snapshot(s)
+    eq(s.unlocked["taxi:5"],false);eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
+    result=plan(s,d);eq(result.referenceJourney.flights,0)
+    for _,step in ipairs(result.travelActions) do assert(step.mode~="flight") end
+    nodes[2].isUndiscovered=false;B.Transport.dirty=true;B.Transport:Snapshot(s)
+    eq(B.Flights.Routes(O,T,s,nav)[1].flights,1)
+    nodes[1].isUndiscovered=true;B.Transport.dirty=true;B.Transport:Snapshot(s)
+    eq(s.unlocked["taxi:2"],false);eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
     C_Map,C_TaxiMap=oldMap,oldTaxi
     A.Flights,A.TaskGuide,A.Navigation=oldFlights,oldGuide,oldNav
 end)

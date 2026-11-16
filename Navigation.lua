@@ -4,6 +4,12 @@ local N = A.Navigation
 
 function N.StaleAction(action,state,plan)
     state,plan=state or A.state,plan or N.plan
+    if action and action.kind=="transit" and action.mode=="flight" and action.fromTaxi and action.toTaxi and
+        state and state.transportKnown and not state.onTaxi then
+        local unlocked=state.unlocked or {}
+        if unlocked["taxi:"..action.fromTaxi]~=true or unlocked["taxi:"..action.toTaxi]~=true or
+            (state.taxiAvailability or {})[action.fromTaxi..":"..action.toTaxi]~=true then return true end
+    end
     if not (action and action.questId and plan and plan.revision and state and plan.revision~=state.revision) then return end
     if action.kind=="transit" or action.kind=="move" or action.kind=="approach" then
         local actions=plan.best and plan.best.actions or plan.travelActions

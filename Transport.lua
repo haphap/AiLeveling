@@ -59,7 +59,7 @@ function T:RefreshKnown(map,faction)
                 if type(node.name)=="string" then self.taxiNames[node.nodeID]=node.name end
                 if type(node.isUndiscovered)=="boolean" then
                     local key="taxi:"..node.nodeID
-                    self.known[key]=self.known[key] or node.isUndiscovered==false
+                    self.known[key]=node.isUndiscovered==false
                 end
             end
         end
