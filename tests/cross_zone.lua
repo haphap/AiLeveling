@@ -59,8 +59,11 @@ test("跨区未接任务按完整移动收益比较并从接取衔接到交付�
     B,s,d,q=fixture();q[3].questLevel=24;q[3].taskFacts.level=24
     local timing,priced=B.TaskGuide.Timing,{}
     B.TaskGuide.Timing=function(origin,c,...) priced[c.questId]=true;return timing(origin,c,...) end
+    q[3].zoneOrSort=100;d.maps={[100]=1}
     local target=d.Target
+    local resolved={}
     d.Target=function(self,quest,context)
+        resolved[quest.id]=true
         if quest.id==3 then return {map=1,x=0.2,y=0} end
         return target(self,quest,context)
     end
@@ -72,7 +75,7 @@ test("跨区未接任务按完整移动收益比较并从接取衔接到交付�
     eq(p.regionPlan.destination.pickups[1].questId,2)
     eq(p.regionPlan.revisit[1].choice.questId,3);eq(p.regionPlan.revisit[1].level,22)
     eq(#p.taskOrder,1);eq(choice(p,3).revisitLevel,22)
-    eq(priced[3],nil)
+    eq(priced[3],nil);eq(resolved[3],nil);eq(#choice(p,3).stages,0)
     s.quests[1].ready=true;p=plan(s,d,nil,B)
     eq(p.fallback.questId,1);eq(p.fallback.kind,"turnin");eq(p.regionPlan.destination.map,2)
     eq(p.taskQueue,p.regionPlan.destination.queue);eq(p.taskQueue.steps[1].choice.questId,1)
@@ -80,10 +83,16 @@ test("跨区未接任务按完整移动收益比较并从接取衔接到交付�
     s.quests[1]=nil;s.completed[1]=true;p=plan(s,d,nil,B)
     eq(p.fallback.questId,2);eq(p.fallback.kind,"accept");eq(#p.regionPlan.handins,0)
     s.locked=3;p=plan(s,d,nil,B);eq(p.fallback.questId,3);eq(p.regionPlan,nil)
-    eq(priced[3],true);priced[3]=nil
+    eq(priced[3],true);eq(resolved[3],true);priced[3],resolved[3]=nil,nil
     s.locked=nil;s.completed[2]=true;s.level=22;p=plan(s,d,nil,B)
     eq(p.fallback.questId,3);eq(choice(p,3).revisitLevel,nil);eq(s.skipped[3],nil)
-    eq(priced[3],true)
+    eq(priced[3],true);eq(resolved[3],true)
+    -- Without a geographic category, a later task stays selectable but never becomes the fallback.
+    s.level=20;q[3].zoneOrSort=nil;resolved[3]=nil
+    p=plan(s,d,nil,B);eq(p.fallback.kind,"taskReview");eq(choice(p,3).revisitLevel,22);eq(resolved[3],nil)
+    local position=s.position;s.position=nil;eq(plan(s,d,nil,B).fallback.kind,"taskReview");s.position=position
+    s.quests[3]={ready=true,objectives={}}
+    p=plan(s,d,nil,B);eq(p.fallback.questId,3);eq(p.fallback.kind,"turnin");eq(resolved[3],true)
     -- Shared pickups and hand-ins pay for the transfer once, rather than one round trip per quest.
     B,s,d,q=fixture();s.completed[3]=true
     d.Target=function(_,quest,context)

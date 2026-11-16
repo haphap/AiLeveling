@@ -184,12 +184,14 @@ test("自动规划跳过低价值任务但保留列表与手动锁定",function(
     local B,s,q,d=fixture()
     local timing,calls=B.TaskGuide.Timing,0
     B.TaskGuide.Timing=function(...) calls=calls+1;return timing(...) end
+    local target,resolved=d.Target,0
+    d.Target=function(...) resolved=resolved+1;return target(...) end
     local result=plan(s,d,nil,B)
     eq(result.fallback.kind,"taskReview");eq(#result.taskChoices,1);assert(result.taskChoices[1].lowValue);eq(#result.taskOrder,0)
-    eq(calls,0)
+    eq(calls,0);eq(resolved,0);eq(#result.taskChoices[1].stages,0)
     eq(s.quests[1].ready,nil);eq(s.completed[1],nil);eq(s.skipped[1],nil)
     s.locked=1;result=plan(s,d,nil,B);eq(result.fallback.questId,1);eq(result.taskChoices[1].lowValue,nil)
-    assert(calls>0)
+    assert(calls>0);assert(resolved>0)
 end)
 test("低价值已接任务不会阻止推荐未接的有效任务",function()
     local B,s,q,d=fixture();local good=F.Quest(2);good.verified=false;good.questLevel=20

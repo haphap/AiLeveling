@@ -23,13 +23,30 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         local q=data:GetQuest(id,state)
         if not q and active then q={id=id,title=active.title or ("任务 #"..id),questLevel=active.level} end
         if not q or not A.Eligibility.Check(q,state,data) then return end
+        local kind=active and (active.ready and "turnin" or "objective") or "accept"
+        local lowValue
+        if A.TaskGuide and not unlocks[id] then lowValue=A.TaskGuide.LowValue(q,state,data) end
+        local later=automatic and kind~="turnin" and not unlocks[id] and (q.questLevel or state.level)>state.level+2
+        if automatic and (lowValue or later) then
+            -- Keep catalog and revisit metadata without resolving targets that will not be routed.
+            local title=active and active.title or q.title
+            local facts=q.taskFacts or data.CacheQuest and data:CacheQuest(q,state)
+            local map=data.maps and data.maps[q.zoneOrSort]
+            choices[#choices+1]={id="task:"..id,kind="task",questId=id,title=title,status=kind,
+                level=q.questLevel,referenceXP=q.referenceXP,remainingXP=A.TaskGuide.XP(q,state.level,state),
+                rewards=facts and facts.rewards,groupReference=facts and facts.group,lowValue=lowValue,
+                regionMap=map and map>0 and map or nil,
+                revisitLevel=later and math.max(q.requiredLevel or 0,q.questLevel-2) or nil,
+                stages={},stagesComplete=false,actions={{kind=kind,questId=id,title=title,
+                    text=active and "按任务日志继续完成目标。" or "前往任务发布者，查看并接取任务。"}}}
+            return
+        end
         local position,unavailable=data:Target(q,state)
         local areaId,objectiveIndex
         if not position and data.UnmappedTargetArea then areaId,objectiveIndex=data:UnmappedTargetArea(q,state) end
         local instance=A.Dungeon and A.Dungeon.TaskInstance and A.Dungeon.TaskInstance(position,state,data,areaId) or
             A.Dungeon and A.Dungeon.TaskPvP and A.Dungeon.TaskPvP(position,state,data,areaId)
         local currentInstance=state.inInstance and instance and instance.instanceId==state.instanceId or false
-        local kind=active and (active.ready and "turnin" or "objective") or "accept"
         local action={kind=kind,questId=id,title=active and active.title or q.title,position=position,
             areaId=areaId,objectiveIndex=position and position.objectiveIndex or objectiveIndex,
             text=({accept="前往任务发布者，查看并接取任务。",objective="按任务日志继续完成目标。",turnin="目标已完成，前往任务交付者。"})[kind]}
@@ -41,7 +58,7 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         end
         if position and position.travelHint then action.text=position.travelHint end
         local choice={id="task:"..id,kind="task",questId=id,title=action.title,actions={action},
-            status=kind,level=q.questLevel,referenceXP=q.referenceXP,unlock=unlocks[id],
+            status=kind,level=q.questLevel,referenceXP=q.referenceXP,unlock=unlocks[id],lowValue=lowValue,
             requireCheck=not active and (unavailable or not position and not areaId) or nil,
             distance=position and A.Navigation and A.Navigation.Distance and A.Navigation:Distance(state.position,position)}
         if state.inInstance then choice.currentInstance=currentInstance end
@@ -72,8 +89,6 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
             action.text="向任务发布者查看此任务。"
         end
         if A.TaskGuide then
-            -- Reject obsolete and later-level work before pricing its complete journey.
-            if not choice.unlock then choice.lowValue=A.TaskGuide.LowValue(q,state,data,choice) end
             if not choice.lowValue and (not automatic or kind=="turnin" or choice.unlock or
                 (q.questLevel or state.level)<=state.level+2) then
                 choice.timing=A.TaskGuide.Timing(state.position,choice,state,A.Navigation)
@@ -175,7 +190,7 @@ function P.TaskOrder(state,choices,data)
     local pending,order,optional={},{},{}
     for _,choice in ipairs(choices) do
         choice.executionTiming=nil;choice.executionAction=nil
-        if not choice.lowValue and (state.quests[choice.questId] or choice.questId==state.locked) then
+        if not choice.lowValue and not choice.revisitLevel and (state.quests[choice.questId] or choice.questId==state.locked) then
             if choice.entryBlocked and choice.questId~=state.locked then optional[#optional+1]=choice
             else pending[#pending+1]=choice end
         end
@@ -287,8 +302,7 @@ function P.TaskRegions(state,plan,data)
         for _,stage in ipairs(c.stages or {}) do
             if stage.kind=="objective" and stage.position then point=stage.position;break end
         end
-        local map=point and point.map
-        c.revisitLevel=nil
+        local map=point and point.map or c.regionMap
         if map and not c.lowValue and not c.entryBlocked and not c.requireCheck and
             not (q and (q.requiredSkill or q.requiredRanks)) then
             local r=byMap[map]
@@ -522,7 +536,7 @@ function P.Build(state, data, options)
                 (choice.executionAction or choice.actions[1]).kind=="turnin"
             local itemBlocked=itemBlockedQuests[choice.questId] or A.TaskGuide and A.TaskGuide.ItemGainBlocked(choice.executionAction or choice.actions[1],state)
             if itemBlocked then result.itemLimitIssue=true;itemBlockedQuests[choice.questId]=true end
-            if not itemBlocked and not waiting and not choice.lowValue and not choice.acceptBlocked and (not state.locked or choice.questId==state.locked) and (not choice.requireCheck or state.locked==choice.questId) then
+            if not itemBlocked and not waiting and not choice.lowValue and not choice.revisitLevel and not choice.acceptBlocked and (not state.locked or choice.questId==state.locked) and (not choice.requireCheck or state.locked==choice.questId) then
                 local task=choice.executionAction or choice.actions[1]
                 local approach=choice.entryBlocked and {kind="dungeonBlocked",questId=choice.questId,title=choice.title,text=choice.entryBlocked} or
                     A.Dungeon and A.Dungeon.TaskApproach and A.Dungeon.TaskApproach(task,state,data) or task
@@ -568,8 +582,13 @@ function P.Build(state, data, options)
             end
         end
     end
-    if not result.best and not result.fallback and result.regionPlan and #result.regionPlan.revisit>0 then
-        result.fallback={kind="taskReview",title="这些任务留待回访",text="在练级区域中查看建议等级与下一站任务。"}
+    if not result.best and not result.fallback then
+        for _,choice in ipairs(result.taskChoices) do
+            if choice.revisitLevel then
+                result.fallback={kind="taskReview",title="这些任务留待回访",text="在任务面板查看建议等级，或选择任务手动继续。"}
+                break
+            end
+        end
     end
     if batch and not result.best and not result.fallback then
         result.fallback={kind="selectionBlocked",title=batch.title.."任务等待处理",
