@@ -304,6 +304,8 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
         title="领主大厅",rewards={count=5,prepare=1},remainingXP=13300,timing={seconds=150}}
     B.refreshAt=nil;B.plan.revision=B.state.revision;B.plan.suggestedDungeon=suggestion;B.UI:RenderTracker()
     eq(T.rows[1].dungeonId,nil);eq(T.model.questId,1)
+    eq(T.dungeons.shown,true);eq(T.dungeons.heading.value,"副本建议 · 1处  ›")
+    assert(T.dungeons.text.value:find("领主大厅 · 5项任务",1,true));eq(T.dungeons.candidate.rewards.prepare,1)
     -- The browser keeps the same current recommendation as navigation, ahead of dungeon options.
     B.UI.Plan.key=nil;B.UI:SelectTab(1)
     local browser=B.UI.Browser
@@ -324,9 +326,27 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     browser:Refresh(1);browser.rows[2].scripts.OnClick(browser.rows[2],"LeftButton");browser.buttons[2].run();eq(B.UI.Dungeon.selected,suggestion.dungeonId);eq(selectedTab,4)
     B.Dungeon={StartTaskBatch=function(_,id) started=id;return true end}
     local valid,why=B.Selection.CanChoose(suggestion,B.plan.revision);assert(valid,why);browser.buttons[1].run();eq(started,suggestion.dungeonId)
-    B.plan.suggestedDungeon=nil;B.UI:RenderTracker();eq(T.rows[1].dungeonId,nil)
+    B.plan.suggestedDungeon=nil;B.UI:RenderTracker();eq(T.rows[1].dungeonId,nil);eq(T.dungeons.shown,false)
     B.plan.dungeonChoices={suggestion}
     eq(B.UI.Plan.Rows(B.plan)[1],suggestion);assert(B.Selection.CanChoose(suggestion,B.plan.revision))
+    local second={dungeonId="reference:36",title="死亡矿井",rewards={count=6,prepare=0}}
+    B.plan.dungeonChoices[2]=second;B.UI:RenderTracker()
+    eq(T.dungeons.heading.value,"副本建议 · 2处  ›");eq(T.model.questId,1)
+    T.dungeons.scripts.OnClick()
+    assert(B.menu["领主大厅 · 5项任务"]);B.menu["死亡矿井 · 6项任务"].callback()
+    eq(B.UI.Dungeon.selected,second.dungeonId);eq(selectedTab,4);eq(B.char.taskBatch,nil)
+    -- Recommendations stay visible while automatic planning waits for the player to stop.
+    B.plan.revision=B.state.revision-1;B.UI:RenderTracker();eq(T.dungeons.shown,true)
+    B.plan.revision=B.state.revision
+    for _,key in ipairs({"inInstance","taskBatch","gearTarget"}) do
+        B.state[key]=true;B.UI:RenderTracker();eq(T.dungeons.shown,false);B.state[key]=nil
+    end
+    B.settings.dungeons=false;B.UI:RenderTracker();eq(T.dungeons.shown,false);B.settings.dungeons=true
+    B.char.paused=true;B.UI:RenderTracker();eq(T.dungeons.shown,false);B.char.paused=false
+    B.UI:RenderTracker();T.dungeons.scripts.OnClick();B.menu["本级稍后提醒"].callback();eq(T.dungeons.shown,false)
+    B.state.level=B.state.level+1;B.UI:RenderTracker();eq(T.dungeons.shown,true)
+    B.state.level=B.state.level-1;T.dungeons.dismissedLevel=nil
+    B.plan.dungeonChoices={suggestion}
     -- Dungeon actions call the task batch directly, with no hidden legacy widgets.
     local stopped,waiting,retried=false,false,false
     B.Dungeon.CanContinueTask=function(row) return row.id==166 end

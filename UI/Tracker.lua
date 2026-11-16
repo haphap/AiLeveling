@@ -593,6 +593,28 @@ function UI:ClassReminderMenu(owner)
     end)
 end
 
+function UI.DungeonReminders(state,plan)
+    if A.settings.dungeons==false or A.char.paused or A.error or state.inInstance or state.taskBatch or state.gearTarget then return {} end
+    return plan.dungeonChoices or (plan.suggestedDungeon and {plan.suggestedDungeon}) or {}
+end
+
+function UI:DungeonReminderMenu(owner)
+    GameTooltip:Hide()
+    self:Menu(owner,function(_,menu)
+        for _,candidate in ipairs(self.DungeonReminders(A.state,A.plan or {})) do
+            local d=A.DungeonCatalog and A.DungeonCatalog.entries[candidate.dungeonId]
+            local levels=d and d.minLevel and string.format(" · %d—%d级",d.minLevel,d.maxLevel or d.minLevel) or ""
+            menu:CreateButton(candidate.title..levels.." · "..candidate.rewards.count.."项任务",function()
+                self.Dungeon.selected=candidate.dungeonId;self.details:Show();self:SelectTab(4)
+            end)
+        end
+        menu:CreateButton("查看全部地下城",function() self.details:Show();self:SelectTab(4) end)
+        menu:CreateButton("本级稍后提醒",function()
+            self.tracker.dungeons.dismissedLevel=A.state.level;self:RenderTracker()
+        end)
+    end)
+end
+
 local function questTooltip(owner)
     GameTooltip:SetOwner(owner,"ANCHOR_RIGHT")
     if owner.dungeonId then
@@ -813,6 +835,20 @@ function UI:CreateTracker()
         GameTooltip:SetOwner(button,"ANCHOR_TOP");GameTooltip:SetText("本级不再提醒；可在行程菜单恢复");GameTooltip:Show()
     end)
     T.career.later:HookScript("OnLeave",function() GameTooltip:Hide() end)
+    T.dungeons=CreateFrame("Button",nil,T.content)
+    T.dungeons.heading=text(T.dungeons,"caption",palette.muted)
+    T.dungeons.text=text(T.dungeons,"body",palette.blue)
+    T.dungeons.text:SetMaxLines(2)
+    T.dungeons:SetScript("OnClick",function() self:DungeonReminderMenu(T.dungeons) end)
+    T.dungeons:SetScript("OnEnter",function()
+        GameTooltip:SetOwner(T.dungeons,"ANCHOR_LEFT");GameTooltip:SetText("副本建议")
+        local candidate=T.dungeons.candidate
+        if candidate and candidate.rewards.prepare>0 then
+            GameTooltip:AddLine(candidate.rewards.prepare.."项任务需先完成前置。",unpack(palette.gold))
+        end
+        GameTooltip:AddLine("点击选择副本，查看待接任务与前置，再安排整组行程。",1,1,1,true);GameTooltip:Show()
+    end)
+    T.dungeons:SetScript("OnLeave",function() GameTooltip:Hide() end)
     T.card=CreateFrame("Frame",nil,T.content)
     T.actionIcon=T.card:CreateTexture(nil,"ARTWORK")
     T.stepIcon=T.card:CreateTexture(nil,"ARTWORK")
@@ -1178,6 +1214,11 @@ function UI:RenderTracker(along)
     T.career.train:SetShown(#reminder.spells>0)
     T.career.train.text:SetText(training and "已安排" or "去训练")
     T.career.train:SetEnabled(not training and not state.inInstance and not state.dead and not state.onTaxi)
+    local dungeons=self.DungeonReminders(state,plan)
+    local suggested=dungeons[1]
+    T.dungeons.candidate=suggested
+    T.dungeons.heading:SetText("副本建议 · "..#dungeons.."处  ›")
+    T.dungeons.text:SetText(suggested and (self:Icon("entry",16).." "..suggested.title.." · "..suggested.rewards.count.."项任务") or "")
     local bag=A.settings.rewardAdvice~=false and A.Gear and A.Gear.BagUpgrade(state,A.char.ignoredGear) or nil
     T.gear.advice=bag
     T.gear.text:SetText(bag and ("装备："..(bag.item.link or bag.item.name).." |cff"..UI.hex.green..A.Gear.UpgradeText(bag).."|r") or "")
@@ -1417,6 +1458,13 @@ function UI:LayoutTracker()
     end
     T.career:SetHeight(noticeHeight+24*scale);T.career:SetShown(not collapsed and (T.career.text:GetText() or "")~="")
     if T.career:IsShown() then cardTop=cardTop+T.career:GetHeight()+spacing.padding*scale end
+    T.dungeons:ClearAllPoints();T.dungeons:SetPoint("TOPLEFT",0,-cardTop);T.dungeons:SetWidth(width)
+    T.dungeons.heading:ClearAllPoints();T.dungeons.heading:SetPoint("TOPLEFT");T.dungeons.heading:SetWidth(width)
+    local dungeonTop=T.dungeons.heading:GetStringHeight()+spacing.tight*scale
+    T.dungeons.text:ClearAllPoints();T.dungeons.text:SetPoint("TOPLEFT",0,-dungeonTop);T.dungeons.text:SetWidth(width)
+    T.dungeons:SetHeight(dungeonTop+T.dungeons.text:GetStringHeight())
+    T.dungeons:SetShown(not collapsed and T.dungeons.dismissedLevel~=A.state.level and (T.dungeons.text:GetText() or "")~="")
+    if T.dungeons:IsShown() then cardTop=cardTop+T.dungeons:GetHeight()+spacing.padding*scale end
     T.card:ClearAllPoints();T.card:SetPoint("TOPLEFT",0,-cardTop)
     local top=0
     T.area:SetShown((T.area:GetText() or "")~="")
