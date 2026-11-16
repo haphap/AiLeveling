@@ -4,6 +4,11 @@ local palette=UI.colors
 local spacing=UI.metrics
 local media="Interface\\AddOns\\AiLeveling\\Media\\"
 
+local function nearbyDistance(yards)
+    local meters=A.settings.distanceUnits=="meters"
+    return string.format("%d %s",math.floor(yards*(meters and 0.9144 or 1)/5+0.5)*5,meters and "米" or "码")
+end
+
 local function metrics(choice,xpOnly)
     local xp=choice and choice.remainingXP
     local reward="经验 "..(xp and string.format("%.0f",xp) or "—")
@@ -23,7 +28,11 @@ local function destination(action)
     local point=action and action.position
     if A.Navigation and A.Navigation.Target then point=A.Navigation.Target(action) end
     point=point or action and action.recipient
-    if not point then return end
+    if not point then
+        local instance=action and action.areaId and A.Data and A.Dungeon and A.Dungeon.TaskInstance and
+            A.Dungeon.TaskInstance(nil,A.state,A.Data,action.areaId)
+        return instance and instance.title,instance and instance.title
+    end
     local map=point.map and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
     local name=point.entityName or action.recipient and action.recipient.entityName
     local zone=map and map.name
@@ -103,7 +112,10 @@ end
 local function nextAction(action,plan,state,rows)
     if not action or action.kind=="manual" then return end
     local function listed(stage,id)
-        if id and id==action.questId and (stage.kind~="turnin" or action.kind=="turnin") then return true end
+        if id and id==action.questId then
+            if stage.kind==action.kind or stage.kind=="accept" then return true end
+            if stage.kind=="objective" and action.kind~="accept" then return true end
+        end
         for _,row in ipairs(rows) do
             if (row.atStop or row.along) and row.questId==id and row.kind==stage.kind and
                 (stage.kind~="objective" or stage.objectiveIndex==(row.sharedObjective or row.sideAction and row.sideAction.objectiveIndex)) then return true end
@@ -237,9 +249,10 @@ local function alongTasks(state,plan,action,paused,byQuest)
             local id=choice.questId
             local q=quests[id]
             if id~=action.questId and not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] and
-                not choice.lowValue and not choice.revisitLevel and not choice.acceptBlocked and not choice.entryBlocked and not choice.requireCheck then
+                not choice.lowValue and (not choice.revisitLevel or not q and choice.pickupAction) and
+                not choice.acceptBlocked and not choice.entryBlocked and not choice.requireCheck then
                 local kind=not q and "accept" or q.ready and not choice.itemShortage and "turnin" or "objective"
-                local step=choice.executionAction or (choice.actions or {})[1]
+                local step=not q and choice.pickupAction or choice.executionAction or (choice.actions or {})[1]
                 for _,stage in ipairs(choice.stages or {}) do
                     local objective=q and stage.objectiveIndex and (q.objectives or {})[stage.objectiveIndex]
                     if stage.kind==kind and (not (objective and objective.finished) or stage.itemGain and stage.itemGain>0) then step=stage;break end
@@ -251,11 +264,24 @@ local function alongTasks(state,plan,action,paused,byQuest)
                     (not (objective and objective.finished) or step.itemGain and step.itemGain>0) then
                     local approach=navigation:Distance(state.position,step.position)
                     local onward=navigation:Distance(step.position,target)
+                    local atHub=kind=="accept" and (action.kind=="accept" or action.kind=="turnin") and
+                        direct<=180 and approach and approach<=180 and onward and onward<=180
                     if approach and onward and approach<=math.max(direct,180) and onward<=math.max(direct,180) and
-                        (kind~="objective" or approach<=180) and math.max(0,approach+onward-direct)/speed<=20 then
+                        (kind~="objective" or approach<=180) and (atHub or math.max(0,approach+onward-direct)/speed<=20) then
                         along[id]={action=step,distance=approach}
                     end
                 end
+            end
+        end
+    end
+    if state.position and not paused and not A.error and not state.dead and not state.onTaxi and not state.inInstance and navigation and navigation.Distance then
+        local ignored=UI.tracker and UI.tracker.nearby and UI.tracker.nearby.map==state.position.map and UI.tracker.nearby.ignored or {}
+        for _,stop in ipairs(plan.flightUnlocks or {}) do
+            local key="taxi:"..stop.taxiId
+            local distance=navigation:Distance(state.position,stop.position)
+            if distance and distance<=180 and (state.unlocked or {})[key]==false and not ignored[key] and
+                not (state.serviceStop and state.serviceStop.kind=="unlockFlight" and state.serviceStop.taxiId==stop.taxiId) then
+                along[key]={action=stop,distance=distance}
             end
         end
     end
@@ -479,15 +505,22 @@ function UI.TrackerModel(state,plan,action,paused,along)
             visible[#visible+1]=row
         end
     end
+    for _,stop in ipairs(plan.flightUnlocks or {}) do
+        local side=along["taxi:"..stop.taxiId]
+        if side then
+            visible[#visible+1]={kind="unlockFlight",title="开通飞行点 · "..stop.title,status="未开通",along=true,
+                alongDistance=side.distance,serviceStop=stop,progress="与飞行管理员交谈"}
+        end
+    end
     table.sort(visible,function(a,b)
         local function order(row)
-            return row.questId==model.questId and 0 or row.atStop and 1 or row.along and 2 or 3
+            return row.questId and row.questId==model.questId and 0 or row.atStop and 1 or row.along and 2 or 3
         end
         local ar,br=order(a),order(b)
         if ar~=br then return ar<br end
         if ar==2 and a.alongDistance~=b.alongDistance then return (a.alongDistance or 0)<(b.alongDistance or 0) end
         if a.planOrder~=b.planOrder then return (a.planOrder or math.huge)<(b.planOrder or math.huge) end
-        return a.questId<b.questId
+        return (a.questId or -a.serviceStop.taxiId)<(b.questId or -b.serviceStop.taxiId)
     end)
     model.rows=visible
     if not action then
@@ -617,6 +650,11 @@ end
 
 local function questTooltip(owner)
     GameTooltip:SetOwner(owner,"ANCHOR_RIGHT")
+    if owner.serviceStop then
+        GameTooltip:SetText("开通飞行点 · "..owner.serviceStop.title)
+        GameTooltip:AddLine("左键：导航到飞行管理员\n右键：导航或暂不提示",1,1,1,true)
+        GameTooltip:Show();return
+    end
     if owner.dungeonId then
         GameTooltip:SetText("左键：查看副本任务")
         GameTooltip:AddLine("右键：安排整组任务",1,1,1,true);GameTooltip:Show();return
@@ -633,12 +671,30 @@ local function questTooltip(owner)
     GameTooltip:Show()
 end
 
+function UI:PickTrackerFlight(target)
+    for _,stop in ipairs(A.Services:Choices("unlockFlight")) do
+        if stop.taxiId==target.taxiId then
+            local ok,why=A.Services:Pick(stop,A.state.revision)
+            if not ok then A:Message(why) end
+            return
+        end
+    end
+    self:RenderTracker()
+end
+
 function UI:TrackerMenu(owner)
     local id,candidate,revision=owner.questId,owner.candidate,owner.revision
+    local serviceStop=owner.serviceStop
     local action=owner==self.tracker.questTitle and self.tracker.action
     GameTooltip:Hide()
     self:Menu(owner,function(_,menu)
-        if owner.dungeonId then
+        if serviceStop then
+            menu:CreateButton("导航到飞行管理员",function() self:PickTrackerFlight(serviceStop) end)
+            menu:CreateButton("暂不提示此飞行点",function()
+                self.tracker.nearby.ignored["taxi:"..serviceStop.taxiId]={count=2}
+                self:RenderTracker()
+            end)
+        elseif owner.dungeonId then
             menu:CreateButton("安排整组任务",function()
                 local ok,why=A.Selection.CanChoose(candidate,revision)
                 if ok then ok,why=A.Dungeon:StartTaskBatch(owner.dungeonId) end
@@ -1068,6 +1124,7 @@ function UI:TrackerRow(index,parent)
     row:SetScript("OnLeave",function() row:SetBackdropColor(0,0,0,0);GameTooltip:Hide() end)
     row:SetScript("OnClick",function(_,button)
         if button=="RightButton" then self:TrackerMenu(row)
+        elseif row.serviceStop then self:PickTrackerFlight(row.serviceStop)
         elseif row.dungeonId then self.Dungeon.selected=row.dungeonId;self.details:Show();self:SelectTab(4)
         elseif row.pickupAction and not (IsModifiedClick and IsModifiedClick("CHATLINK")) and A.Navigation:Pickup(row.pickupAction) then
             GameTooltip:Hide()
@@ -1126,9 +1183,7 @@ function UI:UpdateNearby(along)
     local need,have=goal.numRequired,goal.numFulfilled or 0
     if type(need)=="number" and need>0 then title=string.format("%s，还差 %d",title,math.max(0,need-have)) end
     notice.key,notice.action,notice.title=bestKey,best.action,title
-    local meters=A.settings.distanceUnits=="meters"
-    local distance=math.floor((best.distance*(meters and 0.9144 or 1))/5+0.5)*5
-    notice.body:SetText(title..string.format("  ·  %d %s",distance,meters and "米" or "码"))
+    notice.body:SetText(title.."  ·  "..nearbyDistance(best.distance))
     notice.icon:SetTexture(media.."hud-"..(goal.type=="item" and "collect" or "objective")..".tga")
     local scale=A.settings.fontScale or 1
     notice.mark:ClearAllPoints();notice.mark:SetPoint("TOPLEFT",1,-1);notice.mark:SetPoint("BOTTOMLEFT",1,1);notice.mark:SetWidth(2*scale)
@@ -1189,6 +1244,14 @@ function UI:UpdateTrackerDynamic()
     self:UpdateNearby(along)
     local old=T.model.journey
     local layout=(journey~=nil)~=(old~=nil) or #(journey and journey.steps or {})~=#(old and old.steps or {})
+    for _,row in ipairs(T.rows) do
+        local side=along[row.questId or row.serviceStop and ("taxi:"..row.serviceStop.taxiId)]
+        if row.along and side and row:IsShown() and row.progress:IsShown() then
+            local height=row.progress:GetStringHeight()
+            row.progress:SetText(row.progressBase.." · "..nearbyDistance(side.distance))
+            layout=layout or height~=row.progress:GetStringHeight()
+        end
+    end
     for i,step in ipairs(journey and journey.steps or {}) do
         local before=old and old.steps[i]
         if not before or before.title~=step.title or before.detail~=step.detail then layout=true end
@@ -1285,11 +1348,20 @@ function UI:RenderTracker(along)
         local target=destination(nextStep)
         instruction=target and (verb.." · "..target) or nextStep.kind=="turnin" and verb or ""
         following="接下来"..(nextRow.status and (" · |cff"..self.hex[tone]..nextRow.status.."|r") or "")
-        if sameQuest then title=instruction;instruction="";following="接下来" end
+        if sameQuest then
+            following="接下来"
+            if nextStep.kind=="objective" then
+                title=nextStep.text or "完成任务目标"
+                local instance=A.Dungeon and A.Dungeon.TaskInstance and A.Dungeon.TaskInstance(nextStep.position,state,A.Data,nextStep.areaId)
+                instruction=instance and ("副本 · "..instance.title) or instruction
+                if model.kind=="accept" then following="接取后" end
+            else title=instruction;instruction="" end
+        end
     end
     T.thenText:SetText(following)
     nextRow.title:SetText(title);nextRow.title:SetTextColor(unpack(self.daylight and tone~="green" and palette.white or palette[tone]))
-    nextRow.icon:SetTexture(media..(({accept="hud-accept",objective="hud-objective",turnin="hud-turnin"})[nextStep and nextStep.kind] or "compass")..".tga")
+    nextRow.icon:SetTexture(media..(nextStep and nextStep.kind=="objective" and nextStep.targetKind=="item" and "hud-collect" or
+        ({accept="hud-accept",objective="hud-objective",turnin="hud-turnin"})[nextStep and nextStep.kind] or "compass")..".tga")
     nextRow.icon:SetVertexColor(unpack(palette[tone]));nextRow.progress:SetText(instruction)
     nextRow.detail=(nextRow.status or "").."\n"..instruction
     renderObjectives(nextRow,nextRow.objectiveFrame,nextRow.objectives,taskStep and not sameQuest and nextQuest and not nextQuest.ready and nextQuest.objectives or {})
@@ -1323,6 +1395,13 @@ function UI:RenderTracker(along)
     T.region.region=#summary>0 and region or nil
 
     local instruction=model.instruction
+    if model.kind=="accept" then
+        for _,stage in ipairs(model.choice and model.choice.stages or {}) do
+            local instance=stage.kind=="objective" and A.Dungeon and A.Dungeon.TaskInstance and
+                A.Dungeon.TaskInstance(stage.position,state,A.Data,stage.areaId)
+            if instance then instruction=(state.taskBatch and "副本任务 · " or "先接备用 · ")..instance.title;break end
+        end
+    end
     if model.kind=="objective" and #model.objectives>0 and not A.char.paused and not A.error and
         not (action.position and action.position.sourceKind=="vendor") then instruction=nil end
     local lines={model.deliverySummary or instruction}
@@ -1367,14 +1446,14 @@ function UI:RenderTracker(along)
     for i,item in ipairs(model.rows) do
         local row=self:TrackerRow(i)
         local isCurrent=item.questId and item.questId==model.questId
-        row.icon:SetTexture(media.."hud-"..(item.dungeonId and "entry" or item.kind)..".tga")
+        row.icon:SetTexture(media.."hud-"..(item.serviceStop and "flight" or item.dungeonId and "entry" or item.kind)..".tga")
         row.title:SetText(questTitle(item.questId,item.title,item.candidate))
         local color=(item.deferred or item.candidate and item.candidate.lowValue) and palette.muted or item.kind=="turnin" and palette.green or item.accepted and palette.gold or palette.blue
         row.title:SetTextColor(unpack(self.daylight and not item.deferred and item.kind~="turnin" and palette.white or color))
         row.icon:SetVertexColor(unpack(color))
         row.status=item.deferred and (item.accepted and "已接·暂缓" or "未接·暂缓") or item.status
         local progress=item.delivery or item.progress
-        if item.along then
+        if item.along and not item.serviceStop then
             local verb=({accept="顺路接取",turnin="顺路交付",objective="顺路完成"})[item.kind]
             if item.shared then
                 local objective=state.quests[item.questId].objectives[item.sharedObjective]
@@ -1384,13 +1463,18 @@ function UI:RenderTracker(along)
             else
                 local _,name=destination(item.sideAction)
                 progress=verb.." · "..(name or item.progress)
+                if item.kind=="accept" and item.candidate and item.candidate.revisitLevel then
+                    progress=progress.." · "..item.candidate.revisitLevel.."级再做"
+                end
             end
         end
+        row.progressBase=progress
+        if item.alongDistance then progress=progress.." · "..nearbyDistance(item.alongDistance) end
         row.progress:SetText(progress)
         row.progress:SetTextColor(unpack(item.kind=="turnin" and palette.green or palette.muted))
         row.metrics=item.metrics
         row.candidate,row.revision,row.questId=item.candidate,plan.revision,item.questId
-        row.deferred,row.dungeonId=item.deferred,item.dungeonId
+        row.deferred,row.dungeonId,row.serviceStop=item.deferred,item.dungeonId,item.serviceStop
         row.atStop,row.along=item.atStop,item.along
         row.pickupAction=item.along and item.kind=="accept" and item.sideAction or nil
         row:SetParent(item.atStop and T.currentChild or item.along and T.alongChild or T.queueChild)

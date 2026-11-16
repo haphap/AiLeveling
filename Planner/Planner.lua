@@ -39,6 +39,17 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
                 revisitLevel=later and math.max(q.requiredLevel or 0,q.questLevel-2) or nil,
                 stages={},stagesComplete=false,actions={{kind=kind,questId=id,title=title,
                     text=active and "按任务日志继续完成目标。" or "前往任务发布者，查看并接取任务。"}}}
+            local choice=choices[#choices]
+            -- Keep a nearby next-level pickup without resolving its objectives or routing it yet.
+            if later and not active and not lowValue and choice.revisitLevel==state.level+1 and
+                state.position and map==state.position.map and not (facts and facts.hidden) and
+                not (A.Supplies and A.Supplies.AcceptIssue(state)) then
+                local point,issue=data:Target(q,state)
+                if point and not issue and point.map==map then
+                    choice.pickupAction={kind="accept",questId=id,title=title,position=point,
+                        text=point.startItemId and ("使用「"..point.label.."」接取任务。") or "先接取，稍后一起做。"}
+                end
+            end
             return
         end
         local position,unavailable=data:Target(q,state)
@@ -472,6 +483,9 @@ function P.Build(state, data, options)
     local ids=batch and {} or data:Candidates(state)
     local result={revision=state.revision,preparingQuest=preparation,origin=state.position and {map=state.position.map}}
     result.taskChoices=batchChoices or P.TaskChoices(state,data,ids,nil,options)
+    if state.position and A.Flights and A.Flights.UnlockCandidates then
+        result.flightUnlocks=A.Flights.UnlockCandidates(state,{[state.position.map]=true},A.Navigation)
+    end
     local preferred=not batch and A.Gear.PreferTask and A.Gear.PreferTask(result.taskChoices,state,options)
     if preferred then
         for index,choice in ipairs(result.taskChoices) do if choice==preferred then table.remove(result.taskChoices,index);break end end

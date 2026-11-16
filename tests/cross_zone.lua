@@ -76,6 +76,12 @@ test("跨区未接任务按完整移动收益比较并从接取衔接到交付�
     eq(p.regionPlan.revisit[1].choice.questId,3);eq(p.regionPlan.revisit[1].level,22)
     eq(#p.taskOrder,1);eq(choice(p,3).revisitLevel,22)
     eq(priced[3],nil);eq(resolved[3],nil);eq(#choice(p,3).stages,0)
+    -- A local task due next level may be picked up without pricing or resolving its work.
+    s.level=21;p=plan(s,d,nil,B)
+    eq(choice(p,3).revisitLevel,22);eq(choice(p,3).pickupAction.kind,"accept")
+    eq(choice(p,3).pickupAction.position.x,0.2);eq(#choice(p,3).stages,0);eq(priced[3],nil)
+    q[3].taskFacts.hidden=true;p=plan(s,d,nil,B);eq(choice(p,3).pickupAction,nil)
+    q[3].taskFacts.hidden=nil;s.level=20;resolved[3]=nil
     s.quests[1].ready=true;p=plan(s,d,nil,B)
     eq(p.fallback.questId,1);eq(p.fallback.kind,"turnin");eq(p.regionPlan.destination.map,2)
     eq(p.taskQueue,p.regionPlan.destination.queue);eq(p.taskQueue.steps[1].choice.questId,1)
@@ -137,7 +143,7 @@ test("自动行程顺路接取合算任务并按原生进度继续整组交付",
     assert(loadfile("UI/Main.lua"))("AiLeveling",B);assert(loadfile("UI/Tracker.lua"))("AiLeveling",B)
     local model=B.UI.TrackerModel(s,p,p.fallback,false)
     eq(model.questId,2);eq(model.kind,"accept");assert(model.hint)
-    eq(model.nextId,1);eq(model.nextStep.kind,"objective")
+    eq(model.nextId,2);eq(model.nextStep.kind,"objective")
     local objective,delivery=0,math.huge
     for index,step in ipairs(p.taskQueue.steps) do
         local stage=step.stage or step.choice.stages[1]

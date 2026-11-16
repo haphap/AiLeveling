@@ -240,6 +240,45 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     starter.position.y=0.58;B.UI:RenderTracker();eq(T.alongLabel.shown,false)
     starter.position.y=0.5;B.UI:RenderTracker();eq(T.alongLabel.shown,true)
     eq(T.model.questId,1);eq(B.state.locked,1)
+    local originalAction,originalPosition,originalQuest=B.action,B.state.position,B.state.quests[1]
+    B.state.quests[1]=nil
+    B.action={questId=1,kind="accept",position={map=1,x=0.55,y=0.5}}
+    B.state.position=B.action.position;starter.position.x=0.576
+    B.UI:RenderTracker();eq(T.model.rows[1].questId,4);eq(T.rows[1].along,true)
+    local candidate=B.plan.taskChoices[4]
+    candidate.revisitLevel=B.state.level+1;candidate.pickupAction=starter
+    B.UI:RenderTracker();assert(T.rows[1].progress.value:find("级再做",1,true))
+    candidate.acceptBlocked="日志已满";B.UI:RenderTracker();eq(T.alongLabel.shown,false)
+    candidate.acceptBlocked=nil;candidate.revisitLevel=nil;candidate.pickupAction=nil
+    B.action,B.state.position=originalAction,originalPosition;B.state.quests[1]=originalQuest;starter.position.x=0.55
+    -- An unaccepted quest's objectives have not been displayed above yet.
+    B.action=starter;B.state.locked=nil;candidate.stages={starter,
+        {kind="objective",questId=4,text="迪克斯特·瓦德的手掌",areaId=717,targetKind="item",need=1},
+        {kind="turnin",questId=4,position=starter.position}}
+    B.plan.taskOrder={candidate}
+    local taskInstance=B.Dungeon.TaskInstance
+    B.Dungeon.TaskInstance=function(_,_,_,area) if area==717 then return {title="暴风城监狱"} end end
+    B.UI:RenderTracker();eq(T.model.nextStep.kind,"objective");eq(T.thenText.value,"接取后")
+    eq(T.thenButton.title.value,"迪克斯特·瓦德的手掌");eq(T.thenButton.progress.value,"副本 · 暴风城监狱")
+    assert(B.UI.body.value:find("先接备用",1,true))
+    B.Dungeon.TaskInstance=taskInstance;B.action=originalAction;B.state.locked=1;candidate.stages=nil;B.plan.taskOrder=nil;B.UI:RenderTracker()
+    -- Flight unlocks use the same optional list and existing service navigation.
+    local flight={kind="unlockFlight",taxiId=12,title="夜色镇",position={map=1,x=0.525,y=0.5}}
+    B.plan.flightUnlocks={flight};B.state.unlocked={["taxi:12"]=false};B.UI:RenderTracker()
+    eq(T.rows[1].serviceStop,flight);eq(T.rows[1].parent,T.alongChild)
+    assert(T.rows[1].title.value:find("开通飞行点",1,true))
+    local units=B.settings.distanceUnits;B.settings.distanceUnits="yards"
+    B.state.position={map=1,x=0.505,y=0.5};B.UI:UpdateTrackerDynamic()
+    eq(T.rows[1].progress.value,"与飞行管理员交谈 · 80 码")
+    B.state.position=originalPosition;B.settings.distanceUnits=units;B.UI:RenderTracker()
+    local services=B.Services
+    local picked
+    B.Services={Choices=function() return {flight} end,Pick=function(_,stop) picked=stop;return true end}
+    T.rows[1].scripts.OnClick(nil,"LeftButton");eq(picked,flight);eq(B.action,originalAction)
+    T.rows[1].scripts.OnClick(nil,"RightButton");B.menu["暂不提示此飞行点"].callback()
+    eq(T.rows[1].serviceStop,nil);T.nearby.ignored={}
+    B.state.unlocked["taxi:12"]=true;B.UI:RenderTracker();eq(T.rows[1].serviceStop,nil)
+    B.Services=services;B.plan.flightUnlocks=nil;B.state.unlocked=nil
     local originalNavigation=B.Navigation
     assert(loadfile("Navigation.lua"))("AiLeveling",B)
     B.Transport.FlightGate=function() end
