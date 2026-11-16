@@ -237,6 +237,35 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     starter.position.y=0.58;B.UI:RenderTracker();eq(T.alongLabel.shown,false)
     starter.position.y=0.5;B.UI:RenderTracker();eq(T.alongLabel.shown,true)
     eq(T.model.questId,1);eq(B.state.locked,1)
+    local originalNavigation=B.Navigation
+    assert(loadfile("Navigation.lua"))("AiLeveling",B)
+    B.Transport.FlightGate=function() end
+    B.Navigation.actions={B.action};B.Navigation.plan=B.plan;B.Navigation.Distance=originalNavigation.Distance
+    B.char.locked=1
+    local modified=IsModifiedClick
+    IsModifiedClick=function() return true end
+    T.rows[1].scripts.OnClick(nil,"LeftButton");eq(B.Navigation.manual,nil)
+    IsModifiedClick=modified
+    T.rows[1].scripts.OnClick(nil,"LeftButton")
+    eq(B.Navigation:Current(),starter);eq(B.Navigation:MapPoints()[1].position.entityName,"焦焚残骸")
+    B.UI:RenderTracker();eq(T.model.questId,4);eq(T.model.destination,"焦焚残骸")
+    eq(B.char.locked,1);eq(B.Navigation.actions[1],B.action)
+    T.questTitle.scripts.OnClick(nil,"RightButton");assert(B.menu["返回任务"])
+    B.state.quests[4]={title="已接的顺路任务",objectives={}}
+    eq(B.Navigation:Current(),B.action);eq(B.Navigation.manual,nil);eq(B.char.locked,1)
+    eq(B.Navigation:Pickup(starter),false)
+    B.state.quests[4]=nil
+    local objectPoint=starter.position
+    starter.position={map=1,x=0.5,y=0.5,startItemId=500};starter.text="使用「任务信件」接取任务。"
+    local getQuest=B.Data.GetQuest
+    B.Data.GetQuest=function(self,id) if id==4 then return {id=4,startedBy={{},{},{500}}} end;return getQuest(self,id) end
+    B.UI:RenderTracker();T.rows[1].scripts.OnClick(nil,"LeftButton");B.UI:RenderTracker()
+    eq(B.Navigation:Current(),starter);eq(#B.Navigation:MapPoints(),0)
+    eq(T.model.instruction,starter.text);eq(B.QuestAssist.wanted[1],500);eq(B.QuestAssist.requirements[1].kind,"start")
+    B.state.quests[4]={objectives={}};eq(B.Navigation:Current(),B.action)
+    eq(B.Navigation.manual,nil);eq(B.QuestAssist.requirements[1].kind,"use")
+    B.state.quests[4]=nil;B.Data.GetQuest=getQuest;B.char.locked=nil
+    starter.position=objectPoint;starter.text=nil;B.Navigation=originalNavigation
     -- Nearby work and ready hand-ins share the optional section without changing the main action.
     starter.position.x=0.525;starter.kind="objective";starter.objectiveIndex=1
     B.state.quests[4]={objectives={{type="item",text="物资：1/5",numRequired=5,numFulfilled=1}}}

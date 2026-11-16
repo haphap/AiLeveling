@@ -61,12 +61,27 @@ function N:Advance()
     A.dirty = true
 end
 
-function N:ClearManual()
+function N:Pickup(action)
+    local state=A.state
+    local id=action and action.questId
+    local point=action and action.position
+    if not id or action.kind~="accept" or not point or (state.quests or {})[id] or
+        (state.completed or {})[id] or (state.skipped or {})[id] or (state.chainDeferred or {})[id] or
+        state.dead or state.onTaxi or A.char.paused then return false end
+    self.manual={map=point.map,x=point.x,y=point.y,title=action.title,action=action}
+    self:RefreshPins(true)
+    self:Update()
+    A.QuestAssist:Update()
+    A.dirty=true
+    return true
+end
+
+function N:ClearManual(replan)
     if not self.manual then return end
     self.manual = nil
     self:RefreshPins()
     A.QuestAssist:Update()
-    A:Replan()
+    if replan~=false then A:Replan() end
     A.dirty = true
 end
 
@@ -75,7 +90,15 @@ function N:Current()
     if flight then return flight end
     local hearth=A.Hearth and A.Hearth:Gate()
     if hearth then return hearth end
-    if self.manual then return {kind = "manual", title = self.manual.title or "手动目的地", position = self.manual} end
+    if self.manual then
+        local pickup=self.manual.action
+        if pickup and ((A.state.quests or {})[pickup.questId] or (A.state.completed or {})[pickup.questId]) then
+            -- Accepting the detour quest resumes the original task without changing its lock.
+            self:ClearManual(false)
+        else
+            return pickup or {kind="manual",title=self.manual.title or "手动目的地",position=self.manual}
+        end
+    end
     local action=self.actions and self.actions[self.index]
     if not N.StaleAction(action) then return action end
 end
@@ -188,7 +211,7 @@ local function actionAtlas(action)
         or (action.kind=="transit" and action.mode=="flight" and "FlightPath") or "Waypoint-MapPin-Tracked"
 end
 
-function N:SyncWaypointUI()
+function N:SyncWaypointUI(force)
     self.externalWaypoint=nil
     local api=WaypointUIAPI and WaypointUIAPI.Navigation
     if not (api and api.GetUserNavigation and api.NewUserNavigation and api.ClearUserNavigation) then return end
@@ -198,7 +221,7 @@ function N:SyncWaypointUI()
     local tracked=api.IsUserNavigationTracked() or api.IsPathStepWaypointTracked()
     local rawPin=not tracked and C_SuperTrack and C_SuperTrack.GetHighestPrioritySuperTrackingType and Enum and Enum.SuperTrackingType and
         C_SuperTrack.GetHighestPrioritySuperTrackingType()==Enum.SuperTrackingType.UserWaypoint
-    if nav and not owned and tracked or rawPin then
+    if not force and (nav and not owned and tracked or rawPin) then
         self.externalWaypoint=enabled
         return
     end
@@ -218,8 +241,8 @@ function N:SyncWaypointUI()
         iconTexture=atlas,iconType="ATLAS",stripCoordinates=true,suppressAudio=true})
 end
 
-function N:RefreshPins()
-    self:SyncWaypointUI()
+function N:RefreshPins(force)
+    self:SyncWaypointUI(force)
     if not self.hbdPins then return end
     self.hbdPins:RemoveAllWorldMapIcons(self)
     self.hbdPins:RemoveAllMinimapIcons(self)

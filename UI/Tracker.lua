@@ -601,6 +601,9 @@ local function questTooltip(owner)
     if owner.detail then GameTooltip:AddLine(owner.detail,0.94,0.91,0.83,true)
     elseif owner.progress then GameTooltip:AddLine(owner.progress:GetText(),0.94,0.91,0.83,true) end
     if owner.metrics then GameTooltip:AddLine(owner.metrics,1,0.83,0.45,true) end
+    if owner.pickupAction then
+        GameTooltip:AddLine(owner.pickupAction.position.startItemId and "左键：显示接任务物品" or "左键：导航到接取地点",1,1,1,true)
+    end
     if owner.questId then GameTooltip:AddLine("右键：任务操作\nShift+左键：插入任务链接",1,1,1,true) end
     GameTooltip:Show()
 end
@@ -616,7 +619,7 @@ function UI:TrackerMenu(owner)
                 if ok then ok,why=A.Dungeon:StartTaskBatch(owner.dungeonId) end
                 if not ok then A:Message(why) end
             end)
-        elseif action and action.kind=="manual" then
+        elseif action and A.Navigation.manual then
             menu:CreateButton("返回任务",function() A.Navigation:ClearManual() end)
         elseif action and action.kind=="service" and action.serviceKind=="repair" then
             menu:CreateButton("忽略维修",function() A.Supplies:IgnoreRepair() end)
@@ -1015,6 +1018,8 @@ function UI:TrackerRow(index,parent)
     row:SetScript("OnClick",function(_,button)
         if button=="RightButton" then self:TrackerMenu(row)
         elseif row.dungeonId then self.Dungeon.selected=row.dungeonId;self.details:Show();self:SelectTab(4)
+        elseif row.pickupAction and not (IsModifiedClick and IsModifiedClick("CHATLINK")) and A.Navigation:Pickup(row.pickupAction) then
+            GameTooltip:Hide()
         else self:QuestClick(row.questId,button) end
     end)
     if index then T.rows[index]=row end
@@ -1328,6 +1333,7 @@ function UI:RenderTracker(along)
         row.candidate,row.revision,row.questId=item.candidate,plan.revision,item.questId
         row.deferred,row.dungeonId=item.deferred,item.dungeonId
         row.atStop,row.along=item.atStop,item.along
+        row.pickupAction=item.along and item.kind=="accept" and item.sideAction or nil
         row:SetParent(item.atStop and T.currentChild or item.along and T.alongChild or T.queueChild)
         local native=(state.quests or {})[item.questId]
         local objectives=item.accepted and item.kind~="turnin" and not item.deferred and

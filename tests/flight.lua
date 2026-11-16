@@ -255,6 +255,15 @@ test("飞行保留手动目的地且不混入步行校准",function()
     WaypointUIAPI.Navigation.IsUserNavigationTracked=function() return nav~=nil end
     B.settings.waypointUI=false;B.Navigation:RefreshPins();eq(nav,nil);eq(cleared,1)
     nav=external;B.Navigation:RefreshPins();eq(nav,external)
+    B.settings.waypointUI=true
+    local pickup={kind="accept",questId=44,title="顺路任务",position=position(0.8)}
+    eq(B.Navigation:Pickup(pickup),true);eq(B.Navigation:Current(),pickup)
+    eq(nav.flags,"AiLeveling");eq(nav.x,0.8);eq(math.floor(B.distance+0.5),100)
+    B.state.position=position(0.8);B.Navigation:Update()
+    eq(B.Navigation:Current(),pickup);eq(B.Navigation.index,index)
+    B.state.quests[44]={ready=false};B.Navigation:Update()
+    eq(B.Navigation.manual,nil);eq(B.Navigation.index,index);eq(nav.x,0.9)
+    eq(B.char.locked,42);eq(B.replans,replans+2)
     WaypointUIAPI=nil
 end)
 test("空中规划门控并丢弃起飞前尚未发布的计算",function()
