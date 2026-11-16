@@ -335,13 +335,14 @@ test("原生更新后清除旧目标和旧任务行且拒绝过期任务点击",
     for id=1,30 do
         B.state.quests[id]={title="已接任务 "..id,objectives={{text="收集物品",numFulfilled=2,numRequired=5}}}
     end
-    for _,font in ipairs({T.career.text,T.area,T.location,T.thenText,T.footer}) do
+    for _,font in ipairs({T.career.text,T.area,T.location,T.thenText,T.footer,T.reward.text}) do
         font.GetText=function(self) if self.value~="" then return self.value end end
     end
     B.UI:RenderTracker()
     eq(B.UI.title.value,"正在安排行程");eq(T.queueLabel.value,"已接任务");eq(#T.model.rows,30)
     eq(T.queueScroll.shown,true);eq(T.rows[1].status,"已接取");eq(T.rows[1].objectives[1].count.value,"2/5")
     eq(T.career.shown,false);eq(T.thenButton.shown,false);eq(T.location.shown,false);eq(T.footer.shown,false)
+    eq(T.reward.shown,false)
     B.finish()
 end)
 test("暂停飞行手动导航保持真实当前类型且不自动跳过任务",function()
@@ -593,7 +594,7 @@ test("职业提醒随可学技能和待接任务更新，稍后保留行程并�
     B.finish()
 end)
 
-test("新获装备按次序提醒，接交任务显示对应奖励且换装只处理该件",function()
+test("装备和奖励留在任务列表，一键忽略且右键换装只处理该件",function()
     local B=ready();assert(loadfile("Planner/Gear.lua"))("AiLeveling",B)
     assert(loadfile("Merchant.lua"))("AiLeveling",B)
     local function item(id,score)
@@ -610,15 +611,13 @@ test("新获装备按次序提醒，接交任务显示对应奖励且换装只�
     refresh();eq(T.gear.shown,false);eq(T.reward.shown,false)
     B.state.bags[100]=2;refresh()
     eq(T.gear.shown,true);assert(T.gear.text.value:find(bag.link,1,true));assert(T.gear.text.value:find("+50%",1,true))
-    eq(T.gear.text.value,"装备提升："..bag.link.."  ·  +50%  ·  头部")
-    eq(T.gear.equip.text.value,"装备它");eq(T.gear.ignore.text.value,"忽略这件")
-    eq(T.gear.shade.color[1],0.90);eq(T.gear.shade.color[4],0.10)
+    eq(T.gear.parent,T.currentChild);eq(T.gear.shade,nil);eq(T.gear.equip,nil)
     eq(B.Gear.UpgradeText({upgrade={oldScore=1000,delta=1}}),"+<1%")
     eq(B.Gear.UpgradeText({upgrade={oldScore=0,delta=1}}),"新")
     eq(T.reward.shown,false);eq(T.model.questId,1);eq(T.objectives[1].count.value,"3/10")
     B.action.kind="accept";refresh()
     eq(T.reward.shown,true);assert(T.reward.text.value:find(reward.link,1,true))
-    assert(T.reward.text.value:find("交还时",1,true));eq(T.reward.icon.shown,false)
+    assert(T.reward.text.value:find("奖励：",1,true));eq(T.reward.icon.shown,false)
     assert(T.reward.text.value:find("大幅提升",1,true));assert(not T.reward.text.value:find("\n",1,true))
     B.action.kind="turnin";refresh();eq(T.reward.icon.shown,true)
     B.plan.taskChoices[1].rewardPick.upgrade.delta=-1;refresh()
@@ -629,14 +628,14 @@ test("新获装备按次序提醒，接交任务显示对应奖励且换装只�
     SetItemRef=function(link) clicked=link end
     T.reward.scripts.OnHyperlinkClick(T.reward,"item:101",reward.link,"LeftButton");eq(clicked,"item:101")
     SetItemRef=previous
-    T.gear.close:Click();eq(T.gear.shown,false);eq(next(B.char.ignoredGear),nil)
+    T.gear.close:Click();eq(T.gear.shown,false);eq(B.char.ignoredGear["item:100"],true)
     refresh();eq(T.gear.shown,false)
-    B.state.bags[100]=3;refresh();eq(T.gear.shown,true)
-    T.gear.ignore:Click();eq(T.gear.shown,false);eq(B.char.ignoredGear["item:100"],true)
+    B.state.bags[100]=3;refresh();eq(T.gear.shown,false)
     B.state.bags[100]=4;refresh();eq(T.gear.shown,false)
     B.UI:TrackerMenu(B.UI.frame);B.menu["恢复装备提醒"].callback();eq(T.gear.shown,false)
     B.state.bags[100]=5;refresh();eq(T.gear.shown,true)
-    B.combat(true);B.UI:RenderTracker();eq(T.gear.equip.enabled,false)
+    local function menu() T.gear.scripts.OnMouseUp(T.gear,"RightButton") end
+    B.combat(true);menu();eq(B.menu["装备这件"].enabled,false)
     eq(B.Gear:EquipAdvice(T.gear.advice),false)
     B.combat(false);B.UI:RenderTracker()
     local equips=0
@@ -644,7 +643,7 @@ test("新获装备按次序提醒，接交任务显示对应奖励且换装只�
         eq(link,bag.link);eq(slot,1);equips=equips+1
         B.state.equipment[slot]=bag;B.state.bagEquipment={old};B.state.bags={[99]=1}
     end
-    T.gear.equip:Click();eq(equips,1);eq(T.gear.shown,false)
+    menu();eq(B.menu["装备这件"].enabled,true);B.menu["装备这件"].callback();eq(equips,1);eq(T.gear.shown,false)
     refresh();B.state.equipment={[1]=old};B.state.bagEquipment={bag};B.state.bags={[100]=1}
     refresh();eq(T.gear.shown,false) -- Just taken off, not newly acquired.
     B.state.bags[100]=2;bag.pending=true;refresh();eq(T.gear.shown,false)
@@ -667,7 +666,8 @@ test("新获装备按次序提醒，接交任务显示对应奖励且换装只�
     B.state.bags={[201]=1,[202]=1};B.state.bagEquipment={one,off};refresh();eq(T.gear.shown,false)
     one.stats.ITEM_MOD_STRENGTH_SHORT=15;B.state.bags[201]=2;refresh();eq(T.gear.advice.slot,16)
     C_Item.EquipItemByName=function(link,slot) eq(link,one.link);eq(slot,16);equips=equips+1 end
-    T.gear.equip:Click();eq(equips,2)
+    T.gear.scripts.OnHyperlinkClick(T.gear,"item:201",one.link,"RightButton")
+    B.menu["装备这件"].callback();eq(equips,2)
     B.finish()
 end)
 

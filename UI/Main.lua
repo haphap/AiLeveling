@@ -9,7 +9,7 @@ UI.colors={
     white={0.96,0.97,0.99}, muted={0.70,0.73,0.80},
     gold={0.90,0.73,0.40}, green={0.42,0.85,0.60}, blue={0.58,0.79,1}, purple={0.78,0.68,1},
     red={0.95,0.61,0.61}, line={0.65,0.70,0.82,0.18}, border={0.50,0.55,0.65,0.25},
-    gearShade={0.90,0.73,0.40,0.10}, gearText={0.765,0.793,0.868},
+    gearText={0.765,0.793,0.868},
 }
 local colors=UI.colors
 UI.daylight=DaylightUI and DaylightUI.API and DaylightUI.API.major==1 and DaylightUI.API
@@ -29,7 +29,6 @@ function UI:RefreshPalette()
         set("sidebar",{0,0,0},0.12);set("button",{0,0,0},0.18)
         set("hover",colors.accent,0.12);set("rowHover",colors.accent,0.12);set("selected",colors.accent,0.20)
         set("line",ink.VALUE,0.08);set("border",ink.LABEL,0.25)
-        set("gearShade",colors.accent,0.06)
     end
     for name,color in pairs(colors) do
         self.hex[name]=string.format("%02x%02x%02x",math.floor(color[1]*255+0.5),math.floor(color[2]*255+0.5),math.floor(color[3]*255+0.5))

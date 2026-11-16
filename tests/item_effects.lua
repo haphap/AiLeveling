@@ -94,7 +94,7 @@ test("交任务时列出低属性被动奖励与普通提升的权衡，不直�
     local lines=table.concat(B.QuestAssist:RewardLines(),"\n")
     GetQuestID,GetNumQuestChoices,GetQuestItemLink=quest,choices,link
     assert(lines:find("额外攻击",1,true));assert(lines:find("第 1 项",1,true));assert(lines:find("第 2 项",1,true))
-    assert(lines:find("-4.0",1,true));assert(lines:find("+1.0",1,true));assert(not lines:find("奖励建议：",1,true))
+    assert(lines:find("-4.0",1,true));assert(lines:find("+1.0",1,true));assert(lines:find("交付奖励：悬停比较",1,true))
     local a=B.Items:Read(11815,"item:11815");local b=B.Items:Read(999,"item:999")
     local best,unknown,comparisons=B.QuestAssist.CompareRewards({a,b},s)
     eq(best,nil);eq(unknown,nil);eq(#comparisons,2)

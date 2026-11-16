@@ -380,6 +380,7 @@ end
 if arg[1]=="gear" then
     local T=A.UI.tracker
     assert(T.gear:IsShown() and T.reward:IsShown() and T.objectiveFrame:IsShown())
+    assert(T.gear.parent==T.currentChild and T.gear:GetHeight()==A.UI.metrics.hit*A.UI:FontScale())
     assert(T.gear.text:GetText():find("+50%%") and T.reward.text:GetText():find("大幅提升",1,true))
 end
 if arg[1]=="journey" then

@@ -459,9 +459,9 @@ function Q:RewardLines()
         if id then items[i]=A.Items:Read(id,link) else items[i]={pending=true};unknown=true end
     end
     local best,pending,comparisons=Q.CompareRewards(items,A.state)
-    if pending or unknown then return {"任务 #"..self.rewardQuest.."：奖励属性加载中。"} end
+    if pending or unknown then return {"交付奖励属性加载中"} end
     if comparisons then
-        local lines={"任务 #"..self.rewardQuest.."：奖励需要权衡，请比较后选择。"}
+        local lines={"交付奖励：悬停比较"}
         for _,entry in ipairs(comparisons) do
             lines[#lines+1]=string.format("第 %d 项 %s · 属性评分变化 %+.1f",entry.index,
                 entry.item.link or entry.item.name or ("#"..entry.item.id),entry.upgrade.delta)
@@ -470,7 +470,7 @@ function Q:RewardLines()
         return lines
     end
     if not best then return {} end
-    return {string.format("奖励建议：选择第 %d 项 %s%s",best.index,best.item.link or best.item.name or ("#"..best.item.id),
+    return {string.format("交付奖励：第 %d 项 %s%s",best.index,best.item.link or best.item.name or ("#"..best.item.id),
         best.upgrade.delta>0 and (" · "..A.Gear.UpgradeText(best)) or "")}
 end
 
@@ -512,22 +512,18 @@ function Q:Update(quiet)
     self.requirements=rows
     self:Highlight()
     self:Notice(action,rows,quiet)
+    local rewards=self:RewardLines()
+    if table.concat(rewards,"\n")~=table.concat(self.rewardLines or {},"\n") then A.dirty=true end
+    self.rewardLines=rewards
     if self.info then
         local lines=A.settings.items and Q.Describe(rows,A.settings,function(id)
             local name=C_Item.GetItemNameByID(id)
             if not name and not A.requestedItems[id] then A.requestedItems[id]=true;C_Item.RequestLoadItemDataByID(id) end
             return name or ("物品 #"..id)
         end) or {}
-        local rewards=self:RewardLines()
-        local rewardStart=#lines+1
-        for _,line in ipairs(rewards) do lines[#lines+1]=line end
         if pages>1 then lines[#lines+1]=string.format("物品按钮第 %d/%d 组",self.page,pages) end
         if self.pending and InCombatLockdown() then lines[#lines+1]="物品按钮将在战斗结束后同步" end
         self.detailsText=table.concat(lines,"\n")
-        if #rewards>1 then
-            for i=1,#rewards do table.remove(lines,rewardStart) end
-            table.insert(lines,1,"奖励需要权衡；悬停查看各项比较。")
-        end
         self.info.text:SetText(table.concat(lines,"\n"))
         self.info:SetShown(#lines>0)
         self.next:SetShown(pages>1)

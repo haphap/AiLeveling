@@ -333,13 +333,6 @@ function G.UpgradeText(value)
     return rounded==0 and "+<1%" or ("+"..rounded.."%")
 end
 
-function G.UpgradeSlot(value)
-    local names={"头部","颈部","肩部","衬衣","胸部","腰部","腿部","脚","手腕","手", "手指","手指","饰品","饰品","背部","主手","副手","远程","战袍"}
-    for slot=1,19 do
-        if value.upgrade.replacements[slot]==value.item then return names[slot] end
-    end
-end
-
 function G:EquipAdvice(value)
     if InCombatLockdown() then return false,"脱离战斗后再换装" end
     A.State:Refresh(true)
