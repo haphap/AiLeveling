@@ -313,10 +313,66 @@ function G.Distance(origin,choice,navigation,state)
 end
 
 function G.Timing(origin,choice,state,navigation)
-    local geometric,travel=G.Distance(origin,choice,navigation,state)
-    local result={geometric=geometric,travel=travel,movementOnly=true}
+    local cache=state.travelCache
+    local key,noHearthKey,wait
+    if cache and origin and choice.stagesComplete and A.Flights and not (state.dead or state.onTaxi or state.inInstance) then
+        cache.points=cache.points or {};cache.timings=cache.timings or {}
+        local function pointKey(p)
+            if not p then return "missing" end
+            if not cache.points[p] then cache.points[p]=string.format("%d:%.9f:%.9f",p.map,p.x,p.y) end
+            return cache.points[p]
+        end
+        if A.Hearth and state.hearthPoint and state.hearthBindingKey and ((state.bags or {})[6948] or 0)>0 and
+            state.hearthReady and state.hearthReady<math.huge then
+            wait=math.max(0,state.hearthReady-(state.now or 0))
+        end
+        local points={pointKey(origin)}
+        for _,stage in ipairs(choice.stages or {}) do points[#points+1]=pointKey(stage.position) end
+        local journeyKey=table.concat(points,">")
+        noHearthKey=journeyKey..":no-hearth"
+        local noHearth=cache.timings[noHearthKey]
+        local route=noHearth and noHearth.travelRoutes and noHearth.travelRoutes[1]
+        -- A hearth still cooling after arrival cannot improve this journey.
+        if wait and route and route.seconds<=wait then wait=nil end
+        key=wait and journeyKey..":"..wait or noHearthKey
+    end
+    local saved=key and cache.timings[key]
+    if not saved then
+        local context=state
+        if key then
+            -- A shared journey is independent of predicted XP and the remaining time limit.
+            context=copy(state);context.now=0;context.maxSeconds=nil;context.hearthReady=wait
+        end
+        local geometric,travel=G.Distance(origin,choice,navigation,context)
+        saved={geometric=geometric,travel=travel}
+        if choice.stagesComplete and A.Flights then
+            saved.travelRoutes=A.Flights.Itinerary(origin,choice.stages,context,navigation)
+        end
+        if key then
+            cache.timings[key]=saved
+            local routes=saved.travelRoutes
+            if routes and #routes==1 and routes[1].hearths==0 then cache.timings[noHearthKey]=saved end
+        end
+    end
+    local travel=saved.travel
+    local result={geometric=saved.geometric,travel=travel,movementOnly=true}
     if choice.stagesComplete and A.Flights then
-        result.travelRoutes=A.Flights.Itinerary(origin,choice.stages,state,navigation)
+        result.travelRoutes=saved.travelRoutes
+        if key and saved.travelRoutes then
+            result.travelRoutes={}
+            local function restore(original)
+                local route=copy(original)
+                route.hearthReady=route.hearths>0 and route.hearthReady+(state.now or 0) or state.hearthReady
+                return route
+            end
+            for _,original in ipairs(saved.travelRoutes) do
+                if not state.maxSeconds or original.seconds<=state.maxSeconds then
+                    local route=restore(original)
+                    route.firstRoute=original.firstRoute and restore(original.firstRoute)
+                    result.travelRoutes[#result.travelRoutes+1]=route
+                end
+            end
+        end
         result.travelPlan=result.travelRoutes and result.travelRoutes[1]
         local route=result.travelPlan
         travel=route and route.seconds or nil;result.travel=travel

@@ -629,6 +629,26 @@ test("整个队列保留炉石用于后续任务且传播使用后的冷却",fun
     local flying=B.Flights.Routes(O,T,s,nav)[1]
     eq(flying.seconds,160);eq(flying.flights,1);eq(flying.hearths,0)
     nav.Distance=originalDistance
+    s.bags[6948]=1;s.hearthReady=0;s.hearthCooldown=3600;s.maxSeconds=50
+    local timed=B.TaskGuide.Timing(O,choice(3,T),s,nav)
+    eq(timed.seconds,50);eq(#timed.travelRoutes,1)
+    local ready=timed.hearthReady
+    local itinerary=B.Flights.Itinerary
+    B.Flights.Itinerary=function() error("unchanged journey must not be recomputed") end
+    s.now=s.now+20;s.level=s.level+1;s.maxSeconds=200
+    local reused=B.TaskGuide.Timing(O,choice(4,T),s,nav)
+    eq(reused.seconds,50);eq(#reused.travelRoutes,2)
+    eq(reused.hearthReady,ready+20);eq(reused.travelPlan.firstRoute.hearthReady,ready+20)
+    eq(timed.hearthReady,ready);eq(reused.travelRoutes[2].hearthReady,0)
+    s.maxSeconds=49;eq(B.TaskGuide.Timing(O,choice(4,T),s,nav).seconds,nil)
+    s.hearthReady=s.now+1000;s.maxSeconds=200
+    -- The cached no-hearth alternative is already faster than waiting for the cooldown.
+    B.Flights.Itinerary=itinerary
+    local walking=B.TaskGuide.Timing(O,choice(4,T),s,nav);eq(walking.seconds,160)
+    B.Flights.Itinerary=function() error("cooldown beyond arrival must reuse the same journey") end
+    s.hearthReady=s.hearthReady+100
+    eq(B.TaskGuide.Timing(O,choice(4,T),s,nav).hearthReady,s.hearthReady)
+    B.Flights.Itinerary=itinerary
 end)
 test("三项窗口滚动到全队列且始终包含窗口外任务",function()
     local B,s,nav,O,T,choice=queueFixture()
@@ -658,6 +678,7 @@ test("队列连续升级保留客户端曲线口径且未知门槛后停止累�
     B.Experience={version="1.60.1",build="70862",interface=16001,source="test",xpToLevel={[20]=100,[21]=100,[22]=100,[23]=100}}
     assert(loadfile("Planner/Progression.lua"))("AiLeveling",B)
     s.level,s.xp,s.maxXP=20,90,100
+    s.travelCache={walks={},flights={},routes={}}
     local order={choice(1,O),choice(2,O),choice(3,O)}
     local data={GetQuest=function(_,id) return {id=id,questLevel=20,taskFacts={level=20,xp={{1,100}}}} end}
     local advance,calls=B.Progression.Advance,0
