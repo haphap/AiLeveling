@@ -104,25 +104,19 @@ function F.UnlockCandidates(state,maps,navigation)
     return rows
 end
 
--- Compare available flights with straight-line walking.
-function F.Routes(origin,target,state,navigation)
-    if not origin or not target or not navigation or not A.Travel or
-        state.dead or state.onTaxi or state.inInstance then return end
+-- Walking and transport geometry do not change as the hearth cooldown advances.
+local function routeWithoutHearth(origin,target,state,navigation)
     local cache=state.travelCache
     local walks=cache and cache.walks or {}
-    local function pointKey(p) return string.format("%d:%.9f:%.9f",p.map,p.x,p.y) end
-    local routeKey=pointKey(origin)..">"..pointKey(target)..":"..tostring(state.maxSeconds)..":"..
-        tostring(state.hearthReady and math.max(0,state.hearthReady-(state.now or 0)))
-    local saved=cache and cache.routes[routeKey]
-    if saved then
-        local routes={}
-        for _,original in ipairs(saved.routes) do
-            local route={};for key,value in pairs(original) do route[key]=value end
-            route.hearthReady=route.hearths>0 and original.hearthReady+(state.now or 0)-saved.now or state.hearthReady
-            routes[#routes+1]=route
-        end
-        return #routes>0 and routes or nil
+    local points=cache and cache.points or {}
+    if cache then cache.points=points end
+    local function pointKey(p)
+        if not points[p] then points[p]=string.format("%d:%.9f:%.9f",p.map,p.x,p.y) end
+        return points[p]
     end
+    local routeKey=pointKey(origin)..">"..pointKey(target)
+    local saved=cache and cache.routes[routeKey]
+    if cache and saved~=nil then return saved or nil end
     local function walk(from,to)
         local key=pointKey(from)..">"..pointKey(to)
         if walks[key]~=nil then return walks[key] or nil end
@@ -172,81 +166,116 @@ function F.Routes(origin,target,state,navigation)
         table.sort(flights,function(a,b) return a.key<b.key end)
         if cache then cache.flights[mapKey]=flights end
     end
-    local first={position=origin,seconds=0,low=0,high=0,legs={},flights=0,
-        hearthReady=state.hearthReady,hearths=0,initial=false}
-    local pending,labels,results={first},{origin={first}},{}
-    local function finishedFaster(candidate)
-        for _,route in ipairs(results) do
-            if A.Travel.Dominates(route,candidate,state.now) then return true end
-        end
-        return false
+    local direct=walk(origin,target)
+    local best=direct and {seconds=direct.seconds,low=direct.seconds,high=direct.seconds,legs={direct},
+        flights=0,hearths=0,initial=direct.coarse==true,coarse=direct.coarse}
+    if not flights.minimum then
+        flights.minimum=math.huge
+        for _,flight in ipairs(flights) do flights.minimum=math.min(flights.minimum,flight.seconds) end
     end
-    local function offer(candidate,key,current,firstLeg,lastLeg)
-        -- A completed journey already wins; further travel cannot improve this label.
-        if finishedFaster(candidate) then return end
-        local bucket=labels[key] or {}
-        for _,old in ipairs(bucket) do
-            if not old.discarded and A.Travel.Dominates(old,candidate,state.now) then return end
-        end
-        if state.maxSeconds and candidate.seconds>state.maxSeconds then return end
-        for _,old in ipairs(bucket) do if A.Travel.Dominates(candidate,old,state.now) then old.discarded=true end end
-        candidate.legs=lastLeg and append(append(current.legs,firstLeg),lastLeg) or append(current.legs,firstLeg)
-        bucket[#bucket+1]=candidate;pending[#pending+1]=candidate;labels[key]=bucket
+    -- A trip shorter than every transport leg is already optimal by walking.
+    if best and best.seconds<=flights.minimum then
+        if cache then cache.routes[routeKey]=best end
+        return best
     end
-    local count=0
-    while #pending>0 do
-        table.sort(pending,function(a,b) return a.seconds>b.seconds end)
-        local current=table.remove(pending)
-        if not current.discarded and not finishedFaster(current) then
-            local finish=walk(current.position,target)
-            if finish and (not state.maxSeconds or current.seconds+finish.seconds<=state.maxSeconds) then
-                results[#results+1]={seconds=current.seconds+finish.seconds,low=current.low+finish.seconds,high=current.high+finish.seconds,
-                    legs=append(current.legs,finish),flights=current.flights,initial=current.initial,
-                    hearthReady=current.hearthReady,hearths=current.hearths,coarse=current.coarse or finish.coarse}
-                results[#results].initial=current.initial or finish.coarse==true
-            end
-            for _,flight in ipairs(flights) do
-                local approach=walk(current.position,flight.from)
-                if approach then
-                    local candidate={position=flight.to,seconds=current.seconds+approach.seconds+flight.seconds,
-                        low=current.low+approach.seconds+flight.low,high=current.high+approach.seconds+flight.high,
-                        flights=current.flights+(flight.kind=="flight" and 1 or 0),
-                        hearthReady=current.hearthReady,hearths=current.hearths,initial=true,
-                        coarse=current.coarse or approach.coarse}
-                    offer(candidate,pointKey(flight.to),current,approach,flight)
+    flights.connections=flights.connections or {}
+    local sourceKey=pointKey(origin)..">"..target.map
+    local sources=cache and cache.sources or {}
+    if cache then cache.sources=sources end
+    local reached=sources[sourceKey]
+    if not reached then
+        reached={}
+        local first={position=origin,seconds=0,low=0,high=0,legs={},flights=0,hearths=0,initial=false}
+        local pending,labels={first},{[pointKey(origin)]=first}
+        local count=0
+        while #pending>0 do
+            table.sort(pending,function(a,b) return a.seconds>b.seconds end)
+            local current=table.remove(pending)
+            if not current.discarded then
+                reached[#reached+1]=current
+                local positionKey=pointKey(current.position)
+                local connections=flights.connections[positionKey]
+                if not connections then
+                    connections={}
+                    for _,flight in ipairs(flights) do
+                        local approach=walk(current.position,flight.from)
+                        if approach then connections[#connections+1]={approach=approach,flight=flight,key=pointKey(flight.to)} end
+                    end
+                    flights.connections[positionKey]=connections
                 end
-                count=count+1;checkpoint(count)
-            end
-            if A.Hearth and state.hearthPoint and state.hearthBindingKey and (state.bags or {})[6948] and
-                state.bags[6948]>0 and current.hearthReady and current.hearthReady<math.huge then
-                local duration,low,high,initial=A.Hearth.Duration(state)
-                if duration then
-                    local wait=math.max(0,current.hearthReady-((state.now or 0)+current.seconds))
-                    local leg={kind="hearth",from=current.position,to=state.hearthPoint,seconds=wait+duration,wait=wait,
-                        name=state.bindName,bindingKey=state.hearthBindingKey}
-                    local seconds=current.seconds+wait+duration
-                    offer({position=state.hearthPoint,seconds=seconds,low=current.low+wait+low,high=current.high+wait+high,
-                        flights=current.flights,
-                        hearthReady=(state.now or 0)+seconds+(state.hearthCooldown or math.huge),hearths=current.hearths+1,
-                        initial=current.initial or initial,coarse=current.coarse},pointKey(state.hearthPoint),current,leg)
+                for _,connection in ipairs(connections) do
+                    local flight,approach,key=connection.flight,connection.approach,connection.key
+                    local seconds=current.seconds+approach.seconds+flight.seconds
+                    local previous=labels[key]
+                    if not previous or seconds<previous.seconds then
+                        if previous then previous.discarded=true end
+                        local candidate={position=flight.to,seconds=seconds,
+                            low=current.low+approach.seconds+flight.low,high=current.high+approach.seconds+flight.high,
+                            legs=append(append(current.legs,approach),flight),
+                            flights=current.flights+(flight.kind=="flight" and 1 or 0),hearths=0,
+                            initial=true,coarse=current.coarse or approach.coarse}
+                        labels[key]=candidate;pending[#pending+1]=candidate
+                    end
+                    count=count+1;checkpoint(count)
                 end
-                count=count+1;checkpoint(count)
+            end
+        end
+        sources[sourceKey]=reached
+    end
+    for _,current in ipairs(reached) do
+        if best and current.seconds>=best.seconds then break end
+        local finish=walk(current.position,target)
+        local seconds=finish and current.seconds+finish.seconds
+        if seconds and (not best or seconds<best.seconds) then
+            best={seconds=seconds,low=current.low+finish.seconds,high=current.high+finish.seconds,
+                legs=append(current.legs,finish),flights=current.flights,hearths=0,
+                initial=current.initial or finish.coarse==true,coarse=current.coarse or finish.coarse}
+        end
+    end
+    if cache then cache.routes[routeKey]=best or false end
+    return best
+end
+
+function F.Routes(origin,target,state,navigation)
+    if not origin or not target or not navigation or not A.Travel or
+        state.dead or state.onTaxi or state.inInstance then return end
+    local routes={}
+    local direct=routeWithoutHearth(origin,target,state,navigation)
+    if direct and (not state.maxSeconds or direct.seconds<=state.maxSeconds) then
+        local route={};for key,value in pairs(direct) do route[key]=value end
+        route.hearthReady=state.hearthReady
+        routes[#routes+1]=route
+    end
+    if A.Hearth and state.hearthPoint and state.hearthBindingKey and (state.bags or {})[6948] and
+        state.bags[6948]>0 and state.hearthReady and state.hearthReady<math.huge then
+        local duration,low,high,initial=A.Hearth.Duration(state)
+        local wait=math.max(0,state.hearthReady-(state.now or 0))
+        local seconds=duration and wait+duration
+        if seconds and (not direct or seconds<direct.seconds) and (not state.maxSeconds or seconds<=state.maxSeconds) then
+            -- Moving before a hearth cast cannot improve arrival at its fixed destination.
+            local onward=routeWithoutHearth(state.hearthPoint,target,state,navigation)
+            if onward and (not state.maxSeconds or seconds+onward.seconds<=state.maxSeconds) then
+                local legs={{kind="hearth",from=origin,to=state.hearthPoint,seconds=seconds,wait=wait,
+                    name=state.bindName,bindingKey=state.hearthBindingKey}}
+                for _,leg in ipairs(onward.legs) do legs[#legs+1]=leg end
+                routes[#routes+1]={seconds=seconds+onward.seconds,low=wait+low+onward.low,high=wait+high+onward.high,
+                    legs=legs,flights=onward.flights,initial=initial or onward.initial,coarse=onward.coarse,
+                    hearthReady=(state.now or 0)+seconds+(state.hearthCooldown or math.huge),hearths=1}
             end
         end
     end
-    results=A.Travel.Prune(results,state.now)
-    if cache then cache.routes[routeKey]={routes=results,now=state.now or 0} end
-    return #results>0 and results or nil
+    routes=A.Travel.Prune(routes,state.now)
+    return #routes>0 and routes or nil
 end
 
 function F.Itinerary(origin,stages,state,navigation)
     local paths={{position=origin,seconds=0,low=0,high=0,legs={},flights=0,
         hearthReady=state.hearthReady,hearths=0}}
+    local context={};for key,value in pairs(state) do context[key]=value end
     for index,stage in ipairs(stages) do
         if not stage.position then return end
         local nextPaths={}
         for _,path in ipairs(paths) do
-            local context={};for key,value in pairs(state) do context[key]=value end
             context.now=(state.now or 0)+path.seconds
             context.hearthReady=path.hearthReady
             context.maxSeconds=state.maxSeconds and math.max(0,state.maxSeconds-path.seconds)

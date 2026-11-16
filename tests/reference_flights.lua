@@ -415,6 +415,10 @@ test("队列使用原生交付经验且跨级后恢复分级资料或未知",fun
     queue=B.TaskQueue.Evaluate({b,a},s,nav,data)
     eq(queue.xp,180);eq(queue.xpKnown,true);eq(queue.forecast.level,21);eq(queue.forecast.xp,80)
     eq(s.level,20);eq(s.quests[2].rewardXP,80)
+    s.xpUncertain=true
+    queue=B.TaskQueue.Evaluate({a,b},s,nav,data)
+    eq(queue.forecast.uncertain,true);eq(queue.forecast.level,20);eq(queue.forecast.xp,0)
+    eq(queue.forecast.position,nil);eq(queue.forecast.quests,nil)
 end)
 test("整批同路程优先保留升级前的较高交付经验",function()
     local B,s,nav,O,T,choice=queueFixture()
@@ -614,6 +618,16 @@ test("整个队列保留炉石用于后续任务且传播使用后的冷却",fun
         eq(after[i].seconds,route.seconds);eq(after[i].hearths,route.hearths)
         eq(after[i].hearthReady,route.hearths>0 and route.hearthReady+30 or s.hearthReady)
     end
+    s.hearthReady=s.now+30;s.maxSeconds=70
+    eq(B.Flights.Routes(O,T,s,nav),nil)
+    s.maxSeconds=100
+    local waiting=B.Flights.Routes(O,T,s,nav)[1]
+    eq(waiting.seconds,80);eq(waiting.legs[1].wait,30);eq(waiting.hearthReady,s.now+150)
+    s.bags[6948]=nil;s.maxSeconds=159
+    eq(B.Flights.Routes(O,T,s,nav),nil)
+    s.maxSeconds=160
+    local flying=B.Flights.Routes(O,T,s,nav)[1]
+    eq(flying.seconds,160);eq(flying.flights,1);eq(flying.hearths,0)
     nav.Distance=originalDistance
 end)
 test("三项窗口滚动到全队列且始终包含窗口外任务",function()
@@ -657,6 +671,10 @@ test("队列连续升级保留客户端曲线口径且未知门槛后停止累�
     local fresh=B.TaskQueue.Evaluate(order,s,nav,data)
     eq(changed.seconds,fresh.seconds);eq(changed.xp,fresh.xp);eq(changed.forecast.level,fresh.forecast.level)
     for i,step in ipairs(fresh.steps) do eq(changed.steps[i].choice.questId,step.choice.questId) end
+    order[2],order[3]=order[3],order[2]
+    local previousCalls=calls
+    local reused=B.TaskQueue.Evaluate(order,s,nav,data,cache)
+    eq(calls,previousCalls);eq(reused.xp,queue.xp);eq(reused.forecast.level,queue.forecast.level)
     B.Progression.Advance=advance
     eq(queue.forecast.level,23);eq(queue.forecast.xp,90);eq(queue.xp,300);eq(queue.xpKnown,true)
     B.Experience.xpToLevel[21]=nil;queue=B.TaskQueue.Evaluate(order,s,nav,data)

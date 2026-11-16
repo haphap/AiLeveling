@@ -83,6 +83,7 @@ function Q.Evaluate(order,state,navigation,data,cache)
     -- Split stages retain their allocation so interleaving cannot create extra items.
     order=Q.PrepareItems(order,state,true)
     local bags=copy(state.bags or {})
+    local context=copy(state)
     if A.Supplies then
         local log=A.Supplies.QuestLog(state)
         for _,choice in ipairs(order) do
@@ -92,22 +93,20 @@ function Q.Evaluate(order,state,navigation,data,cache)
         end
     end
     local paths={{position=state.position,seconds=0,low=0,high=0,xp=0,xpKnown=true,
-        forecast=state,steps={},initial=false,hearthReady=state.hearthReady}}
+        forecast={level=state.level,xp=state.xp,maxXP=state.maxXP,uncertain=state.xpUncertain},
+        steps={},initial=false,hearthReady=state.hearthReady}}
     cache=cache or {}
-    -- Keep only the last trial's prefixes; local swaps reuse the unchanged work.
-    local previous=cache.prefixState==state and cache.prefixes or {}
-    local prefixes,same={},true
-    cache.prefixState,cache.prefixes=state,prefixes
+    -- Reuse identical task prefixes across the trial orders in this solve.
+    if cache.prefixState~=state then cache.prefixState,cache.prefixes=state,{} end
+    local prefixes=cache.prefixes
     for index,choice in ipairs(order) do
         if not choice.stagesComplete then return end
         local source=choice.itemOriginal or choice
         local key=table.concat({choice.questId,tostring(source.stages),choice.stageIndex or "task",choice.itemAllocationKey or ""},":")
-        local saved=previous[index]
-        if same and saved and saved.key==key then
+        local saved=prefixes[key]
+        if saved then
             paths,bags=saved.paths,copy(saved.bags)
-            prefixes[index]=saved
         else
-            same=false
             local staged=copy(choice);staged.stages={}
             for _,original in ipairs(choice.stages or {}) do
                 local stage=original
@@ -128,7 +127,6 @@ function Q.Evaluate(order,state,navigation,data,cache)
             if not last or not last.position then return end
             local nextPaths={}
             for _,path in ipairs(paths) do
-                local context=copy(state)
                 context.position=path.position
                 context.hearthReady=path.hearthReady
                 context.now=(state.now or 0)+path.seconds
@@ -180,8 +178,10 @@ function Q.Evaluate(order,state,navigation,data,cache)
             end
             paths=A.Travel.Prune(nextPaths,state.now)
             if #paths==0 then return end
-            prefixes[index]={key=key,paths=paths,bags=copy(bags)}
+            saved={paths=paths,bags=copy(bags),next={}}
+            prefixes[key]=saved
         end
+        prefixes=saved.next
     end
     if paths[1] then paths[1].bags=bags end
     return paths[1]
