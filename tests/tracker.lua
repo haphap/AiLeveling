@@ -347,6 +347,17 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.state.level=B.state.level+1;B.UI:RenderTracker();eq(T.dungeons.shown,true)
     B.state.level=B.state.level-1;T.dungeons.dismissedLevel=nil
     B.plan.dungeonChoices={suggestion}
+    -- A chosen dungeon has a visible exit even after dismissing suggestions or pausing.
+    T.dungeons.dismissedLevel=B.state.level
+    B.char.taskBatch={id=suggestion.dungeonId};B.char.paused=true
+    B.UI:RenderTracker();eq(T.dungeons.shown,true);eq(T.dungeons.text.value,"返回正常练级  ›")
+    local quests,refreshes=B.state.quests,B.refreshes or 0
+    B.refreshAt=1;T.dungeons.scripts.OnClick()
+    eq(B.char.taskBatch,nil);eq(B.char.paused,false);eq(B.state.quests,quests);eq(B.refreshes,refreshes+1)
+    B.refreshAt=nil;B.plan.revision=B.state.revision;T.dungeons.dismissedLevel=nil
+    B.char.taskBatch={id=suggestion.dungeonId}
+    B.UI:TrackerMenu(B.UI.frame);B.menu["返回正常练级"].callback();eq(B.char.taskBatch,nil)
+    B.plan.revision=B.state.revision
     -- Dungeon actions call the task batch directly, with no hidden legacy widgets.
     local stopped,waiting,retried=false,false,false
     B.Dungeon.CanContinueTask=function(row) return row.id==166 end
@@ -362,7 +373,7 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.char.taskBatch={id=suggestion.dungeonId,waiting=true};B.state.instanceEntryError="entry"
     browser:Detail();browser.buttons[1].run();browser.buttons[2].run();browser.buttons[3].run()
     assert(stopped and waiting and retried)
-    B.refreshAt=1;browser:Detail();eq(browser.buttons[1].enabled,false);eq(browser.buttons[2].enabled,false)
+    B.refreshAt=1;browser:Detail();eq(browser.buttons[1].enabled,true);eq(browser.buttons[2].enabled,false)
     B.finish()
 end)
 test("未来行动中的交付预期不能把未接任务显示成已接或可交付",function()

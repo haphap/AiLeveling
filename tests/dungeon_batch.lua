@@ -401,7 +401,13 @@ run("暂缓一项保留整组，手动选择或恢复自动清除整组且状态
     local B,s,data=fixture();assert(B.Dungeon:StartTaskBatch("ref"))
     B.Selection:Skip(2);eq(B.char.taskBatch.baselines[2],nil);eq(B.char.taskBatch.baselines[1],0)
     assert(B.Selection:LockQuest(4));eq(B.char.taskBatch,nil);eq(B.char.locked,4)
+    s.quests[4]={title="野外任务",objectives={{text="收集 2/5",numFulfilled=2,numRequired=5}}}
     assert(B.Dungeon:StartTaskBatch("ref"));assert(B.Selection:Automatic());eq(s.taskBatch,nil)
+    local resumed=plan(s,data,B.settings,B)
+    eq(resumed.taskBatch,nil);eq(s.quests[4].objectives[1].numFulfilled,2)
+    local outside=false
+    for _,choice in ipairs(resumed.taskChoices) do if choice.questId==4 then outside=true end end
+    assert(outside,"cancelling the dungeon must restore normal quest candidates")
     B.refreshAt=1;eq(B.Dungeon:StartTaskBatch("ref"),false);eq(B.char.taskBatch,nil);B.refreshAt=nil
     B.Transport={InFlight=function() return true end};eq(B.Dungeon:StartTaskBatch("ref"),false);B.Transport=nil
 end)

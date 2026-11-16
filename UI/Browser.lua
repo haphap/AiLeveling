@@ -385,11 +385,11 @@ function B:Detail()
         local current=batch and batch.id==e.key
         local preparable=current or false
         for _,task in ipairs(e.tasks) do if A.Dungeon.CanContinueTask(task) then preparable=true;break end end
-        self:Action(1,current and "结束整组指引" or "开始整组指引",function()
+        self:Action(1,current and "返回正常练级" or "开始整组指引",function()
             local ok,why
             if current then ok,why=A.Selection:Automatic() else ok,why=A.Dungeon:StartTaskBatch(e.key) end
             self.message=not ok and why or nil;self:Refresh(self.mode)
-        end,A.ready and not A.refreshAt and preparable)
+        end,current or A.ready and not A.refreshAt and preparable)
         if current then
             self:Action(2,batch.waiting and "出发去副本" or "等队做任务",function()
                 local ok,why=A.Dungeon:ToggleTaskBatchWait()

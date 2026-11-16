@@ -659,8 +659,8 @@ function UI:TrackerMenu(owner)
             choose:SetEnabled(not owner.deferred and (not candidate or A.Selection.CanChoose(candidate,revision)==true))
             menu:CreateButton("暂缓此任务",function() A.Selection:Skip(id) end):SetEnabled(not owner.deferred)
         end
-        if A.char.locked or A.char.itinerary then
-            menu:CreateButton("恢复自动安排",function()
+        if A.char.taskBatch or A.char.locked or A.char.itinerary then
+            menu:CreateButton(A.char.taskBatch and "返回正常练级" or "恢复自动安排",function()
                 local ok,why=A.Selection:Automatic();if not ok then A:Message(why) end
             end)
         end
@@ -839,9 +839,21 @@ function UI:CreateTracker()
     T.dungeons.heading=text(T.dungeons,"caption",palette.muted)
     T.dungeons.text=text(T.dungeons,"body",palette.blue)
     T.dungeons.text:SetMaxLines(2)
-    T.dungeons:SetScript("OnClick",function() self:DungeonReminderMenu(T.dungeons) end)
+    T.dungeons:SetScript("OnClick",function()
+        if A.char.taskBatch then
+            local ok,why=A.Selection:Automatic()
+            if not ok then A:Message(why) end
+            self:RenderTracker()
+        else self:DungeonReminderMenu(T.dungeons) end
+    end)
     T.dungeons:SetScript("OnEnter",function()
-        GameTooltip:SetOwner(T.dungeons,"ANCHOR_LEFT");GameTooltip:SetText("副本建议")
+        GameTooltip:SetOwner(T.dungeons,"ANCHOR_LEFT")
+        if A.char.taskBatch then
+            GameTooltip:SetText("返回正常练级")
+            GameTooltip:AddLine("结束这次副本行程，按当前位置重新安排练级任务。已接任务和进度保留。",1,1,1,true)
+            GameTooltip:Show();return
+        end
+        GameTooltip:SetText("副本建议")
         local candidate=T.dungeons.candidate
         if candidate and candidate.rewards.prepare>0 then
             GameTooltip:AddLine(candidate.rewards.prepare.."项任务需先完成前置。",unpack(palette.gold))
@@ -1217,8 +1229,11 @@ function UI:RenderTracker(along)
     local dungeons=self.DungeonReminders(state,plan)
     local suggested=dungeons[1]
     T.dungeons.candidate=suggested
-    T.dungeons.heading:SetText("副本建议 · "..#dungeons.."处  ›")
-    T.dungeons.text:SetText(suggested and (self:Icon("entry",16).." "..suggested.title.." · "..suggested.rewards.count.."项任务") or "")
+    local batch=A.char.taskBatch
+    local dungeon=batch and A.DungeonCatalog and A.DungeonCatalog.entries[batch.id]
+    T.dungeons.heading:SetText(batch and ("副本行程"..(dungeon and " · "..dungeon.title or "")) or ("副本建议 · "..#dungeons.."处  ›"))
+    T.dungeons.text:SetText(batch and "返回正常练级  ›" or suggested and
+        (self:Icon("entry",16).." "..suggested.title.." · "..suggested.rewards.count.."项任务") or "")
     local bag=A.settings.rewardAdvice~=false and A.Gear and A.Gear.BagUpgrade(state,A.char.ignoredGear) or nil
     T.gear.advice=bag
     T.gear.text:SetText(bag and ("装备："..(bag.item.link or bag.item.name).." |cff"..UI.hex.green..A.Gear.UpgradeText(bag).."|r") or "")
@@ -1463,7 +1478,7 @@ function UI:LayoutTracker()
     local dungeonTop=T.dungeons.heading:GetStringHeight()+spacing.tight*scale
     T.dungeons.text:ClearAllPoints();T.dungeons.text:SetPoint("TOPLEFT",0,-dungeonTop);T.dungeons.text:SetWidth(width)
     T.dungeons:SetHeight(dungeonTop+T.dungeons.text:GetStringHeight())
-    T.dungeons:SetShown(not collapsed and T.dungeons.dismissedLevel~=A.state.level and (T.dungeons.text:GetText() or "")~="")
+    T.dungeons:SetShown(not collapsed and (A.char.taskBatch~=nil or T.dungeons.dismissedLevel~=A.state.level) and (T.dungeons.text:GetText() or "")~="")
     if T.dungeons:IsShown() then cardTop=cardTop+T.dungeons:GetHeight()+spacing.padding*scale end
     T.card:ClearAllPoints();T.card:SetPoint("TOPLEFT",0,-cardTop)
     local top=0
