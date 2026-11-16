@@ -492,6 +492,8 @@ function UI.TrackerModel(state,plan,action,paused,along)
     model.rows=visible
     if not action then
         if plan.complete then model.title="已达到 60 级";model.instruction="本次升级目标已完成。"
+        elseif A.planningResumeAt then
+            model.title="停下后更新行程";model.instruction="脱离战斗并停下后，自动安排下一步。"
         elseif (A.jobs and A.jobs.plan) or (plan.revision and plan.revision~=state.revision) then
             model.title="正在安排行程";model.instruction="下方显示已接任务与进度。"
         elseif plan.selectionBlocked then model.title="所选行程等待处理";model.instruction=plan.selectionBlocked

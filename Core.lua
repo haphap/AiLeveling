@@ -171,13 +171,15 @@ function A:RequestRefresh(redraw)
     end
 end
 
-function A:Replan(force)
+function A:Replan(force, manual)
     if not self.ready then return end
     if self.Transport and self.Transport:InFlight() or self.Hearth and self.Hearth:InTransit() then self.jobs.plan=nil;return end
     local map=self.state.position and self.state.position.map
     -- Progress updates share the running calculation; explicit choices and zone changes replace it.
     if self.jobs.plan and coroutine.status(self.jobs.plan)~="dead" and not force and self.planningMap==map then return end
     self.planningMap=map
+    self.planningManual=manual==true
+    if manual then self.planningResumeAt=nil end
     local snapshot,revision={},self.state.revision
     for key,value in pairs(self.state) do snapshot[key]=value end
     snapshot.currentTask=self.plan and self.plan.unverified and self.plan.fallback and self.plan.fallback.questId or nil
@@ -348,11 +350,11 @@ function A:Initialize()
     self.ready = true
     if self.RareScanner then self.RareScanner:Initialize() end
     if self.Party then self.Party:Initialize() end
-    self.State:Refresh(true)
+    self.State:Refresh(true,false)
     self:Queue("index", function()
         self.Data:BuildIndex()
         self.indexReady = true
-        self.State:Refresh(true)
+        self.State:Refresh(true,false)
     end)
     self:Message("开发构建已加载。/ail 打开详情，/ail status 查看状态。")
 end
@@ -499,13 +501,26 @@ frame:SetScript("OnUpdate", function(_, elapsed)
     end
     local start = debugprofilestop()
     local budget=2
-    -- Finish a missing guide sooner outside combat; existing guidance keeps the background budget.
-    if A.jobs.plan and not A.jobs.index and not InCombatLockdown() then
-        local goal=A.plan and (A.plan.fallback or A.plan.best and A.plan.best.actions and A.plan.best.actions[1])
-        if not goal or A.Navigation.StaleAction and A.Navigation.StaleAction(goal,A.state,A.plan) then budget=6 end
-    end
     for _, key in ipairs({"index", "plan", "quest:dialog", "service:bind"}) do
+        if key=="plan" then
+            local busy=A.jobs.plan and (InCombatLockdown() or GetUnitSpeed and GetUnitSpeed("player")>0)
+            if not A.jobs.plan then A.planningResumeAt=nil
+            elseif not A.planningManual then
+                if busy then
+                    if not A.planningResumeAt then A.dirty=true end
+                    A.planningResumeAt=GetTime()+0.3
+                elseif A.planningResumeAt and GetTime()>=A.planningResumeAt then
+                    -- Coalesce movement and quest updates into one plan from the stopped position.
+                    A.planningResumeAt=nil
+                    A.State:Position()
+                    A:Replan(true)
+                    A.dirty=true
+                end
+            end
+            if A.jobs.plan and not A.planningResumeAt and not busy then budget=6 end
+        end
         local job = A.jobs[key]
+        if key=="plan" and A.planningResumeAt then job=nil end
         while job do
             local ok, err = coroutine.resume(job)
             if not ok then

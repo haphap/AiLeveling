@@ -382,6 +382,10 @@ test("原生更新后清除旧目标和旧任务行且拒绝过期任务点击",
     eq(T.queueScroll.shown,true);eq(T.rows[1].status,"已接取");eq(T.rows[1].objectives[1].count.value,"2/5")
     eq(T.career.shown,false);eq(T.thenButton.shown,false);eq(T.location.shown,false);eq(T.footer.shown,false)
     eq(T.reward.shown,false)
+    B.planningResumeAt=10;B.UI:RenderTracker()
+    eq(B.UI.title.value,"停下后更新行程");eq(#T.model.rows,30)
+    eq(T.rows[1].objectives[1].count.value,"2/5")
+    B.planningResumeAt=nil
     B.finish()
 end)
 test("暂停飞行手动导航保持真实当前类型且不自动跳过任务",function()

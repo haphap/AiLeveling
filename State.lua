@@ -225,7 +225,7 @@ function State.Group(s)
     return table.concat({tostring(raid),g.tank,g.healer,g.damage,g.unknown,g.online,g.offline,g.connectionUnknown},":")
 end
 
-function State:Refresh(force)
+function State:Refresh(force, manual)
     local previous, fingerprint = A.state, {}
     local restart=force
     local s = { revision = previous.revision }
@@ -357,7 +357,7 @@ function State:Refresh(force)
             previous.inInstance~=s.inInstance or previous.instanceId~=s.instanceId or
             (previous.freeSlots==0)~=(s.freeSlots==0) or previous.ignoreRepair~=s.ignoreRepair or
             (previous.durability and previous.durability<0.2)~=(s.durability and s.durability<0.2)
-        if A.indexReady then A:Replan(restart) end
+        if A.indexReady then A:Replan(restart,force and manual~=false) end
         A.Navigation:RefreshPins()
         A.dirty = true
     end

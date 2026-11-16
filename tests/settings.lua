@@ -342,12 +342,13 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     debugprofilestop=function() return planningTime end
     B.plan.fallback=accept.actions[1]
     B.refreshAt=nil;B:Queue("plan",function()
-        for i=1,30 do resumes=resumes+1;planningTime=planningTime+0.1;eq(#calls,0);coroutine.yield() end
+        for i=1,100 do resumes=resumes+1;planningTime=planningTime+0.1;eq(#calls,0);coroutine.yield() end
         accept.requireCheck=false
     end)
-    update();eq(#calls,0);assert(B.jobs.plan);assert(resumes>1 and resumes<30);assert(planningTime>=2 and planningTime<2.2)
+    update();eq(#calls,0);assert(B.jobs.plan);assert(resumes>1 and resumes<100);assert(planningTime>=6 and planningTime<6.2)
     update();eq(calls[1],"accept:2");eq(B.jobs["quest:dialog"],nil);eq(B.jobs.plan,nil)
     B.plan.fallback=nil
+    B.planningManual=true
     for _,inCombat in ipairs({false,true}) do
         B.combat(inCombat);planningTime,resumes=0,0
         B:Queue("plan",function()
@@ -360,6 +361,36 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     end
     B.combat(false)
     debugprofilestop=function() return 0 end
+    local oldSpeed,oldPlanner,oldPlan=GetUnitSpeed,B.Planner,B.plan
+    local oldPosition,oldPoint=B.State.Position,B.state.position
+    local speed,builds,built,hold=7,0,nil,false
+    GetUnitSpeed=function() return speed,7,0,4.7 end
+    B.State.Position=function() B.state.position={map=1,x=0.5,y=0} end
+    B.Navigation.SetPlan=function() end
+    B.Planner={Build=function(snapshot)
+        builds=builds+1;built=snapshot
+        if hold then planningTime=planningTime+6;coroutine.yield() end
+        return {revision=snapshot.revision,fallback=accept.actions[1]}
+    end}
+    B:Queue("index",function() B:Replan(true) end)
+    update();eq(builds,0);eq(B.jobs.index,nil);assert(B.planningResumeAt);eq(B.plan,oldPlan)
+    for i=1,3 do B.state.revision=B.state.revision+1;B:Replan(true);update() end
+    eq(builds,0)
+    speed=0;B.combat(true);update();eq(builds,0)
+    B.combat(false);B.time(10.1);update();eq(builds,0)
+    B.time(10.4);update();eq(builds,1);eq(built.revision,B.state.revision);eq(built.position.x,0.5)
+    eq(B.planningResumeAt,nil);eq(B.jobs.plan,nil);update();eq(builds,1)
+    speed=7;B:Replan(true);update();eq(builds,1)
+    B:Replan(true,true);update();eq(builds,2);eq(B.planningResumeAt,nil)
+    speed=0;hold=true;debugprofilestop=function() return planningTime end
+    B:Replan(true);update();eq(builds,3);local interrupted=B.jobs.plan
+    speed=7;update();eq(builds,3);eq(B.jobs.plan,interrupted)
+    B.state.revision=B.state.revision+1;B:Replan();update();eq(builds,3)
+    speed=0;B.time(10.8);update();eq(builds,4);eq(built.revision,B.state.revision)
+    update();eq(builds,4);eq(B.jobs.plan,nil);eq(B.plan.revision,B.state.revision)
+    B.Planner,B.plan,GetUnitSpeed=oldPlanner,oldPlan,oldSpeed
+    B.State.Position,B.state.position=oldPosition,oldPoint
+    B.Navigation.SetPlan=nil;B.planningManual=nil;B.time(10);debugprofilestop=function() return 0 end
     event("QUEST_FINISHED");B.refreshAt=1;event("QUEST_DETAIL",true)
     event("QUEST_FINISHED",true);B.refreshAt=nil;update();eq(B.jobs["quest:dialog"],nil);eq(#calls,1)
     B.refreshAt=1;event("QUEST_DETAIL",true);id=99;B.refreshAt=nil

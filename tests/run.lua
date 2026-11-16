@@ -47,8 +47,8 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     local pins=0
     A.Navigation={RefreshPins=function() pins=pins+1;assert(A.state.quests[42]) end}
     A.QuestAssist.Update=function() end
-    local restart
-    A.Replan=function(_,force) restart=force end
+    local restart,manual
+    A.Replan=function(_,force,immediate) restart,manual=force,immediate end
     local x=0.1
     local objectiveText,objectiveType,objectiveCount,finished="目标待加载","item",0,false
     GetTime=function() return 100 end
@@ -68,7 +68,7 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     local dual=false
     C_SpellBook={IsSpellKnown=function(id) return id==674 and dual end}
     A.State:Refresh(true)
-    eq(pins,1)
+    eq(pins,1);eq(manual,true)
     eq(captured.quests[42],nil);eq(captured.revision,1);eq(A.state.quests[42].ready,false);eq(A.state.questCount,1);eq(A.state.questLimit,20)
     local revision=A.state.revision
     x=0.2;A.State:Position();eq(A.state.revision,revision);eq(A.state.position.x,0.2)
@@ -84,7 +84,7 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     A.State:Refresh();eq(A.state.xp,150);eq(A.state.revision,before.revision);eq(A.dirty,false)
     UnitXP=oldXP
     objectiveCount=1;A.State:Refresh();eq(restart,false);eq(A.state.quests[42].objectives[1].numFulfilled,1)
-    objectiveCount=3;finished=true;A.State:Refresh();eq(restart,true)
+    objectiveCount=3;finished=true;A.State:Refresh();eq(restart,true);assert(not manual)
     objectiveCount=0;finished=false;A.State:Refresh();eq(restart,true)
     local oldInfo,oldInside=GetInstanceInfo,IsInInstance
     local difficulty,calls=1,0
