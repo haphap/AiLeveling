@@ -171,12 +171,13 @@ function A:RequestRefresh(redraw)
     end
 end
 
-function A:Replan()
+function A:Replan(force)
     if not self.ready then return end
     if self.Transport and self.Transport:InFlight() or self.Hearth and self.Hearth:InTransit() then self.jobs.plan=nil;return end
     local map=self.state.position and self.state.position.map
-    if self.jobs.plan and self.planningRevision==self.state.revision and self.planningMap==map then return end
-    self.planningRevision,self.planningMap=self.state.revision,map
+    -- Progress updates share the running calculation; explicit choices and zone changes replace it.
+    if self.jobs.plan and coroutine.status(self.jobs.plan)~="dead" and not force and self.planningMap==map then return end
+    self.planningMap=map
     local snapshot,revision={},self.state.revision
     for key,value in pairs(self.state) do snapshot[key]=value end
     snapshot.currentTask=self.plan and self.plan.unverified and self.plan.fallback and self.plan.fallback.questId or nil
@@ -190,14 +191,28 @@ function A:Replan()
     for key,value in pairs(self.settings or {}) do options[key]=value end
     self:Queue("plan", function()
         local result = self.Planner.Build(snapshot, self.Data, options)
-        if self.Transport and self.Transport:InFlight() then return end
-        if self.state.revision ~= revision then return end
+        if self.Transport and self.Transport:InFlight() or self.Hearth and self.Hearth:InTransit() then return end
         if snapshot.position and self.state.position and snapshot.position.map~=self.state.position.map then
-            self:Replan();return
+            self:Replan(true);return
         end
-        self.plan = result
-        self.dirty = true
-        self.Navigation:SetPlan(self.plan)
+        result.itemStock=snapshot.bags
+        local fresh=self.state.revision==revision
+        local goal=result.fallback
+        local quest=not fresh and goal and goal.questId and self.Data:GetQuest(goal.questId,self.state)
+        if not quest and goal and (self.state.quests or {})[goal.questId] then quest={id=goal.questId} end
+        local usable=not fresh and quest and self.Eligibility and
+            self.Eligibility.Check(quest,self.state,self.Data) and self.Navigation.StaleAction and
+            (goal.kind=="accept" or goal.kind=="objective" or goal.kind=="turnin") and
+            not self.Navigation.StaleAction(goal,self.state,result) and
+            snapshot.dead==self.state.dead and snapshot.inInstance==self.state.inInstance and snapshot.instanceId==self.state.instanceId and
+            (not self.Transport or not self.Transport.Key or self.Transport.Key(snapshot)==self.Transport.Key(self.state))
+        if fresh or usable then
+            self.plan = result
+            self.dirty = true
+            self.Navigation:SetPlan(self.plan)
+        end
+        -- Finish once, then rebuild from the latest snapshot instead of restarting on every kill.
+        if not fresh then self:Replan(true) end
     end)
 end
 

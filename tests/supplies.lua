@@ -29,6 +29,11 @@ test("原生库存元数据保护任务物品并读取实际耐久",function()
     assert(loadfile("Planner/Supplies.lua"))("AiLeveling",B)
     B.Supplies:Snapshot(s);eq(s.durability,0.05);eq(s.itemMetadata[900].stackSize,10);eq(s.inventory.slots[1].questItem,true)
     eq(s.ignoreRepair,true);eq(B.char.ignoreRepair,true)
+    local stable=B.Supplies:Snapshot(s)
+    GetInventoryItemDurability=function(slot) if slot==16 then return 4,100 end end
+    eq(B.Supplies:Snapshot(s),stable);eq(s.durability,0.04)
+    s.freeSlots=1;assert(B.Supplies:Snapshot(s)~=stable)
+    stable=B.Supplies:Snapshot(s);s.freeSlots=2;eq(B.Supplies:Snapshot(s),stable)
     local nextState=state(0);local before=B.Supplies:Snapshot(nextState);eq(nextState.ignoreRepair,true)
     GetInventoryItemDurability=function() end
     B.Supplies:Snapshot(nextState);eq(nextState.ignoreRepair,true);eq(B.char.ignoreRepair,true)

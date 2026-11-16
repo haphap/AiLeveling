@@ -6,12 +6,6 @@ function S:IgnoreRepair()
     A.char.ignoreRepair=true
     A:RequestRefresh()
 end
-local function ids(map)
-    local result={}
-    for id in pairs(map or {}) do result[#result+1]=id end
-    table.sort(result,function(a,b) if type(a)==type(b) then return a<b end return tostring(a)<tostring(b) end)
-    return result
-end
 local function general(inventory)
     local count=0
     for _,bag in pairs(inventory.bags) do if bag.family==0 then count=count+bag.free end end
@@ -95,14 +89,9 @@ function S:Snapshot(state)
     end
     if A.char and durabilityKnown and state.durability>=0.2 then A.char.ignoreRepair=nil end
     state.ignoreRepair=A.char and A.char.ignoreRepair==true or false
-    local key={tostring(state.questCount),tostring(state.questLimit),tostring(state.durability),tostring(state.ignoreRepair)}
-    for bag,space in pairs(state.inventory.bags) do key[#key+1]="bag"..bag..":"..tostring(space.family)..":"..space.free end
-    for _,id in ipairs(ids(state.itemMetadata)) do
-        local item=state.itemMetadata[id]
-        key[#key+1]=id..":"..tostring(item.stackSize)..":"..tostring(item.family)..":"..tostring(item.sellPrice)..":"..tostring(item.quality)
-    end
-    for _,slot in ipairs(state.inventory.slots) do key[#key+1]="item"..slot.id..":"..tostring(slot.questKnown)..":"..tostring(slot.questItem)..":"..tostring(slot.locked) end
-    table.sort(key)
+    -- Inventory stays live; only a change in maintenance need affects the route.
+    local key={tostring(state.questCount),tostring(state.questLimit),tostring(state.durability and state.durability<0.2),
+        tostring(state.ignoreRepair),tostring(state.freeSlots==0)}
     return table.concat(key,"|")
 end
 

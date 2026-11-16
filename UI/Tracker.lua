@@ -300,7 +300,8 @@ function UI.TrackerModel(state,plan,action,paused,along)
                 end
             end
         end
-        local need=math.max(have+action.itemGain,total)
+        local stock=plan.itemStock and (plan.itemStock[action.targetId] or 0) or have
+        local need=math.max(stock+action.itemGain,total)
         local limit=A.TaskGuide and A.TaskGuide.ItemLimit and A.TaskGuide.ItemLimit(action.targetId,state)
         if limit then need=math.min(need,limit) end
         local objective=action.objectiveIndex and model.objectives[action.objectiveIndex]

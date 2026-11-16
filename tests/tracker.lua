@@ -51,6 +51,9 @@ test("原生可交付但共用物品不足时显示补齐提示和整批数量",
     local model=B.UI.tracker.model
     eq(#model.objectives,1);eq(model.objectives[1].have,60);eq(model.objectives[1].need,120)
     eq(model.objectives[1].text,"毛料");eq(model.objectives[1].done,false)
+    B.plan.itemStock={[2592]=60};B.state.bags[2592]=65
+    B.UI:RenderTracker();eq(B.UI.tracker.model.objectives[1].need,120)
+    B.plan.itemStock=nil;B.state.bags[2592]=60
     assert(model.hint:find("1/2",1,true));eq(model.rows[1].progress,"共用物品不足 · 先补齐再一起交付")
     B.action.itemGain=1;B.UI:RenderTracker();eq(B.UI.tracker.model.objectives[#model.objectives].need,120)
     eq(B.state.quests[1].ready,true);B.finish()

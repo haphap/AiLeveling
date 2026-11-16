@@ -5,17 +5,27 @@ local N = A.Navigation
 function N.StaleAction(action,state,plan)
     state,plan=state or A.state,plan or N.plan
     if not (action and action.questId and plan and plan.revision and state and plan.revision~=state.revision) then return end
-    local active=(state.quests or {})[action.questId]
-    if not active then return (state.completed or {})[action.questId] end
     if action.kind=="transit" or action.kind=="move" or action.kind=="approach" then
         local actions=plan.best and plan.best.actions or plan.travelActions
         local goal=actions and actions[#actions]
         if goal and goal.questId==action.questId then action=goal end
     end
-    if action.kind=="accept" then return true end
+    local active=(state.quests or {})[action.questId]
+    if (state.skipped or {})[action.questId] or (state.chainDeferred or {})[action.questId] then return true end
+    if not active then
+        if (state.completed or {})[action.questId] then return true end
+        if (action.kind=="objective" or action.kind=="turnin") and not action.expected then return true end
+    end
+    if action.kind=="accept" then
+        local item=action.position and action.position.startItemId
+        return active~=nil or item and ((state.bags or {})[item] or 0)==0
+    end
+    if not active then return end
     if action.kind=="turnin" and not action.expected then return not active.ready end
     -- Extra collection may still be needed for other quests using the same stock.
-    if action.kind=="objective" and not (action.itemGain and action.itemGain>0) then
+    if action.kind=="objective" and action.itemGain and action.itemGain>0 and plan.itemStock then
+        return ((state.bags or {})[action.targetId] or 0)>=(plan.itemStock[action.targetId] or 0)+action.itemGain
+    elseif action.kind=="objective" and not (action.itemGain and action.itemGain>0) then
         local objective=action.objectiveIndex and (active.objectives or {})[action.objectiveIndex]
         return active.ready or objective and objective.finished
     end

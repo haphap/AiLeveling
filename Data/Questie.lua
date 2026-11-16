@@ -45,7 +45,7 @@ end
 
 function D:BuildIndex()
     self.byArea, self.count = {}, 0
-    self.requirements = {skills = {}, reputations = {}, spells = {}, specializations = {}}
+    self.requirements = {skills = {}, reputations = {}, spells = {}, specializations = {}, items = {}}
     local chainIndex=A.Chains.NewIndex()
     for i, id in ipairs(self.ids) do
         local q=self:GetQuest(id)
@@ -63,6 +63,15 @@ function D:BuildIndex()
             if r then self.requirements.reputations[r[1]] = true end
         end
         local objectives=self.db.Quest.Get(id,"objectives") or {}
+        if q then
+            if q.sourceItemId then self.requirements.items[q.sourceItemId]=true end
+            for _,item in ipairs(q.requiredSourceItems or {}) do self.requirements.items[item]=true end
+            for _,item in ipairs(q.startedBy and q.startedBy[3] or {}) do self.requirements.items[item]=true end
+            for _,item in ipairs(objectives[3] or {}) do self.requirements.items[item[1]]=true end
+            for _,objective in ipairs(q.taskFacts and q.taskFacts.objectives or {}) do
+                if objective.kind=="item" then self.requirements.items[objective.id]=true end
+            end
+        end
         local reputation=objectives[4]
         if reputation and type(reputation[1])=="number" and reputation[1]>0 then self.requirements.reputations[reputation[1]]=true end
         local spell, spec = get("requiredSpell"), get("requiredSpecialization")

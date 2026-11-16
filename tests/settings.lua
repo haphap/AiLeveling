@@ -512,10 +512,10 @@ test("世界地图点与小地图点独立且关闭方没有游离图标",functi
         eq(B.Navigation.pins[1].texture.atlas,row[2]);eq(B.Navigation.pins[2].texture.atlas,row[2])
     end
     local current={kind="objective",questId=1,title="当前目标",position={map=1,x=0.1,y=0.2}}
-    local nextGoal={kind="objective",questId=2,title="跨区目标",position={map=2,x=0.3,y=0.4}}
+    local nextGoal={kind="objective",questId=2,expected=true,title="跨区目标",position={map=2,x=0.3,y=0.4}}
     local steps={{stage=current},{stage=nextGoal}}
     for id=2,6 do
-        local action={kind="turnin",questId=id,title="一起交付 "..id,position={map=1,x=0.7,y=0.2}}
+        local action={kind="turnin",questId=id,expected=true,title="一起交付 "..id,position={map=1,x=0.7,y=0.2}}
         steps[#steps+1]=id==2 and {choice={stages={action}}} or {stage=action}
     end
     B.Navigation:SetPlan({fallback=current,taskQueue={steps=steps}})
@@ -569,6 +569,10 @@ test("世界地图点与小地图点独立且关闭方没有游离图标",functi
     B.Navigation.plan.travelActions={transit,current};B.Navigation.actions={transit,current}
     eq(B.Navigation:Current(),nil);eq(#B.Navigation:MapPoints(),2)
     current.itemGain=2;eq(B.Navigation:Current(),transit);current.itemGain=nil
+    current.itemGain,current.targetId=2,500;B.Navigation.plan.itemStock={[500]=2}
+    B.state.bags[500]=3;eq(B.Navigation:Current(),transit)
+    B.state.bags[500]=4;eq(B.Navigation:Current(),nil)
+    current.itemGain,current.targetId=nil,nil;B.Navigation.plan.itemStock=nil
     delivery.expected=nil;B.Navigation:SetPlan({revision=B.state.revision,fallback=delivery})
     B.state.quests[1].ready=false;B.state.revision=B.state.revision+1
     eq(B.Navigation:Current(),nil);eq(#B.Navigation:MapPoints(),0)

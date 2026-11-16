@@ -47,9 +47,10 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     local pins=0
     A.Navigation={RefreshPins=function() pins=pins+1;assert(A.state.quests[42]) end}
     A.QuestAssist.Update=function() end
-    A.Replan=function() end
+    local restart
+    A.Replan=function(_,force) restart=force end
     local x=0.1
-    local objectiveText,objectiveType="目标待加载","item"
+    local objectiveText,objectiveType,objectiveCount,finished="目标待加载","item",0,false
     GetTime=function() return 100 end
     UnitLevel=function() return 20 end;UnitXP=function() return 100 end;UnitXPMax=function() return 1000 end
     UnitClass=function() return "战士","WARRIOR",1 end;UnitRace=function() return "人类","Human",1 end
@@ -58,7 +59,7 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     LibQuestieDB={Enum={classKeys={WARRIOR=1},raceMaskById={[1]=1}}}
     C_QuestLog={GetMaxNumQuestsCanAccept=function() return 20 end,GetAllCompletedQuestIDs=function() return {} end,GetNumQuestLogEntries=function() return 1,1 end,
         GetInfo=function() return {questID=42,title="测试"} end,
-        GetQuestObjectives=function() return {{text=objectiveText,type=objectiveType,numFulfilled=0,numRequired=3,finished=false}} end,
+        GetQuestObjectives=function() return {{text=objectiveText,type=objectiveType,numFulfilled=objectiveCount,numRequired=3,finished=finished}} end,
         ReadyForTurnIn=function() return false end}
     C_Map={GetBestMapForUnit=function() return 1 end,GetPlayerMapPosition=function() return {x=x,y=0.5} end}
     NUM_BAG_SLOTS=4
@@ -82,6 +83,9 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     A.dirty=false;UnitXP=function() return 150 end
     A.State:Refresh();eq(A.state.xp,150);eq(A.state.revision,before.revision);eq(A.dirty,false)
     UnitXP=oldXP
+    objectiveCount=1;A.State:Refresh();eq(restart,false);eq(A.state.quests[42].objectives[1].numFulfilled,1)
+    objectiveCount=3;finished=true;A.State:Refresh();eq(restart,true)
+    objectiveCount=0;finished=false;A.State:Refresh();eq(restart,true)
     local oldInfo,oldInside=GetInstanceInfo,IsInInstance
     local difficulty,calls=1,0
     IsInInstance=function() return true end

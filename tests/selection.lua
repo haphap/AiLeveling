@@ -97,6 +97,29 @@ test("异步规划位置与交付快照独立于当前状态原地变化",functi
     local ok,reason=coroutine.resume(run);assert(ok,reason)
     eq(B.plan.best.id,42);assert(B.plan~=oldPlan)
     B.state.revision=B.state.revision+1;B:Replan();assert(run~=running)
+    assert(loadfile("Navigation.lua"))("AiLeveling",B)
+    B.Navigation.SetPlan=function() end;B.Eligibility=A.Eligibility
+    local goal={kind="objective",questId=1,objectiveIndex=1,position={map=1,x=0.3,y=0}}
+    B.state.quests[1]={objectives={{finished=false,numFulfilled=0,numRequired=20}}}
+    B.Planner.Build=function(snapshot)
+        for i=1,3 do coroutine.yield() end
+        return {revision=snapshot.revision,fallback=goal}
+    end
+    B:Replan(true);running=run
+    for i=1,3 do
+        assert(coroutine.resume(running))
+        B.state.revision=B.state.revision+1;B.state.quests[1].objectives[1].numFulfilled=i
+        B:Replan();eq(run,running)
+    end
+    local ok,why=coroutine.resume(running);assert(ok,why)
+    eq(B.plan.fallback,goal);eq(B.plan.revision,B.state.revision-3);assert(run~=running)
+    -- A finished target cannot replace the visible plan while the next calculation catches up.
+    local published=B.plan;running=run;assert(coroutine.resume(running))
+    B.state.quests[1].objectives[1].finished=true;B.state.revision=B.state.revision+1
+    for i=1,3 do local ok,why=coroutine.resume(running);assert(ok,why) end
+    eq(B.plan,published);assert(run~=running)
+    running=run;B.state.locked=2;B.state.revision=B.state.revision+1;B:Replan(true);assert(run~=running)
+    running=run;B.state.position.map=2;B:Replan();assert(run~=running)
     CreateFrame,SlashCmdList=oldCreate,oldSlash
 end)
 end

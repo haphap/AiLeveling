@@ -19,14 +19,17 @@ local function fixture()
         local c=assert(containers[id],"bank/unknown container read");return c.free,c.family
     end,GetContainerNumSlots=function(id) assert(id~=-2,"use native keyring size");return #containers[id].items end,
     GetContainerItemInfo=function(id,slot) return containers[id].items[slot] end,
-    GetContainerItemQuestInfo=function() return {isQuestItem=true} end}
+    GetContainerItemQuestInfo=function(bag,slot)
+        local item=containers[bag].items[slot]
+        return {isQuestItem=item and (item.itemID==100 or item.itemID==200)}
+    end}
     C_Item={GetItemInfo=function(id) return "item"..id,nil,1,nil,nil,nil,nil,20,nil,nil,0 end,
         GetItemFamily=function(id) return id==100 and 32 or 0 end}
-    local B={requestedItems={}}
+    local B={requestedItems={},Data={requirements={items={[100]=true}}}}
     for _,path in ipairs({"State.lua","Planner/Supplies.lua","QuestAssist.lua"}) do assert(loadfile(path))("AiLeveling",B) end
     local function snapshot()
         local s={quests={}};local key={};B.State:SnapshotBags(s,key);B.Supplies:Snapshot(s)
-        return s,table.concat(key,"|")
+        table.sort(key);return s,table.concat(key,"|")
     end
     return B,containers,snapshot
 end
@@ -39,6 +42,12 @@ test("专业包与隐藏钥匙链计数进入任务缺失判断且不读取银�
     eq(rows[1].missing,0);eq(rows[2].missing,0)
     c[5].items[1].stackCount=2;local changed,nextKey=snapshot();assert(key~=nextKey)
     eq(B.QuestAssist.Requirements({requiredItems={[100]=5}},changed)[1].missing,1)
+    c[0].items={};c[5].items[1].stackCount=4
+    local moved,movedKey=snapshot();eq(movedKey,nextKey);eq(moved.bags[100],4)
+    c[0].items={{itemID=900,stackCount=1}};local loot,lootKey=snapshot();eq(lootKey,movedKey);eq(loot.bags[900],1)
+    c[0].items[1].stackCount=5;loot,lootKey=snapshot();eq(lootKey,movedKey);eq(loot.bags[900],5)
+    c[0].items[2]={itemID=6948,stackCount=1};local hearth,hearthKey=snapshot();assert(hearthKey~=lootKey)
+    eq(hearth.bags[6948],1)
 end)
 
 test("缺少额外容器能力时兼容标准包并保留空容器",function()

@@ -162,6 +162,9 @@ end
 function State:SnapshotBags(s,fingerprint)
     s.bags,s.bagEntries,s.freeSlots={},{},0
     s.inventory={bags={},slots={}}
+    local indexed=A.Data and A.Data.requirements and A.Data.requirements.items
+    local tracked={[6948]=true}
+    for _,quest in pairs(s.quests or {}) do if quest.itemId then tracked[quest.itemId]=true end end
     local function read(bag,special)
         local free,family=C_Container.GetContainerNumFreeSlots(bag)
         if bag==0 then family=0
@@ -175,7 +178,10 @@ function State:SnapshotBags(s,fingerprint)
                 local id = item.itemID
                 s.bags[id] = (s.bags[id] or 0) + item.stackCount
                 s.bagEntries[#s.bagEntries+1]={id=id,link=item.hyperlink,key=bag..":"..slot,bag=bag,slot=slot,count=item.stackCount,locked=item.isLocked}
-                fingerprint[#fingerprint + 1] = "b" .. bag .. ":" .. slot .. ":" .. id .. ":" .. item.stackCount
+                if indexed and not indexed[id] and C_Container.GetContainerItemQuestInfo then
+                    local info=C_Container.GetContainerItemQuestInfo(bag,slot)
+                    if info and (info.isQuestItem or type(info.questID)=="number" and info.questID>0) then tracked[id]=true end
+                end
             end
         end
     end
@@ -187,6 +193,9 @@ function State:SnapshotBags(s,fingerprint)
     if KEYRING_CONTAINER and (KEYRING_CONTAINER<0 or KEYRING_CONTAINER>bags+extra) and
         C_ActionBar and C_ActionBar.ShouldShowKeyring and C_ActionBar.ShouldShowKeyring() then
         read(KEYRING_CONTAINER,true)
+    end
+    for id,count in pairs(s.bags) do
+        if not indexed or indexed[id] or tracked[id] then fingerprint[#fingerprint+1]="b"..id..":"..count end
     end
 end
 
@@ -218,6 +227,7 @@ end
 
 function State:Refresh(force)
     local previous, fingerprint = A.state, {}
+    local restart=force
     local s = { revision = previous.revision }
     s.questOffers=self.questOffers
     fingerprint[#fingerprint+1]="offers:"..(self.questOffersRevision or 0)
@@ -282,6 +292,13 @@ function State:Refresh(force)
                 end
             end
             s.quests[id] = q
+            local old=previous.quests[id]
+            if not old or old.ready~=q.ready then restart=true end
+            for index,o in ipairs(objectives) do
+                local before=old and (old.objectives or {})[index]
+                if not before or before.finished~=o.finished or before.type~=o.type or before.targetId~=o.targetId or
+                    before.numRequired~=o.numRequired then restart=true end
+            end
             if not questCount then s.questCount=s.questCount+1 end
             local parts = { tostring(id), tostring(q.ready), tostring(q.level), tostring(q.itemId), tostring(q.rewardXP) }
             for _, o in ipairs(objectives) do
@@ -291,6 +308,7 @@ function State:Refresh(force)
             fingerprint[#fingerprint + 1] = table.concat(parts, ":")
         end
     end
+    for id in pairs(previous.quests) do if not s.quests[id] then restart=true end end
     if A.Selection then fingerprint[#fingerprint+1]=A.Selection:Snapshot(s) end
     if A.Chains then fingerprint[#fingerprint+1]=A.Chains:Snapshot(s) end
     if A.Dungeon.TaskBatchSnapshot then fingerprint[#fingerprint+1]=A.Dungeon:TaskBatchSnapshot(s) end
@@ -312,7 +330,9 @@ function State:Refresh(force)
         fingerprint[#fingerprint+1]="e"..slot..":"..A.Items.Key(item)
     end
     for id,item in pairs(s.items) do fingerprint[#fingerprint+1]="i"..id..":"..A.Items.Key(item) end
-    for _,item in ipairs(s.bagEquipment) do fingerprint[#fingerprint+1]="g"..item.instanceKey..":"..A.Items.Key(item) end
+    for _,item in ipairs(s.bagEquipment) do
+        if item.quality~=0 then fingerprint[#fingerprint+1]="g"..A.Items.Key(item) end
+    end
     self:Position(s)
     if A.Services then fingerprint[#fingerprint+1]=A.Services:Snapshot(s) end
     for kind, sample in pairs(A.char.samples) do
@@ -333,7 +353,11 @@ function State:Refresh(force)
     if force or key ~= self.fingerprint then
         s.revision = s.revision + 1
         self.fingerprint = key
-        if A.indexReady then A:Replan() end
+        restart=restart or previous.level~=s.level or previous.dead~=s.dead or
+            previous.inInstance~=s.inInstance or previous.instanceId~=s.instanceId or
+            (previous.freeSlots==0)~=(s.freeSlots==0) or previous.ignoreRepair~=s.ignoreRepair or
+            (previous.durability and previous.durability<0.2)~=(s.durability and s.durability<0.2)
+        if A.indexReady then A:Replan(restart) end
         A.Navigation:RefreshPins()
         A.dirty = true
     end
