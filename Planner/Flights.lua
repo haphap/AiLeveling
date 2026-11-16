@@ -184,6 +184,28 @@ local function routeWithoutHearth(origin,target,state,navigation)
     if cache then cache.sources=sources end
     local reached=sources[sourceKey]
     if not reached then
+        local function connections(position)
+            local key=pointKey(position)
+            local result=flights.connections[key]
+            if not result then
+                result={}
+                for _,flight in ipairs(flights) do
+                    local approach=walk(position,flight.from)
+                    if approach then result[#result+1]={approach=approach,flight=flight,key=pointKey(flight.to)} end
+                end
+                flights.connections[key]=result
+            end
+            return result
+        end
+        -- If even the first ride arrives after the direct walk, no transport chain can win.
+        local canImprove=false
+        for _,connection in ipairs(connections(origin)) do
+            if not best or connection.approach.seconds+connection.flight.seconds<best.seconds then canImprove=true;break end
+        end
+        if not canImprove then
+            if cache then cache.routes[routeKey]=best or false end
+            return best
+        end
         reached={}
         local first={position=origin,seconds=0,low=0,high=0,legs={},flights=0,hearths=0,initial=false}
         local pending,labels={first},{[pointKey(origin)]=first}
@@ -193,17 +215,7 @@ local function routeWithoutHearth(origin,target,state,navigation)
             local current=table.remove(pending)
             if not current.discarded then
                 reached[#reached+1]=current
-                local positionKey=pointKey(current.position)
-                local connections=flights.connections[positionKey]
-                if not connections then
-                    connections={}
-                    for _,flight in ipairs(flights) do
-                        local approach=walk(current.position,flight.from)
-                        if approach then connections[#connections+1]={approach=approach,flight=flight,key=pointKey(flight.to)} end
-                    end
-                    flights.connections[positionKey]=connections
-                end
-                for _,connection in ipairs(connections) do
+                for _,connection in ipairs(connections(current.position)) do
                     local flight,approach,key=connection.flight,connection.approach,connection.key
                     local seconds=current.seconds+approach.seconds+flight.seconds
                     local previous=labels[key]

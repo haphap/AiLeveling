@@ -340,12 +340,25 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     eq(coroutine.status(assert(B.jobs["quest:dialog"])),"suspended");eq(#calls,0)
     local planningTime,resumes=0,0
     debugprofilestop=function() return planningTime end
+    B.plan.fallback=accept.actions[1]
     B.refreshAt=nil;B:Queue("plan",function()
         for i=1,30 do resumes=resumes+1;planningTime=planningTime+0.1;eq(#calls,0);coroutine.yield() end
         accept.requireCheck=false
     end)
     update();eq(#calls,0);assert(B.jobs.plan);assert(resumes>1 and resumes<30);assert(planningTime>=2 and planningTime<2.2)
     update();eq(calls[1],"accept:2");eq(B.jobs["quest:dialog"],nil);eq(B.jobs.plan,nil)
+    B.plan.fallback=nil
+    for _,inCombat in ipairs({false,true}) do
+        B.combat(inCombat);planningTime,resumes=0,0
+        B:Queue("plan",function()
+            for i=1,100 do resumes=resumes+1;planningTime=planningTime+0.1;coroutine.yield() end
+        end)
+        update()
+        local budget=inCombat and 2 or 6
+        assert(B.jobs.plan);assert(planningTime>=budget and planningTime<budget+0.2)
+        B.jobs.plan=nil
+    end
+    B.combat(false)
     debugprofilestop=function() return 0 end
     event("QUEST_FINISHED");B.refreshAt=1;event("QUEST_DETAIL",true)
     event("QUEST_FINISHED",true);B.refreshAt=nil;update();eq(B.jobs["quest:dialog"],nil);eq(#calls,1)

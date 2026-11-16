@@ -498,7 +498,12 @@ frame:SetScript("OnUpdate", function(_, elapsed)
         if A.Merchant then A.Merchant:SellJunk() end
     end
     local start = debugprofilestop()
-    -- Spend the existing frame budget on planning; a cheap yield need not cost a whole frame.
+    local budget=2
+    -- Finish a missing guide sooner outside combat; existing guidance keeps the background budget.
+    if A.jobs.plan and not A.jobs.index and not InCombatLockdown() then
+        local goal=A.plan and (A.plan.fallback or A.plan.best and A.plan.best.actions and A.plan.best.actions[1])
+        if not goal or A.Navigation.StaleAction and A.Navigation.StaleAction(goal,A.state,A.plan) then budget=6 end
+    end
     for _, key in ipairs({"index", "plan", "quest:dialog", "service:bind"}) do
         local job = A.jobs[key]
         while job do
@@ -513,9 +518,9 @@ frame:SetScript("OnUpdate", function(_, elapsed)
                 if A.jobs[key] == job then A.jobs[key] = nil end
                 break
             end
-            if (key~="index" and key~="plan") or A.jobs[key]~=job or debugprofilestop()-start>=2 then break end
+            if (key~="index" and key~="plan") or A.jobs[key]~=job or debugprofilestop()-start>=budget then break end
         end
-        if debugprofilestop() - start >= 2 then break end
+        if debugprofilestop() - start >= budget then break end
     end
     tick = tick + elapsed
     if tick >= 0.2 then

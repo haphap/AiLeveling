@@ -121,6 +121,13 @@ local function joint()
 end
 test("飞行天赋改变交通选择但不缩短地面候机",function()
     local B,s,a,nav,O,D,L,T=joint()
+    s.travelCache={walks={},flights={},routes={}}
+    local nearby=B.Flights.Routes(O,{map=1,x=0.6,y=0},s,nav)[1]
+    eq(nearby.flights,0);eq(nearby.seconds,120)
+    eq(next(s.travelCache.sources),nil) -- Walking wins before the first flight could land.
+    local distant=B.Flights.Routes(O,T,s,nav)[1]
+    eq(distant.flights,1);eq(distant.seconds,160);assert(next(s.travelCache.sources))
+    s.travelCache=nil
     B.FlightData.durations.Alliance["1:2"]=600
     local routes=B.Flights.Routes(O,T,s,nav);eq(#routes,1);eq(routes[1].flights,0);eq(routes[1].seconds,600)
     s.taxiSpeed=1.2;routes=B.Flights.Routes(O,T,s,nav)
