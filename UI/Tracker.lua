@@ -496,7 +496,7 @@ end
 
 local function text(parent,size,color)
     local value=UI:Text(parent,size,color or palette.white,"OUTLINE")
-    value:SetShadowColor(0,0,0,1);value:SetShadowOffset(1,-1)
+    if not UI.daylight then value:SetShadowColor(0,0,0,1);value:SetShadowOffset(1,-1) end
     return value
 end
 
@@ -556,7 +556,7 @@ function UI:ClassReminderMenu(owner)
     local plan=A.plan or {}
     local reminder=self.ClassReminders(A.state,plan)
     GameTooltip:Hide()
-    MenuUtil.CreateContextMenu(owner,function(_,menu)
+    self:Menu(owner,function(_,menu)
         for _,spell in ipairs(reminder.spells) do
             menu:CreateButton(spell.name.." · "..spell.level.."级",function() SetItemRef("spell:"..spell.id,spell.link,"LeftButton") end)
         end
@@ -593,7 +593,7 @@ function UI:TrackerMenu(owner)
     local id,candidate,revision=owner.questId,owner.candidate,owner.revision
     local action=owner==self.tracker.questTitle and self.tracker.action
     GameTooltip:Hide()
-    MenuUtil.CreateContextMenu(owner,function(_,menu)
+    self:Menu(owner,function(_,menu)
         if owner.dungeonId then
             menu:CreateButton("安排整组任务",function()
                 local ok,why=A.Selection.CanChoose(candidate,revision)
@@ -689,7 +689,7 @@ function UI:CreateTracker()
     notice.icon=notice:CreateTexture(nil,"ARTWORK");notice.icon:SetVertexColor(unpack(palette.gold))
     notice.heading=self:Text(notice,"caption",palette.gold);notice.heading:SetText("顺便完成")
     notice.body=self:Text(notice,"body",palette.white);notice.body:SetMaxLines(1)
-    for _,label in ipairs({notice.heading,notice.body}) do
+    for _,label in ipairs(not self.daylight and {notice.heading,notice.body} or {}) do
         label:SetShadowColor(0,0,0,0.6);label:SetShadowOffset(1,-1)
     end
     notice.ignored={};notice:RegisterForClicks("LeftButtonUp","RightButtonUp")
@@ -727,6 +727,7 @@ function UI:CreateTracker()
     if self.daylight then T.header:Hide() end
     T.headerLine=f:CreateTexture(nil,"ARTWORK");T.headerLine:SetColorTexture(unpack(palette.accent))
     T.headerLine:SetPoint("TOPLEFT",8,0);T.headerLine:SetPoint("TOPRIGHT",-8,0);T.headerLine:SetHeight(2)
+    if self.daylight then T.headerLine:Hide() end
     f:SetResizable(true);f:SetClampedToScreen(true)
     T.resize=CreateFrame("Button",nil,f);T.resize:SetSize(18,18);T.resize:SetPoint("BOTTOMRIGHT",-2,2)
     for _,length in ipairs({6,11}) do
@@ -762,12 +763,12 @@ function UI:CreateTracker()
     T.menu=self:Button(T.content,"≡",22,function() self:TrackerMenu(f) end,"body")
     for _,button in ipairs({T.collapse,T.menu}) do
         button.baseColor={0,0,0,0};button:SetBackdropColor(0,0,0,0);button.text:SetTextColor(unpack(palette.muted))
-        button:SetScript("OnEnter",function()
+        button:HookScript("OnEnter",function()
             button:SetBackdropColor(unpack(palette.rowHover))
             GameTooltip:SetOwner(button,"ANCHOR_TOP");GameTooltip:SetText(button==T.menu and "行程菜单" or "收起／展开")
             GameTooltip:Show()
         end)
-        button:SetScript("OnLeave",function() button:SetBackdropColor(0,0,0,0);GameTooltip:Hide() end)
+        button:HookScript("OnLeave",function() button:SetBackdropColor(0,0,0,0);GameTooltip:Hide() end)
     end
     T.divider=T.content:CreateTexture(nil,"BACKGROUND");T.divider:SetColorTexture(unpack(palette.line))
     T.career=noticeLine(T.content,"body",palette.white)
@@ -786,10 +787,10 @@ function UI:CreateTracker()
     for _,button in ipairs({T.career.view,T.career.train,T.career.later}) do
         button.baseColor={0,0,0,0};button:SetBackdropColor(0,0,0,0)
     end
-    T.career.later:SetScript("OnEnter",function(button)
+    T.career.later:HookScript("OnEnter",function(button)
         GameTooltip:SetOwner(button,"ANCHOR_TOP");GameTooltip:SetText("本级不再提醒；可在行程菜单恢复");GameTooltip:Show()
     end)
-    T.career.later:SetScript("OnLeave",function() GameTooltip:Hide() end)
+    T.career.later:HookScript("OnLeave",function() GameTooltip:Hide() end)
     T.gear=noticeLine(T.content,"body",palette.white)
     T.gear.text:SetNonSpaceWrap(false)
     T.gear.shade=T.gear:CreateTexture(nil,"BACKGROUND");T.gear.shade:SetAllPoints()
@@ -840,7 +841,7 @@ function UI:CreateTracker()
     T.stepIcon=T.card:CreateTexture(nil,"ARTWORK")
     T.primaryLabel=text(T.card,"caption",palette.muted)
     self.title=text(T.card,"task",palette.gold)
-    T.location=text(T.card,"title",palette.white)
+    T.location=text(T.card,self.daylight and "heading" or "title",palette.white)
     T.area=text(T.card,"caption",palette.muted)
     T.questTitle=CreateFrame("Button",nil,T.card);T.questTitle:SetAllPoints(self.title)
     T.questTitle:RegisterForClicks("LeftButtonUp","RightButtonUp")
@@ -895,6 +896,9 @@ function UI:CreateTracker()
     T.progress:SetScript("OnLeave",function() GameTooltip:Hide() end)
     T.progressBack=T.progress:CreateTexture(nil,"BACKGROUND");T.progressBack:SetColorTexture(unpack(palette.line))
     T.progressFill=T.progress:CreateTexture(nil,"ARTWORK");T.progressFill:SetColorTexture(unpack(palette.gold))
+    if self.daylight then
+        T.progressBar=self.daylight.Bar(T.progress);T.progressBar:SetMinMaxValues(0,1)
+    end
     T.progressText=text(T.progress,"caption",palette.muted);T.progressText:SetPoint("RIGHT");T.progressText:SetWidth(40);T.progressText:SetJustifyH("RIGHT")
     local nav=CreateFrame("Frame","AiLevelingNavigation",UIParent)
     self.navFrame=nav;nav:SetSize(420,90);nav:SetPoint("CENTER",UIParent,"CENTER",0,-110)
@@ -931,9 +935,9 @@ local function renderObjectives(owner,parent,pool,objectives,sharedIndex)
                 if f.purchase then GameTooltip:AddLine(f.purchase,1,0.82,0.35,true);GameTooltip:Show() end
             end)
             row:SetScript("OnLeave",function() GameTooltip:Hide() end)
-            row.text=text(row,"body",palette.white);row.text:SetPoint("TOPLEFT");row.text:SetNonSpaceWrap(false)
+            row.text=text(row,UI.daylight and "caption" or "body",palette.white);row.text:SetPoint("TOPLEFT");row.text:SetNonSpaceWrap(false)
             row.icon=row:CreateTexture(nil,"ARTWORK")
-            row.count=text(row,"body",palette.white);row.count:SetJustifyH("RIGHT")
+            row.count=text(row,UI.daylight and "caption" or "body",palette.white);row.count:SetJustifyH("RIGHT")
             row.check=text(row,"task",palette.muted);row.check:SetJustifyH("RIGHT")
             row.active=row:CreateTexture(nil,"ARTWORK");row.active:SetColorTexture(unpack(palette.gold))
             pool[i]=row
@@ -949,7 +953,7 @@ local function renderObjectives(owner,parent,pool,objectives,sharedIndex)
         row.purchase=not done and (not row.known or have<need) and UI.PurchaseText(purchase) or nil
         row.text:SetText((objective.text or "任务目标"):gsub("%s*%d+%s*/%s*%d+",""):gsub("^%s+","")..
             (row.purchase and (" |cff"..UI.hex.gold.."· 可购买|r") or ""))
-        row.text:SetTextColor(unpack(done and palette.muted or objective.type=="item" and palette.purple or palette.blue))
+        row.text:SetTextColor(unpack(done and (UI.daylight and palette.green or palette.muted) or UI.daylight and palette.white or objective.type=="item" and palette.purple or palette.blue))
         row.icon:SetTexture(media.."hud-"..(done and "turnin" or objective.type=="item" and "collect" or "objective")..".tga")
         row.icon:SetVertexColor(unpack(done and palette.green or objective.type=="item" and palette.purple or palette.gold))
         row.count:SetText(row.known and string.format("%d/%d",have,need) or "")
@@ -975,7 +979,7 @@ local function layoutObjectives(pool,width,scale)
             row.active:SetPoint("TOPLEFT",-10*scale,0);row.active:SetPoint("BOTTOMLEFT",-10*scale,6*scale)
             row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y)
             local height=math.max(18*scale,row.text:GetStringHeight())
-            height=height+6*scale
+            height=height+(UI.daylight and 3 or 6)*scale
             row:SetHeight(height);y=y+height
         end
     end
@@ -986,7 +990,8 @@ function UI:TrackerRow(index,parent)
     local T=self.tracker
     if index and T.rows[index] then return T.rows[index] end
     local row=CreateFrame("Button",nil,parent or T.queueChild,"BackdropTemplate")
-    self:Rounded(row,spacing.controlRadius);row:SetBackdropColor(0,0,0,0);row.material:Hide()
+    self:Rounded(row,spacing.controlRadius);row:SetBackdropColor(0,0,0,0)
+    if row.material then row.material:Hide() end
     row.icon=row:CreateTexture(nil,"ARTWORK")
     row.title=text(row,"task",palette.gold)
     row.progress=text(row,"caption",palette.muted)
@@ -1179,7 +1184,7 @@ function UI:RenderTracker(along)
     T.stepIcon:SetShown(model.questId~=nil)
     T.actionIcon:SetTexture(media..(({accept="hud-accept",objective="hud-objective",turnin="hud-turnin"})[model.kind] or "compass")..".tga")
     self.title:SetText(questTitle(model.questId,model.title))
-    self.title:SetTextColor(unpack(model.kind=="turnin" and palette.green or model.kind=="accept" and palette.blue or palette.gold))
+    self.title:SetTextColor(unpack(model.kind=="turnin" and palette.green or self.daylight and palette.white or model.kind=="accept" and palette.blue or palette.gold))
     local place,name,area
     if model.kind and not A.error then place,name,area=destination(action) end
     T.location:SetText(name and (self:Icon("hud-location",18).." "..name) or "")
@@ -1205,7 +1210,7 @@ function UI:RenderTracker(along)
         following="接下来"..(nextRow.status and (" · |cff"..self.hex[tone]..nextRow.status.."|r") or "")
     end
     T.thenText:SetText(following)
-    nextRow.title:SetText(title);nextRow.title:SetTextColor(unpack(palette[tone]))
+    nextRow.title:SetText(title);nextRow.title:SetTextColor(unpack(self.daylight and tone~="green" and palette.white or palette[tone]))
     nextRow.icon:SetTexture(media..(({accept="hud-accept",objective="hud-objective",turnin="hud-turnin"})[nextStep and nextStep.kind] or "compass")..".tga")
     nextRow.icon:SetVertexColor(unpack(palette[tone]));nextRow.progress:SetText(instruction)
     nextRow.detail=(nextRow.status or "").."\n"..instruction
@@ -1287,7 +1292,7 @@ function UI:RenderTracker(along)
         row.icon:SetTexture(media.."hud-"..(item.dungeonId and "entry" or item.kind)..".tga")
         row.title:SetText(questTitle(item.questId,item.title,item.candidate))
         local color=(item.deferred or item.candidate and item.candidate.lowValue) and palette.muted or item.kind=="turnin" and palette.green or item.accepted and palette.gold or palette.blue
-        row.title:SetTextColor(unpack(color))
+        row.title:SetTextColor(unpack(self.daylight and not item.deferred and item.kind~="turnin" and palette.white or color))
         row.icon:SetVertexColor(unpack(color))
         row.status=item.deferred and (item.accepted and "已接·暂缓" or "未接·暂缓") or item.status
         local progress=item.delivery or item.progress
@@ -1345,7 +1350,7 @@ function UI:LayoutTracker()
     self.frame:SetWidth(width)
     width=width-2*spacing.padding
     local inner=width-spacing.scrollbar
-    local scale=A.settings.fontScale or 1
+    local scale=self:FontScale()
     local indent=spacing.indent*scale
     local bodyWidth=inner-indent
     local collapsed=self.folded or (self.inCombat and A.settings.combatFold)
@@ -1516,6 +1521,11 @@ function UI:LayoutTracker()
     T.progressBack:ClearAllPoints();T.progressBack:SetPoint("LEFT",0,0);T.progressBack:SetSize(progressWidth,3)
     T.progressFill:ClearAllPoints();T.progressFill:SetPoint("LEFT",0,0);T.progressFill:SetSize(math.max(1,progressWidth*(T.progressRatio or 0)),3)
     T.progressFill:SetShown(T.progressRatio~=nil and T.progressRatio>0)
+    if T.progressBar then
+        T.progressBack:Hide();T.progressFill:Hide()
+        T.progressBar:ClearAllPoints();T.progressBar:SetPoint("LEFT");T.progressBar:SetSize(progressWidth,4)
+        T.progressBar:SetStatusBarColor(self.daylight.Accent());T.progressBar:SetValue(T.progressRatio or 0)
+    end
     local fixed=cardTop+top+24+(T.progress:IsShown() and 24*scale or 0)
     local minHeight=math.max(200,fixed+40*scale)
     self.frame:SetResizeBounds(260,collapsed and fixed or minHeight,800,math.max(1200,minHeight))

@@ -17,10 +17,19 @@ function S:Create(parent)
     end
     local function position(row) return math.floor(row/8)*286,-(row%8)*40 end
     local function check(group,key,label,row)
-        local b=CreateFrame("CheckButton",nil,self.groups[group],"UICheckButtonTemplate")
+        local api=A.UI.daylight
+        local b=api and api.Switch(self.groups[group]) or CreateFrame("CheckButton",nil,self.groups[group],"UICheckButtonTemplate")
+        if api then
+            b.Text=A.UI:Text(self.groups[group],"body")
+            b.Text:SetPoint("LEFT",b,"RIGHT",8,0)
+            b.SetChecked=function(_,on) b.SetOn(on) end
+        end
         b:SetPoint("TOPLEFT",position(row));b.Text:SetText(label);b.Text:SetWidth(238)
-        A.UI:RegisterFont(b.Text,"caption")
-        b:SetScript("OnClick",function() A:SetOption(key,b:GetChecked()==true) end)
+        if not api then A.UI:RegisterFont(b.Text,"caption") end
+        b:SetScript("OnClick",function()
+            local on=api and A.settings[key]~=true or not api and b:GetChecked()==true
+            b:SetChecked(on);A:SetOption(key,on)
+        end)
         self.controls[#self.controls+1]={button=b,key=key}
     end
     local function cycle(group,key,label,values,names,row)
@@ -109,7 +118,7 @@ function S:Create(parent)
         for i,name in ipairs(names) do if name==A.char.profile then A:SelectProfile(names[i%#names+1]);break end end
     end)
     self.profile:SetPoint("TOPLEFT",position(8));self.profile.text:SetWidth(258)
-    self.profileName=CreateFrame("EditBox",nil,self.groups[4],"InputBoxTemplate")
+    self.profileName=A.UI.daylight and A.UI.daylight.Input(self.groups[4],{}) or CreateFrame("EditBox",nil,self.groups[4],"InputBoxTemplate")
     self.profileName:SetSize(258,30);self.profileName:SetPoint("TOPLEFT",292,-40)
     self.profileName:SetAutoFocus(false);self.profileName:SetMaxLetters(32)
     A.UI:RegisterFont(self.profileName,"body")
@@ -137,7 +146,7 @@ function S:Create(parent)
     self.bagSummary=A.UI:Text(self.groups[5],"body");self.bagSummary:SetPoint("TOPLEFT",286,-4);self.bagSummary:SetWidth(268)
     local instruction=A.UI:Text(self.groups[5],"caption");instruction:SetPoint("TOPLEFT",0,-96);instruction:SetWidth(554)
     instruction:SetText("拖入物品或输入物品 ID／链接，选择垃圾或保留。\n任务物品与炉石始终保留；灵魂袋内的碎片保留。")
-    self.junkItem=CreateFrame("EditBox",nil,self.groups[5],"InputBoxTemplate")
+    self.junkItem=A.UI.daylight and A.UI.daylight.Input(self.groups[5],{}) or CreateFrame("EditBox",nil,self.groups[5],"InputBoxTemplate")
     self.junkItem:SetSize(548,30);self.junkItem:SetPoint("TOPLEFT",6,-144)
     self.junkItem:SetAutoFocus(false);self.junkItem:SetMaxLetters(256);A.UI:RegisterFont(self.junkItem,"body")
     self.junkItem:SetScript("OnEscapePressed",function(box) box:ClearFocus() end)

@@ -83,7 +83,7 @@ test("异步规划位置与交付快照独立于当前状态原地变化",functi
     SlashCmdList={};assert(loadfile("Core.lua"))("AiLeveling",B)
     local oldPlan=B.plan
     local run
-    B.Queue=function(_,_,fn) run=coroutine.create(fn) end
+    B.Queue=function(self,key,fn) run=coroutine.create(fn);self.jobs[key]=run end
     B.Planner={Build=function(snapshot)
         eq(snapshot.position.x,0);eq(snapshot.completed[99],nil)
         coroutine.yield()
@@ -92,9 +92,11 @@ test("异步规划位置与交付快照独立于当前状态原地变化",functi
     end}
     B.Navigation.SetPlan=function() end
     B:Replan();assert(coroutine.resume(run))
+    local running=run;B:Replan();eq(run,running)
     B.state.position.x=0.1;B.state.completed[99]=true
     local ok,reason=coroutine.resume(run);assert(ok,reason)
     eq(B.plan.best.id,42);assert(B.plan~=oldPlan)
+    B.state.revision=B.state.revision+1;B:Replan();assert(run~=running)
     CreateFrame,SlashCmdList=oldCreate,oldSlash
 end)
 end

@@ -35,9 +35,13 @@ function UI:Create(parent)
     self.frame=CreateFrame("Frame",nil,parent)
     self.frame:SetPoint("TOPLEFT",18,-94);self.frame:SetPoint("BOTTOMRIGHT",-18,18)
     self.history,self.cards,self.lines={},{},{}
-    local box=A.UI:Panel(nil,self.frame,64,26);box:SetPoint("TOPLEFT")
-    self.input=CreateFrame("EditBox",nil,box)
-    self.input:SetPoint("TOPLEFT",4,-4);self.input:SetPoint("BOTTOMRIGHT",-4,4)
+    if A.UI.daylight then
+        self.input=A.UI.daylight.Input(self.frame,{numeric=true});self.input:SetSize(64,26);self.input:SetPoint("TOPLEFT")
+    else
+        local box=A.UI:Panel(nil,self.frame,64,26);box:SetPoint("TOPLEFT")
+        self.input=CreateFrame("EditBox",nil,box)
+        self.input:SetPoint("TOPLEFT",4,-4);self.input:SetPoint("BOTTOMRIGHT",-4,4)
+    end
     self.input:SetAutoFocus(false);self.input:SetFontObject(GameFontHighlight);self.input:SetMaxLetters(10)
     if A.UI.RegisterFont then A.UI:RegisterFont(self.input,"caption") end
     self.input:SetScript("OnEnterPressed",function() self:Focus(tonumber(self.input:GetText())) end)
@@ -125,13 +129,13 @@ function UI:Draw(graph)
             card:SetSize(164,64)
             card.text:ClearAllPoints();card.text:SetPoint("TOPLEFT",6,-6);card.text:SetWidth(152);card.text:SetMaxLines(1)
             card.title=A.UI:Text(card,"caption");card.title:SetPoint("TOPLEFT",6,-25);card.title:SetWidth(152);card.title:SetMaxLines(2)
-            card:SetScript("OnEnter",function(f)
+            card:HookScript("OnEnter",function(f)
                 GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(f.node.title)
                 GameTooltip:AddLine(status[f.node.status] or f.node.status,1,1,1)
                 GameTooltip:AddLine(f.node.eligible and "当前资格已满足" or (f.node.reason or "查看任务条件"),1,1,1,true)
                 GameTooltip:Show()
             end)
-            card:SetScript("OnLeave",function() GameTooltip:Hide() end)
+            card:HookScript("OnLeave",function() GameTooltip:Hide() end)
             self.cards[i]=card
         end
         card.questId,card.node=node.id,node

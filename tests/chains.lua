@@ -90,6 +90,9 @@ local function widget()
     w.Show=function(self) self.shown=true end;w.Hide=function(self) self.shown=false end
     w.SetEnabled=function(self,value) self.enabled=value end
     w.SetScript=function(self,event,callback) self.scripts[event]=callback end
+    w.HookScript=function(self,event,fn)
+        local before=self.scripts[event];self.scripts[event]=function(...) if before then before(...) end;fn(...) end
+    end
     w.SetScrollChild=function(self,child) self.child=child end
     w.SetHorizontalScroll=function(self,x) self.x=x end;w.SetVerticalScroll=function(self,y) self.y=y end
     w.GetVerticalScroll=function(self) return self.y or 0 end

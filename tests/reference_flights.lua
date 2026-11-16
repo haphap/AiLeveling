@@ -604,6 +604,17 @@ test("整个队列保留炉石用于后续任务且传播使用后的冷却",fun
     eq(queue.steps[2].timing.hearthCount,0);eq(queue.hearthReady,math.huge)
     s.hearthCooldown=100;queue=B.TaskQueue.Evaluate({choice(1,T),choice(2,L)},s,nav)
     eq(queue.seconds,80);eq(queue.steps[1].timing.hearthCount,1);eq(queue.steps[2].timing.hearthCount,0)
+    s.travelCache={walks={},flights={},routes={}}
+    local before=B.Flights.Routes(O,T,s,nav)
+    local originalDistance=nav.Distance
+    nav.Distance=function() error("same snapshot journey should reuse travel results") end
+    s.now=s.now+30
+    local after=B.Flights.Routes(O,T,s,nav)
+    for i,route in ipairs(before) do
+        eq(after[i].seconds,route.seconds);eq(after[i].hearths,route.hearths)
+        eq(after[i].hearthReady,route.hearths>0 and route.hearthReady+30 or s.hearthReady)
+    end
+    nav.Distance=originalDistance
 end)
 test("三项窗口滚动到全队列且始终包含窗口外任务",function()
     local B,s,nav,O,T,choice=queueFixture()

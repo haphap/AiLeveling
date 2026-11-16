@@ -1,5 +1,5 @@
 local _, A = ...
-A.UI = {fonts={}}
+A.UI = {fonts={},daylightFonts={},shells={}}
 local UI = A.UI
 UI.colors={
     bg={0.07,0.085,0.14,0.96}, sidebar={0.05,0.065,0.11,0.94},
@@ -24,23 +24,26 @@ function UI:RefreshPalette()
             for i=1,3 do colors[key][i]=value[i] end
             colors[key][4]=alpha
         end
-        for key,role in pairs({white="TEXT",muted="LABEL",gold="WARN",green="GOOD",red="BAD",gearText="TEXT"}) do set(key,ink[role]) end
+        for key,role in pairs({white="TEXT",muted="LABEL",gold="WARN",green="GOOD",red="BAD",gearText="TEXT",blue="VALUE",purple="TEXT"}) do set(key,ink[role]) end
         set("accent",{api.Accent()})
         set("sidebar",{0,0,0},0.12);set("button",{0,0,0},0.18)
         set("hover",colors.accent,0.12);set("rowHover",colors.accent,0.12);set("selected",colors.accent,0.20)
-        set("line",ink.LABEL,0.18);set("border",ink.LABEL,0.25)
+        set("line",ink.VALUE,0.08);set("border",ink.LABEL,0.25)
+        set("gearShade",colors.accent,0.06)
     end
     for name,color in pairs(colors) do
         self.hex[name]=string.format("%02x%02x%02x",math.floor(color[1]*255+0.5),math.floor(color[2]*255+0.5),math.floor(color[3]*255+0.5))
     end
 end
 UI:RefreshPalette()
-UI.fontSizes={caption=12,body=14,task=15,brand=18,title=20}
+UI.fontSizes={caption=12,body=14,task=15,heading=18,brand=18,title=20}
+local daylightRoles={caption="small",body="body",task="body",heading="head",brand="title",title="title"}
 UI.metrics={tight=4,gap=8,padding=12,section=16,indent=24,icon=16,smallIcon=12,
     button=28,hit=24,scrollbar=16,radius=6,controlRadius=4}
 local metrics=UI.metrics
 local media="Interface\\AddOns\\AiLeveling\\Media\\"
 function UI:Accent()
+    if self.daylight then return self.daylight.Accent() end
     local class=A.state and A.state.class
     if not class and UnitClass then local _,playerClass=UnitClass("player");class=playerClass end
     local color=RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
@@ -48,29 +51,48 @@ function UI:Accent()
     return 1,1,1
 end
 
+function UI:FontScale()
+    return (A.settings.fontScale or 1)*(self.daylight and self.daylight.GetSetting("general","fontScale") or 1)
+end
+
 function UI:StyleFont(entry)
     local api=self.daylight
-    local face=api and api.Font() or STANDARD_TEXT_FONT
-    local flags=api and api.GetSetting("general","textOutline") or entry.flags or ""
-    entry.text:SetFont(face,entry.size*(A.settings.fontScale or 1),flags or "")
+    local face,size,flags=STANDARD_TEXT_FONT,entry.size,entry.flags or ""
     if api then
-        entry.text:SetShadowOffset(1,-1)
-        entry.text:SetShadowColor(0,0,0,api.GetSetting("general","textShadow")==false and 0 or 0.6)
+        -- Untouched role samples follow Daylight's font, scale, outline and shadow updates.
+        local sample=self.daylightFonts[entry.daylightRole]
+        if not sample then
+            sample=api.Text(self.details or self.frame or UIParent,entry.daylightRole);sample:Hide()
+            self.daylightFonts[entry.daylightRole]=sample
+        end
+        face,size,flags=sample:GetFont()
+        entry.text:SetShadowOffset(sample:GetShadowOffset())
+        entry.text:SetShadowColor(sample:GetShadowColor())
     end
+    entry.text:SetFont(face,size*(A.settings.fontScale or 1),flags or "")
 end
 
 function UI:RegisterFont(text,size,role,flags)
+    local daylightRole=daylightRoles[size] or (type(size)=="number" and size<=12 and "small" or "body")
     size=type(size)=="string" and self.fontSizes[size] or size
-    self.fonts[#self.fonts+1]={text=text,size=size,role=role,flags=flags}
+    self.fonts[#self.fonts+1]={text=text,size=size,role=role,flags=flags,daylightRole=daylightRole}
     self:StyleFont(self.fonts[#self.fonts])
 end
 
 function UI:Icon(name,size)
-    size=math.floor((size or metrics.icon)*(A.settings.fontScale or 1)+0.5)
+    size=math.floor((size or metrics.icon)*self:FontScale()+0.5)
     return "|T"..media..name..".tga:"..size..":"..size..":0:0|t"
 end
 
 function UI:Rounded(frame,radius,border)
+    if self.daylight then
+        if border then self:DaylightShell(frame) end
+        local fill=frame:CreateTexture(nil,"BACKGROUND",nil,-6);fill:SetAllPoints()
+        frame.SetBackdropColor=function(_,r,g,b,alpha)
+            fill:SetColorTexture(r,g,b,border and math.min(alpha or 1,0.12) or alpha or 1)
+        end
+        return
+    end
     frame.surface={}
     local function texture()
         local t=frame:CreateTexture(nil,"BACKGROUND",nil,-7)
@@ -127,6 +149,7 @@ function UI:DaylightShell(frame,alpha)
     local api=self.daylight
     if not api then return end
     local opts={window=true,bgAlpha=alpha}
+    self.shells[#self.shells+1]={frame=frame,opts=opts}
     api.Skin(frame,opts)
     frame:HookScript("OnSizeChanged",function() api.Skin(frame,opts) end)
 end
@@ -140,7 +163,7 @@ function UI:Panel(name, parent, width, height)
 end
 
 function UI:Text(parent, size, color, flags)
-    local text = self.daylight and self.daylight.Text(parent,"body") or parent:CreateFontString(nil, "OVERLAY")
+    local text = self.daylight and self.daylight.Text(parent,daylightRoles[size] or "small") or parent:CreateFontString(nil, "OVERLAY")
     self:RegisterFont(text,size,color=="accent" and "accent" or nil,flags)
     if color=="accent" then text:SetTextColor(self:Accent()) else text:SetTextColor(unpack(color or colors.white)) end
     self.fonts[#self.fonts].color=color~="accent" and (color or colors.white) or nil
@@ -150,7 +173,7 @@ function UI:Text(parent, size, color, flags)
 end
 
 function UI:Button(parent, label, width, callback, fontSize)
-    if self.daylight and label~="" then
+    if self.daylight then
         local b=self.daylight.Button(parent,label,metrics.button)
         b:SetWidth(width);b:SetScript("OnClick",callback)
         self:RegisterFont(b.text,fontSize or "caption")
@@ -195,6 +218,21 @@ function UI:Movable(frame,key)
         A.settings[key]={point,relative,x,y}
         if key=="position" and A.QuestAssist then A.QuestAssist:LayoutTarget() end
     end)
+end
+
+function UI:Menu(owner,build)
+    if not self.daylight then return MenuUtil.CreateContextMenu(owner,build) end
+    local entries={}
+    build(owner,{CreateButton=function(_,label,callback)
+        local entry={label=label,callback=callback,enabled=true}
+        function entry:SetEnabled(enabled) self.enabled=enabled end
+        entries[#entries+1]=entry;return entry
+    end})
+    local keys,labels={},{}
+    for i,entry in ipairs(entries) do
+        if entry.enabled then keys[#keys+1]=i;labels[i]=entry.label end
+    end
+    self.daylight.Menu(owner,keys,labels,nil,function(key) entries[key].callback() end,220,{atCursor=true})
 end
 
 function UI:ShowStartupError(message)
@@ -279,16 +317,21 @@ function UI:Create()
     self.inCombat=InCombatLockdown()
     self:ApplyStyle()
     if self.daylight then
-        self.daylight.On("StyleChanged",function()
+        local function refresh()
             self:ApplyStyle();self:RenderTracker()
             if self.details:IsShown() then self:SelectTab(self.selectedTab or 1) end
-        end,"AiLeveling")
+        end
+        self.daylight.On("StyleChanged",refresh,"AiLeveling")
+        self.daylight.On("Login",refresh,"AiLeveling")
     end
 end
 
 function UI:ApplyStyle()
     if not self.frame then return end
     self:RefreshPalette()
+    if self.daylight then
+        for _,shell in ipairs(self.shells) do self.daylight.Skin(shell.frame,shell.opts) end
+    end
     self.frame:SetScale(A.settings.scale)
     self.frame:SetAlpha(1)
     self.details:SetScale(A.settings.scale)

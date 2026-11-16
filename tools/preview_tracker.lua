@@ -47,6 +47,16 @@ local function widget(kind,parent)
         count=self.maxLines and self.maxLines>0 and math.min(count,self.maxLines) or count
         return count*(self.size+4)+math.max(0,count-1)*(self.spacing or 0)
     end
+    function w:GetFont() return self.face or "preview",self.size,self.flags or "" end
+    function w:GetShadowOffset() return 1,-1 end
+    function w:GetShadowColor() return 0,0,0,0.6 end
+    function w:HookScript(event,fn)
+        local previous=self.scripts and self.scripts[event]
+        self:SetScript(event,function(...) if previous then previous(...) end;fn(...) end)
+    end
+    function w:SetMinMaxValues() end
+    function w:SetStatusBarColor(...) self.barColor={...} end
+    function w:SetValue(value) self.barValue=value end
     function w:SetTextColor(...) self.color={...} end;w.SetColorTexture=w.SetTextColor
     w.SetVertexColor=w.SetTextColor
     function w:SetTexture(path) self.texture=path end
@@ -85,7 +95,7 @@ local planPreview=arg[1]=="plan"
 local regionDetail=arg[1]=="region-detail"
 local canvasWidth=(dungeonPreview or planPreview or regionDetail or arg[1]=="nearby") and 1080 or 560
 local canvasHeight=(dungeonPreview or planPreview or regionDetail) and 700 or 1100
-if (arg[1]=="gear" or arg[1]=="class" or arg[1]=="region") and arg[2]=="large" then canvasHeight=1450 end
+if not dungeonPreview and not planPreview and not regionDetail and arg[2]=="large" then canvasHeight=1450 end
 UIParent=widget("Root");UIParent:SetSize(canvasWidth,canvasHeight)
 CreateFrame=function(kind,_,parent) return widget(kind,parent) end
 if not dungeonPreview and not planPreview and not regionDetail then
@@ -101,6 +111,35 @@ GameFontHighlight={}
 GameTooltip={Hide=function() end}
 C_Map={GetMapInfo=function() return {name="艾尔文森林"} end}
 RAID_CLASS_COLORS={PALADIN={r=0.96,g=0.55,b=0.73}}
+if os.getenv("AILEVELING_PREVIEW_DAYLIGHT")=="1" then
+    local sizes={small=12,body=13,head=15,title=18}
+    local ink={TEXT={.949,.933,.902},VALUE={1,1,1},LABEL={.76,.71,.62},GOOD={.55,.85,.55},WARN={.95,.72,.32},BAD={.93,.36,.30}}
+    local api={major=1,Colors=function() return ink end,Accent=function() return .72,.70,.66 end,
+        GetSetting=function(_,key) return key=="fontScale" and 1 or nil end,On=function() end}
+    api.Text=function(parent,role)
+        local fs=parent:CreateFontString(nil,"OVERLAY");fs:SetFont("preview",sizes[role],"");return fs
+    end
+    api.Skin=function(frame,opts)
+        frame:SetBackdropColor(.078,.078,.09,opts.bgAlpha or .94);frame:SetBackdropBorderColor(.024,.024,.027,1)
+    end
+    api.Button=function(parent,label,height)
+        local b=CreateFrame("Button",nil,parent);b:SetHeight(height);b:SetBackdropColor(.133,.133,.153,.94)
+        b.text=api.Text(b,"body");b.text:SetPoint("CENTER");b.text:SetText(label);return b
+    end
+    api.Close=function(parent,fn,size)
+        local b=api.Button(parent,"×",size);b:SetWidth(size);b:SetScript("OnClick",fn);return b
+    end
+    api.Input=function(parent) local b=CreateFrame("EditBox",nil,parent);b:SetBackdropColor(.055,.055,.063,.94);return b end
+    api.Bar=function(parent)
+        local b=CreateFrame("StatusBar",nil,parent)
+        b.track=b:CreateTexture(nil,"BACKGROUND");b.track:SetColorTexture(.2,.2,.22,1);b.track:SetAllPoints()
+        b.fill=b:CreateTexture(nil,"ARTWORK");b.fill:SetPoint("LEFT");b.fill:SetHeight(4)
+        function b:SetValue(value) self.fill:SetWidth(self:GetWidth()*value);self.fill:SetColorTexture(.72,.70,.66,1) end
+        return b
+    end
+    DaylightUI={API=api}
+end
+
 local A={settings={fontScale=1,density="normal",arrow=true,distanceUnits="meters"},char={},indexReady=true,
     state={class="PALADIN",level=8,xp=3200,maxXP=5040,runSpeed=7,position={map=1429,x=0.46,y=0.42},quests={
         [7]={title="狗头人的威胁",level=8,objectives={{text="消灭狗头人歹徒",numFulfilled=6,numRequired=10},{text="消灭狗头人苦力",numFulfilled=4,numRequired=4,finished=true}}},

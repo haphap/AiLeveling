@@ -286,12 +286,12 @@ function B:Refresh(mode,reuse)
                 end
                 self:Detail()
             end)
-            row:SetScript("OnEnter",function(f)
+            row:HookScript("OnEnter",function(f)
                 f:SetBackdropColor(unpack(colors.rowHover))
                 GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(f.entry.title)
                 GameTooltip:AddLine(f.entry.sub or "",0.85,0.9,1,true);GameTooltip:Show()
             end)
-            row:SetScript("OnLeave",function(f) f:SetBackdropColor(unpack(f.baseColor));GameTooltip:Hide() end)
+            row:HookScript("OnLeave",function(f) f:SetBackdropColor(unpack(f.baseColor));GameTooltip:Hide() end)
             self.rows[i]=row
         end
         row.entry,row.questId,row.candidate,row.revision=entry,entry.questId,entry.choice,A.plan and A.plan.revision
@@ -555,8 +555,8 @@ function B:DungeonDetail(e)
                 elseif A.state.quests[f.questId] or IsModifiedClick and IsModifiedClick("CHATLINK") then A.UI:QuestClick(f.questId,button)
                 else A.UI.Chains:Focus(f.questId) end
             end)
-            row:SetScript("OnLeave",function(f) f:SetBackdropColor(0,0,0,0);GameTooltip:Hide() end)
-            row:SetScript("OnEnter",function(f)
+            row:HookScript("OnLeave",function(f) f:SetBackdropColor(0,0,0,0);GameTooltip:Hide() end)
+            row:HookScript("OnEnter",function(f)
                 f:SetBackdropColor(unpack(colors.rowHover))
                 local task=f.task
                 GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(task.title)

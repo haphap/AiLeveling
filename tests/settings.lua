@@ -32,6 +32,12 @@ local function widget()
         self.fontFace,self.fontSize,self.fontFlags=face,size,flags
         return true
     end
+    w.GetFont=function(self) return self.fontFace,self.fontSize,self.fontFlags end
+    w.SetMinMaxValues=function() end;w.SetStatusBarColor=function() end;w.SetValue=function() end
+    w.SetShadowColor=function(self,...) self.shadowColor={...} end
+    w.GetShadowColor=function(self) return unpack(self.shadowColor or {0,0,0,0}) end
+    w.SetShadowOffset=function(self,...) self.shadowOffset={...} end
+    w.GetShadowOffset=function(self) return unpack(self.shadowOffset or {0,0}) end
     w.SetAtlas=function(self,atlas) self.atlas=atlas end
     w.SetHighlightTexture=function(self,texture) self.highlight=texture;texture:Hide() end
     w.SetTextColor=function(self,...) self.color={...} end;w.SetColorTexture=w.SetTextColor
@@ -181,22 +187,40 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     assert(B.UI.startupPanel.copy:GetText():find("模拟文字创建失败",1,true))
     B.finish()
     -- The optional skin uses the public controls and reacts to style changes without rebuilding tasks.
-    local listeners,face={},"DaylightFont"
-    local api={major=1,Colors=function() return {TEXT={1,1,1},LABEL={0.8,0.7,0.6},WARN={1,0.8,0.3},GOOD={0.5,0.9,0.5},BAD={1,0.3,0.3}} end,
+    local listeners,face,scale,texts,menuItems={},"DaylightFont",1,{},{}
+    local sizes={small=12,body=13,head=15,title=18}
+    local api={major=1,Colors=function() return {TEXT={1,1,1},VALUE={1,1,1},LABEL={0.8,0.7,0.6},WARN={1,0.8,0.3},GOOD={0.5,0.9,0.5},BAD={1,0.3,0.3}} end,
         Accent=function() return 0.8,0.4,0.6 end,Font=function() return face end,
-        GetSetting=function(_,key) return key=="textOutline" and "OUTLINE" or nil end,
+        GetSetting=function(_,key) return key=="fontScale" and scale or nil end,
         On=function(event,fn) listeners[event]=fn end,
+        Menu=function(owner,keys,labels,current,pick)
+            for _,key in ipairs(keys) do menuItems[labels[key]]=function() pick(key) end end
+        end,
         Skin=function(frame,opts) frame.daylightOpts=opts;frame.skinCalls=(frame.skinCalls or 0)+1 end,
-        Text=function(parent) return parent:CreateFontString() end,
+        Text=function(parent,role)
+            local fs=parent:CreateFontString();fs:SetFont(face,sizes[role]*scale,"")
+            fs:SetShadowColor(0,0,0,0.6);fs:SetShadowOffset(1,-1);texts[fs]=role;return fs
+        end,
         Button=function(parent,label) local b=CreateFrame("Button",nil,parent);b.text=b:CreateFontString();b.text:SetText(label);return b end,
         Close=function(parent,click) local b=CreateFrame("Button",nil,parent);b:SetScript("OnClick",click);return b end,
+        Bar=function(parent) return CreateFrame("StatusBar",nil,parent) end,
+        Switch=function(parent) local b=CreateFrame("Button",nil,parent);b.SetOn=function(on) b.checked=on end;return b end,
         Input=function(parent) return CreateFrame("EditBox",nil,parent) end}
     B=setup(true,api);B.UI:Render();local choice=B.action
     assert(B.UI.frame.daylightOpts and B.UI.details.daylightOpts)
     eq(B.UI.frame.daylightOpts.bgAlpha,0.4);eq(B.UI.title.fontFace,face);eq(B.UI.tracker.header.shown,false)
+    eq(B.UI.tracker.headerLine.shown,false);eq(B.UI.title.fontSize,13);eq(B.UI.tracker.location.fontSize,15)
+    eq(B.UI.title.fontFlags,"");eq(B.UI.title.shadowColor[4],0.6)
     local before=B.UI.frame.skinCalls;B.UI.frame.scripts.OnSizeChanged();eq(B.UI.frame.skinCalls,before+1)
-    face="UpdatedDaylightFont";listeners.StyleChanged();eq(B.UI.title.fontFace,face);eq(B.action,choice)
-    B.UI:ToggleDetails();assert(B.UI.Browser.frame:IsShown());B.finish()
+    face="UpdatedDaylightFont";scale=1.2
+    for fs,role in pairs(texts) do fs:SetFont(face,sizes[role]*scale,"");fs:SetShadowColor(0,0,0,0) end
+    listeners.StyleChanged();eq(B.UI.title.fontFace,face);eq(B.action,choice)
+    eq(B.UI.title.fontSize,13*1.2);eq(B.UI.title.shadowColor[4],0)
+    B.settings.fontScale=1.1;listeners.Login();eq(B.UI.title.fontSize,13*1.2*1.1)
+    B.UI:TrackerMenu(B.UI.frame);assert(menuItems["详细面板"]);menuItems["详细面板"]()
+    assert(B.UI.Browser.frame:IsShown());assert(B.UI.details:IsShown())
+    local toggle=control(B,"quantity").button;toggle.scripts.OnClick();eq(B.settings.quantity,false);eq(toggle.checked,false)
+    B.finish()
 
 end)
 test("设置开关跨归一化保留且清除已取消的旧采样",function()

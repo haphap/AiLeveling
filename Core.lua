@@ -173,6 +173,9 @@ end
 function A:Replan()
     if not self.ready then return end
     if self.Transport and self.Transport:InFlight() or self.Hearth and self.Hearth:InTransit() then self.jobs.plan=nil;return end
+    local map=self.state.position and self.state.position.map
+    if self.jobs.plan and self.planningRevision==self.state.revision and self.planningMap==map then return end
+    self.planningRevision,self.planningMap=self.state.revision,map
     local snapshot,revision={},self.state.revision
     for key,value in pairs(self.state) do snapshot[key]=value end
     snapshot.currentTask=self.plan and self.plan.unverified and self.plan.fallback and self.plan.fallback.questId or nil

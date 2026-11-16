@@ -108,8 +108,21 @@ end
 function F.Routes(origin,target,state,navigation)
     if not origin or not target or not navigation or not A.Travel or
         state.dead or state.onTaxi or state.inInstance then return end
-    local walks={}
+    local cache=state.travelCache
+    local walks=cache and cache.walks or {}
     local function pointKey(p) return string.format("%d:%.9f:%.9f",p.map,p.x,p.y) end
+    local routeKey=pointKey(origin)..">"..pointKey(target)..":"..tostring(state.maxSeconds)..":"..
+        tostring(state.hearthReady and math.max(0,state.hearthReady-(state.now or 0)))
+    local saved=cache and cache.routes[routeKey]
+    if saved then
+        local routes={}
+        for _,original in ipairs(saved.routes) do
+            local route={};for key,value in pairs(original) do route[key]=value end
+            route.hearthReady=route.hearths>0 and original.hearthReady+(state.now or 0)-saved.now or state.hearthReady
+            routes[#routes+1]=route
+        end
+        return #routes>0 and routes or nil
+    end
     local function walk(from,to)
         local key=pointKey(from)..">"..pointKey(to)
         if walks[key]~=nil then return walks[key] or nil end
@@ -117,60 +130,74 @@ function F.Routes(origin,target,state,navigation)
         local result=seconds and {kind="walk",from=from,to=to,seconds=seconds,coarse=seconds>0}
         walks[key]=result or false;return result
     end
-    local flights={}
-    local mask=state.faction=="Alliance" and 1 or state.faction=="Horde" and 2
-    if F.Matches(state) and mask and state.transportKnown then
-        for key,available in pairs(state.taxiAvailability or {}) do
-            local from,to=key:match("^(%d+):(%d+)$")
-            from,to=tonumber(from),tonumber(to)
-            local source,dest=A.FlightData.nodes[from],A.FlightData.nodes[to]
-            local departure=(state.taxiDepartures or {})[from] or
-                source and referencePosition(source,origin,target,navigation.hbd)
-            local seconds,label
-            if from and to then seconds,label=F.Seconds(from,to,state) end
-            if source and dest and departure and seconds and seconds>0 and source.instance==dest.instance and
-                math.floor(source.factionMask/mask)%2==1 and math.floor(dest.factionMask/mask)%2==1 and
-                (state.unlocked or {})["taxi:"..from] and (state.unlocked or {})["taxi:"..to] and
-                available==true then
-                local observed=(state.taxiLandings or {})[key]
-                local landing=observed or referencePosition(dest,target,departure,navigation.hbd)
-                local hops=(state.taxiHops or {})[key]
-                local sample=(state.samples or {})[F.TimeKey(from,to,state.faction,hops,state.taxiSpeed)]
-                local spread=label=="本地实测" and sample and sample.n>1 and math.sqrt(sample.m2/(sample.n-1)) or seconds*0.25
-                local boarding=A.Estimates and A.Estimates.flightBoardSeconds
-                if boarding and landing then
-                    flights[#flights+1]={kind="flight",key=key,from=departure,to=landing,fromTaxi=from,toTaxi=to,
-                        arrival=observed and 12 or 25,
-                        flightSeconds=seconds,durationSource=label,seconds=seconds+boarding,faction=state.faction,hops=hops,taxiSpeed=state.taxiSpeed,
-                        low=math.max(1,seconds-spread)+boarding*0.5,high=seconds+spread+boarding*3}
+    local mapKey=origin.map..":"..target.map
+    local flights=cache and cache.flights[mapKey]
+    if not flights then
+        flights={}
+        local mask=state.faction=="Alliance" and 1 or state.faction=="Horde" and 2
+        if F.Matches(state) and mask and state.transportKnown then
+            for key,available in pairs(state.taxiAvailability or {}) do
+                local from,to=key:match("^(%d+):(%d+)$")
+                from,to=tonumber(from),tonumber(to)
+                local source,dest=A.FlightData.nodes[from],A.FlightData.nodes[to]
+                local departure=(state.taxiDepartures or {})[from] or
+                    source and referencePosition(source,origin,target,navigation.hbd)
+                local seconds,label
+                if from and to then seconds,label=F.Seconds(from,to,state) end
+                if source and dest and departure and seconds and seconds>0 and source.instance==dest.instance and
+                    math.floor(source.factionMask/mask)%2==1 and math.floor(dest.factionMask/mask)%2==1 and
+                    (state.unlocked or {})["taxi:"..from] and (state.unlocked or {})["taxi:"..to] and
+                    available==true then
+                    local observed=(state.taxiLandings or {})[key]
+                    local landing=observed or referencePosition(dest,target,departure,navigation.hbd)
+                    local hops=(state.taxiHops or {})[key]
+                    local sample=(state.samples or {})[F.TimeKey(from,to,state.faction,hops,state.taxiSpeed)]
+                    local spread=label=="本地实测" and sample and sample.n>1 and math.sqrt(sample.m2/(sample.n-1)) or seconds*0.25
+                    local boarding=A.Estimates and A.Estimates.flightBoardSeconds
+                    if boarding and landing then
+                        flights[#flights+1]={kind="flight",key=key,from=departure,to=landing,fromTaxi=from,toTaxi=to,
+                            arrival=observed and 12 or 25,
+                            flightSeconds=seconds,durationSource=label,seconds=seconds+boarding,faction=state.faction,hops=hops,taxiSpeed=state.taxiSpeed,
+                            low=math.max(1,seconds-spread)+boarding*0.5,high=seconds+spread+boarding*3}
+                    end
                 end
             end
         end
-    end
-    local public=A.PublicTransitData
-    if public and state.clientVersion==public.clientVersion and state.interface==public.interface then
-        for _,leg in ipairs(public.legs) do
-            if not leg.faction or leg.faction==state.faction then flights[#flights+1]=leg end
+        local public=A.PublicTransitData
+        if public and state.clientVersion==public.clientVersion and state.interface==public.interface then
+            for _,leg in ipairs(public.legs) do
+                if not leg.faction or leg.faction==state.faction then flights[#flights+1]=leg end
+            end
         end
+        table.sort(flights,function(a,b) return a.key<b.key end)
+        if cache then cache.flights[mapKey]=flights end
     end
-    table.sort(flights,function(a,b) return a.key<b.key end)
     local first={position=origin,seconds=0,low=0,high=0,legs={},flights=0,
         hearthReady=state.hearthReady,hearths=0,initial=false}
     local pending,labels,results={first},{origin={first}},{}
-    local function offer(candidate,key)
+    local function finishedFaster(candidate)
+        for _,route in ipairs(results) do
+            if A.Travel.Dominates(route,candidate,state.now) then return true end
+        end
+        return false
+    end
+    local function offer(candidate,key,current,firstLeg,lastLeg)
+        -- A completed journey already wins; further travel cannot improve this label.
+        if finishedFaster(candidate) then return end
         local bucket=labels[key] or {}
         for _,old in ipairs(bucket) do
             if not old.discarded and A.Travel.Dominates(old,candidate,state.now) then return end
         end
         if state.maxSeconds and candidate.seconds>state.maxSeconds then return end
         for _,old in ipairs(bucket) do if A.Travel.Dominates(candidate,old,state.now) then old.discarded=true end end
+        candidate.legs=lastLeg and append(append(current.legs,firstLeg),lastLeg) or append(current.legs,firstLeg)
         bucket[#bucket+1]=candidate;pending[#pending+1]=candidate;labels[key]=bucket
     end
     local count=0
     while #pending>0 do
         table.sort(pending,function(a,b) return a.seconds>b.seconds end)
         local current=table.remove(pending)
-        if not current.discarded then
+        if not current.discarded and not finishedFaster(current) then
             local finish=walk(current.position,target)
             if finish and (not state.maxSeconds or current.seconds+finish.seconds<=state.maxSeconds) then
                 results[#results+1]={seconds=current.seconds+finish.seconds,low=current.low+finish.seconds,high=current.high+finish.seconds,
@@ -183,10 +210,10 @@ function F.Routes(origin,target,state,navigation)
                 if approach then
                     local candidate={position=flight.to,seconds=current.seconds+approach.seconds+flight.seconds,
                         low=current.low+approach.seconds+flight.low,high=current.high+approach.seconds+flight.high,
-                        legs=append(append(current.legs,approach),flight),flights=current.flights+(flight.kind=="flight" and 1 or 0),
+                        flights=current.flights+(flight.kind=="flight" and 1 or 0),
                         hearthReady=current.hearthReady,hearths=current.hearths,initial=true,
                         coarse=current.coarse or approach.coarse}
-                    offer(candidate,flight.key)
+                    offer(candidate,pointKey(flight.to),current,approach,flight)
                 end
                 count=count+1;checkpoint(count)
             end
@@ -199,15 +226,16 @@ function F.Routes(origin,target,state,navigation)
                         name=state.bindName,bindingKey=state.hearthBindingKey}
                     local seconds=current.seconds+wait+duration
                     offer({position=state.hearthPoint,seconds=seconds,low=current.low+wait+low,high=current.high+wait+high,
-                        legs=append(current.legs,leg),flights=current.flights,
+                        flights=current.flights,
                         hearthReady=(state.now or 0)+seconds+(state.hearthCooldown or math.huge),hearths=current.hearths+1,
-                        initial=current.initial or initial,coarse=current.coarse},"hearth")
+                        initial=current.initial or initial,coarse=current.coarse},pointKey(state.hearthPoint),current,leg)
                 end
                 count=count+1;checkpoint(count)
             end
         end
     end
     results=A.Travel.Prune(results,state.now)
+    if cache then cache.routes[routeKey]={routes=results,now=state.now or 0} end
     return #results>0 and results or nil
 end
 

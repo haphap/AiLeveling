@@ -418,6 +418,8 @@ end
 
 function P.Build(state, data, options)
     state=copy(state);state.objectiveTargets={}
+    -- Reuse immutable travel geometry within this snapshot; discard it after the build.
+    state.travelCache={walks={},flights={},routes={}}
     if state.level >= 60 then return { revision = state.revision, complete = true } end
     local gearSource=state.gearTarget and A.Gear.GetSource and A.Gear.GetSource(state.gearTarget,data,state)
     if type(state.gearTarget)=="string" and (state.gearTarget:match("^reward:") or state.gearTarget:match("^drop:")) and not gearSource then
