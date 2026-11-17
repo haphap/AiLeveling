@@ -207,6 +207,11 @@ run("副本整组先接齐可行任务，完成前置后入本，整组完成再
     s.quests[3]={ready=true,objectives={}};p=plan(s,data,B.settings,B);eq(p.fallback.kind,"turnin")
     s.quests[3]=nil;s.completed[3]=true
     p=plan(s,data,B.settings,B);eq(p.fallback.questId,1);eq(p.fallback.kind,"accept")
+    -- A hand-in at our feet precedes another city's pickup.
+    s.quests[1]={ready=true,objectives={}}
+    local origin=s.position;s.position=data:Target(q[1],s)
+    p=plan(s,data,B.settings,B);eq(p.fallback.kind,"turnin");eq(p.fallback.questId,1)
+    s.position=origin
     s.quests[1]={objectives={{text="完成目标",numRequired=1,numFulfilled=0}}}
     -- Outdoor spawns of an accepted dungeon quest must not hide another city's pickup.
     data.Target=function(self,quest,state)
@@ -220,6 +225,15 @@ run("副本整组先接齐可行任务，完成前置后入本，整组完成再
     s.quests[2]={objectives={{text="完成目标",numRequired=1,numFulfilled=0}}}
     p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonEnter")
     s.inInstance,s.instanceId,s.position=true,42,{map=2,x=0,y=0}
+    -- The same pickup rule applies to an NPC reached inside the dungeon.
+    local active=s.quests[2];s.quests[2]=nil;s.position={map=2,x=0.2,y=0.3}
+    data.Target=function(self,quest,state)
+        local point=target(self,quest,state)
+        if quest.id==2 and not state.quests[2] then point.map=2 end
+        return point
+    end
+    p=plan(s,data,B.settings,B);eq(p.fallback.kind,"accept");eq(p.fallback.questId,2)
+    s.quests[2]=active;data.Target=target;s.position={map=2,x=0,y=0}
     now=400;s.difficulty=1;B.Dungeon:UpdateTaskActivity(s)
     local sampleKey=B.Dungeon.taskActivity.key
     s.quests[1].ready=true
@@ -403,12 +417,25 @@ run("进入受限时整组先交付可交成员，重试后恢复入口且野外
     p=plan(s,data,B.settings,B);eq(p.fallback.kind,"accept");eq(p.fallback.questId,2)
     eq(s.completed[2],nil)
 end)
-run("整组中单项前置失效不阻止其他任务，全部受阻显示原因且不改完成状态",function()
-    local B,s,data=fixture();assert(B.Dungeon:StartTaskBatch("ref"))
-    B.char.skipped[3]=true;B.State:Refresh()
+run("任务组清理暂缓前置和已关闭分支，保留可替代前置及临时受阻成员",function()
+    local B,s,data,q,d=fixture();assert(B.Dungeon:StartTaskBatch("ref"))
+    B.Selection:Skip(3);eq(B.char.taskBatch.baselines[1],nil)
     local p=plan(s,data,B.settings,B);eq(p.fallback.questId,2)
+    q[2].requiredLevel=40;B.State:Refresh();eq(s.taskBatch.baselines[2],0)
+    p=plan(s,data,B.settings,B);eq(p.fallback.kind,"selectionBlocked")
+    q[2].requiredLevel=1
     s.completed[2]=true;B.State:Refresh();p=plan(s,data,B.settings,B)
-    eq(p.fallback.kind,"selectionBlocked");assert(p.fallback.text:find("前置未交付",1,true));eq(s.completed[1],nil)
+    eq(p.taskBatch,nil);eq(B.char.taskBatch,nil);eq(s.completed[1],nil)
+    B,s,data,q,d=fixture();q[1].preQuestGroup=nil;q[1].preQuestSingle={3,4}
+    assert(B.Dungeon:StartTaskBatch("ref"));B.Selection:Skip(3)
+    eq(s.taskBatch.baselines[1],0);p=plan(s,data,B.settings,B);eq(p.fallback.questId,4)
+    B.Selection:Skip(4);eq(s.taskBatch.baselines[1],nil);eq(s.taskBatch.baselines[2],0)
+    B,s,data,q,d=fixture();q[1].preQuestGroup=nil;q[2].exclusiveTo={1}
+    d.quests.Alliance[3]="preparation";q[3].breadcrumbForQuestId=1
+    assert(B.Dungeon:StartTaskBatch("ref"));eq(s.taskBatch.baselines[2],0);eq(s.taskBatch.baselines[3],0)
+    s.quests[1]={objectives={{text="目标",numRequired=1,numFulfilled=0}}};B.State:Refresh()
+    eq(s.taskBatch.baselines[2],nil);eq(s.taskBatch.baselines[3],nil);eq(s.completed[2],nil)
+    s.quests[1]=nil;s.completed[1]=true;B.State:Refresh();eq(s.taskBatch,nil)
 end)
 run("整组选择不会保护远处低收益任务或拖住同NPC交付",function()
     local B,s,data,q,d=fixture();q[1].preQuestGroup=nil
@@ -425,6 +452,12 @@ run("整组选择不会保护远处低收益任务或拖住同NPC交付",functio
     local low;for _,c in ipairs(p.taskChoices) do if c.questId==1 then low=c.lowValue end end;assert(low and low.distant)
     s.quests[2]=nil;s.completed[2]=true;B.State:Refresh();p=plan(s,data,B.settings,B);eq(p.fallback.kind,"taskReview")
     eq(B.char.skipped[1],nil);eq(s.completed[1],nil)
+    -- Obsolete members never become mandatory; old saved batches are cleaned as well.
+    s.completed[2]=nil;s.quests[2]={ready=true};q[1].questLevel=5;q[1].taskFacts.level=5
+    q[1].taskFacts.xp={{1,1000},{20,100}}
+    assert(B.Dungeon:StartTaskBatch("ref"));eq(s.taskBatch.baselines[1],nil)
+    B.char.taskBatch.baselines[1]=0;B.State:Refresh();eq(s.taskBatch.baselines[1],nil)
+    s.quests[2]=nil;s.completed[2]=true;B.State:Refresh();eq(s.taskBatch,nil);eq(s.completed[1],nil)
 end)
 run("任务安排重载保留进度，重复任务按本次交付计数收尾",function()
     local B,s,data,q=fixture();q[2].repeatable=true;s.completed[2]=true;B.char.turnIns[2]=7

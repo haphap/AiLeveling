@@ -430,7 +430,7 @@ function D:TaskActivityText(id)
     end
     local last=self.lastTaskTrip
     if last and last.id==id then
-        return "任务已交齐，已恢复自动路线"..(last.seconds and string.format(" · 本次 %.1f 分钟",last.seconds/60) or "")
+        return "本次行程已结束，已恢复自动路线"..(last.seconds and string.format(" · 本次 %.1f 分钟",last.seconds/60) or "")
     end
 end
 
@@ -445,14 +445,22 @@ function D:TaskBatchSnapshot(state)
         local q=A.Data:GetQuest(id)
         local done=(A.char.turnIns[id] or 0)>n or
             (not state.quests[id] and state.completed[id] and q and not q.repeatable)
-        if done then batch.baselines[id]=nil
+        local excluded=(state.skipped or {})[id] or (state.chainDeferred or {})[id] or
+            q and (A.Eligibility.Closed(q,state) or A.TaskGuide.LowValue(q,state,A.Data))
+        -- Drop a deferred branch only when no alternative preparation remains executable.
+        if not done and not excluded and q and not A.Eligibility.Check(q,state,A.Data) then
+            local frontier,closed=A.Chains.Preparation(id,A.Data,state)
+            excluded=#frontier==0 and closed
+        end
+        if excluded and self.taskActivity then self.taskActivity.valid=false end
+        if done or excluded then batch.baselines[id]=nil
         else ids[#ids+1]=id;baselines[id]=n end
     end
     -- A quest picked up during the trip joins the same batch, including quests absent at departure.
     local d=D.Catalog()[batch.id]
     for _,row in ipairs(d and D.Tasks(d,state,A.Data) or {}) do
         if state.quests[row.id] and not (A.State.confirmed and A.State.confirmed[row.id]) and
-            baselines[row.id]==nil and D.CanContinueTask(row) then
+            baselines[row.id]==nil and not row.lowValue and D.CanContinueTask(row) then
             local n=(A.char.turnIns or {})[row.id] or 0
             batch.baselines[row.id],baselines[row.id]=n,n;ids[#ids+1]=row.id
             batch.returning=nil
@@ -475,7 +483,9 @@ function D:StartTaskBatch(id)
     if not d then return false,"当前构建没有这项副本目录" end
     local baselines={}
     for _,row in ipairs(D.Tasks(d,A.state,A.Data)) do
-        if D.CanContinueTask(row) then baselines[row.id]=(A.char.turnIns or {})[row.id] or 0 end
+        if not row.lowValue and not row.requireCheck and D.CanContinueTask(row) then
+            baselines[row.id]=(A.char.turnIns or {})[row.id] or 0
+        end
     end
     if not next(baselines) then return false,"当前没有可准备的关联任务" end
     A.Selection:Clear()
@@ -626,7 +636,7 @@ function D.TaskJourney(d,choices,state,data)
 end
 
 function D.TaskBatchStage(choices,state,data)
-    local preferred,pickups,preparation={},{},{}
+    local preferred,here,pickups,preparation={},{},{},{}
     local groups={}
     if A.TaskGuide then local list;list,groups=A.TaskGuide.DeliveryGroups(choices,state) end
     for _,choice in ipairs(choices) do
@@ -635,11 +645,15 @@ function D.TaskBatchStage(choices,state,data)
         local localStep=state.inInstance and choice.currentInstance or
             not state.inInstance and position and not instance
         local group=groups[choice.questId]
-        local waiting=choice.status=="turnin" and group and group.ready<#group.choices
+        local waiting=choice.status=="turnin" and group and not group.splitDelivery and group.ready<#group.choices
         if localStep and not waiting and not choice.lowValue and not choice.requireCheck and not choice.acceptBlocked then
             preferred[#preferred+1]=choice
+            local kind=choice.actions[1].kind
+            local distance=position and state.position and A.Navigation:Distance(state.position,position)
+            if (kind=="turnin" or kind=="accept") and distance and distance<=40 then here[#here+1]=choice end
             -- Collect this region's dungeon quests before leaving to work on already accepted ones.
-            if not state.inInstance and choice.actions[1].kind=="accept" and state.position and position.map==state.position.map then
+            if kind=="accept" and (state.inInstance and (not position or distance and distance<=140) or
+                not state.inInstance and state.position and position.map==state.position.map) then
                 pickups[#pickups+1]=choice
             end
             if not state.inInstance and (choice.actions[1].kind=="accept" or choice.preparingQuest or choice.dungeonPreparation) then
@@ -647,6 +661,7 @@ function D.TaskBatchStage(choices,state,data)
             end
         end
     end
+    if #here>0 then return here end
     if #pickups>0 then return pickups end
     if #preparation>0 then return preparation end
     return #preferred>0 and preferred or choices

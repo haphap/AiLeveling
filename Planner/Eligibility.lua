@@ -29,6 +29,15 @@ function E.Prerequisite(id, s, data)
     return false
 end
 
+-- These alternatives close when the player starts or completes another quest.
+function E.Closed(q,s)
+    if s.quests[q.id] then return end
+    for _, id in ipairs(q.exclusiveTo or {}) do if started(s, id) then return "互斥任务已开始" end end
+    if (q.nextQuestInChain or 0) > 0 and started(s, q.nextQuestInChain) then return "后续任务已开始" end
+    if (q.breadcrumbForQuestId or 0) > 0 and started(s, q.breadcrumbForQuestId) then return "指向任务已开始" end
+    if (q.availableUntilCompleted or 0) > 0 and s.completed[q.availableUntilCompleted] then return "可接窗口结束" end
+end
+
 function E.Check(q, s, data, ignorePrerequisites)
     if s.skipped and s.skipped[q.id] then return false, "已暂缓" end
     if s.chainDeferred and s.chainDeferred[q.id] then return false,"整链已暂缓（起点 #"..s.chainDeferred[q.id].."）" end
@@ -47,11 +56,9 @@ function E.Check(q, s, data, ignorePrerequisites)
         for _, id in ipairs(q.preQuestSingle) do if s.completed[id] then met = true end end
         if not met then return false, "备选前置未交付", q.preQuestSingle[1] end
     end
-    for _, id in ipairs(q.exclusiveTo or {}) do if started(s, id) then return false, "互斥任务已开始" end end
+    local closed=E.Closed(q,s)
+    if closed then return false,closed end
     if not ignorePrerequisites and (q.parentQuest or 0) > 0 and not s.quests[q.parentQuest] then return false, "父任务未进行" end
-    if (q.nextQuestInChain or 0) > 0 and started(s, q.nextQuestInChain) then return false, "后续任务已开始" end
-    if (q.breadcrumbForQuestId or 0) > 0 and started(s, q.breadcrumbForQuestId) then return false, "指向任务已开始" end
-    if (q.availableUntilCompleted or 0) > 0 and s.completed[q.availableUntilCompleted] then return false, "可接窗口结束" end
     if not ignorePrerequisites and (q.availableStartingWith or 0) > 0 and not started(s, q.availableStartingWith) then return false, "尚未开放" end
     if (q.disabledByQuest or 0) > 0 and s.quests[q.disabledByQuest] then return false, "暂时不可接" end
     if rank(s, q.requiredSkill) ~= true then return false, "专业资格不足或未知" end

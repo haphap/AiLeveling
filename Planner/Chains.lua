@@ -12,12 +12,15 @@ end
 
 -- Return executable frontiers of viable prerequisite branches, without projecting completion.
 function C.Preparation(id,data,state)
-    local memo,visiting={},{}
+    local memo,unavailable,visiting={},{},{}
     local visit
     local function merge(target,source) for key in pairs(source) do target[key]=true end end
     local function resolve(id,depth)
         local q=data:GetQuest(id)
-        if not q or not A.Eligibility.Check(q,state,data,true) then return end
+        if not q then return end
+        if not A.Eligibility.Check(q,state,data,true) then
+            return nil,(state.skipped or {})[id] or (state.chainDeferred or {})[id] or A.Eligibility.Closed(q,state)
+        end
         if A.Eligibility.Check(q,state,data) then
             if data:Target(q,state) then return {[id]=true} end
             -- Item-started chains can begin with the quest that supplies the starting item.
@@ -34,12 +37,13 @@ function C.Preparation(id,data,state)
         end
         local result={}
         local function alternatives(ids)
-            local leaves={}
+            local leaves,closed={},true
             for _,candidate in ipairs(ids) do
-                local branch=visit(candidate,depth+1)
+                local branch,blocked=visit(candidate,depth+1)
                 if branch then merge(leaves,branch) end
+                if not blocked then closed=false end
             end
-            if not next(leaves) then return false end
+            if not next(leaves) then return false,closed end
             merge(result,leaves);return true
         end
         for _,required in ipairs(q.preQuestGroup or {}) do
@@ -47,30 +51,41 @@ function C.Preparation(id,data,state)
                 local choices={math.abs(required)}
                 local parent=required>0 and data:GetQuest(required)
                 for _,other in ipairs(parent and parent.exclusiveTo or {}) do choices[#choices+1]=other end
-                if not alternatives(choices) then return end
+                local ready,closed=alternatives(choices)
+                if not ready then return nil,closed end
             end
         end
         if q.preQuestSingle and #q.preQuestSingle>0 then
             local met=false
             for _,required in ipairs(q.preQuestSingle) do if state.completed[required] then met=true end end
-            if not met and not alternatives(q.preQuestSingle) then return end
+            if not met then
+                local ready,closed=alternatives(q.preQuestSingle)
+                if not ready then return nil,closed end
+            end
         end
-        if (q.parentQuest or 0)>0 and not state.quests[q.parentQuest] and not alternatives({q.parentQuest}) then return end
+        if (q.parentQuest or 0)>0 and not state.quests[q.parentQuest] then
+            local ready,closed=alternatives({q.parentQuest})
+            if not ready then return nil,closed end
+        end
         if (q.availableStartingWith or 0)>0 and not state.quests[q.availableStartingWith] and
-            not state.completed[q.availableStartingWith] and not alternatives({q.availableStartingWith}) then return end
+            not state.completed[q.availableStartingWith] then
+            local ready,closed=alternatives({q.availableStartingWith})
+            if not ready then return nil,closed end
+        end
         if next(result) then return result end
     end
     visit=function(id,depth)
         if not valid(id) or depth>32 or visiting[id] then return end
-        if memo[id]~=nil then return memo[id] or nil end
+        if memo[id]~=nil then return memo[id] or nil,unavailable[id] end
         visiting[id]=true
-        local result=resolve(id,depth)
-        visiting[id]=nil;memo[id]=result or false
-        return result
+        local result,closed=resolve(id,depth)
+        visiting[id]=nil;memo[id]=result or false;unavailable[id]=closed
+        return result,closed
     end
     local ids={}
-    for candidate in pairs(visit(id,0) or {}) do ids[#ids+1]=candidate end
-    table.sort(ids);return ids
+    local result,closed=visit(id,0)
+    for candidate in pairs(result or {}) do ids[#ids+1]=candidate end
+    table.sort(ids);return ids,closed
 end
 
 function C.IndexQuest(index,q,data)
