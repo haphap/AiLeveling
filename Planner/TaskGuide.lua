@@ -354,6 +354,10 @@ function G.Timing(origin,choice,state,navigation)
             if routes and #routes==1 and routes[1].hearths==0 then cache.timings[noHearthKey]=saved end
         end
     end
+    -- A journey without a hearth use has no arrival-time-dependent cooldown to restore.
+    local reusable=saved.reusable
+    if reusable and reusable.hearthReady==state.hearthReady and
+        (not state.maxSeconds or reusable.seconds<=state.maxSeconds) then return reusable end
     local travel=saved.travel
     local result={geometric=saved.geometric,travel=travel,movementOnly=true}
     if choice.stagesComplete and A.Flights then
@@ -386,6 +390,9 @@ function G.Timing(origin,choice,state,navigation)
     if travel and choice.stagesComplete and not state.dead and not state.onTaxi and not state.inInstance then
         result.seconds=travel
         result.low,result.high=result.travelLow or travel,result.travelHigh or travel
+    end
+    if key and result.seconds and saved.travelRoutes and #saved.travelRoutes==1 and result.hearthCount==0 then
+        saved.reusable=result
     end
     return result
 end

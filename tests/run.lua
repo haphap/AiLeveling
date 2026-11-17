@@ -86,6 +86,16 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     objectiveCount=1;A.State:Refresh();eq(restart,false);eq(A.state.quests[42].objectives[1].numFulfilled,1)
     objectiveCount=3;finished=true;A.State:Refresh();eq(restart,true);assert(not manual)
     objectiveCount=0;finished=false;A.State:Refresh();eq(restart,true)
+    objectiveType="monster";objectiveText="森林蜘蛛：0/3";A.State:Refresh()
+    before=A.state;restart=nil;A.dirty=false
+    objectiveCount=1;objectiveText="森林蜘蛛：1/3";A.State:Refresh()
+    eq(A.state.revision,before.revision);eq(restart,nil);eq(A.dirty,true)
+    eq(A.state.quests[42].objectives[1].numFulfilled,1);eq(before.quests[42].objectives[1].numFulfilled,0)
+    objectiveCount=2;objectiveText="森林蜘蛛：2/3";A.State:Refresh();eq(restart,nil)
+    objectiveCount=3;objectiveText="森林蜘蛛：3/3";A.State:Refresh();eq(A.state.revision,before.revision+1)
+    before=A.state;finished=true;A.State:Refresh();eq(restart,true);eq(A.state.revision,before.revision+1)
+    before=A.state;finished=false;objectiveCount=0;objectiveText="野狼：0/3";A.State:Refresh()
+    eq(restart,true);eq(A.state.revision,before.revision+1)
     local oldInfo,oldInside=GetInstanceInfo,IsInInstance
     local difficulty,calls=1,0
     IsInInstance=function() return true end

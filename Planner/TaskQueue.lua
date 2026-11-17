@@ -22,7 +22,7 @@ end
 
 -- Reserve each physical item once; collection steps supply only the unreserved deficit.
 function Q.PrepareItems(order,state,reassign)
-    local available=copy(state.bags or {})
+    local available
     local result={}
     for _,original in ipairs(order) do
         local source=reassign and original.itemOriginal or original
@@ -30,6 +30,7 @@ function Q.PrepareItems(order,state,reassign)
         local requirements=last and last.itemRequirements or {}
         local choice=original
         if not source.itemsPrepared and not original.stageIndex and #requirements>0 then
+            available=available or copy(state.bags or {})
             choice=copy(original);choice.stages={};choice.itemsPrepared=true
             choice.itemOriginal=source;choice.itemShortage=nil;choice.stagesComplete=source.stagesComplete
             local gains,collects,consume,grants,allocation={},{},{},{},{}
@@ -82,7 +83,7 @@ function Q.Evaluate(order,state,navigation,data,cache)
     -- Whole-task permutations may spend the stock on a different recipient first.
     -- Split stages retain their allocation so interleaving cannot create extra items.
     order=Q.PrepareItems(order,state,true)
-    local bags=copy(state.bags or {})
+    local bags=state.bags or {}
     local context=copy(state)
     if A.Supplies then
         local log=A.Supplies.QuestLog(state)
@@ -105,12 +106,16 @@ function Q.Evaluate(order,state,navigation,data,cache)
         local key=table.concat({choice.questId,tostring(source.stages),choice.stageIndex or "task",choice.itemAllocationKey or ""},":")
         local saved=prefixes[key]
         if saved then
-            paths,bags=saved.paths,copy(saved.bags)
+            paths,bags=saved.paths,saved.bags
         else
             local staged=choice
+            local changedBags=false
             for stageIndex,original in ipairs(choice.stages or {}) do
                 local stage=original
                 if A.TaskGuide.ItemGainBlocked(stage,state,bags) then return end
+                if not changedBags and (next(stage.gainItems or {}) or (stage.itemGain or 0)>0 or next(stage.consumeItems or {})) then
+                    bags=copy(bags);changedBags=true
+                end
                 for id,count in pairs(stage.gainItems or {}) do bags[id]=(bags[id] or 0)+count end
                 if stage.itemGain and stage.itemGain>0 then
                     if staged==choice then staged=copy(choice);staged.stages=copy(choice.stages) end
@@ -175,14 +180,14 @@ function Q.Evaluate(order,state,navigation,data,cache)
             end
             paths=A.Travel.Prune(nextPaths,state.now)
             if #paths==0 then return end
-            saved={paths=paths,bags=copy(bags),next={}}
+            saved={paths=paths,bags=bags,next={}}
             prefixes[key]=saved
         end
         prefixes=saved.next
     end
     if not paths[1] then return end
     -- Materialize the chosen steps once, rather than copying the prefix at every stage.
-    local result=copy(paths[1]);result.steps={};result.bags=bags
+    local result=copy(paths[1]);result.steps={};result.bags=copy(bags)
     local node=paths[1]
     while node.step do result.steps[node.index]=node.step;node=node.previous end
     result.previous,result.index,result.step=nil,nil,nil

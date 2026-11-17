@@ -298,12 +298,20 @@ function State:Refresh(force, manual)
                 local before=old and (old.objectives or {})[index]
                 if not before or before.finished~=o.finished or before.type~=o.type or before.targetId~=o.targetId or
                     before.numRequired~=o.numRequired then restart=true end
+                if not before or before.numFulfilled~=o.numFulfilled or before.text~=o.text then A.dirty=true end
             end
             if not questCount then s.questCount=s.questCount+1 end
             local parts = { tostring(id), tostring(q.ready), tostring(q.level), tostring(q.itemId), tostring(q.rewardXP) }
             for _, o in ipairs(objectives) do
-                parts[#parts + 1] = table.concat({tostring(o.numFulfilled),tostring(o.numRequired),tostring(o.finished),
-                    tostring(o.type),tostring(o.text),tostring(o.targetKind),tostring(o.targetId)}, ":")
+                local progress,text=o.numFulfilled,o.text
+                -- Partial kills keep the same destination. Refresh the HUD, not every trial route.
+                -- Item counts still affect shared stock and retain their planning fingerprint.
+                if o.type=="monster" and type(progress)=="number" and type(o.numRequired)=="number" and o.numRequired>0 then
+                    progress=progress>=o.numRequired
+                    text=text and text:gsub("%d+%s*/%s*%d+", "#/#")
+                end
+                parts[#parts + 1] = table.concat({tostring(progress),tostring(o.numRequired),tostring(o.finished),
+                    tostring(o.type),tostring(text),tostring(o.targetKind),tostring(o.targetId)}, ":")
             end
             fingerprint[#fingerprint + 1] = table.concat(parts, ":")
         end

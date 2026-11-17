@@ -335,6 +335,13 @@ test("共用库存随路线换序分配以便先交附近任务再补远处物�
     eq(queue.bags[2592],0);eq(s.bags[2592],60);eq(s.quests[1].ready,true)
     eq(prepared[1].itemShortage,nil);eq(prepared[2].itemShortage,true)
     eq(#a.stages,1);eq(#b.stages,1)
+    local cache={}
+    local first=B.TaskQueue.Evaluate({a,b},s,nav,nil,cache)
+    B.TaskQueue.Evaluate({b,a},s,nav,nil,cache)
+    local repeated=B.TaskQueue.Evaluate({a,b},s,nav,nil,cache)
+    eq(repeated.seconds,first.seconds);eq(repeated.bags[2592],0);eq(s.bags[2592],60)
+    first.bags[2592]=999
+    eq(B.TaskQueue.Evaluate({a,b},s,nav,nil,cache).bags[2592],0)
     s.locked=1;order,queue=B.TaskQueue.Solve(prepared,s,nav)
     eq(order[1].questId,1);eq(order[1].executionAction.kind,"turnin")
     assert(math.abs(queue.seconds-190)<0.00001,queue.seconds)
@@ -662,8 +669,11 @@ test("整个队列保留炉石用于后续任务且传播使用后的冷却",fun
     B.Flights.Itinerary=itinerary
     local walking=B.TaskGuide.Timing(O,choice(4,T),s,nav);eq(walking.seconds,160)
     B.Flights.Itinerary=function() error("cooldown beyond arrival must reuse the same journey") end
+    eq(B.TaskGuide.Timing(O,choice(4,T),s,nav),walking)
+    s.maxSeconds=159;eq(B.TaskGuide.Timing(O,choice(4,T),s,nav).seconds,nil);s.maxSeconds=200
     s.hearthReady=s.hearthReady+100
     eq(B.TaskGuide.Timing(O,choice(4,T),s,nav).hearthReady,s.hearthReady)
+    eq(walking.hearthReady,s.hearthReady-100)
     B.Flights.Itinerary=itinerary
 end)
 test("三项窗口滚动到全队列且始终包含窗口外任务",function()
