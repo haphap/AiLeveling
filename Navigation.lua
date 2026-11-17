@@ -200,6 +200,7 @@ function N:LandFlight(flight,position)
 end
 
 function N:MapPoints()
+    if A.settings.mapTaskScope=="off" then return {} end
     local points,seen,routeCount={},{},0
     local current=self:Current()
     local sequence=self:Sequence()
@@ -249,6 +250,7 @@ function N:MapPoints()
             end
         end
     end
+    if A.settings.mapTaskScope=="route" then return points end
     -- Reuse resolved candidates; map coverage must not depend on the six-stop route preview.
     for _,choice in ipairs(self.plan and self.plan.taskChoices or {}) do
         local id=choice.questId

@@ -228,6 +228,10 @@ test("设置开关跨归一化保留且清除已取消的旧采样",function()
     local B=setup()
     local row=control(B,"quantity");row.button.checked=false;row.button.scripts.OnClick()
     eq(B.settings.quantity,false);B:NormalizeSettings(B.settings);eq(B.settings.quantity,false)
+    B.settings.mapTaskScope="invalid";B:NormalizeSettings(B.settings);eq(B.settings.mapTaskScope,"all")
+    for _,key in ipairs({"mapTaskScope","pins","minimapPins","arrow","waypointUI","routes"}) do
+        eq(control(B,key).button.parent,B.UI.Settings.groups[7])
+    end
     control(B,"gearPreference").button.scripts.OnClick();eq(B.settings.gearPreference,"xp");assert(B.refreshes>0)
     for _,key in ipairs({"quest","move","recovery","taskwork:old","tasktalk:v1:turnin:fast"}) do B.char.samples[key]={n=3,mean=10,m2=0} end
     B.char.sampleContext="old equipment context"
@@ -237,13 +241,14 @@ end)
 test("配置迁移、复制、切换与恢复保留角色进度，并可刷新任务历史",function()
     local B=setup();local char=B.char
     char.turnIns[1]=1;char.locked=1;B.state.completed[1]=true
-    local db={scale=1.3,quantity=false,trackerDocked=false,position={"RIGHT","RIGHT",-120,80}}
+    local db={scale=1.3,quantity=false,trackerDocked=false,position={"RIGHT","RIGHT",-120,80},mapTaskScope="route",pins=false,arrow=false}
     B:InitializeProfiles(db,char)
     eq(B.settings.scale,1.3);eq(B.settings.quantity,false);eq(db.scale,nil)
     local S=B.UI.Settings
     S.profileName:SetText("大字")
     S.profileName.scripts.OnEnterPressed()
     eq(char.profile,"大字");eq(B.settings.scale,1.3)
+    eq(B.settings.mapTaskScope,"route");eq(B.settings.pins,false);eq(B.settings.arrow,false)
     local titleSize=B.UI.title.fontSize
     B.UI.tracker.menu:Click();B.menu["放大字体 · 110%"].callback()
     eq(B.settings.fontScale,1.1);eq(B.UI.title.fontSize,titleSize*1.1)
@@ -257,6 +262,7 @@ test("配置迁移、复制、切换与恢复保留角色进度，并可刷新�
     local other={};B:InitializeProfiles(db,other);eq(other.profile,"大字")
     B:InitializeProfiles(db,char);B:RestoreSettings()
     eq(db.profiles["默认"].scale,1.3);eq(B.settings.scale,1);eq(B.settings.position,nil)
+    eq(db.profiles["默认"].mapTaskScope,"route");eq(B.settings.mapTaskScope,"all");eq(B.settings.pins,true)
     eq(char.turnIns[1],1);eq(char.locked,1);eq(B.state.completed[1],true)
     eq(B:DeleteProfile("大字"),false)
     B:SelectProfile("默认");eq(B:DeleteProfile("默认"),true)
@@ -636,6 +642,7 @@ test("世界地图点与小地图点独立且关闭方没有游离图标",functi
     local p={revision=B.state.revision,fallback=choices[1].actions[1],taskChoices=choices,taskOrder={},taskBatch={journey=journey}}
     B.Navigation:SetPlan(p)
     eq(#B.Navigation:MapPoints(),8)
+    B.settings.mapTaskScope="route";eq(#B.Navigation:MapPoints(),8);B.settings.mapTaskScope="all"
     local departure={map=1,x=0.2,y=0.2}
     local destination={map=2,x=0.1,y=0.1}
     local boat={kind="transit",mode="boat",publicTransit=true,departure=departure,position=destination,questId=81,arrival=40,departureRadius=40}
@@ -677,6 +684,14 @@ test("世界地图点与小地图点独立且关闭方没有游离图标",functi
     eq(pins[1].number.value,"01");eq(pins[3].number.value,"")
     assert(pins[1].texture.texture:find("hud-collect.tga",1,true));eq(pins[3].texture.atlas,"QuestNormal")
     eq(pins[3].texture.color[1],1);eq(pins[3].texture.color[3],1)
+    local scope=control(B,"mapTaskScope").button
+    scope:Click();eq(B.settings.mapTaskScope,"route");eq(#B.Navigation:MapPoints(),1)
+    eq(pins[1].shown,true);eq(pins[2].shown,true);eq(pins[3].shown,false)
+    scope:Click();eq(B.settings.mapTaskScope,"off");eq(#B.Navigation:MapPoints(),0)
+    eq(pins[1].shown,false);eq(pins[2].shown,false);eq(B.Navigation:Current(),collect)
+    eq(B.Navigation.plan,p);eq(B.Navigation.index,1);eq(B.settings.pins,true);eq(B.settings.minimapPins,true)
+    scope:Click();eq(B.settings.mapTaskScope,"all");eq(#B.Navigation:MapPoints(),11)
+    eq(pins[3].shown,true);eq(pins[4].shown,true)
     assert(B.Navigation:Navigate(choices[1].actions[1]));eq(#B.Navigation:MapPoints(),11)
     eq(B.Navigation:Current(),choices[1].actions[1]);eq(pins[1].point.current,true)
     B.Navigation:ClearManual();B.state.quests[108].objectives[1].finished=true;B.state.revision=B.state.revision+1
