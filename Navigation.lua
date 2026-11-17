@@ -200,45 +200,70 @@ function N:LandFlight(flight,position)
 end
 
 function N:MapPoints()
-    local points,seen={},{}
+    local points,seen,routeCount={},{},0
     local current=self:Current()
     local sequence=self:Sequence()
-    local function add(action,required)
+    local function add(action,required,catalog)
         if N.StaleAction(action,A.state,sequence.plan) then return end
         local pos=N.Target(action)
         if not pos then return end
         local key=table.concat({pos.map,pos.x,pos.y},":")
         local point=seen[key]
         if not point then
-            if #points>=6 and not required then return end
+            if routeCount>=6 and not required then return end
             point={position=pos,action=action,actions={},seen={}}
             points[#points+1]=point;seen[key]=point
         end
-        local identity=table.concat({action.kind or "",action.questId or "",action.objectiveIndex or "",action.targetId or ""},":")
+        if not catalog and not point.order then routeCount=routeCount+1;point.order=routeCount end
+        if action==current then point.current=true end
+        local identity=table.concat({action.kind or "",action.questId or "",action.objectiveIndex or action.targetId or ""},":")
         if not point.seen[identity] then
-            point.actions[#point.actions+1]=action;point.seen[identity]=true
+            point.actions[#point.actions+1]=action;point.seen[identity]=#point.actions
+        elseif action.targetKind then
+            local previous=point.actions[point.seen[identity]]
+            point.actions[point.seen[identity]]=action
+            if point.action==previous then point.action=action end
         end
+        if catalog and not point.current and not point.available then point.action=action end
+        point.available=point.available or catalog
     end
     add(current)
     if self.manual then
         for i=(self.manual.index or 1)+1,#(self.manual.actions or {}) do add(self.manual.actions[i]) end
-        return points
+    else
+        local batch=self.plan and self.plan.taskBatch and A.Dungeon.TaskBatchFrontier(self.plan)
+        for _,step in ipairs(batch or {}) do add(step.action,true,true) end
+        for i=self.index+1,#(self.actions or {}) do add(self.actions[i]) end
+        local queue=self.plan and self.plan.taskQueue
+        for _,step in ipairs(queue and queue.steps or {}) do
+            if step.stage then add(step.stage)
+            else for _,stage in ipairs(step.choice.stages or {}) do add(stage) end end
+        end
+        if not queue then
+            local goal=self.actions and self.actions[#self.actions]
+            for _,choice in ipairs(self.plan and self.plan.taskChoices or {}) do
+                if goal and choice.questId==goal.questId then
+                    for _,stage in ipairs(choice.stages or {}) do add(stage) end
+                    break
+                end
+            end
+        end
     end
-    local batch=self.plan and self.plan.taskBatch and A.Dungeon.TaskBatchFrontier(self.plan)
-    if #points==0 and not batch and not N.StaleAction(self.actions and self.actions[self.index]) then return points end
-    for _,step in ipairs(batch or {}) do add(step.action,true) end
-    for i=self.index+1,#(self.actions or {}) do add(self.actions[i]) end
-    local queue=self.plan and self.plan.taskQueue
-    for _,step in ipairs(queue and queue.steps or {}) do
-        if step.stage then add(step.stage)
-        else for _,stage in ipairs(step.choice.stages or {}) do add(stage) end end
-    end
-    if not queue then
-        local goal=self.actions and self.actions[#self.actions]
-        for _,choice in ipairs(self.plan and self.plan.taskChoices or {}) do
-            if goal and choice.questId==goal.questId then
-                for _,stage in ipairs(choice.stages or {}) do add(stage) end
-                break
+    -- Reuse resolved candidates; map coverage must not depend on the six-stop route preview.
+    for _,choice in ipairs(self.plan and self.plan.taskChoices or {}) do
+        local id=choice.questId
+        local active=(A.state.quests or {})[id]
+        if not choice.lowValue and not choice.acceptBlocked and not choice.requireCheck and not choice.entryBlocked and
+            not (A.state.completed or {})[id] and not (A.state.skipped or {})[id] and not (A.state.chainDeferred or {})[id] then
+            if not active then
+                local pickup=choice.pickupAction or not choice.revisitLevel and choice.actions and choice.actions[1]
+                if pickup and pickup.kind=="accept" then add(pickup,true,true) end
+            elseif not choice.revisitLevel then
+                local kind=active.ready and "turnin" or "objective"
+                for _,stage in ipairs(choice.stages or choice.actions or {}) do
+                    local objective=stage.objectiveIndex and (active.objectives or {})[stage.objectiveIndex]
+                    if stage.kind==kind and not (objective and objective.finished) then add(stage,true,true) end
+                end
             end
         end
     end
@@ -267,12 +292,14 @@ local function mapPin()
     pin:SetScript("OnEnter",function(f)
         local point=f.point
         GameTooltip:SetOwner(f,"ANCHOR_RIGHT")
-        GameTooltip:SetText(string.format("%02d · %s%s",f.order,point.action.title or "AiLeveling",
-            point.position.approximate and " · 区域参考点" or ""))
-        local labels={accept="接取",objective="目标",turnin="交付",service="服务",transit="交通"}
+        GameTooltip:SetText((point.current and "当前目的地 · " or point.order and string.format("%02d · ",point.order) or "")..
+            (point.action.title or "AILeveling")..(point.position.approximate and " · 区域参考点" or ""))
         for _,action in ipairs(point.actions) do
+            local active=(A.state.quests or {})[action.questId]
+            local label=action.kind=="accept" and "接取任务" or action.kind=="turnin" and (active and active.ready and "交付任务" or "完成后交付") or
+                action.kind=="objective" and (not active and "接取后目标" or action.targetKind=="item" and "收集目标" or "任务目标") or "前往"
             local detail=action.kind=="objective" and action.text
-            GameTooltip:AddLine((labels[action.kind] or "前往").." · "..(action.title or "目的地")..(detail and ("\n"..detail) or ""),1,1,1,true)
+            GameTooltip:AddLine(label.." · "..(action.title or "目的地")..(detail and ("\n"..detail) or ""),1,1,1,true)
         end
         GameTooltip:AddLine("左键：导航到此处"..(N.manual and "\n右键：返回原行程" or ""),1,0.83,0.45,true)
         GameTooltip:Show()
@@ -331,17 +358,18 @@ function N:RefreshPins(force)
             local index=(order-1)*2+surface
             local pin=self.pins[index] or mapPin();self.pins[index]=pin
             pin.point,pin.order=point,order
-            pin:SetSize(surface==1 and 24 or 18,surface==1 and 24 or 18)
-            pin:SetAlpha(order==1 and 1 or 0.75)
-            pin.number:SetText(string.format("%02d",order))
+            local size=(surface==1 and 24 or 18)+(point.current and 4 or 0)
+            pin:SetSize(size,size)
+            pin:SetAlpha(1)
+            pin.number:SetText(point.order and string.format("%02d",point.order) or #point.actions>1 and tostring(#point.actions) or "")
             if action.kind=="objective" then
                 pin.texture:SetTexture("Interface\\AddOns\\AiLeveling\\Media\\hud-"..
                     (action.targetKind=="item" and "collect" or "objective")..".tga")
             else pin.texture:SetAtlas(atlas,false) end
-            local color=action.kind=="accept" and {0.55,0.8,1} or action.kind=="turnin" and {0.35,1,0.65} or {1,0.83,0.45}
+            local color=action.kind=="objective" and (action.targetKind=="item" and {0.78,0.68,1} or {0.58,0.79,1}) or {1,1,1}
             pin.texture:SetVertexColor(unpack(color))
             if surface==1 and A.settings.pins then self.hbdPins:AddWorldMapIconMap(self,pin,pos.map,pos.x,pos.y,1)
-            elseif surface==2 and A.settings.minimapPins then self.hbdPins:AddMinimapIconMap(self,pin,pos.map,pos.x,pos.y,false,order==1) end
+            elseif surface==2 and A.settings.minimapPins then self.hbdPins:AddMinimapIconMap(self,pin,pos.map,pos.x,pos.y,false,point.current or false) end
         end
     end
 end

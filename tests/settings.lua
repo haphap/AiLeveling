@@ -575,7 +575,7 @@ test("世界地图点与小地图点独立且关闭方没有游离图标",functi
     GameTooltip={SetOwner=function() end,SetText=function(_,text) tooltip.title=text end,
         AddLine=function(_,text) tooltip.lines[#tooltip.lines+1]=text end,Show=function() end,Hide=function() end}
     pins[5].scripts.OnEnter(pins[5]);eq(#tooltip.lines,6)
-    assert(tooltip.title:find("一起交付 2",1,true));assert(tooltip.lines[5]:find("交付 · 一起交付 6",1,true))
+    assert(tooltip.title:find("一起交付 2",1,true));assert(tooltip.lines[5]:find("完成后交付 · 一起交付 6",1,true))
     GameTooltip=oldTooltip
     B.Navigation.manual={map=3,x=0.5,y=0.5};world,mini=0,0
     B.Navigation:RefreshPins();eq(world,1);eq(mini,1);eq(pins[3].shown,false);eq(pins[6].shown,false)
@@ -656,6 +656,39 @@ test("世界地图点与小地图点独立且关闭方没有游离图标",functi
     B.Navigation:RefreshPins();B.Navigation.pins[5].scripts.OnClick(B.Navigation.pins[5],"LeftButton")
     assert(B.Navigation.manual);B.Navigation.pins[1].scripts.OnClick(B.Navigation.pins[1],"RightButton")
     eq(B.Navigation.manual,nil);eq(B.char.taskBatch,batch)
+    -- Ordinary candidates are visible beyond the route preview, without future objectives for unaccepted quests.
+    choices={};B.char.taskBatch=nil;B.state.quests={};B.state.skipped={};B.state.completed={}
+    for id=100,107 do
+        local action={kind="accept",questId=id,title="可接任务 "..id,position={map=1,x=(id-99)/10,y=0.3}}
+        choices[#choices+1]={questId=id,actions={action},stages={action,
+            {kind="objective",questId=id,expected=true,position={map=2,x=0.5,y=0.5}}}}
+    end
+    local collect={kind="objective",questId=108,objectiveIndex=1,targetKind="item",targetId=500,
+        title="收集物品",position={map=1,x=0.1,y=0.4}}
+    local kill={kind="objective",questId=108,objectiveIndex=2,targetKind="npc",targetId=1000,
+        title="击杀目标",position={map=1,x=0.2,y=0.4}}
+    local turnin={kind="turnin",questId=109,title="已完成",position={map=1,x=0.3,y=0.4}}
+    B.state.quests[108]={objectives={{finished=false},{finished=false}}};B.state.quests[109]={ready=true}
+    choices[#choices+1]={questId=108,actions={collect},stages={collect,kill,
+        {kind="turnin",questId=108,expected=true,position={map=2,x=0.1,y=0.1}}}}
+    choices[#choices+1]={questId=109,actions={turnin},stages={turnin}}
+    p={revision=B.state.revision,fallback=collect,taskChoices=choices,taskQueue={steps={}}}
+    B.Navigation:SetPlan(p);eq(#B.Navigation:MapPoints(),11)
+    eq(pins[1].number.value,"01");eq(pins[3].number.value,"")
+    assert(pins[1].texture.texture:find("hud-collect.tga",1,true));eq(pins[3].texture.atlas,"QuestNormal")
+    eq(pins[3].texture.color[1],1);eq(pins[3].texture.color[3],1)
+    assert(B.Navigation:Navigate(choices[1].actions[1]));eq(#B.Navigation:MapPoints(),11)
+    eq(B.Navigation:Current(),choices[1].actions[1]);eq(pins[1].point.current,true)
+    B.Navigation:ClearManual();B.state.quests[108].objectives[1].finished=true;B.state.revision=B.state.revision+1
+    eq(#B.Navigation:MapPoints(),10)
+    B.state.completed[109]=true;B.state.quests[109]=nil
+    choices[1].lowValue={};choices[2].requireCheck=true;choices[3].acceptBlocked=true;choices[4].entryBlocked=true
+    choices[5].revisitLevel=40;B.state.skipped[105]=true
+    eq(#B.Navigation:MapPoints(),3)
+    B.state.quests[106]={objectives={{finished=false}}};B.state.revision=B.state.revision+1
+    for _,point in ipairs(B.Navigation:MapPoints()) do
+        assert(not (point.action.questId==106 and point.action.kind=="accept"))
+    end
     B.finish()
 end)
 test("交付奖励只显示在任务列表且开关不触发自动领奖",function()
