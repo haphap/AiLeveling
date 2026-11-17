@@ -11,15 +11,33 @@
   "attribution": "Efficient Games, CC BY 4.0; Blizzard client tables via Wago",
   "clientVerified": false,
   "serverUpdateSource": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/6ff5612b54191f297eb77ca8eda81de029d9d6f0/data/wowf/1.60.1.70938/object_details.enUS.json",
-  "scope": "Six server-observed boat/zeppelin templates and the client-table Deeprun Tram; fourteen directed legs. Includes Stormwind-Auberdine and Auberdine-Ruttheran. Dock geography and faction access are curated.",
+  "scope": "10 server-observed boat/zeppelin templates and the client-table Deeprun Tram; 26 directed journeys. Dock geography and faction access are curated. Multi-stop ships retain their forward stop order.",
   "estimation": "Client polyline / server speed + speed / acceleration. Mean wait is half estimated cycle. No load-screen delay or live schedule. Ground travel remains straight distance / player speed.",
-  "excluded": "Other routes are outside this import scope; newer Skycutters need access-condition evidence.",
+  "coverage": {
+    "observedObjects": 12,
+    "includedObjects": [
+      20808,
+      164871,
+      175080,
+      176231,
+      176244,
+      176310,
+      176495,
+      177233,
+      630567,
+      656308
+    ],
+    "excludedObjects": {
+      "631278": "Dalaran Skycutter: boarding/access conditions for Zephras Isle are not in the available server object records.",
+      "644609": "Mulgore Skycutter: boarding/access conditions for Zephras Isle are not in the available server object records."
+    }
+  },
   "routes": [
     {
       "objectId": 20808,
       "pathId": 241,
       "serverName": "TEST Ship",
-      "sources": 3,
+      "sources": 4,
       "speed": 30,
       "acceleration": 1,
       "ports": [
@@ -46,7 +64,7 @@
       "objectId": 175080,
       "pathId": 285,
       "serverName": "Zeppelin - Grom'Gol-Orgrimar",
-      "sources": 3,
+      "sources": 5,
       "speed": 30,
       "acceleration": 1,
       "ports": [
@@ -73,7 +91,7 @@
       "objectId": 176495,
       "pathId": 301,
       "serverName": "Zeppelin - Grom'Gol to Undercity",
-      "sources": 1,
+      "sources": 5,
       "speed": 30,
       "acceleration": 1,
       "ports": [
@@ -100,7 +118,7 @@
       "objectId": 164871,
       "pathId": 302,
       "serverName": "Zeppelin - Orgrimmar to Undercity",
-      "sources": 3,
+      "sources": 5,
       "speed": 30,
       "acceleration": 1,
       "ports": [
@@ -176,6 +194,121 @@
         107
       ],
       "cycleSeconds": 331
+    },
+    {
+      "objectId": 176231,
+      "pathId": 292,
+      "serverName": "Proudmoore's Treasure",
+      "sources": 2,
+      "speed": 30,
+      "acceleration": 1,
+      "ports": [
+        {
+          "map": 1437,
+          "x": 0.047449912,
+          "y": 0.63757219,
+          "name": "米奈希尔塞拉摩航线码头"
+        },
+        {
+          "map": 1445,
+          "x": 0.717254933,
+          "y": 0.566587651,
+          "name": "塞拉摩码头"
+        }
+      ],
+      "rideSeconds": [
+        112,
+        115
+      ],
+      "cycleSeconds": 347
+    },
+    {
+      "objectId": 176310,
+      "pathId": 11167,
+      "serverName": "Serenity's Shore",
+      "sources": 3,
+      "speed": 30,
+      "acceleration": 1,
+      "ports": [
+        {
+          "map": 1437,
+          "x": 0.044860157,
+          "y": 0.566551782,
+          "name": "米奈希尔环线码头"
+        },
+        {
+          "map": 1424,
+          "x": 0.506687298,
+          "y": 0.704350517,
+          "name": "南海镇码头"
+        },
+        {
+          "map": 1439,
+          "x": 0.323448191,
+          "y": 0.441324563,
+          "name": "奥伯丁环线码头"
+        }
+      ],
+      "rideSeconds": [
+        142,
+        96,
+        89
+      ],
+      "cycleSeconds": 507
+    },
+    {
+      "objectId": 177233,
+      "pathId": 303,
+      "serverName": "Feathermoon Ferry",
+      "sources": 1,
+      "speed": 30,
+      "acceleration": 1,
+      "ports": [
+        {
+          "map": 1444,
+          "x": 0.310077433,
+          "y": 0.395102321,
+          "name": "羽月要塞码头"
+        },
+        {
+          "map": 1444,
+          "x": 0.431265612,
+          "y": 0.427585708,
+          "name": "被遗忘的海岸码头"
+        }
+      ],
+      "rideSeconds": [
+        60,
+        137
+      ],
+      "cycleSeconds": 317
+    },
+    {
+      "objectId": 630567,
+      "pathId": 11391,
+      "serverName": "Seawarder",
+      "sources": 1,
+      "speed": 30,
+      "acceleration": 1,
+      "ports": [
+        {
+          "map": 1446,
+          "x": 0.685801184,
+          "y": 0.229913171,
+          "name": "热砂港码头"
+        },
+        {
+          "map": 2548,
+          "x": 0.806004551,
+          "y": 0.546071894,
+          "name": "Powderfuse Port 码头"
+        }
+      ],
+      "rideSeconds": [
+        83,
+        83
+      ],
+      "cycleSeconds": 286
     },
     {
       "name": "Deeprun Tram",

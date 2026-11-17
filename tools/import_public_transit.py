@@ -25,7 +25,15 @@ ROUTES = [
     (164871, 302, "zeppelin", "Horde", [(1411, "奥格瑞玛南飞艇塔"), (1420, "幽暗城飞艇塔")]),
     (656308, 11616, "boat", "Alliance", [(1439, "奥伯丁暴风城航线码头"), (1453, "暴风城港口码头")]),
     (176244, 293, "boat", "Alliance", [(1438, "鲁瑟兰村码头"), (1439, "奥伯丁鲁瑟兰航线码头")]),
+    (176231, 292, "boat", "Alliance", [(1437, "米奈希尔塞拉摩航线码头"), (1445, "塞拉摩码头")]),
+    (176310, 11167, "boat", "Alliance", [(1437, "米奈希尔环线码头"), (1424, "南海镇码头"), (1439, "奥伯丁环线码头")]),
+    (177233, 303, "boat", "Alliance", [(1444, "羽月要塞码头"), (1444, "被遗忘的海岸码头"), (1444, "羽月要塞码头")]),
+    (630567, 11391, "boat", None, [(1446, "热砂港码头"), (2548, "Powderfuse Port 码头")]),
 ]
+EXCLUDED = {
+    631278: "Dalaran Skycutter: boarding/access conditions for Zephras Isle are not in the available server object records.",
+    644609: "Mulgore Skycutter: boarding/access conditions for Zephras Isle are not in the available server object records.",
+}
 
 
 def main():
@@ -37,15 +45,20 @@ def main():
     assert cache["meta"]["clientBuild"] == BUILD
     updated = json.loads((ROOT / ".dependencies/eg-objects-70938-6ff5612.json").read_text())
     assert updated["meta"]["clientBuild"] == "1.60.1.70938"
+    objects = dict(cache["objects"], **updated["objects"])
+    observed = {int(id) for id, obj in objects.items() if obj["type"] == 15}
+    included = {route[0] for route in ROUTES}
+    assert not included.intersection(EXCLUDED)
+    assert observed == included.union(EXCLUDED), ("Unreviewed transport objects", observed ^ included.union(EXCLUDED))
     legs, evidence = [], []
     for object_id, path_id, mode, faction, ports in ROUTES:
-        obj = cache["objects"].get(str(object_id)) or updated["objects"][str(object_id)]
+        obj = objects[str(object_id)]
         assert obj["type"] == 15 and obj["data"][0] == path_id
         speed, acceleration = obj["data"][1:3]
         assert speed > 0 and acceleration > 0
         path = sorted((r for r in nodes if int(r["PathID"]) == path_id), key=lambda r: int(r["NodeIndex"]))
         stops = [i for i, r in enumerate(path) if int(r["Delay"]) > 0]
-        assert len(stops) == len(ports) == 2
+        assert len(stops) == len(ports) >= 2
         points = []
         for i, (map_id, name) in zip(stops, ports):
             r = path[i]
@@ -61,8 +74,19 @@ def main():
                     matches.append(dict(map=map_id, x=round(x, 9), y=round(y, 9), name=name))
             assert len(matches) == 1, (path_id, map_id, matches)
             points.append(matches[0])
+        delays = [int(path[i]["Delay"]) for i in stops]
+        closing = None
+        # The ferry's final stop repeats its first dock; it is not a third destination.
+        if ports[0] == ports[-1]:
+            assert sum((float(path[stops[0]][f"Loc_{j}"]) - float(path[stops[-1]][f"Loc_{j}"])) ** 2 for j in range(3)) < 1
+            closing = stops.pop()
+            points.pop()
+            delays[0] += delays.pop()
         rides = []
-        for start, end in (stops, stops[::-1]):
+        for direction, start in enumerate(stops):
+            end = stops[(direction + 1) % len(stops)]
+            if direction == len(stops) - 1 and closing is not None:
+                end = closing
             distance, i = 0, start
             while i != end:
                 nxt = (i + 1) % len(path)
@@ -73,11 +97,17 @@ def main():
                 i = nxt
             # Reference estimate: polyline cruise plus one acceleration/deceleration allowance.
             rides.append(math.ceil(distance / speed + speed / acceleration))
-        cycle = sum(rides) + sum(int(path[i]["Delay"]) for i in stops)
-        for direction in range(2):
-            legs.append(dict(key=f"public:{path_id}:{direction}", kind=mode, fromPoint=points[direction],
-                             toPoint=points[1-direction], faction=faction,
-                             seconds=rides[direction]+cycle/2, low=rides[direction], high=rides[direction]+cycle))
+        cycle = sum(rides) + sum(delays)
+        for start in range(len(stops)):
+            ride, at = 0, start
+            for _ in range(len(stops) - 1):
+                ride += rides[at]
+                at = (at + 1) % len(stops)
+                key = f"public:{path_id}:{start}" + (f":{at}" if len(stops) > 2 else "")
+                legs.append(dict(key=key, kind=mode, fromPoint=points[start], toPoint=points[at], faction=faction,
+                                 seconds=ride+cycle/2, low=ride, high=ride+cycle))
+                # Stay on the same ship through intermediate ports: no second boarding wait.
+                ride += delays[at]
         evidence.append(dict(objectId=object_id, pathId=path_id, serverName=obj["name"], sources=obj["sources"],
                              speed=speed, acceleration=acceleration, ports=points, rideSeconds=rides, cycleSeconds=cycle))
     # Client AreaTrigger 2173/2175 (city entrances), TransportAnimation 176080.
@@ -111,9 +141,9 @@ def main():
     report = dict(build=BUILD, inputs=SOURCES, source=f'https://github.com/JIVESCORP/eg-link-output-wowf/tree/{COMMIT}/data/wowf/{BUILD}',
                   attribution='Efficient Games, CC BY 4.0; Blizzard client tables via Wago', clientVerified=False,
                   serverUpdateSource=UPDATE_SOURCE,
-                  scope='Six server-observed boat/zeppelin templates and the client-table Deeprun Tram; fourteen directed legs. Includes Stormwind-Auberdine and Auberdine-Ruttheran. Dock geography and faction access are curated.',
+                  scope=f'{len(ROUTES)} server-observed boat/zeppelin templates and the client-table Deeprun Tram; {len(legs)} directed journeys. Dock geography and faction access are curated. Multi-stop ships retain their forward stop order.',
                   estimation='Client polyline / server speed + speed / acceleration. Mean wait is half estimated cycle. No load-screen delay or live schedule. Ground travel remains straight distance / player speed.',
-                  excluded='Other routes are outside this import scope; newer Skycutters need access-condition evidence.', routes=evidence)
+                  coverage=dict(observedObjects=len(observed), includedObjects=sorted(included), excludedObjects=EXCLUDED), routes=evidence)
     (ROOT / 'docs/PUBLIC_TRANSIT_AUDIT.json').write_text(json.dumps(report, ensure_ascii=False, indent=2)+'\n')
     print('Imported', len(legs), 'directed transport legs')
 

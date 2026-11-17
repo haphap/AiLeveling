@@ -877,7 +877,7 @@
       "url": "https://github.com/JIVESCORP/eg-link-output-wowf/tree/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862",
       "license": "CC BY 4.0 (server cache)",
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
-      "scope": "Six observed type-15 templates mapped to client transport stop positions, including Stormwind-Auberdine and Auberdine-Ruttheran. Twelve directed boat/zeppelin legs with cruise/wait estimates; no ground pathfinding.",
+      "scope": "Ten observed public boat/zeppelin templates plus the Deeprun Tram: 26 directed journeys. Three-stop loops preserve stop order and intermediate waits. All 12 observed type-15 objects are classified; two Skycutters lack boarding/access evidence. No ground pathfinding.",
       "audit": "PUBLIC_TRANSIT_AUDIT.json",
       "client_verified": false,
       "additional_source": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/6ff5612b54191f297eb77ca8eda81de029d9d6f0/data/wowf/1.60.1.70938/object_details.enUS.json",

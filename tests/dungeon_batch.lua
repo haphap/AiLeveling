@@ -208,6 +208,13 @@ run("副本整组先接齐可行任务，完成前置后入本，整组完成再
     s.quests[3]=nil;s.completed[3]=true
     p=plan(s,data,B.settings,B);eq(p.fallback.questId,1);eq(p.fallback.kind,"accept")
     s.quests[1]={objectives={{text="完成目标",numRequired=1,numFulfilled=0}}}
+    -- Outdoor spawns of an accepted dungeon quest must not hide another city's pickup.
+    data.Target=function(self,quest,state)
+        if quest.id==1 then return {map=1,x=0.1,y=0.1} end
+        return target(self,quest,state)
+    end
+    p=plan(s,data,B.settings,B);eq(p.fallback.questId,2);eq(p.fallback.kind,"accept")
+    data.Target=target
     p=plan(s,data,B.settings,B);eq(p.fallback.questId,2);eq(p.fallback.kind,"accept");eq(p.fallback.position.map,3)
     local model=B.UI.TrackerModel(s,p,p.fallback,false);assert(model.hint:find("测试副本",1,true))
     s.quests[2]={objectives={{text="完成目标",numRequired=1,numFulfilled=0}}}

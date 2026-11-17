@@ -626,7 +626,7 @@ function D.TaskJourney(d,choices,state,data)
 end
 
 function D.TaskBatchStage(choices,state,data)
-    local preferred,pickups={},{}
+    local preferred,pickups,preparation={},{},{}
     local groups={}
     if A.TaskGuide then local list;list,groups=A.TaskGuide.DeliveryGroups(choices,state) end
     for _,choice in ipairs(choices) do
@@ -642,8 +642,12 @@ function D.TaskBatchStage(choices,state,data)
             if not state.inInstance and choice.actions[1].kind=="accept" and state.position and position.map==state.position.map then
                 pickups[#pickups+1]=choice
             end
+            if not state.inInstance and (choice.actions[1].kind=="accept" or choice.preparingQuest or choice.dungeonPreparation) then
+                preparation[#preparation+1]=choice
+            end
         end
     end
     if #pickups>0 then return pickups end
+    if #preparation>0 then return preparation end
     return #preferred>0 and preferred or choices
 end

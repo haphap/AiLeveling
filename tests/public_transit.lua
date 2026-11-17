@@ -38,6 +38,15 @@ test("公共交通跨大陆双向接续且不依赖金币或解锁飞行点",fun
     routes=B.Flights.Routes(ship.from,ship.to,s,B.Navigation)
     eq(routes[1].seconds,ship.seconds);eq(routes[1].flights,0);eq(routes[1].legs[2],ship)
     routes=B.Flights.Routes(ship.to,ship.from,s,B.Navigation);eq(routes[1].seconds,returnShip.seconds)
+    local byKey={};for _,leg in ipairs(B.PublicTransitData.legs) do byKey[leg.key]=leg end
+    local first,second,through=byKey["public:11167:0:1"],byKey["public:11167:1:2"],byKey["public:11167:0:2"]
+    -- Menethil reaches Auberdine via Southshore, staying aboard through its stop.
+    eq(through.low,first.low+60+second.low)
+    eq(through.seconds-through.low,first.seconds-first.low)
+    routes=B.Flights.Routes(through.from,through.to,s,B.Navigation)
+    eq(routes[1].legs[2],through);eq(routes[1].seconds,through.seconds)
+    eq(byKey["public:303:0"].to.map,1444);eq(byKey["public:303:1"].from.map,1444)
+    eq(byKey["public:303:2"],nil)
 end)
 test("公共交通与炉石比较并给出具体上下船指引",function()
     local B,s,legs=fixture();local target=legs[1].to
