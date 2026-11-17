@@ -82,7 +82,8 @@ end
 
 function T:PlannedFlight()
     local nav=A.Navigation
-    if not nav or nav.manual then return end
+    if not nav or nav.manual and (type(nav.manual)~="table" or not nav.manual.actions) then return end
+    nav=nav.Sequence and nav:Sequence() or nav
     for index=nav.index or 1,#(nav.actions or {}) do
         local action=nav.actions[index]
         if action.kind~="move" then
@@ -261,7 +262,7 @@ function T:Update()
         local observed=self.wasFlying==false and self.lastFlightTick and now>=self.lastFlightTick and now-self.lastFlightTick<=2
         local request=observed and self.taxiRequest or nil
         local action
-        if observed and not A.char.paused and not A.Navigation.manual then
+        if observed and not A.char.paused and (not A.Navigation.manual or A.Navigation.manual.actions) then
             action=A.Navigation:BeginFlight(self.groundPosition)
             if action and request and (action.fromTaxi~=request.from or action.toTaxi~=request.to) then action=nil end
         end

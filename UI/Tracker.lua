@@ -52,9 +52,11 @@ end
 
 function UI.TrackerJourney(state,action)
     local nav=A.Navigation
-    if not action or not nav or nav.manual or not nav.actions or not A.Travel then return end
-    local index=nav.index or 1
-    local current=nav.actions[index]
+    if not action or not nav or not A.Travel then return end
+    local sequence=nav.Sequence and nav:Sequence() or nav
+    if not sequence.actions then return end
+    local index=sequence.index or 1
+    local current=sequence.actions[index]
     local flight=A.Transport and A.Transport.flight
     local hearth=A.Hearth and (A.Hearth.cast or A.Hearth.pending)
     local flying=action.kind=="flight" and flight and flight.action==current
@@ -75,9 +77,9 @@ function UI.TrackerJourney(state,action)
         end
         position=point
     end
-    for i=index,#nav.actions do
-        local step=nav.actions[i]
-        if nav.StaleAction and nav.StaleAction(step,state,nav.plan) then return end
+    for i=index,#sequence.actions do
+        local step=sequence.actions[i]
+        if nav.StaleAction and nav.StaleAction(step,state,sequence.plan) then return end
         if step.kind=="transit" then
             transport=true
             local boarded=i==index and (flying or returning or step.atDeparture)
@@ -109,36 +111,6 @@ function UI.TrackerJourney(state,action)
     if transport and result.goal then return result end
 end
 
--- The active solver handles one phase; the HUD also keeps the rest of the selected trip visible.
-local function batchFrontier(plan,choices)
-    local journey=plan.taskBatch and plan.taskBatch.journey
-    if not journey or plan.taskBatch.waiting then return end
-    local steps,seen,ordered={},{},{}
-    for i,choice in ipairs(plan.taskOrder or {}) do ordered[choice.questId]=i end
-    for phaseIndex,phase in ipairs({"before","inside","after"}) do
-        for _,step in ipairs(journey[phase]) do
-            local action=step.action
-            local choice=choices[action.questId]
-            local first=choice and choice.actions[1]
-            if first and not seen[action.questId] and first.kind==action.kind and
-                (not first.objectiveIndex or first.objectiveIndex==action.objectiveIndex) and
-                not choice.acceptBlocked and not choice.revisitLevel then
-                seen[action.questId]=true
-                local rank=phase=="before" and (action.kind=="accept" and 0 or
-                    (choice.preparingQuest or choice.dungeonPreparation) and 1 or 2) or (action.kind=="accept" and 1 or 0)
-                steps[#steps+1]={action=action,phase=phase,rank=phaseIndex*10+rank,index=#steps+1}
-            end
-        end
-    end
-    table.sort(steps,function(a,b)
-        local ai,bi=ordered[a.action.questId],ordered[b.action.questId]
-        if ai~=bi then return (ai or math.huge)<(bi or math.huge) end
-        if a.rank~=b.rank then return a.rank<b.rank end
-        return a.index<b.index
-    end)
-    return steps
-end
-
 local function nextAction(action,plan,state,rows,batchSteps)
     if not action or action.kind=="manual" then return end
     local function listed(stage,id)
@@ -152,6 +124,7 @@ local function nextAction(action,plan,state,rows,batchSteps)
         end
     end
     local navigation=A.Navigation
+    navigation=navigation and navigation.Sequence and navigation:Sequence() or navigation
     if navigation and navigation.actions and navigation.actions[navigation.index]==action then
         for i=navigation.index+1,#navigation.actions do
             local stage=navigation.actions[i]
@@ -425,7 +398,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
         local choice=step.choice or step
         if choice.questId and not planned[choice.questId] then planned[choice.questId]=i end
     end
-    local batchSteps=batchFrontier(plan,choices)
+    local batchSteps=plan.taskBatch and A.Dungeon.TaskBatchFrontier(plan,choices)
     local batchPhases={}
     for i,step in ipairs(batchSteps or {}) do
         planned[step.action.questId]=i
@@ -756,6 +729,9 @@ function UI:TrackerMenu(owner)
         elseif action and action.kind=="service" and action.serviceKind=="repair" then
             menu:CreateButton("忽略维修",function() A.Supplies:IgnoreRepair() end)
         elseif id then
+            menu:CreateButton("导航到此任务",function()
+                if not A.Navigation:NavigateQuest(id) then self:QuestClick(id,"RightButton") end
+            end):SetEnabled(not owner.deferred)
             menu:CreateButton("查看任务详情",function() self:QuestClick(id,"RightButton") end)
             local choose=menu:CreateButton(candidate and candidate.unlock and "切换到解锁任务线" or "优先做此任务",function()
                 local ok,why

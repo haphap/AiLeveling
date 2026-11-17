@@ -39,6 +39,7 @@ local function widget()
     w.SetShadowOffset=function(self,...) self.shadowOffset={...} end
     w.GetShadowOffset=function(self) return unpack(self.shadowOffset or {0,0}) end
     w.SetAtlas=function(self,atlas) self.atlas=atlas end
+    w.SetTexture=function(self,texture) self.texture=texture end
     w.SetHighlightTexture=function(self,texture) self.highlight=texture;texture:Hide() end
     w.SetTextColor=function(self,...) self.color={...} end;w.SetColorTexture=w.SetTextColor
     w.SetVertexColor=w.SetTextColor
@@ -99,7 +100,7 @@ local function setup(fullUI,daylight)
     B.action={kind="objective",questId=1,objectiveIndex=1}
     local nav={};assert(loadfile("Navigation.lua"))("AiLeveling",nav)
     B.Navigation={Current=function() return B.action end,RefreshPins=function() end,Target=nav.Navigation.Target,StaleAction=nav.Navigation.StaleAction}
-    B.Dungeon={};B.Transport={InvalidateSample=function() end,InFlight=function() return false end}
+    B.Dungeon={};assert(loadfile("Planner/DungeonTasks.lua"))("AiLeveling",B);B.Transport={InvalidateSample=function() end,InFlight=function() return false end}
     B.State={Refresh=function() B.refreshes=(B.refreshes or 0)+1;B.state.revision=B.state.revision+1 end}
     B.Gear=A.Gear;B.ready=true
     assert(loadfile("LevelingTracker.lua"))("AiLeveling",B)
@@ -553,7 +554,9 @@ test("世界地图点与小地图点独立且关闭方没有游离图标",functi
         {"objective","Waypoint-MapPin-Tracked"},{"transit","FlightPath"},{"dungeonEnter","Dungeon"}}) do
         B.Navigation.actions={{kind=row[1],mode="flight",position={map=1,x=0.5,y=0.5}}}
         B.Navigation:RefreshPins()
-        eq(B.Navigation.pins[1].texture.atlas,row[2]);eq(B.Navigation.pins[2].texture.atlas,row[2])
+        if row[1]=="objective" then
+            assert(B.Navigation.pins[1].texture.texture:find("hud-objective.tga",1,true))
+        else eq(B.Navigation.pins[1].texture.atlas,row[2]);eq(B.Navigation.pins[2].texture.atlas,row[2]) end
     end
     local current={kind="objective",questId=1,title="当前目标",position={map=1,x=0.1,y=0.2}}
     local nextGoal={kind="objective",questId=2,expected=true,title="跨区目标",position={map=2,x=0.3,y=0.4}}
@@ -571,7 +574,7 @@ test("世界地图点与小地图点独立且关闭方没有游离图标",functi
     local oldTooltip,tooltip=GameTooltip,{lines={}}
     GameTooltip={SetOwner=function() end,SetText=function(_,text) tooltip.title=text end,
         AddLine=function(_,text) tooltip.lines[#tooltip.lines+1]=text end,Show=function() end,Hide=function() end}
-    pins[5].scripts.OnEnter(pins[5]);eq(#tooltip.lines,5)
+    pins[5].scripts.OnEnter(pins[5]);eq(#tooltip.lines,6)
     assert(tooltip.title:find("一起交付 2",1,true));assert(tooltip.lines[5]:find("交付 · 一起交付 6",1,true))
     GameTooltip=oldTooltip
     B.Navigation.manual={map=3,x=0.5,y=0.5};world,mini=0,0
@@ -622,6 +625,37 @@ test("世界地图点与小地图点独立且关闭方没有游离图标",functi
     eq(B.Navigation:Current(),nil);eq(#B.Navigation:MapPoints(),0)
     B.Navigation.manual={map=4,x=0.5,y=0.5};eq(B.Navigation:Current().kind,"manual")
     eq(B.state.quests[1].objectives[1].finished,true);eq(B.state.completed[1],nil)
+    B.Navigation.manual=nil
+    local choices,journey={}, {before={},inside={},after={}}
+    for id=80,87 do
+        local action={kind="accept",questId=id,title="准备任务 "..id,position={map=2,x=(id-79)/10,y=0.5}}
+        choices[#choices+1]={questId=id,actions={action},stages={action}}
+        journey.before[#journey.before+1]={action=action}
+    end
+    local batch={id="reference:48"};B.char.taskBatch=batch
+    local p={revision=B.state.revision,fallback=choices[1].actions[1],taskChoices=choices,taskOrder={},taskBatch={journey=journey}}
+    B.Navigation:SetPlan(p)
+    eq(#B.Navigation:MapPoints(),8)
+    local departure={map=1,x=0.2,y=0.2}
+    local destination={map=2,x=0.1,y=0.1}
+    local boat={kind="transit",mode="boat",publicTransit=true,departure=departure,position=destination,questId=81,arrival=40,departureRadius=40}
+    B.Flights={Itinerary=function() return {{}} end,Actions=function(_,action) return {boat,action} end}
+    B.state.position=departure
+    B.Navigation.pins[3].scripts.OnClick(B.Navigation.pins[3],"LeftButton")
+    eq(B.Navigation:Current(),boat);eq(B.Navigation.Target(boat),departure);eq(B.char.taskBatch,batch)
+    local manual=B.Navigation.manual
+    B.Navigation:SetPlan(p);eq(B.Navigation.manual,manual);eq(B.Navigation:Sequence().index,1)
+    B.Navigation.hbd={};B.Navigation.Distance=function(_,a,b) return a.map==b.map and math.sqrt((a.x-b.x)^2+(a.y-b.y)^2)*5000 or nil end
+    B.UI.SetNavigation=function() end
+    B.Navigation:Update();eq(boat.atDeparture,true);eq(B.Navigation:Sequence().index,1)
+    B.state.position=destination;B.Navigation:Update();eq(B.Navigation:Sequence().index,2)
+    eq(B.Navigation:Current(),choices[2].actions[1]);eq(B.Navigation.index,1)
+    B.state.quests[81]={objectives={}};B.state.revision=B.state.revision+1
+    eq(B.Navigation:Current(),choices[1].actions[1]);eq(B.Navigation.manual,nil);eq(B.char.taskBatch,batch)
+    B.Navigation.hbd=nil;B.Flights=nil
+    B.Navigation:RefreshPins();B.Navigation.pins[5].scripts.OnClick(B.Navigation.pins[5],"LeftButton")
+    assert(B.Navigation.manual);B.Navigation.pins[1].scripts.OnClick(B.Navigation.pins[1],"RightButton")
+    eq(B.Navigation.manual,nil);eq(B.char.taskBatch,batch)
     B.finish()
 end)
 test("交付奖励只显示在任务列表且开关不触发自动领奖",function()

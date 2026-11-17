@@ -635,6 +635,41 @@ function D.TaskJourney(d,choices,state,data)
     return journey
 end
 
+-- Share the remaining trip steps between the HUD and map, beyond the active solver phase.
+function D.TaskBatchFrontier(plan,choices)
+    local journey=plan.taskBatch and plan.taskBatch.journey
+    if not journey or plan.taskBatch.waiting then return end
+    if not choices then
+        choices={}
+        for _,choice in ipairs(plan.taskChoices or {}) do choices[choice.questId]=choice end
+        for _,choice in ipairs(plan.taskOrder or {}) do choices[choice.questId]=choice end
+    end
+    local steps,seen,ordered={},{},{}
+    for i,choice in ipairs(plan.taskOrder or {}) do ordered[choice.questId]=i end
+    for phaseIndex,phase in ipairs({"before","inside","after"}) do
+        for _,step in ipairs(journey[phase] or {}) do
+            local action=step.action
+            local choice=choices[action.questId]
+            local first=choice and choice.actions[1]
+            if first and not seen[action.questId] and first.kind==action.kind and
+                (not first.objectiveIndex or first.objectiveIndex==action.objectiveIndex) and
+                not choice.acceptBlocked and not choice.revisitLevel then
+                seen[action.questId]=true
+                local rank=phase=="before" and (action.kind=="accept" and 0 or
+                    (choice.preparingQuest or choice.dungeonPreparation) and 1 or 2) or (action.kind=="accept" and 1 or 0)
+                steps[#steps+1]={action=action,phase=phase,rank=phaseIndex*10+rank,index=#steps+1}
+            end
+        end
+    end
+    table.sort(steps,function(a,b)
+        local ai,bi=ordered[a.action.questId],ordered[b.action.questId]
+        if ai~=bi then return (ai or math.huge)<(bi or math.huge) end
+        if a.rank~=b.rank then return a.rank<b.rank end
+        return a.index<b.index
+    end)
+    return steps
+end
+
 function D.TaskBatchStage(choices,state,data)
     local preferred,here,pickups,preparation={},{},{},{}
     local groups={}

@@ -56,7 +56,7 @@ test("飞行前导航出发点且飞越终点不算落地",function()
     local pinX
     B.settings.pins=true
     local function pin() return {Hide=function() end,SetSize=function() end,SetAlpha=function() end,
-        number={SetText=function() end},texture={SetAtlas=function() end}} end
+        number={SetText=function() end},texture={SetAtlas=function() end,SetVertexColor=function() end}} end
     B.Navigation.pins={pin(),pin()}
     B.Navigation.hbdPins={RemoveAllWorldMapIcons=function() pinX=nil end,RemoveAllMinimapIcons=function() end,
         AddWorldMapIconMap=function(_,owner,pin,map,x) pinX=x end,AddMinimapIconMap=function() end}
@@ -67,6 +67,10 @@ test("飞行前导航出发点且飞越终点不算落地",function()
     eq(pinX,nil)
     step(B,2,true,position(1,1,"b"));eq(B.Navigation.index,1);eq(B.replans,0);eq(B.distance,nil)
     eq(#A.QuestAssist.Desired(B.Navigation:Current(),B.state,true,{Get=function() error("飞行门控不应查询任务物品") end}),0)
+    B=fixture()
+    B.Navigation.manual={actions=B.Navigation.actions,index=1}
+    start(B);eq(B.Navigation:Current().kind,"flight");finish(B)
+    eq(B.Navigation.manual.index,2);eq(B.Navigation.index,1)
 end)
 test("确认落地只结算对应航线且按真实状态刷新",function()
     local B=fixture();start(B);finish(B)

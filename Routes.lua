@@ -39,7 +39,7 @@ end
 
 function R:Update(force)
     local nav=A.Navigation
-    if not A.settings.routes or A.char.paused or nav.manual or (A.Transport and A.Transport:InFlight()) or
+    if not A.settings.routes or A.char.paused or (nav.manual and not nav.manual.actions) or (A.Transport and A.Transport:InFlight()) or
         not WorldMapFrame or not WorldMapFrame:IsShown() then self:Hide();return end
     local canvas,map=WorldMapFrame:GetCanvas(),WorldMapFrame:GetMapID()
     if not canvas or not map then self:Hide();return end
@@ -50,14 +50,15 @@ function R:Update(force)
         self.overlay=CreateFrame("Frame",nil,canvas);self.overlay:SetAllPoints(canvas)
         self.key=nil
     end
-    local key=table.concat({tostring(nav.actions),nav.index or 1,map,width,height,A.settings.accent or "teal",
+    local sequence=nav.Sequence and nav:Sequence() or nav
+    local key=table.concat({tostring(sequence.actions),sequence.index or 1,map,width,height,A.settings.accent or "teal",
         A.state.position and string.format("%s:%.4f:%.4f",A.state.position.map,A.state.position.x,A.state.position.y) or ""},":")
     if force or key~=self.key then
         for _,line in ipairs(self.lines) do line:Hide() end
         local info=C_Map.GetMapInfo(map)
         local kinds=Enum and Enum.UIMapType
         local overview=kinds and info and (info.mapType==kinds.World or info.mapType==kinds.Continent)
-        self.segments=R.Segments(nav.actions or {},nav.index or 1,map,function(p,view)
+        self.segments=R.Segments(sequence.actions or {},sequence.index or 1,map,function(p,view)
             return R.Project(p,view,nav.hbd,overview)
         end,A.state.position)
         self.key,self.cursor=key,1

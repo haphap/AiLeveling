@@ -70,21 +70,52 @@ function N:SetPlan(plan)
 end
 
 function N:Advance()
-    local action = self.actions and self.actions[self.index]
-    self.index, self.transitDeparted = self.index + 1, nil
+    local sequence=self:Sequence()
+    sequence.index, self.transitDeparted = sequence.index + 1, nil
     self:RefreshPins()
     A.QuestAssist:Update()
     A.dirty = true
 end
 
+function N:Sequence()
+    return self.manual and self.manual.actions and self.manual or self
+end
+
 function N:Pickup(action)
+    if not action or action.kind~="accept" then return false end
+    return self:Navigate(action)
+end
+
+function N:NavigateQuest(id)
+    for _,choice in ipairs(self.plan and self.plan.taskChoices or {}) do
+        if choice.questId==id and not choice.acceptBlocked and not choice.revisitLevel and
+            not choice.requireCheck and not choice.entryBlocked then
+            return self:Navigate(choice.actions and choice.actions[1])
+        end
+    end
+    return false
+end
+
+function N:Navigate(action)
     local state=A.state
     local id=action and action.questId
     local point=action and action.position
-    if not id or action.kind~="accept" or not point or (state.quests or {})[id] or
-        (state.completed or {})[id] or (state.skipped or {})[id] or (state.chainDeferred or {})[id] or
+    local active=id and (state.quests or {})[id]
+    if not action or (id and ((state.completed or {})[id] or (state.skipped or {})[id] or (state.chainDeferred or {})[id])) or
         state.dead or state.onTaxi or A.char.paused then return false end
-    self.manual={map=point.map,x=point.x,y=point.y,title=action.title,action=action}
+    if id and (action.kind=="accept" and active or action.kind=="objective" and (not active or active.ready or
+        action.objectiveIndex and (active.objectives or {})[action.objectiveIndex] and active.objectives[action.objectiveIndex].finished) or
+        action.kind=="turnin" and (not active or not active.ready)) then return false end
+    local target=action
+    if action.kind~="accept" and action.kind~="objective" and action.kind~="turnin" then
+        target={kind="manual",title=action.title,position=N.Target(action)}
+    end
+    local approach=A.Dungeon and A.Dungeon.TaskApproach and A.Dungeon.TaskApproach(target,state,A.Data) or target
+    if not approach.position and not (id and approach.text) then return false end
+    local routes=not (point and point.startItemId) and approach.position and A.Flights and A.Flights.Itinerary(state.position,{approach},state,self)
+    local actions=routes and routes[1] and A.Flights.Actions(routes[1],approach,self) or {approach}
+    self.manual={title=action.title,action=target,actions=actions,index=1,
+        instanceId=state.instanceId,inInstance=state.inInstance,plan={revision=-1,travelActions=actions,itemStock=self.plan and self.plan.itemStock}}
     self:RefreshPins(true)
     self:Update()
     A.QuestAssist:Update()
@@ -107,12 +138,18 @@ function N:Current()
     local hearth=A.Hearth and A.Hearth:Gate()
     if hearth then return hearth end
     if self.manual then
-        local pickup=self.manual.action
-        if pickup and ((A.state.quests or {})[pickup.questId] or (A.state.completed or {})[pickup.questId]) then
-            -- Accepting the detour quest resumes the original task without changing its lock.
+        local goal=self.manual.action
+        if goal and N.StaleAction(goal,A.state,self.manual.plan or {revision=-1}) then
             self:ClearManual(false)
         else
-            return pickup or {kind="manual",title=self.manual.title or "手动目的地",position=self.manual}
+            if goal and (self.manual.inInstance~=A.state.inInstance or A.state.inInstance and self.manual.instanceId~=A.state.instanceId) then
+                if self:Navigate(goal) then return self:Current() end
+            end
+            local action=self.manual.actions and self.manual.actions[self.manual.index] or goal
+            if not N.StaleAction(action,A.state,self.manual.plan) then
+                return action or {kind="manual",title=self.manual.title or "手动目的地",position=self.manual}
+            end
+            self:ClearManual(false)
         end
     end
     local action=self.actions and self.actions[self.index]
@@ -131,11 +168,12 @@ function N.Target(action)
 end
 
 function N:BeginFlight(origin)
-    for i=self.index,#(self.actions or {}) do
-        local action=self.actions[i]
+    local sequence=self:Sequence()
+    for i=sequence.index,#(sequence.actions or {}) do
+        local action=sequence.actions[i]
         if action.kind=="transit" and action.mode=="flight" then
             if self:Near(origin,action.departure,action.departureRadius) then
-                self.index=i
+                sequence.index=i
                 return action
             end
             return
@@ -149,7 +187,8 @@ function N:LandFlight(flight,position)
     -- A reference landing can use the continent map while the player reports a zone map.
     local distance=action and self:Distance(position,action.position)
     local arrived=distance~=nil and distance<=(action and action.arrival or 12)
-    if action and self.actions and self.actions[self.index]==action and not A.char.paused and not self.manual and
+    local sequence=self:Sequence()
+    if action and sequence.actions and sequence.actions[sequence.index]==action and not A.char.paused and
         arrived then
         self:Advance()
         return true
@@ -162,14 +201,16 @@ end
 
 function N:MapPoints()
     local points,seen={},{}
-    local function add(action)
-        if N.StaleAction(action) then return end
+    local current=self:Current()
+    local sequence=self:Sequence()
+    local function add(action,required)
+        if N.StaleAction(action,A.state,sequence.plan) then return end
         local pos=N.Target(action)
         if not pos then return end
         local key=table.concat({pos.map,pos.x,pos.y},":")
         local point=seen[key]
         if not point then
-            if #points>=6 then return end
+            if #points>=6 and not required then return end
             point={position=pos,action=action,actions={},seen={}}
             points[#points+1]=point;seen[key]=point
         end
@@ -178,9 +219,14 @@ function N:MapPoints()
             point.actions[#point.actions+1]=action;point.seen[identity]=true
         end
     end
-    add(self:Current())
-    if self.manual then return points end
-    if #points==0 and not N.StaleAction(self.actions and self.actions[self.index]) then return points end
+    add(current)
+    if self.manual then
+        for i=(self.manual.index or 1)+1,#(self.manual.actions or {}) do add(self.manual.actions[i]) end
+        return points
+    end
+    local batch=self.plan and self.plan.taskBatch and A.Dungeon.TaskBatchFrontier(self.plan)
+    if #points==0 and not batch and not N.StaleAction(self.actions and self.actions[self.index]) then return points end
+    for _,step in ipairs(batch or {}) do add(step.action,true) end
     for i=self.index+1,#(self.actions or {}) do add(self.actions[i]) end
     local queue=self.plan and self.plan.taskQueue
     for _,step in ipairs(queue and queue.steps or {}) do
@@ -200,12 +246,24 @@ function N:MapPoints()
 end
 
 local function mapPin()
-    local pin=CreateFrame("Frame",nil,UIParent)
+    local pin=CreateFrame("Button",nil,UIParent)
     pin.texture=pin:CreateTexture(nil,"OVERLAY");pin.texture:SetAllPoints()
     pin.number=pin:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
     pin.number:SetPoint("TOP",pin,"BOTTOM",0,1)
     pin.number:SetTextColor(1,1,1);pin.number:SetShadowOffset(1,-1)
     pin:Hide();pin:EnableMouse(true)
+    pin:RegisterForClicks("LeftButtonUp","RightButtonUp")
+    pin:SetScript("OnClick",function(f,button)
+        GameTooltip:Hide()
+        local action=f.point.action
+        if button=="RightButton" then
+            if N.manual then N:ClearManual() end
+        elseif IsModifiedClick and IsModifiedClick("CHATLINK") and action.questId then
+            A.UI:QuestClick(action.questId,button)
+        elseif not N:Navigate(action) and action.questId then
+            if not N:NavigateQuest(action.questId) then A.UI:QuestClick(action.questId,button) end
+        end
+    end)
     pin:SetScript("OnEnter",function(f)
         local point=f.point
         GameTooltip:SetOwner(f,"ANCHOR_RIGHT")
@@ -216,6 +274,7 @@ local function mapPin()
             local detail=action.kind=="objective" and action.text
             GameTooltip:AddLine((labels[action.kind] or "前往").." · "..(action.title or "目的地")..(detail and ("\n"..detail) or ""),1,1,1,true)
         end
+        GameTooltip:AddLine("左键：导航到此处"..(N.manual and "\n右键：返回原行程" or ""),1,0.83,0.45,true)
         GameTooltip:Show()
     end)
     pin:SetScript("OnLeave",function() GameTooltip:Hide() end)
@@ -274,7 +333,13 @@ function N:RefreshPins(force)
             pin.point,pin.order=point,order
             pin:SetSize(surface==1 and 24 or 18,surface==1 and 24 or 18)
             pin:SetAlpha(order==1 and 1 or 0.75)
-            pin.number:SetText(string.format("%02d",order));pin.texture:SetAtlas(atlas,false)
+            pin.number:SetText(string.format("%02d",order))
+            if action.kind=="objective" then
+                pin.texture:SetTexture("Interface\\AddOns\\AiLeveling\\Media\\hud-"..
+                    (action.targetKind=="item" and "collect" or "objective")..".tga")
+            else pin.texture:SetAtlas(atlas,false) end
+            local color=action.kind=="accept" and {0.55,0.8,1} or action.kind=="turnin" and {0.35,1,0.65} or {1,0.83,0.45}
+            pin.texture:SetVertexColor(unpack(color))
             if surface==1 and A.settings.pins then self.hbdPins:AddWorldMapIconMap(self,pin,pos.map,pos.x,pos.y,1)
             elseif surface==2 and A.settings.minimapPins then self.hbdPins:AddMinimapIconMap(self,pin,pos.map,pos.x,pos.y,false,order==1) end
         end
@@ -288,7 +353,7 @@ function N:Update()
     if A.Transport and A.Transport:InFlight() then A.UI:SetNavigation(nil);return end
     if A.Hearth and A.Hearth:InTransit() then A.UI:SetNavigation(nil);return end
     local action, pos = self:Current(), A.state.position
-    if action and action.publicTransit and not A.char.paused and not self.manual and pos then
+    if action and action.publicTransit and not A.char.paused and pos then
         local arrival=self:Distance(pos,action.position)
         if arrival and arrival<=(action.arrival or 40) then self:Advance();return end
         if not action.atDeparture and self:Near(pos,action.departure,action.departureRadius) then

@@ -12,7 +12,7 @@ function H.ValidBinding(value)
         text(value.name)~=nil and #value.name<=512 and number(value.epoch) and value.epoch%1==0
 end
 local function usable()
-    return not A.char.paused and not A.Navigation.manual and not (UnitIsDeadOrGhost and UnitIsDeadOrGhost("player"))
+    return not A.char.paused and (not A.Navigation.manual or A.Navigation.manual.actions) and not (UnitIsDeadOrGhost and UnitIsDeadOrGhost("player"))
 end
 function H.Key(state) return "hearthtime:v1:"..tostring(state.clientBuild) end
 function H:InTransit() return self.cast~=nil or self.pending~=nil end
@@ -122,8 +122,9 @@ function H:Update()
         self.retryAt=GetTime()+0.5;A:RequestRefresh()
     end
     local arrived=self.arrived;self.arrived=nil
-    if arrived and arrived.action and usable() and A.Navigation.actions and
-        A.Navigation.actions[A.Navigation.index]==arrived.action and
+    local sequence=A.Navigation.Sequence and A.Navigation:Sequence() or A.Navigation
+    if arrived and arrived.action and usable() and sequence.actions and
+        sequence.actions[sequence.index]==arrived.action and
         A.Navigation:Near(arrived.position,arrived.action.position,arrived.action.arrival or 12) then
         A.Navigation:Advance()
     end
