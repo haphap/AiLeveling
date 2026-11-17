@@ -49,7 +49,7 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     A.QuestAssist.Update=function() end
     local restart,manual
     A.Replan=function(_,force,immediate) restart,manual=force,immediate end
-    local x=0.1
+    local x,map=0.1,1
     local objectiveText,objectiveType,objectiveCount,finished="目标待加载","item",0,false
     GetTime=function() return 100 end
     UnitLevel=function() return 20 end;UnitXP=function() return 100 end;UnitXPMax=function() return 1000 end
@@ -61,7 +61,7 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
         GetInfo=function() return {questID=42,title="测试"} end,
         GetQuestObjectives=function() return {{text=objectiveText,type=objectiveType,numFulfilled=objectiveCount,numRequired=3,finished=finished}} end,
         ReadyForTurnIn=function() return false end}
-    C_Map={GetBestMapForUnit=function() return 1 end,GetPlayerMapPosition=function() return {x=x,y=0.5} end}
+    C_Map={GetBestMapForUnit=function() return map end,GetPlayerMapPosition=function() return {x=x,y=0.5} end}
     NUM_BAG_SLOTS=4
     C_Container={GetContainerNumFreeSlots=function() return 16 end,GetContainerNumSlots=function() return 0 end}
     GetInventoryItemID=function() return nil end
@@ -79,6 +79,8 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     before=A.state;objectiveType="event";A.State:Refresh();eq(A.state.revision,before.revision+1)
     before=A.state;A.State:Refresh();eq(A.state.revision,before.revision)
     eq(pins,4)
+    before=A.state;map=3;A.State:Position();A.State:Refresh();eq(A.state.revision,before.revision+1)
+    before=A.state;A.State:Refresh();eq(A.state.revision,before.revision)
     local oldXP=UnitXP
     A.dirty=false;UnitXP=function() return 150 end
     A.State:Refresh();eq(A.state.xp,150);eq(A.state.revision,before.revision);eq(A.dirty,false)

@@ -193,7 +193,16 @@ run("副本整组先接齐可行任务，完成前置后入本，整组完成再
     s.quests[4]={ready=true};B.char.locked=4
     assert(B.Dungeon:StartTaskBatch("ref"));eq(B.char.locked,nil)
     eq(B.char.taskBatch.baselines[1],0);eq(B.char.taskBatch.baselines[2],0);eq(B.char.taskBatch.baselines[5],nil)
-    local p=plan(s,data,B.settings,B)
+    -- An accepted outdoor dungeon objective must not send us away from an available pickup here.
+    local target=data.Target
+    s.quests[3]={objectives={{text="远处准备目标",numRequired=1,numFulfilled=0}}}
+    data.Target=function(self,quest,state)
+        if quest.id==2 and not state.quests[2] then return {map=1,x=0.4,y=0.3} end
+        return target(self,quest,state)
+    end
+    local p=plan(s,data,B.settings,B);eq(p.fallback.questId,2);eq(p.fallback.kind,"accept")
+    s.quests[3]=nil;data.Target=target
+    p=plan(s,data,B.settings,B)
     eq(p.fallback.questId,3);eq(p.preparingQuest.id,1);eq(#p.taskChoices,2);eq(p.taskBatch.remaining,2)
     s.quests[3]={ready=true,objectives={}};p=plan(s,data,B.settings,B);eq(p.fallback.kind,"turnin")
     s.quests[3]=nil;s.completed[3]=true

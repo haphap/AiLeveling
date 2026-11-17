@@ -27,6 +27,17 @@ test("公共交通跨大陆双向接续且不依赖金币或解锁飞行点",fun
     s.faction="Horde";assert(B.Flights.Routes(s.position,target,s,B.Navigation))
     s.inInstance=true;eq(B.Flights.Routes(s.position,target,s,B.Navigation),nil)
     s.inInstance=false;s.dead=true;eq(B.Flights.Routes(s.position,target,s,B.Navigation),nil)
+    assert(loadfile("Data/PublicTransit.lua"))("AiLeveling",B)
+    s.inInstance=false;s.dead=false;s.faction="Alliance";s.unlocked={};s.taxiAvailability={}
+    local ship,returnShip
+    for _,leg in ipairs(B.PublicTransitData.legs) do
+        if leg.from.map==1453 and leg.to.map==1439 then ship=leg end
+        if leg.from.map==1439 and leg.to.map==1453 then returnShip=leg end
+    end
+    assert(ship and returnShip)
+    routes=B.Flights.Routes(ship.from,ship.to,s,B.Navigation)
+    eq(routes[1].seconds,ship.seconds);eq(routes[1].flights,0);eq(routes[1].legs[2],ship)
+    routes=B.Flights.Routes(ship.to,ship.from,s,B.Navigation);eq(routes[1].seconds,returnShip.seconds)
 end)
 test("公共交通与炉石比较并给出具体上下船指引",function()
     local B,s,legs=fixture();local target=legs[1].to

@@ -877,9 +877,11 @@
       "url": "https://github.com/JIVESCORP/eg-link-output-wowf/tree/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862",
       "license": "CC BY 4.0 (server cache)",
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
-      "scope": "Four observed type-15 templates mapped to client transport stop positions. Eight directed legs with initial cruise/wait estimates; no ground pathfinding.",
+      "scope": "Six observed type-15 templates mapped to client transport stop positions, including Stormwind-Auberdine and Auberdine-Ruttheran. Twelve directed boat/zeppelin legs with cruise/wait estimates; no ground pathfinding.",
       "audit": "PUBLIC_TRANSIT_AUDIT.json",
-      "client_verified": false
+      "client_verified": false,
+      "additional_source": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/6ff5612b54191f297eb77ca8eda81de029d9d6f0/data/wowf/1.60.1.70938/object_details.enUS.json",
+      "additional_sha256": "1974e7b86e3ea31758b5903f4e6853a86b0f88b0f97a7bee247dbf95b9bbca40"
     },
     {
       "id": "Forever-battleground-maps-1.60.1.70862",

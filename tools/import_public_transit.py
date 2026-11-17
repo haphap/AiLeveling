@@ -14,13 +14,17 @@ SOURCES = {
     f".dependencies/UiMapAssignment-{BUILD}.csv": "79267e8be8034e47daab14350411b3acc0b1f64e86efc9d821a217497254ca0a",
     f".dependencies/eg-link-156f29c9/{BUILD}/object_details.enUS.json": "63ea8fe2112516932c2633f7cb5507f99211390549c9d2a37d6b63214d906f19",
     ".dependencies/SPF-Data-Transports.lua": "dc874e86cb197bbedd90c417b74b7cacbb403c17789c61b9221fbef7dbe4cce0",
+    ".dependencies/eg-objects-70938-6ff5612.json": "1974e7b86e3ea31758b5903f4e6853a86b0f88b0f97a7bee247dbf95b9bbca40",
 }
+UPDATE_SOURCE = "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/6ff5612b54191f297eb77ca8eda81de029d9d6f0/data/wowf/1.60.1.70938/object_details.enUS.json"
 # Names and access factions belong to the actual docks, not reused TaxiNodes names.
 ROUTES = [
     (20808, 241, "boat", None, [(1413, "棘齿城码头"), (1434, "藏宝海湾码头")]),
     (175080, 285, "zeppelin", "Horde", [(1434, "格罗姆高飞艇塔"), (1411, "奥格瑞玛南飞艇塔")]),
     (176495, 301, "zeppelin", "Horde", [(1434, "格罗姆高飞艇塔"), (1420, "幽暗城飞艇塔")]),
     (164871, 302, "zeppelin", "Horde", [(1411, "奥格瑞玛南飞艇塔"), (1420, "幽暗城飞艇塔")]),
+    (656308, 11616, "boat", "Alliance", [(1439, "奥伯丁暴风城航线码头"), (1453, "暴风城港口码头")]),
+    (176244, 293, "boat", "Alliance", [(1438, "鲁瑟兰村码头"), (1439, "奥伯丁鲁瑟兰航线码头")]),
 ]
 
 
@@ -31,9 +35,11 @@ def main():
     assignments = list(csv.DictReader((ROOT / f".dependencies/UiMapAssignment-{BUILD}.csv").open()))
     cache = json.loads((ROOT / list(SOURCES)[2]).read_text())
     assert cache["meta"]["clientBuild"] == BUILD
+    updated = json.loads((ROOT / ".dependencies/eg-objects-70938-6ff5612.json").read_text())
+    assert updated["meta"]["clientBuild"] == "1.60.1.70938"
     legs, evidence = [], []
     for object_id, path_id, mode, faction, ports in ROUTES:
-        obj = cache["objects"][str(object_id)]
+        obj = cache["objects"].get(str(object_id)) or updated["objects"][str(object_id)]
         assert obj["type"] == 15 and obj["data"][0] == path_id
         speed, acceleration = obj["data"][1:3]
         assert speed > 0 and acceleration > 0
@@ -104,9 +110,10 @@ def main():
     (ROOT / 'Data/PublicTransit.lua').write_text('\n'.join(lines))
     report = dict(build=BUILD, inputs=SOURCES, source=f'https://github.com/JIVESCORP/eg-link-output-wowf/tree/{COMMIT}/data/wowf/{BUILD}',
                   attribution='Efficient Games, CC BY 4.0; Blizzard client tables via Wago', clientVerified=False,
-                  scope='Four server-observed boat/zeppelin templates and the client-table Deeprun Tram; ten directed legs. Dock geography and faction access are curated.',
+                  serverUpdateSource=UPDATE_SOURCE,
+                  scope='Six server-observed boat/zeppelin templates and the client-table Deeprun Tram; fourteen directed legs. Includes Stormwind-Auberdine and Auberdine-Ruttheran. Dock geography and faction access are curated.',
                   estimation='Client polyline / server speed + speed / acceleration. Mean wait is half estimated cycle. No load-screen delay or live schedule. Ground travel remains straight distance / player speed.',
-                  excluded='Other legacy client routes lack matching current-build server observations; newer Skycutters need access-condition evidence.', routes=evidence)
+                  excluded='Other routes are outside this import scope; newer Skycutters need access-condition evidence.', routes=evidence)
     (ROOT / 'docs/PUBLIC_TRANSIT_AUDIT.json').write_text(json.dumps(report, ensure_ascii=False, indent=2)+'\n')
     print('Imported', len(legs), 'directed transport legs')
 

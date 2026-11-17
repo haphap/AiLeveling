@@ -342,6 +342,7 @@ function State:Refresh(force, manual)
         if item.quality~=0 then fingerprint[#fingerprint+1]="g"..A.Items.Key(item) end
     end
     self:Position(s)
+    fingerprint[#fingerprint+1]="map:"..tostring(s.position and s.position.map)
     if A.Services then fingerprint[#fingerprint+1]=A.Services:Snapshot(s) end
     for kind, sample in pairs(A.char.samples) do
         s.samples[kind] = {}

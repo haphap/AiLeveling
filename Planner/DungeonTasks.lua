@@ -626,7 +626,7 @@ function D.TaskJourney(d,choices,state,data)
 end
 
 function D.TaskBatchStage(choices,state,data)
-    local preferred={}
+    local preferred,pickups={},{}
     local groups={}
     if A.TaskGuide then local list;list,groups=A.TaskGuide.DeliveryGroups(choices,state) end
     for _,choice in ipairs(choices) do
@@ -636,7 +636,14 @@ function D.TaskBatchStage(choices,state,data)
             not state.inInstance and position and not instance
         local group=groups[choice.questId]
         local waiting=choice.status=="turnin" and group and group.ready<#group.choices
-        if localStep and not waiting and not choice.lowValue and not choice.requireCheck and not choice.acceptBlocked then preferred[#preferred+1]=choice end
+        if localStep and not waiting and not choice.lowValue and not choice.requireCheck and not choice.acceptBlocked then
+            preferred[#preferred+1]=choice
+            -- Collect this region's dungeon quests before leaving to work on already accepted ones.
+            if not state.inInstance and choice.actions[1].kind=="accept" and state.position and position.map==state.position.map then
+                pickups[#pickups+1]=choice
+            end
+        end
     end
+    if #pickups>0 then return pickups end
     return #preferred>0 and preferred or choices
 end
