@@ -143,7 +143,7 @@ end
 
 function A:QuestHistory()
     if not self.ready then return "任务数据正在加载" end
-    self.State:Refresh(true)
+    self.State:Refresh()
     local ids={}
     for id in pairs(self.state.completed) do ids[#ids+1]=id end
     table.sort(ids)
@@ -166,18 +166,16 @@ end
 function A:RequestRefresh(redraw)
     self.refreshAt = self.refreshAt or (GetTime() + 0.1)
     if redraw then
-        self.dirty=true
-        if self.UI and self.UI.Browser then self.UI.Browser.entriesRevision=nil end
+        self.redrawAfterRefresh=true
     end
 end
 
 function A:Replan(force, manual)
     if not self.ready then return end
     if self.Transport and self.Transport:InFlight() or self.Hearth and self.Hearth:InTransit() then self.jobs.plan=nil;return end
-    local origin=self.planningOrigin
     local map=self.state.position and self.state.position.map
     -- Progress updates share the running calculation; explicit choices and zone changes replace it.
-    if self.jobs.plan and coroutine.status(self.jobs.plan)~="dead" and not force and (origin and origin.map)==map then return end
+    if self.jobs.plan and coroutine.status(self.jobs.plan)~="dead" and not force and self.planningMap==map then return end
     self.planningManual=manual==true
     if manual then self.planningResumeAt=nil end
     local snapshot,revision={},self.state.revision
@@ -185,20 +183,28 @@ function A:Replan(force, manual)
     snapshot.currentTask=self.plan and self.plan.unverified and self.plan.fallback and self.plan.fallback.questId or nil
     snapshot.completed={}
     for id,value in pairs(self.state.completed or {}) do snapshot.completed[id]=value end
-    if self.state.position then
-        snapshot.position={}
-        for key,value in pairs(self.state.position) do snapshot.position[key]=value end
-    end
-    self.planningOrigin,self.planningRevision=snapshot.position,revision
+    self.planningMap,self.planningRevision=map,revision
     local options={}
     for key,value in pairs(self.settings or {}) do options[key]=value end
     self:Queue("plan", function()
+        -- Use the position where planning actually starts, even if the job waited for a stop.
+        local pos=self.state.position
+        if (pos and pos.map)~=map then self:Replan(true,manual);return end
+        snapshot.position=nil
+        if pos then
+            snapshot.position={}
+            for k,v in pairs(pos) do snapshot.position[k]=v end
+        end
+        snapshot.runSpeed,snapshot.swimSpeed=self.state.runSpeed,self.state.swimSpeed
         local result = self.Planner.Build(snapshot, self.Data, options)
         if self.Transport and self.Transport:InFlight() or self.Hearth and self.Hearth:InTransit() then return end
         if snapshot.position and self.state.position and snapshot.position.map~=self.state.position.map then
             self:Replan(true);return
         end
         result.itemStock=snapshot.bags
+        if self.TaskQueue and self.TaskQueue.StockChanged(result,snapshot.bags,self.state.bags) then
+            self:Replan(true);return
+        end
         local fresh=self.state.revision==revision
         local goal=result.fallback
         local quest=not fresh and goal and goal.questId and self.Data:GetQuest(goal.questId,self.state)
@@ -439,13 +445,12 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if A.LevelingTracker and (A.char.turnIns[(...)] or 0)>before then A.LevelingTracker:QuestTurnedIn() end
         A:RequestRefresh()
     elseif event=="UNIT_SPEED" then
-        if (...)=="player" then A:RequestRefresh() end
+        if (...)=="player" then A.State.Movement(A.state) end
     elseif event:sub(1,15)=="UNIT_SPELLCAST_" then
         if hearthChanged then A:RequestRefresh() end
     elseif event == "PLAYER_REGEN_ENABLED" then
         A.QuestAssist:ApplyPending()
         A.UI:Combat(false)
-        A:RequestRefresh()
     elseif event=="PLAYER_TARGET_CHANGED" then
         A.QuestAssist:TargetStatus()
     elseif event == "PLAYER_REGEN_DISABLED" then
@@ -490,10 +495,10 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if A.Merchant then A.Merchant:Event(event) end
         if event=="TAXI_NODE_STATUS_CHANGED" or event=="PLAYER_ENTERING_WORLD" or event=="UPDATE_FACTION" then
             A.Transport.dirty=true
-            if event=="UPDATE_FACTION" or event=="TAXI_NODE_STATUS_CHANGED" then A.Transport:InvalidateFlights() end
+            if event=="TAXI_NODE_STATUS_CHANGED" then A.Transport:InvalidateFlights() end
         end
         if event=="PLAYER_ENTERING_WORLD" then A.Instances:Request();A.Transport:World() end
-        A:RequestRefresh()
+        A:RequestRefresh(event=="BAG_UPDATE_DELAYED" or event=="SKILL_LINES_CHANGED" or event=="UPDATE_FACTION")
     end
     if A.ready and A.QuestAssist and A.QuestAssist.DialogEvent then A.QuestAssist:DialogEvent(event) end
 end)
@@ -505,6 +510,10 @@ frame:SetScript("OnUpdate", function(_, elapsed)
     if A.refreshAt and GetTime() >= A.refreshAt then
         A.refreshAt = nil
         A.State:Refresh()
+        if A.redrawAfterRefresh then
+            A.redrawAfterRefresh=nil;A.dirty=true
+            if A.UI.Browser then A.UI.Browser.entriesRevision=nil end
+        end
         if A.Merchant then A.Merchant:SellJunk() end
     end
     local start = debugprofilestop()
@@ -520,10 +529,8 @@ frame:SetScript("OnUpdate", function(_, elapsed)
                 elseif A.planningResumeAt and GetTime()>=A.planningResumeAt then
                     A.planningResumeAt=nil
                     A.State:Position()
-                    local origin,pos=A.planningOrigin,A.state.position
-                    local samePosition=origin==pos or (origin and pos and
-                        origin.map==pos.map and origin.x==pos.x and origin.y==pos.y)
-                    if not samePosition or A.planningRevision~=A.state.revision then A:Replan(true) end
+                    local pos=A.state.position
+                    if A.planningMap~=(pos and pos.map) or A.planningRevision~=A.state.revision then A:Replan(true) end
                     A.dirty=true
                 end
             end

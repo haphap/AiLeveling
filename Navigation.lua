@@ -63,8 +63,6 @@ function N:SetPlan(plan)
     self.index = 1
     self.actions = nextActions
     self.transitDeparted = nil
-    local pos=A.state.position
-    self.taskOrigin=pos and {map=pos.map,x=pos.x,y=pos.y}
     self:RefreshPins()
     A.QuestAssist:Update()
 end
@@ -391,21 +389,6 @@ function N:Update()
         end
     end
     local publicTravel=action and action.publicTransit and action.atDeparture
-    if not publicTravel and A.plan and A.plan.unverified and pos and self.taskOrigin and not self.manual and not A.char.paused and
-        (not self.replanAt or GetTime()>=self.replanAt) and not (A.jobs and A.jobs.plan) then
-        local distance=self:Distance(self.taskOrigin,pos)
-        if distance and distance>=75 then self.replanAt=GetTime()+5;A:Replan() end
-    end
-    if pos then
-        local changedMap = self.lastMap and self.lastMap ~= pos.map
-        local expectedTransit = action and action.kind == "transit" and action.position and action.position.map == pos.map
-        if not publicTravel and not self.manual and not A.char.paused and (changedMap and not expectedTransit) and
-            (not self.replanAt or GetTime() >= self.replanAt) then
-            self.replanAt = GetTime() + 2
-            A:Replan()
-        end
-        self.lastMap = pos.map
-    end
     if action and action.kind=="service" and not A.char.paused and A.Supplies and A.Supplies.Done(action,A.state) then
         self:Advance();return
     end
@@ -415,12 +398,12 @@ function N:Update()
     end
     if publicTravel then A.UI:SetNavigation(nil);return end
     local flight=action.kind=="transit" and action.mode=="flight"
-    if (flight or action.kind=="transit" and action.mode=="hearth") and self:Near(pos,action.position,action.arrival) and
-        (not self.replanAt or GetTime()>=self.replanAt) then
-        self.replanAt=GetTime()+2
-        A:Replan()
+    if (flight or action.kind=="transit" and action.mode=="hearth") and self:Near(pos,action.position,action.arrival) then
+        if not self.atTransitDestination and not (A.jobs and A.jobs.plan) then A:Replan() end
+        self.atTransitDestination=true
         return
     end
+    self.atTransitDestination=nil
     local target = N.Target(action)
     if not target then A.UI:SetNavigation(nil);return end
     local distance = self:Distance(pos, target)

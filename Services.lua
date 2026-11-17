@@ -249,7 +249,7 @@ function S:Snapshot(state)
     if selected and selected.learnSpellId and spellKnown(selected.learnSpellId)==true then
         A.char.serviceStop=nil;self.message="所选训练已确认完成，继续原任务。"
     end
-    local key={"services",state.bindSubZone or ""}
+    local key={"services",tostring(state.bindName~=nil and state.bindSubZone==state.bindName)}
     local spellsReady
     state.trainableSpells,spellsReady=S.TrainableSpells(state)
     for _,spell in ipairs(state.trainableSpells) do key[#key+1]="learn:"..spell.id end

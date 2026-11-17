@@ -29,7 +29,6 @@ local function fixture(actions)
     B.plan={best={actions=actions or {{kind="transit",mode="flight",title="飞往乙地",
         position=position(1),departure=position(0),departureRadius=20,arrival=12,travelSeconds=10,timeSampleKey="flighttime:test:1:2"}}}}
     B.Navigation:SetPlan(B.plan)
-    B.Navigation.lastMap,B.Navigation.lastNode=1,"a"
     B.Navigation.hbd={GetZoneDistance=function(_,m,x,y,tm,tx,ty)
         if m==tm then return math.abs(x-tx)*1000 end
     end,GetWorldCoordinatesFromZone=function(_,x,y,m) return x,y,m end,GetWorldVector=function() return 0 end}
@@ -71,6 +70,10 @@ test("飞行前导航出发点且飞越终点不算落地",function()
     B.Navigation.manual={actions=B.Navigation.actions,index=1}
     start(B);eq(B.Navigation:Current().kind,"flight");finish(B)
     eq(B.Navigation.manual.index,2);eq(B.Navigation.index,1)
+    B=fixture({{kind="objective",questId=1,position=position(1)}})
+    B.plan.unverified=true;B.Navigation:SetPlan(B.plan)
+    for i=1,4 do step(B,i*6,false,position(i/10)) end
+    eq(B.replans,0)
 end)
 test("确认落地只结算对应航线且按真实状态刷新",function()
     local B=fixture();start(B);finish(B)

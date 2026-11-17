@@ -2,6 +2,28 @@ local _,A=...
 A.TaskQueue={}
 local Q=A.TaskQueue
 
+-- Shared collections can finish after the native objective has already turned green.
+function Q.StockChanged(plan,before,after)
+    if not plan or not before or not after or before==after then return false end
+    local function crossed(id,need)
+        return id and need and ((before[id] or 0)>=need)~=((after[id] or 0)>=need)
+    end
+    local function changed(stage)
+        if not stage then return end
+        if stage.targetKind=="item" and crossed(stage.targetId,stage.need) then return true end
+        for id,need in pairs(stage.consumeItems or {}) do if crossed(id,need) then return true end end
+        for id,need in pairs(stage.serviceGoal and stage.serviceGoal.items or {}) do if crossed(id,need) then return true end end
+    end
+    local goal=plan.fallback
+    if goal and goal.itemGain and goal.itemGain>0 and plan.itemStock and
+        crossed(goal.targetId,(plan.itemStock[goal.targetId] or 0)+goal.itemGain) then return true end
+    if changed(goal) then return true end
+    for _,step in ipairs(plan.taskQueue and plan.taskQueue.steps or {}) do
+        if changed(step.stage) then return true end
+    end
+    return false
+end
+
 local function copy(source)
     local result={};for key,value in pairs(source) do result[key]=value end;return result
 end

@@ -25,8 +25,8 @@ local function fixture()
     end}
     C_Item={GetItemInfo=function(id) return "item"..id,nil,1,nil,nil,nil,nil,20,nil,nil,0 end,
         GetItemFamily=function(id) return id==100 and 32 or 0 end}
-    local B={requestedItems={},Data={requirements={items={[100]=true}}}}
-    for _,path in ipairs({"State.lua","Planner/Supplies.lua","QuestAssist.lua"}) do assert(loadfile(path))("AiLeveling",B) end
+    local B={requestedItems={},Data={requirements={startItems={[100]=true}}}}
+    for _,path in ipairs({"State.lua","Planner/Supplies.lua","Planner/TaskQueue.lua","QuestAssist.lua"}) do assert(loadfile(path))("AiLeveling",B) end
     local function snapshot()
         local s={quests={}};local key={};B.State:SnapshotBags(s,key);B.Supplies:Snapshot(s)
         table.sort(key);return s,table.concat(key,"|")
@@ -40,8 +40,11 @@ test("专业包与隐藏钥匙链计数进入任务缺失判断且不读取银�
     eq(s.bagEntries[3].key,"-2:1");eq(s.bagEntries[3].locked,true)
     local rows=B.QuestAssist.Requirements({requiredItems={[100]=5,[200]=1}},s)
     eq(rows[1].missing,0);eq(rows[2].missing,0)
-    c[5].items[1].stackCount=2;local changed,nextKey=snapshot();assert(key~=nextKey)
+    c[5].items[1].stackCount=2;local changed,nextKey=snapshot();eq(key,nextKey)
     eq(B.QuestAssist.Requirements({requiredItems={[100]=5}},changed)[1].missing,1)
+    local plan={fallback={targetKind="item",targetId=100,need=5}}
+    eq(B.TaskQueue.StockChanged(plan,s.bags,changed.bags),true)
+    eq(B.TaskQueue.StockChanged(plan,{[100]=3},changed.bags),false)
     c[0].items={};c[5].items[1].stackCount=4
     local moved,movedKey=snapshot();eq(movedKey,nextKey);eq(moved.bags[100],4)
     c[0].items={{itemID=900,stackCount=1}};local loot,lootKey=snapshot();eq(lootKey,movedKey);eq(loot.bags[900],1)

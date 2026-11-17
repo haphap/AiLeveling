@@ -328,7 +328,6 @@ function T:Update()
                     end
                 end
                 self.flight=nil
-                A.Navigation.lastMap=A.state.position.map
                 A.Navigation:RefreshPins()
                 A.State:Refresh(true,false)
             end

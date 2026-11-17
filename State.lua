@@ -3,8 +3,7 @@ A.State = {}
 local State = A.State
 
 local offerResetEvents={PLAYER_ENTERING_WORLD=true,QUEST_ACCEPTED=true,QUEST_TURNED_IN=true,
-    QUEST_REMOVED=true,PLAYER_LEVEL_UP=true,SKILL_LINES_CHANGED=true,UPDATE_FACTION=true,
-    SPELLS_CHANGED=true,BAG_UPDATE_DELAYED=true,PLAYER_MONEY=true}
+    QUEST_REMOVED=true,PLAYER_LEVEL_UP=true}
 
 -- Observed offers belong to this NPC and this eligibility context, not to saved progress.
 function State:QuestOffersEvent(event)
@@ -123,11 +122,19 @@ end
 
 local function qualificationKey(s)
     local parts = {}
-    for _, group in ipairs({"skills", "reputations", "spells", "specializations"}) do
-        for id, value in pairs(s[group]) do parts[#parts + 1] = group .. id .. ":" .. tostring(value) end
-    end
-    for id,skill in pairs(s.weaponSkills or {}) do
-        parts[#parts+1]=table.concat({"weapon",id,skill.rank,skill.maxRank,skill.modifier,skill.tempPoints},":")
+    local requirements=A.Data and A.Data.requirements or {}
+    for _,group in ipairs({"skills","reputations","spells","specializations"}) do
+        for id,value in pairs(s[group]) do
+            local thresholds=requirements[group] and requirements[group][id]
+            if type(value)=="number" then
+                local tier=group=="skills" and value>0 and 1 or nil
+                if type(thresholds)=="table" then
+                    for n in pairs(thresholds) do if value>=n and (not tier or tier<n) then tier=n end end
+                end
+                value=tier or "below"
+            end
+            parts[#parts+1]=group..id..":"..tostring(value)
+        end
     end
     table.sort(parts)
     return table.concat(parts, ",")
@@ -137,6 +144,7 @@ function State:Position(snapshot)
     snapshot=snapshot or A.state
     local map = C_Map.GetBestMapForUnit("player")
     local pos = map and C_Map.GetPlayerMapPosition(map, "player")
+    if snapshot==A.state and pos and (not snapshot.position or snapshot.position.map~=map) then A:RequestRefresh() end
     snapshot.position = pos and { map = map, x = pos.x, y = pos.y } or nil
 end
 
@@ -162,9 +170,7 @@ end
 function State:SnapshotBags(s,fingerprint)
     s.bags,s.bagEntries,s.freeSlots={},{},0
     s.inventory={bags={},slots={}}
-    local indexed=A.Data and A.Data.requirements and A.Data.requirements.items
-    local tracked={[6948]=true}
-    for _,quest in pairs(s.quests or {}) do if quest.itemId then tracked[quest.itemId]=true end end
+    local indexed=A.Data and A.Data.requirements and A.Data.requirements.startItems
     local function read(bag,special)
         local free,family=C_Container.GetContainerNumFreeSlots(bag)
         if bag==0 then family=0
@@ -178,10 +184,6 @@ function State:SnapshotBags(s,fingerprint)
                 local id = item.itemID
                 s.bags[id] = (s.bags[id] or 0) + item.stackCount
                 s.bagEntries[#s.bagEntries+1]={id=id,link=item.hyperlink,key=bag..":"..slot,bag=bag,slot=slot,count=item.stackCount,locked=item.isLocked}
-                if indexed and not indexed[id] and C_Container.GetContainerItemQuestInfo then
-                    local info=C_Container.GetContainerItemQuestInfo(bag,slot)
-                    if info and (info.isQuestItem or type(info.questID)=="number" and info.questID>0) then tracked[id]=true end
-                end
             end
         end
     end
@@ -194,8 +196,8 @@ function State:SnapshotBags(s,fingerprint)
         C_ActionBar and C_ActionBar.ShouldShowKeyring and C_ActionBar.ShouldShowKeyring() then
         read(KEYRING_CONTAINER,true)
     end
-    for id,count in pairs(s.bags) do
-        if not indexed or indexed[id] or tracked[id] then fingerprint[#fingerprint+1]="b"..id..":"..count end
+    for id in pairs(s.bags) do
+        if id==6948 or indexed and indexed[id] then fingerprint[#fingerprint+1]="has:"..id end
     end
 end
 
@@ -230,7 +232,6 @@ function State:Refresh(force, manual)
     local restart=force
     local s = { revision = previous.revision }
     s.questOffers=self.questOffers
-    fingerprint[#fingerprint+1]="offers:"..(self.questOffersRevision or 0)
     s.clientVersion,s.clientBuild,s.interface=A.clientVersion,A.build,A.interface
     s.level, s.xp, s.maxXP = UnitLevel("player"), UnitXP("player"), UnitXPMax("player")
     local className, class, classId = UnitClass("player")
@@ -255,7 +256,14 @@ function State:Refresh(force, manual)
     end
     s.dead = UnitIsDeadOrGhost and UnitIsDeadOrGhost("player") or false
     self:Qualifications(s, A.Data and A.Data.requirements)
-    fingerprint[#fingerprint + 1] = qualificationKey(s)
+    local qualifications=qualificationKey(s)
+    if self.qualifications and self.qualifications~=qualifications and self.questOffers and next(self.questOffers) then
+        self.questOffersRevision=(self.questOffersRevision or 0)+1
+        self.questOffers=nil;s.questOffers=nil
+    end
+    self.qualifications=qualifications
+    fingerprint[#fingerprint+1]=qualifications
+    fingerprint[#fingerprint+1]="offers:"..(self.questOffersRevision or 0)
     local completed = C_QuestLog.GetAllCompletedQuestIDs()
     s.completionKnown = type(completed) == "table"
     if s.completionKnown then
@@ -277,7 +285,8 @@ function State:Refresh(force, manual)
         local info = C_QuestLog.GetInfo(i)
         if info and not info.isHeader and info.questID and info.questID > 0 then
             local id = info.questID
-            local objectives = C_QuestLog.GetQuestObjectives(id) or {}
+            local nativeObjectives=C_QuestLog.GetQuestObjectives(id) or {}
+            local objectives={}
             local q = { id = id, title = info.title, level = info.level, objectives = objectives,
                 ready = C_QuestLog.ReadyForTurnIn(id) == true, logIndex = i }
             if GetQuestLogSpecialItemInfo then
@@ -294,24 +303,23 @@ function State:Refresh(force, manual)
             s.quests[id] = q
             local old=previous.quests[id]
             if not old or old.ready~=q.ready then restart=true end
-            for index,o in ipairs(objectives) do
-                local before=old and (old.objectives or {})[index]
-                if not before or before.finished~=o.finished or before.type~=o.type or before.targetId~=o.targetId or
-                    before.numRequired~=o.numRequired then restart=true end
-                if not before or before.numFulfilled~=o.numFulfilled or before.text~=o.text then A.dirty=true end
-            end
             if not questCount then s.questCount=s.questCount+1 end
             local parts = { tostring(id), tostring(q.ready), tostring(q.level), tostring(q.itemId), tostring(q.rewardXP) }
-            for _, o in ipairs(objectives) do
-                local progress,text=o.numFulfilled,o.text
-                -- Partial kills keep the same destination. Refresh the HUD, not every trial route.
-                -- Item counts still affect shared stock and retain their planning fingerprint.
-                if o.type=="monster" and type(progress)=="number" and type(o.numRequired)=="number" and o.numRequired>0 then
-                    progress=progress>=o.numRequired
-                    text=text and text:gsub("%d+%s*/%s*%d+", "#/#")
+            for index,o in ipairs(nativeObjectives) do
+                objectives[index]=o
+                local before=old and (old.objectives or {})[index]
+                local done=o.finished or (type(o.numRequired)=="number" and o.numRequired>0 and
+                    type(o.numFulfilled)=="number" and o.numFulfilled>=o.numRequired) or false
+                if done and not o.finished then
+                    local copy={};for k,v in pairs(o) do copy[k]=v end
+                    copy.finished=true;objectives[index]=copy
                 end
-                parts[#parts + 1] = table.concat({tostring(progress),tostring(o.numRequired),tostring(o.finished),
-                    tostring(o.type),tostring(text),tostring(o.targetKind),tostring(o.targetId)}, ":")
+                if not before or (before.finished==true)~=done or before.type~=o.type or before.targetId~=o.targetId or
+                    before.numRequired~=o.numRequired then restart=true end
+                if not before or before.numFulfilled~=o.numFulfilled or before.text~=o.text then A.dirty=true end
+                local label=o.text and o.text:gsub("%d+%s*/%s*%d+", "#/#"):gsub("%d+[.,]?%d*%s*%%","#%%")
+                parts[#parts+1]=table.concat({tostring(done),tostring(o.numRequired),tostring(o.type),
+                    tostring(label),tostring(o.targetKind),tostring(o.targetId)}, ":")
             end
             fingerprint[#fingerprint + 1] = table.concat(parts, ":")
         end
@@ -338,28 +346,23 @@ function State:Refresh(force, manual)
         fingerprint[#fingerprint+1]="e"..slot..":"..A.Items.Key(item)
     end
     for id,item in pairs(s.items) do fingerprint[#fingerprint+1]="i"..id..":"..A.Items.Key(item) end
-    for _,item in ipairs(s.bagEquipment) do
-        if item.quality~=0 then fingerprint[#fingerprint+1]="g"..A.Items.Key(item) end
-    end
     self:Position(s)
     fingerprint[#fingerprint+1]="map:"..tostring(s.position and s.position.map)
     if A.Services then fingerprint[#fingerprint+1]=A.Services:Snapshot(s) end
     for kind, sample in pairs(A.char.samples) do
         s.samples[kind] = {}
         for key, value in pairs(sample) do s.samples[kind][key] = value end
-        fingerprint[#fingerprint + 1] = kind .. ":" .. sample.n .. ":" .. sample.mean
     end
     fingerprint[#fingerprint+1]=A.Instances:Snapshot(s)
     fingerprint[#fingerprint + 1] = table.concat({s.level, tostring(s.maxXP), s.classId, s.raceId, s.groupSize,
         tostring(s.inInstance), A.settings.role, A.settings.minutes,
         tostring(A.settings.dungeons), tostring(s.locked), tostring(s.instanceId), tostring(s.instanceDifficultyId), tostring(s.dead),
-        tostring(A.settings.waitMinutes),s.damageStyle,tostring(s.gearTarget),tostring(A.settings.gearPreference),
-        tostring(s.runSpeed),tostring(s.swimSpeed)}, ":")
+        tostring(A.settings.waitMinutes),s.damageStyle,tostring(s.gearTarget),tostring(A.settings.gearPreference)}, ":")
     table.sort(fingerprint)
     local key = table.concat(fingerprint, "|")
     A.state = s
     A.Gear:ScanBagOffers(s)
-    if force or key ~= self.fingerprint then
+    if force or key ~= self.fingerprint or A.TaskQueue and A.TaskQueue.StockChanged(A.plan,previous.bags,s.bags) then
         s.revision = s.revision + 1
         self.fingerprint = key
         restart=restart or previous.level~=s.level or previous.dead~=s.dead or

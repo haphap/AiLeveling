@@ -51,15 +51,20 @@ function S.Done(action,state)
 end
 function S:Snapshot(state)
     local wanted,links={},{}
+    local key={}
     state.itemMetadata,state.protectedItems={},{}
     for _,entry in ipairs(state.bagEntries or {}) do wanted[entry.id]=true;links[entry.id]=entry.link end
     for id,quest in pairs(state.quests) do
         if quest.itemId then state.protectedItems[quest.itemId]=true end
         local q=A.Data and A.Data.GetQuest and A.Data:GetQuest(id)
         if q then
-            if q.sourceItemId and q.sourceItemId>0 then state.protectedItems[q.sourceItemId]=true end
-            for _,item in ipairs(q.requiredSourceItems or {}) do state.protectedItems[item]=true end
-            for item in pairs(q.itemRules or {}) do state.protectedItems[item]=true end
+            local function required(item,count)
+                state.protectedItems[item]=true
+                if (state.bags[item] or 0)>=(count or 1) then key[#key+1]=id..":"..item end
+            end
+            if q.sourceItemId and q.sourceItemId>0 then required(q.sourceItemId) end
+            for _,item in ipairs(q.requiredSourceItems or {}) do required(item) end
+            for item,rule in pairs(q.itemRules or {}) do required(item,rule.count) end
         end
     end
     for id in pairs(wanted) do
@@ -89,9 +94,10 @@ function S:Snapshot(state)
     end
     if A.char and durabilityKnown and state.durability>=0.2 then A.char.ignoreRepair=nil end
     state.ignoreRepair=A.char and A.char.ignoreRepair==true or false
-    -- Inventory stays live; only a change in maintenance need affects the route.
-    local key={tostring(state.questCount),tostring(state.questLimit),tostring(state.durability and state.durability<0.2),
-        tostring(state.ignoreRepair),tostring(state.freeSlots==0)}
+    -- Only changes in quest supplies or maintenance needs affect the route.
+    table.sort(key)
+    key[#key+1]=table.concat({tostring(state.questCount),tostring(state.questLimit),tostring(state.durability and state.durability<0.2),
+        tostring(state.ignoreRepair),tostring(state.freeSlots==0)},"|")
     return table.concat(key,"|")
 end
 

@@ -226,8 +226,9 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     local oldSpeed,oldPlanner,oldPlan=GetUnitSpeed,B.Planner,B.plan
     local oldPosition,oldPoint=B.State.Position,B.state.position
     local speed,builds,built,hold=7,0,nil,false
+    local x=0.5
     GetUnitSpeed=function() return speed,7,0,4.7 end
-    B.State.Position=function() B.state.position={map=1,x=0.5,y=0} end
+    B.State.Position=function() B.state.position={map=1,x=x,y=0} end
     B.Navigation.SetPlan=function() end
     B.Planner={Build=function(snapshot)
         builds=builds+1;built=snapshot
@@ -251,7 +252,7 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     speed=0;B.time(10.8);update();eq(builds,4);eq(built.revision,B.state.revision)
     update();eq(builds,4);eq(B.jobs.plan,nil);eq(B.plan.revision,B.state.revision)
     B:Replan(true);update();eq(builds,5)
-    B.combat(true);update();B.combat(false);B.time(11.2);update()
+    B.combat(true);update();x=0.6;B.combat(false);B.time(11.2);update()
     eq(builds,5);eq(B.jobs.plan,nil);eq(B.plan.revision,B.state.revision)
     B.Planner,B.plan,GetUnitSpeed=oldPlanner,oldPlan,oldSpeed
     B.State.Position,B.state.position=oldPosition,oldPoint
@@ -517,8 +518,10 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     UnitGUID=function() return "Creature-0-1-2-3-10-0000" end
     B.refreshAt=nil;B.frame.scripts.OnEvent(nil,"PLAYER_TARGET_CHANGED")
     assert(Q.targetStatus:find("已选中",1,true));eq(B.refreshAt,nil)
-    B.frame.scripts.OnEvent(nil,"UNIT_SPEED","target");eq(B.refreshAt,nil)
-    B.frame.scripts.OnEvent(nil,"UNIT_SPEED","player");assert(B.refreshAt)
+    local speedUpdates=0
+    B.State.Movement=function(state) eq(state,B.state);speedUpdates=speedUpdates+1 end
+    B.frame.scripts.OnEvent(nil,"UNIT_SPEED","target");eq(speedUpdates,0)
+    B.frame.scripts.OnEvent(nil,"UNIT_SPEED","player");eq(speedUpdates,1);eq(B.refreshAt,nil)
     UnitGUID=function() return "Player-0-1-2-3-10-0000" end
     Q:TargetStatus();eq(Q.targetStatus:find("已选中",1,true),nil)
     B.action={kind="objective",questId=1,objectiveIndex=1,targetKind="npc",targetId=20}

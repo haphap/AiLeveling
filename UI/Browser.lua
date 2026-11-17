@@ -207,9 +207,6 @@ function B:Refresh(mode,reuse)
     reuse=reuse and self.mode==mode and self.entriesRevision==A.state.revision and self.entriesPlan==A.plan
     if self.mode~=mode then self.list:SetVerticalScroll(0);self.info:SetVerticalScroll(0) end
     self.mode=mode
-    local origin,pos=A.plan and A.plan.origin,A.state.position
-    if origin and pos and (origin.map~=pos.map or origin.node~=pos.node) and A.ready and A.jobs and not A.jobs.plan and
-        not A.refreshAt and not (A.Transport and A.Transport:InFlight()) then A:Replan() end
     local rows
     if reuse then rows=self.entries
     elseif mode==4 then rows=self:DungeonRows()

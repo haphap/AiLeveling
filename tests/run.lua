@@ -49,6 +49,7 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     A.QuestAssist.Update=function() end
     local restart,manual
     A.Replan=function(_,force,immediate) restart,manual=force,immediate end
+    local mapRefreshes=0;A.RequestRefresh=function() mapRefreshes=mapRefreshes+1 end
     local x,map=0.1,1
     local objectiveText,objectiveType,objectiveCount,finished="目标待加载","item",0,false
     GetTime=function() return 100 end
@@ -71,7 +72,7 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     eq(pins,1);eq(manual,true)
     eq(captured.quests[42],nil);eq(captured.revision,1);eq(A.state.quests[42].ready,false);eq(A.state.questCount,1);eq(A.state.questLimit,20)
     local revision=A.state.revision
-    x=0.2;A.State:Position();eq(A.state.revision,revision);eq(A.state.position.x,0.2)
+    x=0.2;A.State:Position();eq(A.state.revision,revision);eq(A.state.position.x,0.2);eq(mapRefreshes,0)
     dual=true;A.State:Refresh();eq(A.state.revision,revision+1);eq(A.state.capabilities.dualWield,true)
     local before=A.state
     objectiveText="任务物品：0/3";A.State:Refresh()
@@ -79,13 +80,14 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     before=A.state;objectiveType="event";A.State:Refresh();eq(A.state.revision,before.revision+1)
     before=A.state;A.State:Refresh();eq(A.state.revision,before.revision)
     eq(pins,4)
-    before=A.state;map=3;A.State:Position();A.State:Refresh();eq(A.state.revision,before.revision+1)
+    before=A.state;map=3;A.State:Position();eq(mapRefreshes,1);A.State:Refresh();eq(A.state.revision,before.revision+1)
     before=A.state;A.State:Refresh();eq(A.state.revision,before.revision)
     local oldXP=UnitXP
     A.dirty=false;UnitXP=function() return 150 end
     A.State:Refresh();eq(A.state.xp,150);eq(A.state.revision,before.revision);eq(A.dirty,false)
     UnitXP=oldXP
-    objectiveCount=1;A.State:Refresh();eq(restart,false);eq(A.state.quests[42].objectives[1].numFulfilled,1)
+    before=A.state;restart=nil;A.dirty=false
+    objectiveCount=1;A.State:Refresh();eq(restart,nil);eq(A.state.revision,before.revision);eq(A.dirty,true);eq(A.state.quests[42].objectives[1].numFulfilled,1)
     objectiveCount=3;finished=true;A.State:Refresh();eq(restart,true);assert(not manual)
     objectiveCount=0;finished=false;A.State:Refresh();eq(restart,true)
     objectiveType="monster";objectiveText="森林蜘蛛：0/3";A.State:Refresh()
@@ -95,7 +97,7 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     eq(A.state.quests[42].objectives[1].numFulfilled,1);eq(before.quests[42].objectives[1].numFulfilled,0)
     objectiveCount=2;objectiveText="森林蜘蛛：2/3";A.State:Refresh();eq(restart,nil)
     objectiveCount=3;objectiveText="森林蜘蛛：3/3";A.State:Refresh();eq(A.state.revision,before.revision+1)
-    before=A.state;finished=true;A.State:Refresh();eq(restart,true);eq(A.state.revision,before.revision+1)
+    before=A.state;restart=nil;finished=true;A.State:Refresh();eq(restart,nil);eq(A.state.revision,before.revision)
     before=A.state;finished=false;objectiveCount=0;objectiveText="野狼：0/3";A.State:Refresh()
     eq(restart,true);eq(A.state.revision,before.revision+1)
     local oldInfo,oldInside=GetInstanceInfo,IsInInstance
@@ -130,13 +132,15 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     local oldVersion,oldBuild,oldInterface=A.clientVersion,A.build,A.interface
     assert(loadfile("Data/WeaponSkills.lua"))("AiLeveling",A)
     A.clientVersion,A.build,A.interface="1.60.1","70862",16001
+    A.Data.requirements={skills={[43]={[82]=true}}}
     local weapon={rank=80,maxRank=100,modifier=5,tempPoints=0}
     C_SkillInfo={GetSkillLineInfoByID=function(id) if id==43 then return weapon end end}
     A.State:Refresh();local prior=A.state
     A.State:Refresh();eq(A.state.revision,prior.revision)
-    weapon.modifier=10;A.State:Refresh();eq(A.state.revision,prior.revision+1);eq(prior.weaponSkills[43].modifier,5)
-    prior=A.state;weapon.tempPoints=5;A.State:Refresh();eq(A.state.revision,prior.revision+1)
-    prior=A.state;weapon.rank=81;A.State:Refresh();eq(A.state.revision,prior.revision+1)
+    weapon.modifier=10;A.State:Refresh();eq(A.state.revision,prior.revision);eq(prior.weaponSkills[43].modifier,5)
+    prior=A.state;weapon.tempPoints=5;A.State:Refresh();eq(A.state.revision,prior.revision)
+    prior=A.state;weapon.rank=81;A.State:Refresh();eq(A.state.revision,prior.revision);eq(A.state.weaponSkills[43].rank,81)
+    weapon.rank=82;A.State:Refresh();eq(A.state.revision,prior.revision+1)
     prior=A.state
     A.State.questOffers={[11]={}}
     A.State.questOffersRevision=1
