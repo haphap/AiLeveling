@@ -1,4 +1,4 @@
-return function(test,eq,F,plan)
+return function(test,eq,F,plan,setupMap)
 local function fixture()
     local quests={}
     for id=1,5 do quests[id]=F.Quest(id);quests[id].verified=false end
@@ -713,4 +713,39 @@ run("混合目标按实际副本区分，保留目标身份顺序和未关联的
     stages={finish,a};eq(B.Dungeon.OrderTaskObjectives(stages,s,data),nil)
 end)
 
+run("副本接取点可临时导航，乘船接取后恢复原行程",function()
+    local B=setupMap()
+    local choices,journey={}, {before={},inside={},after={}}
+    for id=80,87 do
+        local action={kind="accept",questId=id,title="准备任务 "..id,position={map=2,x=(id-79)/10,y=0.5}}
+        choices[#choices+1]={questId=id,actions={action},stages={action}}
+        journey.before[#journey.before+1]={action=action}
+    end
+    local batch={id="reference:48"};B.char.taskBatch=batch
+    local p={revision=B.state.revision,fallback=choices[1].actions[1],taskChoices=choices,taskOrder={},taskBatch={journey=journey}}
+    B.Navigation:SetPlan(p)
+    eq(#B.Navigation:MapPoints(),8)
+    B.settings.mapTaskScope="route";eq(#B.Navigation:MapPoints(),8);B.settings.mapTaskScope="all"
+    local departure={map=1,x=0.2,y=0.2}
+    local destination={map=2,x=0.1,y=0.1}
+    local boat={kind="transit",mode="boat",publicTransit=true,departure=departure,position=destination,questId=81,arrival=40,departureRadius=40}
+    B.Flights={Itinerary=function() return {{}} end,Actions=function(_,action) return {boat,action} end}
+    B.state.position=departure
+    B.Navigation.pins[3].scripts.OnClick(B.Navigation.pins[3],"LeftButton")
+    eq(B.Navigation:Current(),boat);eq(B.Navigation.Target(boat),departure);eq(B.char.taskBatch,batch)
+    local manual=B.Navigation.manual
+    B.Navigation:SetPlan(p);eq(B.Navigation.manual,manual);eq(B.Navigation:Sequence().index,1)
+    B.Navigation.hbd={};B.Navigation.Distance=function(_,a,b) return a.map==b.map and math.sqrt((a.x-b.x)^2+(a.y-b.y)^2)*5000 or nil end
+    B.UI.SetNavigation=function() end
+    B.Navigation:Update();eq(boat.atDeparture,true);eq(B.Navigation:Sequence().index,1)
+    B.state.position=destination;B.Navigation:Update();eq(B.Navigation:Sequence().index,2)
+    eq(B.Navigation:Current(),choices[2].actions[1]);eq(B.Navigation.index,1)
+    B.state.quests[81]={objectives={}};B.state.revision=B.state.revision+1
+    eq(B.Navigation:Current(),choices[1].actions[1]);eq(B.Navigation.manual,nil);eq(B.char.taskBatch,batch)
+    B.Navigation.hbd=nil;B.Flights=nil
+    B.Navigation:RefreshPins();B.Navigation.pins[5].scripts.OnClick(B.Navigation.pins[5],"LeftButton")
+    assert(B.Navigation.manual);B.Navigation.pins[1].scripts.OnClick(B.Navigation.pins[1],"RightButton")
+    eq(B.Navigation.manual,nil);eq(B.char.taskBatch,batch)
+    B.finish()
+end)
 end

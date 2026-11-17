@@ -174,10 +174,10 @@ end
 function A:Replan(force, manual)
     if not self.ready then return end
     if self.Transport and self.Transport:InFlight() or self.Hearth and self.Hearth:InTransit() then self.jobs.plan=nil;return end
+    local origin=self.planningOrigin
     local map=self.state.position and self.state.position.map
     -- Progress updates share the running calculation; explicit choices and zone changes replace it.
-    if self.jobs.plan and coroutine.status(self.jobs.plan)~="dead" and not force and self.planningMap==map then return end
-    self.planningMap=map
+    if self.jobs.plan and coroutine.status(self.jobs.plan)~="dead" and not force and (origin and origin.map)==map then return end
     self.planningManual=manual==true
     if manual then self.planningResumeAt=nil end
     local snapshot,revision={},self.state.revision
@@ -189,6 +189,7 @@ function A:Replan(force, manual)
         snapshot.position={}
         for key,value in pairs(self.state.position) do snapshot.position[key]=value end
     end
+    self.planningOrigin,self.planningRevision=snapshot.position,revision
     local options={}
     for key,value in pairs(self.settings or {}) do options[key]=value end
     self:Queue("plan", function()
@@ -517,10 +518,12 @@ frame:SetScript("OnUpdate", function(_, elapsed)
                     if not A.planningResumeAt then A.dirty=true end
                     A.planningResumeAt=GetTime()+0.3
                 elseif A.planningResumeAt and GetTime()>=A.planningResumeAt then
-                    -- Coalesce movement and quest updates into one plan from the stopped position.
                     A.planningResumeAt=nil
                     A.State:Position()
-                    A:Replan(true)
+                    local origin,pos=A.planningOrigin,A.state.position
+                    local samePosition=origin==pos or (origin and pos and
+                        origin.map==pos.map and origin.x==pos.x and origin.y==pos.y)
+                    if not samePosition or A.planningRevision~=A.state.revision then A:Replan(true) end
                     A.dirty=true
                 end
             end

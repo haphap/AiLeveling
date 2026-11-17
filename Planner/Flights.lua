@@ -209,9 +209,12 @@ local function routeWithoutHearth(origin,target,state,navigation)
         reached={}
         local first={position=origin,seconds=0,low=0,high=0,legs={},flights=0,hearths=0,initial=false}
         local pending,labels={first},{[pointKey(origin)]=first}
-        local count=0
+        local count,needsSort=0,false
         while #pending>0 do
-            table.sort(pending,function(a,b) return a.seconds>b.seconds end)
+            if needsSort then
+                table.sort(pending,function(a,b) return a.seconds>b.seconds end)
+                needsSort=false
+            end
             local current=table.remove(pending)
             if not current.discarded then
                 reached[#reached+1]=current
@@ -226,7 +229,7 @@ local function routeWithoutHearth(origin,target,state,navigation)
                             legs=append(append(current.legs,approach),flight),
                             flights=current.flights+(flight.kind=="flight" and 1 or 0),hearths=0,
                             initial=true,coarse=current.coarse or approach.coarse}
-                        labels[key]=candidate;pending[#pending+1]=candidate
+                        labels[key]=candidate;pending[#pending+1]=candidate;needsSort=true
                     end
                     count=count+1;checkpoint(count)
                 end

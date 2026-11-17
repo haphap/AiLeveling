@@ -1,4 +1,4 @@
-return function(test,eq,F,A)
+return function(test,eq,F,A,setupMap)
 local function point(x,y,map) return {map=map or 1,x=x,y=y} end
 local function engine()
     local B={Travel=A.Travel,settings={routes=true},char={},Navigation={index=1,actions={}},state={position=point(0,0)},
@@ -50,5 +50,121 @@ test("原生地图绘制目的地直线且关闭和换图清除旧连线",functi
     for key,value in pairs(saved) do _G[key]=value end
     if saved.WorldMapFrame==nil then WorldMapFrame=nil end
     if saved.Enum==nil then Enum=nil end
+end)
+test("地图标记按任务阶段合并并移除失效的导航步骤",function()
+    local B,adds=setupMap()
+    for _,row in ipairs({{"accept","QuestNormal"},{"turnin","UI-QuestPoi-QuestBangTurnIn"},
+        {"objective","Waypoint-MapPin-Tracked"},{"transit","FlightPath"},{"dungeonEnter","Dungeon"}}) do
+        B.Navigation.actions={{kind=row[1],mode="flight",position={map=1,x=0.5,y=0.5}}}
+        B.Navigation:RefreshPins()
+        if row[1]=="objective" then
+            assert(B.Navigation.pins[1].texture.texture:find("hud-objective.tga",1,true))
+        else eq(B.Navigation.pins[1].texture.atlas,row[2]);eq(B.Navigation.pins[2].texture.atlas,row[2]) end
+    end
+    local current={kind="objective",questId=1,title="当前目标",position={map=1,x=0.1,y=0.2}}
+    local nextGoal={kind="objective",questId=2,expected=true,title="跨区目标",position={map=2,x=0.3,y=0.4}}
+    local steps={{stage=current},{stage=nextGoal}}
+    for id=2,6 do
+        local action={kind="turnin",questId=id,expected=true,title="一起交付 "..id,position={map=1,x=0.7,y=0.2}}
+        steps[#steps+1]=id==2 and {choice={stages={action}}} or {stage=action}
+    end
+    B.Navigation:SetPlan({fallback=current,taskQueue={steps=steps}})
+    B.settings.pins,B.settings.minimapPins=true,true;adds.world,adds.mini=0,0
+    B.Navigation:RefreshPins();eq(adds.world,3);eq(adds.mini,3);eq(#B.Navigation.pins,6)
+    local pins=B.Navigation.pins
+    eq(pins[1].point.action,current);eq(pins[3].point.action,nextGoal);eq(pins[3].point.position.map,2)
+    eq(#pins[5].point.actions,5);eq(pins[5].number.value,"03");eq(pins[2].floats,true);eq(pins[4].floats,false)
+    local oldTooltip,tooltip=GameTooltip,{lines={}}
+    GameTooltip={SetOwner=function() end,SetText=function(_,text) tooltip.title=text end,
+        AddLine=function(_,text) tooltip.lines[#tooltip.lines+1]=text end,Show=function() end,Hide=function() end}
+    pins[5].scripts.OnEnter(pins[5]);eq(#tooltip.lines,6)
+    assert(tooltip.title:find("一起交付 2",1,true));assert(tooltip.lines[5]:find("完成后交付 · 一起交付 6",1,true))
+    GameTooltip=oldTooltip
+    B.Navigation.manual={map=3,x=0.5,y=0.5};adds.world,adds.mini=0,0
+    B.Navigation:RefreshPins();eq(adds.world,1);eq(adds.mini,1);eq(pins[3].shown,false);eq(pins[6].shown,false)
+    B.Navigation.manual=nil;adds.world,adds.mini=0,0;B.Navigation:RefreshPins();eq(adds.world,3);eq(adds.mini,3)
+    B.Navigation.plan={};B.Navigation.actions={nextGoal};adds.world,adds.mini=0,0
+    B.Navigation:RefreshPins();eq(adds.world,1);eq(adds.mini,1);eq(pins[1].point.action,nextGoal);eq(pins[5].shown,false)
+    B.Navigation.plan={taskChoices={{questId=2,stages={nextGoal,steps[3].choice.stages[1]}},
+        {questId=7,stages={{kind="accept",position={map=4,x=0.1,y=0.1}}}}}}
+    B.Navigation:RefreshPins();eq(#B.Navigation:MapPoints(),2);eq(pins[3].point.action,steps[3].choice.stages[1])
+    B.char.paused=true;adds.world,adds.mini=0,0;B.Navigation:RefreshPins();eq(adds.world,0);eq(adds.mini,0);eq(pins[1].shown,false)
+    eq(B.Navigation.index,1);eq(next(B.state.completed),nil);eq(current.kind,"objective")
+    B.char.paused=false;B.Navigation:SetPlan({fallback={kind="accept",questId=1,position={map=1,x=0.5,y=0.5,startItemId=500}}})
+    eq(B.Navigation.Target(B.Navigation:Current()),nil);eq(#B.Navigation:MapPoints(),0);eq(B.Navigation.index,1)
+    B.Navigation:SetPlan({revision=B.state.revision,fallback=current,taskQueue={steps=steps}})
+    B.state.completed[1]=true;B.state.quests[1]=nil;B.state.revision=B.state.revision+1
+    eq(B.Navigation:Current(),nil);eq(#B.Navigation:MapPoints(),2);eq(B.Navigation.index,1)
+    for _,point in ipairs(B.Navigation:MapPoints()) do
+        for _,action in ipairs(point.actions) do assert(action.questId~=1) end
+    end
+    B.Navigation:SetPlan({revision=B.state.revision,fallback=nextGoal})
+    eq(B.Navigation:Current(),nextGoal);eq(#B.Navigation:MapPoints(),1)
+    B.state.completed[1]=nil;B.state.quests[1]=nil
+    local accept={kind="accept",questId=1,position={map=1,x=0,y=0}}
+    current.objectiveIndex=1
+    local other={kind="objective",questId=1,objectiveIndex=2,position={map=1,x=0.4,y=0.2}}
+    local delivery={kind="turnin",questId=1,expected=true,position={map=1,x=0.7,y=0.2}}
+    local stages={{stage=accept},{stage=current},{stage=other},{stage=delivery},{stage=nextGoal}}
+    B.Navigation:SetPlan({revision=B.state.revision,fallback=accept,taskQueue={steps=stages}})
+    B.state.quests[1]={objectives={{finished=false},{finished=false}}};B.state.revision=B.state.revision+1
+    eq(B.Navigation:Current(),nil);eq(#B.Navigation:MapPoints(),4)
+    B.Navigation:SetPlan({revision=B.state.revision,fallback=current,taskQueue={steps=stages}})
+    B.state.quests[1].objectives[1].finished=true;B.state.revision=B.state.revision+1
+    eq(B.Navigation:Current(),nil);eq(#B.Navigation:MapPoints(),3)
+    B.Navigation:RefreshPins();eq(pins[1].point.action,other)
+    B.state.quests[1].ready=true;B.state.quests[1].objectives[2].finished=true
+    eq(#B.Navigation:MapPoints(),2);eq(B.Navigation.index,1)
+    local transit={kind="transit",mode="flight",questId=1,position={map=2,x=0.1,y=0.1}}
+    B.Navigation.plan.travelActions={transit,current};B.Navigation.actions={transit,current}
+    eq(B.Navigation:Current(),nil);eq(#B.Navigation:MapPoints(),2)
+    current.itemGain=2;eq(B.Navigation:Current(),transit);current.itemGain=nil
+    current.itemGain,current.targetId=2,500;B.Navigation.plan.itemStock={[500]=2}
+    B.state.bags[500]=3;eq(B.Navigation:Current(),transit)
+    B.state.bags[500]=4;eq(B.Navigation:Current(),nil)
+    current.itemGain,current.targetId=nil,nil;B.Navigation.plan.itemStock=nil
+    delivery.expected=nil;B.Navigation:SetPlan({revision=B.state.revision,fallback=delivery})
+    B.state.quests[1].ready=false;B.state.revision=B.state.revision+1
+    eq(B.Navigation:Current(),nil);eq(#B.Navigation:MapPoints(),0)
+    B.Navigation.manual={map=4,x=0.5,y=0.5};eq(B.Navigation:Current().kind,"manual")
+    eq(B.state.quests[1].objectives[1].finished,true);eq(B.state.completed[1],nil)
+    B.finish()
+end)
+test("普通任务地图点只显示可执行的接取、目标和交付",function()
+    local B=setupMap()
+    local choices={}
+    for id=100,107 do
+        local action={kind="accept",questId=id,title="可接任务 "..id,position={map=1,x=(id-99)/10,y=0.3}}
+        choices[#choices+1]={questId=id,actions={action},stages={action,
+            {kind="objective",questId=id,expected=true,position={map=2,x=0.5,y=0.5}}}}
+    end
+    local collect={kind="objective",questId=108,objectiveIndex=1,targetKind="item",targetId=500,
+        title="收集物品",position={map=1,x=0.1,y=0.4}}
+    local kill={kind="objective",questId=108,objectiveIndex=2,targetKind="npc",targetId=1000,
+        title="击杀目标",position={map=1,x=0.2,y=0.4}}
+    local turnin={kind="turnin",questId=109,title="已完成",position={map=1,x=0.3,y=0.4}}
+    B.state.quests[108]={objectives={{finished=false},{finished=false}}};B.state.quests[109]={ready=true}
+    choices[#choices+1]={questId=108,actions={collect},stages={collect,kill,
+        {kind="turnin",questId=108,expected=true,position={map=2,x=0.1,y=0.1}}}}
+    choices[#choices+1]={questId=109,actions={turnin},stages={turnin}}
+    local p={revision=B.state.revision,fallback=collect,taskChoices=choices,taskQueue={steps={}}}
+    B.Navigation:SetPlan(p);eq(#B.Navigation:MapPoints(),11)
+    local pins=B.Navigation.pins
+    eq(pins[1].number.value,"01");eq(pins[3].number.value,"")
+    assert(pins[1].texture.texture:find("hud-collect.tga",1,true));eq(pins[3].texture.atlas,"QuestNormal")
+    eq(pins[3].texture.color[1],1);eq(pins[3].texture.color[3],1)
+    assert(B.Navigation:Navigate(choices[1].actions[1]));eq(#B.Navigation:MapPoints(),11)
+    eq(B.Navigation:Current(),choices[1].actions[1]);eq(pins[1].point.current,true)
+    B.Navigation:ClearManual();B.state.quests[108].objectives[1].finished=true;B.state.revision=B.state.revision+1
+    eq(#B.Navigation:MapPoints(),10)
+    B.state.completed[109]=true;B.state.quests[109]=nil
+    choices[1].lowValue={};choices[2].requireCheck=true;choices[3].acceptBlocked=true;choices[4].entryBlocked=true
+    choices[5].revisitLevel=40;B.state.skipped[105]=true
+    eq(#B.Navigation:MapPoints(),3)
+    B.state.quests[106]={objectives={{finished=false}}};B.state.revision=B.state.revision+1
+    for _,point in ipairs(B.Navigation:MapPoints()) do
+        assert(not (point.action.questId==106 and point.action.kind=="accept"))
+    end
+    B.finish()
 end)
 end
