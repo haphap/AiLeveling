@@ -508,10 +508,12 @@ function B:DungeonDetail(e)
     local hint=not A.state.inInstance and A.state.instanceEntryError or current and
         (batch.returning and "任务已交齐，离开副本后继续练级。" or batch.waiting and "等队时做附近任务；集合后点击「出发去副本」。")
     local journey=choices and plan.taskBatch.journey
-    local nextStep=journey and (journey.before[1] or journey.inside[1] or journey.after[1])
+    local nextStep=choices and plan.fallback and {action=plan.fallback} or
+        journey and (journey.before[1] or journey.inside[1] or journey.after[1])
     if (not hint or hint=="") and nextStep then
         local action=nextStep.action
-        hint=(action.kind=="accept" and "接取 " or action.kind=="turnin" and "交付 " or "完成 ")..action.title
+        local verb=({accept="接取 ",turnin="交付 ",objective="完成 "})[action.kind]
+        hint=verb and (verb..action.title) or A.UI.ActionText(action,A.settings)
     end
     if not hint or hint=="" or hint=="选择并准备关联任务。" then
         hint=rewards.count==0 and "暂无可安排任务" or rewards.ready==rewards.count and "任务已完成，可安排交付" or

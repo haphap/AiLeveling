@@ -261,6 +261,19 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.UI:RenderTracker();eq(T.model.nextStep.kind,"objective");eq(T.thenText.value,"接取后")
     eq(T.thenButton.title.value,"迪克斯特·瓦德的手掌");eq(T.thenButton.progress.value,"副本 · 暴风城监狱")
     assert(B.UI.body.value:find("先接备用",1,true))
+    -- A selected dungeon keeps later pickups visible instead of jumping straight to this quest's objective.
+    local choices=B.plan.taskChoices
+    local outside={kind="accept",questId=5,title="另一城的副本任务",position={map=3,x=0.5,y=0.5,entityName="接取NPC"}}
+    local inside={kind="accept",questId=6,title="副本内的任务",areaId=717}
+    B.plan.taskChoices={candidate,{questId=5,title=outside.title,actions={outside}},
+        {questId=6,title=inside.title,actions={inside}}}
+    B.plan.taskBatch={title="暴风城监狱",remaining=3,journey={before={{action=starter},{action=outside}},
+        inside={{action=inside}},after={}}}
+    B.UI:RenderTracker();eq(T.model.nextId,5);eq(T.model.nextStep.kind,"accept")
+    assert(T.thenButton.progress.value:find("入本前接取",1,true))
+    local insideRow;for _,row in ipairs(T.rows) do if row.shown and row.questId==6 then insideRow=row end end
+    assert(insideRow);assert(insideRow.progress.value:find("副本内接取",1,true))
+    B.plan.taskBatch=nil;B.plan.taskChoices=choices
     B.Dungeon.TaskInstance=taskInstance;B.action=originalAction;B.state.locked=1;candidate.stages=nil;B.plan.taskOrder=nil;B.UI:RenderTracker()
     -- Flight unlocks use the same optional list and existing service navigation.
     local flight={kind="unlockFlight",taxiId=12,title="夜色镇",position={map=1,x=0.525,y=0.5}}

@@ -109,7 +109,37 @@ function UI.TrackerJourney(state,action)
     if transport and result.goal then return result end
 end
 
-local function nextAction(action,plan,state,rows)
+-- The active solver handles one phase; the HUD also keeps the rest of the selected trip visible.
+local function batchFrontier(plan,choices)
+    local journey=plan.taskBatch and plan.taskBatch.journey
+    if not journey or plan.taskBatch.waiting then return end
+    local steps,seen,ordered={},{},{}
+    for i,choice in ipairs(plan.taskOrder or {}) do ordered[choice.questId]=i end
+    for phaseIndex,phase in ipairs({"before","inside","after"}) do
+        for _,step in ipairs(journey[phase]) do
+            local action=step.action
+            local choice=choices[action.questId]
+            local first=choice and choice.actions[1]
+            if first and not seen[action.questId] and first.kind==action.kind and
+                (not first.objectiveIndex or first.objectiveIndex==action.objectiveIndex) and
+                not choice.acceptBlocked and not choice.revisitLevel then
+                seen[action.questId]=true
+                local rank=phase=="before" and (action.kind=="accept" and 0 or
+                    (choice.preparingQuest or choice.dungeonPreparation) and 1 or 2) or (action.kind=="accept" and 1 or 0)
+                steps[#steps+1]={action=action,phase=phase,rank=phaseIndex*10+rank,index=#steps+1}
+            end
+        end
+    end
+    table.sort(steps,function(a,b)
+        local ai,bi=ordered[a.action.questId],ordered[b.action.questId]
+        if ai~=bi then return (ai or math.huge)<(bi or math.huge) end
+        if a.rank~=b.rank then return a.rank<b.rank end
+        return a.index<b.index
+    end)
+    return steps
+end
+
+local function nextAction(action,plan,state,rows,batchSteps)
     if not action or action.kind=="manual" then return end
     local function listed(stage,id)
         if id and id==action.questId then
@@ -126,6 +156,14 @@ local function nextAction(action,plan,state,rows)
         for i=navigation.index+1,#navigation.actions do
             local stage=navigation.actions[i]
             if stage.kind~="move" and not listed(stage,stage.questId) then return stage,stage.questId,stage.title end
+        end
+    end
+    if batchSteps then
+        for _,step in ipairs(batchSteps) do
+            local stage=step.action
+            if stage.questId~=action.questId and not listed(stage,stage.questId) then
+                return stage,stage.questId,stage.title
+            end
         end
     end
     local after=action.kind=="service" or action.kind=="flight" or action.kind=="hearthCast"
@@ -387,6 +425,13 @@ function UI.TrackerModel(state,plan,action,paused,along)
         local choice=step.choice or step
         if choice.questId and not planned[choice.questId] then planned[choice.questId]=i end
     end
+    local batchSteps=batchFrontier(plan,choices)
+    local batchPhases={}
+    for i,step in ipairs(batchSteps or {}) do
+        planned[step.action.questId]=i
+        batchPhases[step.action.questId]=step.phase
+    end
+    model.batchPhases=batchPhases
     local seen={}
     if action and action.questId and not currentGroup then seen[action.questId]=true end
     local function add(id,source)
@@ -425,6 +470,10 @@ function UI.TrackerModel(state,plan,action,paused,along)
         end
         if candidate and candidate.entryBlocked then
             model.rows[#model.rows].progress=candidate.entryBlocked
+        end
+        if not q and batchPhases[id] and not (candidate and candidate.acceptBlocked) then
+            local prefix=batchPhases[id]=="inside" and "副本内接取" or "入本前接取"
+            model.rows[#model.rows].progress=prefix.." · "..(pickupPlace or pickup.text or "任务发布者")
         end
         if q then model.acceptedCount=model.acceptedCount+1 else model.unacceptedCount=model.unacceptedCount+1 end
     end
@@ -492,7 +541,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
         row.planOrder=planned[row.questId]
     end
     if action and not paused and not A.error then
-        model.nextStep,model.nextId,model.nextTitle=nextAction(action,plan,state,model.rows)
+        model.nextStep,model.nextId,model.nextTitle=nextAction(action,plan,state,model.rows,batchSteps)
         model.nextChoice=choices[model.nextId]
     end
     local visible={}
@@ -1353,6 +1402,9 @@ function UI:RenderTracker(along)
         if nextStep.kind=="turnin" and not (nextQuest and nextQuest.ready) then verb="完成后交付" end
         local target=destination(nextStep)
         instruction=target and (verb.." · "..target) or nextStep.kind=="turnin" and verb or ""
+        if nextStep.kind=="accept" and model.batchPhases[nextId] then
+            instruction=(model.batchPhases[nextId]=="inside" and "副本内接取" or "入本前接取")..(target and " · "..target or "")
+        end
         following="接下来"..(nextRow.status and (" · |cff"..self.hex[tone]..nextRow.status.."|r") or "")
         if sameQuest then
             following="接下来"

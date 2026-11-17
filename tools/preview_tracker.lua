@@ -270,7 +270,8 @@ if dungeonPreview then
             choices[#choices+1]={questId=id,stages=stages,actions={first}}
         end
         local d=A.Dungeon.Catalog()["reference:36"]
-        A.plan={revision=1,taskChoices=choices,taskBatch={id=d.id,journey=A.Dungeon.TaskJourney(d,choices,A.state,A.Data)}}
+        A.plan={revision=1,fallback=choices[3].actions[1],taskChoices=choices,
+            taskBatch={id=d.id,journey=A.Dungeon.TaskJourney(d,choices,A.state,A.Data)}}
     end
     local selected="reference:36"
     if arg[2]=="loot" then
@@ -438,6 +439,7 @@ if A.previewTab then
         local browser=A.UI.Browser
         local view=browser.dungeonDetail
         assert(view:IsShown() and not browser.detail:IsShown())
+        if arg[2]=="journey" then assert(view.hint:GetText():find("接取 收集记忆",1,true)) end
         assert(#view.rows==#browser.selected.tasks)
         local tasks={};for _,task in ipairs(browser.selected.tasks) do tasks[task.id]=task end
         for _,row in ipairs(view.rows) do

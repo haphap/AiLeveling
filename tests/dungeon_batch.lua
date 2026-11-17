@@ -204,9 +204,13 @@ run("副本整组先接齐可行任务，完成前置后入本，整组完成再
     s.quests[3]=nil;data.Target=target
     p=plan(s,data,B.settings,B)
     eq(p.fallback.questId,3);eq(p.preparingQuest.id,1);eq(#p.taskChoices,2);eq(p.taskBatch.remaining,2)
+    local model=B.UI.TrackerModel(s,p,p.fallback,false,{})
+    eq(model.nextId,2);eq(model.nextStep.kind,"accept");eq(model.batchPhases[2],"before")
     s.quests[3]={ready=true,objectives={}};p=plan(s,data,B.settings,B);eq(p.fallback.kind,"turnin")
     s.quests[3]=nil;s.completed[3]=true
     p=plan(s,data,B.settings,B);eq(p.fallback.questId,1);eq(p.fallback.kind,"accept")
+    model=B.UI.TrackerModel(s,p,p.fallback,false,{})
+    eq(model.nextId,2);eq(model.nextStep.kind,"accept");eq(model.nextStep.position.map,3)
     -- A hand-in at our feet precedes another city's pickup.
     s.quests[1]={ready=true,objectives={}}
     local origin=s.position;s.position=data:Target(q[1],s)
@@ -221,7 +225,7 @@ run("副本整组先接齐可行任务，完成前置后入本，整组完成再
     p=plan(s,data,B.settings,B);eq(p.fallback.questId,2);eq(p.fallback.kind,"accept")
     data.Target=target
     p=plan(s,data,B.settings,B);eq(p.fallback.questId,2);eq(p.fallback.kind,"accept");eq(p.fallback.position.map,3)
-    local model=B.UI.TrackerModel(s,p,p.fallback,false);assert(model.hint:find("测试副本",1,true))
+    model=B.UI.TrackerModel(s,p,p.fallback,false);assert(model.hint:find("测试副本",1,true))
     s.quests[2]={objectives={{text="完成目标",numRequired=1,numFulfilled=0}}}
     p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonEnter")
     s.inInstance,s.instanceId,s.position=true,42,{map=2,x=0,y=0}
