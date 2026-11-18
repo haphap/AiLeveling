@@ -466,6 +466,13 @@ function S.AutomaticBinding(plan,state)
             (not best or betterHub(hub,best) or not betterHub(best,hub) and key<bestKey) then best,bestKey=hub,key end
     end
     if best then
+        for _,choice in ipairs(plan.taskChoices or plan.taskOrder or {}) do
+            local quest=(state.quests or {})[choice.questId]
+            local delivery=quest and quest.ready and choice.stages and choice.stages[#choice.stages]
+            if delivery and delivery.kind=="turnin" and delivery.position and not delivery.position.approximate and
+                not (state.skipped or {})[choice.questId] and not (state.chainDeferred or {})[choice.questId] and
+                A.Navigation:Near(state.position,delivery.position,100) then return end
+        end
         local stop=best.stop
         return {kind="bind",npcId=stop.npcId,title=stop.title,position=copy(stop.position)}
     end
@@ -590,7 +597,6 @@ function S.Build(state,plan,automatic)
         stop.learnKey and ("向训练师学习「"..stop.learnKey:match("^[^\031]+").."」；学会后继续原任务。") or
         stop.classTraining and "与训练师交谈，学习可用技能；学完后继续原任务。" or
         "与训练师交谈，在服务页选择要学习的项目。"
-    if automatic then instruction="建议把炉石设在这里，做完任务后回来集中交付。" end
     if stop.kind=="train" and stop.learnKey and state.trainer and state.trainer.npcId==stop.npcId then
         for _,offer in ipairs(state.trainer.rows) do
             if offer.key==stop.learnKey and not offer.ambiguous and offer.status~="used" then

@@ -34,7 +34,7 @@ local function destination(action)
         return instance and instance.title,instance and instance.title
     end
     local map=point.map and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
-    local name=point.entityName or action.recipient and action.recipient.entityName
+    local name=point.siteName or point.entityName or action.kind=="turnin" and action.recipient and action.recipient.entityName
     local zone=map and map.name
     return name and (name..(zone and zone~=name and " · "..zone or "")) or zone,name or zone,name and zone~=name and zone
 end

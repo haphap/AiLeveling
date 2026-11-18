@@ -338,10 +338,6 @@ end
 function D:Target(q, state)
     local status = A.State.Status(state, q.id)
     local active = state.quests[q.id]
-    if active and status ~= "ready" then
-        local point=nativeWaypoint(q.id)
-        if point then return point end
-    end
     local observations=not active and state.questOffers
     local speaker=observations and observations[state.questNPC]
     local offer=speaker and speaker[q.id]
@@ -349,6 +345,9 @@ function D:Target(q, state)
     local group = status == "ready" and "finishedBy" or "startedBy"
     if status == "active" then
         local target=self:ObjectiveTarget(q,state) or (#(active.objectives or {})==0 and self:TriggerTarget(q,state))
+        if target and not target.approximate then return target end
+        local waypoint=nativeWaypoint(q.id)
+        if waypoint then return waypoint end
         if target then return target end
         if self:DeliveryOnly(q,state) then
             return self:Target(q,{position=state.position,faction=state.faction,completed=state.completed,quests={[q.id]={ready=true}}})
@@ -410,12 +409,21 @@ function D:Target(q, state)
             end
         end
     end
-    if best then return best end
+    local pin=active and active.ready and active.mapPin
+    if pin and pin.ready then
+        local point={map=pin.map,x=pin.x,y=pin.y,label="任务交付点"}
+        local recipient=self:Recipient(q)
+        if not recipient and best and not best.approximate and A.Navigation:Near(point,best,30) then recipient=best end
+        if recipient then point.entityKind,point.entityId,point.entityName=recipient.entityKind,recipient.entityId,recipient.entityName end
+        return point
+    end
+    if best and not best.approximate then return best end
     -- Forecast turn-ins use a virtual ready state; only a genuinely ready quest has a native recipient waypoint.
     if active and active.ready and C_QuestLog and C_QuestLog.ReadyForTurnIn and C_QuestLog.ReadyForTurnIn(q.id) then
         local point=nativeWaypoint(q.id)
         if point then return point end
     end
+    if best then return best end
     if (sourceCount>0 or offeredOnly) and unavailable==sourceCount then return nil,true end
     if self:UnmappedTargetArea(q,state) then return end
     local point=status=="ready" and self:QuestAreaTarget(q,state) or self:AreaTarget(q)
@@ -659,10 +667,7 @@ function D:ObjectiveTargets(q,state)
                 point.entityKind,point.entityId=kind,id
                 point.targetKind,point.targetId=identity.kind,identity.id
                 point.sourceKind=sourceKind
-                if sourceKind=="vendor" or sourceKind=="event" then
-                    point.entityName=entity.Get(id,"name")
-                    if sourceKind=="vendor" then point.targetName=self.db.Item.Get(identity.id,"name") end
-                end
+                if sourceKind=="vendor" then point.targetName=self.db.Item.Get(identity.id,"name") end
             end
             checkpoint()
         end
@@ -675,6 +680,10 @@ function D:ObjectiveTargets(q,state)
             end
         elseif entry.kind=="npc" or entry.kind=="object" then
             consider(entry.kind=="npc" and self.db.Npc or self.db.Object,entry.id,"QuestieDB 任务目标分布",index,entry.kind,entry)
+        elseif entry.kind=="item" and q.id==470 and entry.id==3349 then
+            -- Sida specifies Ironbeard's Tomb. Crimson Ooze spawns there; Black Ooze also spawns across Wetlands.
+            consider(self.db.Npc,1031,"铁须之墓",index,"npc",entry)
+            if chosen[index] then chosen[index].siteName="铁须之墓" end
         elseif entry.kind=="item" then
             for _,source in ipairs({{self.db.Npc,"npcDrops","npc"},{self.db.Object,"objectDrops","object"}}) do
                 for _,id in ipairs(self.db.Item.Get(entry.id,source[2]) or {}) do
@@ -719,6 +728,13 @@ function D:ObjectiveTargets(q,state)
         local id=not chosen[index] and not identities[index] and self:EventNPC(q,o)
         if id then consider(self.db.Npc,id,"任务事件地点",index,"npc",{},"event") end
     end
+    local singleIndex
+    for index,o in ipairs(active.objectives or {}) do
+        if not o.finished then
+            if singleIndex then singleIndex=nil;break end
+            singleIndex=index
+        end
+    end
     local result={}
     local areas=dungeonAreas(q,state)
     local inside=areas and areas.objective and A.Dungeon and A.Dungeon.TaskInstance and
@@ -732,7 +748,18 @@ function D:ObjectiveTargets(q,state)
             if point and inside and A.Dungeon.TaskInstance(point,state,self)~=inside then point=nil end
             local unmapped=not point and self:UnmappedTargetArea(q,state,index)
             if not point and not unmapped then point=self:QuestAreaTarget(q,state) end
+            local pin=index==singleIndex and active.mapPin
+            if pin and not pin.ready and not inside and not unmapped then
+                if not point or point.approximate or not A.Navigation:Near(pin,point,100) then
+                    point={label="任务目标地点"}
+                end
+                point.map,point.x,point.y=pin.map,pin.x,pin.y
+            end
             if point then
+                if point.entityId then
+                    local entity=point.entityKind=="npc" and self.db.Npc or self.db.Object
+                    point.entityName=entity.Get(point.entityId,"name")
+                end
                 if identity then point.targetKind,point.targetId=identity.kind,identity.id end
                 point.objectiveIndex=index;point.purchase=purchases[index];result[#result+1]=point
             end
@@ -748,8 +775,10 @@ function D:ObjectiveTarget(q,state)
         local distance=A.Navigation:Distance(state.position,point)
         local same=state.position and point.map==state.position.map
         local bestSame=best and state.position and best.map==state.position.map
-        if not best or distance and (not bestDistance or distance<bestDistance) or
-            not distance and not bestDistance and same and not bestSame then
+        local precise=best and best.approximate and not point.approximate
+        local comparable=not best or (not best.approximate)==(not point.approximate)
+        if not best or precise or comparable and (distance and (not bestDistance or distance<bestDistance) or
+            not distance and not bestDistance and same and not bestSame) then
             best,bestDistance=point,distance
         end
     end

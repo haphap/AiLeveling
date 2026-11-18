@@ -4,9 +4,11 @@ local savedReputation,savedSpell=C_Reputation,C_Spell
 local function fixture()
     C_Map={GetMapInfo=function(map) if map==1 then return {name="任务区域"} end end};C_QuestLog={}
     C_Reputation,C_Spell=nil,nil
-    local B={State=A.State,Travel=A.Travel,Navigation={Distance=function(_,a,b)
+    local B={State=A.State,Travel=A.Travel}
+    assert(loadfile("Navigation.lua"))("AiLeveling",B)
+    B.Navigation.Distance=function(_,a,b)
         if a and b and a.map==b.map then return math.sqrt((a.x-b.x)^2+(a.y-b.y)^2)*1000 end
-    end}}
+    end
     for _,file in ipairs({"Data/Questie.lua","Planner/TaskGuide.lua"}) do assert(loadfile(file))("AiLeveling",B) end
     local rows={finishedBy={{9}},startedBy={{8}},objectives={{{6},{7}}}}
     local npcs={[9]={name="交付者"},[8]={name="发布者"},[6]={name="怪物甲"},[7]={name="怪物乙"}}
@@ -230,7 +232,13 @@ test("缺交付坐标或目标对应时使用任务区域中心且精确位置�
     s.quests[1].ready=nil;s.quests[1].objectives[1].text="怪物甲：1/3"
     npcs[6].spawns={[12]={{25,35}}};p=d:Target(q,s);eq(p.x,0.25);eq(p.targetId,6)
     C_QuestLog.GetNextWaypoint=function() return 1,0.1,0.2 end
-    p=d:Target(q,s);eq(p.x,0.1);eq(p.label,"客户端任务目标")
+    p=d:Target(q,s);eq(p.x,0.25);eq(p.entityName,"怪物甲")
+    local active=s.quests[1]
+    active.mapPin={map=1,x=0.7,y=0.8,ready=false}
+    p=d:Target(q,s);eq(p.x,0.7);eq(p.entityId,nil);eq(p.targetId,6)
+    active.ready=true;p=d:Target(q,s);eq(p.x,0.2);eq(p.entityId,9)
+    active.mapPin={map=1,x=0.85,y=0.95,ready=true}
+    p=d:Target(q,s);eq(p.x,0.85);eq(p.entityName,"交付者")
     C_QuestLog.GetNextWaypoint=nil;s.quests={};p=d:Target(q,s);eq(p.x,0.5);eq(p.entityId,8)
     q.zoneOrSort=-12;eq(d:AreaTarget(q),nil)
     q.zoneOrSort=99;eq(d:AreaTarget(q),nil)
@@ -332,7 +340,7 @@ test("独立事件地点进入已接和未接规划且保留原生完成事实",
     s.quests[1]={objectives={}};p=d:Target(q,s);eq(p.sourceKind,"trigger")
     stages,complete=B.TaskGuide.Stages(q,s,d,{kind="objective",position=p});eq(complete,true)
     C_QuestLog.GetNextWaypoint=function() return 1,0.1,0.2 end
-    eq(d:Target(q,s).label,"客户端任务目标")
+    eq(d:Target(q,s).sourceKind,"trigger")
     C_QuestLog.GetNextWaypoint=nil;rows.triggerEnd=nil
     s.quests[1].objectives={{type="event",text="聆听交付者的教诲",finished=false}}
     p=d:Target(q,s);eq(p.entityId,9);eq(p.entityName,"交付者");eq(p.x,0.25);eq(p.targetId,nil)

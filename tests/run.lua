@@ -60,6 +60,8 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     LibQuestieDB={Enum={classKeys={WARRIOR=1},raceMaskById={[1]=1}}}
     C_QuestLog={GetMaxNumQuestsCanAccept=function() return 20 end,GetAllCompletedQuestIDs=function() return {} end,GetNumQuestLogEntries=function() return 1,1 end,
         GetInfo=function() return {questID=42,title="测试"} end,
+        GetQuestsOnMap=function(mapID) return {{questID=42,mapID=mapID,x=0.3,y=0.4},
+            {questID=42,mapID=mapID,x=0.9,y=0.9,isQuestStart=true}} end,
         GetQuestObjectives=function() return {{text=objectiveText,type=objectiveType,numFulfilled=objectiveCount,numRequired=3,finished=finished}} end,
         ReadyForTurnIn=function() return false end}
     C_Map={GetBestMapForUnit=function() return map end,GetPlayerMapPosition=function() return {x=x,y=0.5} end}
@@ -69,7 +71,7 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     local dual=false
     C_SpellBook={IsSpellKnown=function(id) return id==674 and dual end}
     A.State:Refresh(true)
-    eq(pins,1);eq(manual,true)
+    eq(pins,1);eq(manual,true);eq(A.state.quests[42].mapPin.x,0.3)
     eq(captured.quests[42],nil);eq(captured.revision,1);eq(A.state.quests[42].ready,false);eq(A.state.questCount,1);eq(A.state.questLimit,20)
     local revision=A.state.revision
     x=0.2;A.State:Position();eq(A.state.revision,revision);eq(A.state.position.x,0.2);eq(mapRefreshes,0)

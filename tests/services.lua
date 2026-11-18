@@ -330,7 +330,7 @@ test("自动旅店安排在手动绑定及重载后继续任务，不等待插�
     local B,s,inns,finish,e,rebuild=automaticFixture();local S=B.Services
     local p=rebuild();eq(p.automaticService.npcId,2);eq(p.fallback.serviceKind,"bind");eq(p.serviceResume.questId,42)
     eq(B.char.serviceStop,nil);eq(s.hearthPoint.x,0);eq(s.quests[42].objectives[1].finished,false)
-    assert(p.fallback.text:find("做完任务后回来集中交付",1,true))
+    assert(p.fallback.text:find("设置炉石",1,true))
     s.position={map=1,x=0.8,y=0};e.npc=2;rebuild()
     B.jobs.plan={};S:Event("CONFIRM_BINDER","交付地旅店");eq(S.binding,nil);B.jobs.plan=nil
     e.binding="交付地旅店";s.bindName=e.binding
@@ -365,6 +365,10 @@ test("炉石只在交接据点附近建议绑定并保护当前任务和维护",
     p.bindingChoices=S.PlanBindings(p,s,B.Data)
     eq(S.AutomaticBinding(p,s),nil)
     s.position={map=1,x=0.74,y=0};assert(S.AutomaticBinding(p,s))
+    local handin={kind="turnin",position=s.position}
+    s.quests[43]={ready=true};p.taskChoices={{questId=43,stages={handin}}}
+    eq(S.AutomaticBinding(p,s),nil)
+    p.taskChoices=nil;s.quests[43]=nil
     local far=p.bindingChoices[S.BindingKey(inns[1])]
     far.pendingCount,far.deliveryCount=5,5
     eq(S.AutomaticBinding(p,s).npcId,2)

@@ -347,6 +347,24 @@ function State:Refresh(force, manual)
     end
     for id,item in pairs(s.items) do fingerprint[#fingerprint+1]="i"..id..":"..A.Items.Key(item) end
     self:Position(s)
+    -- The world map exposes quest pins separately from intermediate travel waypoints.
+    local map=s.position and s.position.map
+    if map and C_QuestLog.GetQuestsOnMap then
+        for _,pin in ipairs(C_QuestLog.GetQuestsOnMap(map) or {}) do
+            local quest=s.quests[pin.questID]
+            if quest and pin.mapID==map and (pin.childDepth or 0)==0 and not pin.isQuestStart and not pin.isMapIndicatorQuest and
+                type(pin.x)=="number" and pin.x>=0 and pin.x<=1 and type(pin.y)=="number" and pin.y>=0 and pin.y<=1 then
+                -- Multiple markers do not identify a particular objective or recipient.
+                if quest.mapPin==nil then
+                    quest.mapPin={map=map,x=pin.x,y=pin.y,ready=quest.ready}
+                else quest.mapPin=false end
+            end
+        end
+        for id,quest in pairs(s.quests) do
+            local pin=quest.mapPin
+            if pin then fingerprint[#fingerprint+1]=string.format("poi:%d:%.4f:%.4f",id,pin.x,pin.y) end
+        end
+    end
     if A.Dungeon.TaskBatchSnapshot then fingerprint[#fingerprint+1]=A.Dungeon:TaskBatchSnapshot(s) end
     fingerprint[#fingerprint+1]="map:"..tostring(s.position and s.position.map)
     if A.Services then fingerprint[#fingerprint+1]=A.Services:Snapshot(s) end

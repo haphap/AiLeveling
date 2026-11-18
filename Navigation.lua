@@ -312,10 +312,10 @@ local function showPinTip(pin)
             GameTooltip:AddLine(label,1,1,1,true)
         end
     end
-    local pos=point.position
+    local pos=N.Target(primary) or point.position
     local info=C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(pos.map)
     local area=pos.sourceAreaId and C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(pos.sourceAreaId) or info and info.name
-    local place=pos.entityName or area
+    local place=pos.siteName or pos.entityName or area
     if place then
         if area and area~=place then place=place.." · "..area end
         if pos.approximate then place=place.." · 区域参考点" end
