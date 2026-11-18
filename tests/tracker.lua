@@ -204,15 +204,19 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     local revisit={choice=B.plan.taskChoices[3],level=22}
     current.revisit={revisit}
     B.plan.regions={region}
-    B.plan.regionPlan={current=current,destination=region,handins={B.plan.taskChoices[1]},revisit={revisit}}
-    B.UI:RenderTracker();assert(T.region.summary.value:find("交付：",1,true))
-    assert(T.region.summary.value:find("下一站 · 接取：未接任务",1,true))
-    assert(T.region.summary.value:find("22级",1,true));eq(T.region.shown,true)
+    B.plan.regionPlan={current=current,destination=region,handins={B.plan.taskChoices[1]},revisit=current.revisit}
+    B.UI:RenderTracker();local rows=T.region.rows
+    assert(rows[1].label.value:find("交",1,true));eq(rows[1].value.value,B.plan.taskChoices[1].title)
+    eq(rows[2].value.value,"下一站 · 接 未接任务");assert(rows[3].value.value:find("22级",1,true))
+    eq(T.region.shown,true)
     T.region.scripts.OnClick();eq(browser.selection[10],"map:2")
     assert(browser.detail.value:find("出发前交付",1,true))
     assert(browser.detail.value:find("到达后接取",1,true))
     assert(browser.detail.value:find("22级回访",1,true))
     assert(browser.detail.value:find("|Hquest:4:0|h",1,true))
+    current.revisit[2]={choice=B.plan.taskChoices[4],level=24}
+    B.plan.regionPlan.destination=nil;B.UI:RenderTracker()
+    eq(rows[3].value.value,"22级起 · 2项任务");eq(rows[2].value.shown,false)
     B.plan.regionPlan=nil;B.UI:RenderTracker();eq(T.region.shown,false)
     B.UI:SelectTab(5);eq(B.UI.Browser.frame.shown,false)
     B.UI:SelectTab(1);eq(B.UI.Browser.frame.shown,true)

@@ -995,13 +995,27 @@ function UI:CreateTracker()
     T.thenText=text(T.currentChild,"caption",palette.muted)
     T.thenDivider=T.currentChild:CreateTexture(nil,"BACKGROUND");T.thenDivider:SetColorTexture(unpack(palette.line))
     T.thenButton=self:TrackerRow(nil,T.currentChild)
-    T.region=self:Button(T.currentChild,"",250,function()
+    T.region=CreateFrame("Button",nil,T.currentChild)
+    T.region.heading=text(T.region,"caption",palette.muted)
+    T.region.heading:SetText("本轮收尾")
+    T.region.rule=T.region:CreateTexture(nil,"BACKGROUND")
+    T.region.rule:SetColorTexture(unpack(palette.line))
+    T.region.more=T.region:CreateTexture(nil,"ARTWORK")
+    T.region.more:SetTexture(media.."hud-chevron-right.tga")
+    T.region.more:SetVertexColor(unpack(palette.muted))
+    T.region.rows={}
+    for i=1,3 do
+        local row={label=text(T.region,"caption",palette.muted),value=text(T.region,"body",palette.white)}
+        row.label:SetMaxLines(1);row.value:SetMaxLines(1)
+        T.region.rows[i]=row
+    end
+    T.region:SetScript("OnEnter",function() T.region.more:SetVertexColor(unpack(palette.white)) end)
+    T.region:SetScript("OnLeave",function() T.region.more:SetVertexColor(unpack(palette.muted)) end)
+    T.region:SetScript("OnClick",function()
         local region=T.region.region
         if region then self.Browser.selection[10]="map:"..region.map end
         self.details:Show();self:SelectTab(10)
-    end,"caption")
-    T.region.baseColor={0,0,0,0};T.region:SetBackdropColor(0,0,0,0)
-    T.region.summary=text(T.region,"body",palette.white);T.region.summary:SetSpacing(4)
+    end)
     T.queuePanel=CreateFrame("Frame",nil,T.currentChild)
     T.queueLabel=text(T.currentChild,"caption",palette.muted);T.queueLabel:SetText("后续行程")
     T.queueScroll=CreateFrame("Frame",nil,T.queuePanel)
@@ -1406,32 +1420,27 @@ function UI:RenderTracker(along)
     renderObjectives(nextRow,nextRow.objectiveFrame,nextRow.objectives,taskStep and not sameQuest and nextQuest and not nextQuest.ready and nextQuest.objectives or {})
     local visit=not paused and plan.regionPlan
     local region=visit and (visit.destination or visit.current)
-    local function names(list,revisit)
-        local titles={}
-        for i=1,math.min(2,#(list or {})) do
-            local entry=list[i];local c=revisit and entry.choice or entry
-            titles[#titles+1]=c.title..(revisit and ("（"..entry.level.."级）") or "")
-        end
-        return table.concat(titles,"、")..(#(list or {})>2 and ("等"..#list.."项") or "")
-    end
-    local summary={}
-    if visit and #visit.handins>0 then
-        local ready=true
-        for _,c in ipairs(visit.handins) do ready=ready and (state.quests[c.questId] or {}).ready and not c.itemShortage end
-        summary[#summary+1]="|cff"..self.hex[ready and "green" or "gold"]..
-            (ready and "出发前交付：" or "完成后交付：")..names(visit.handins).."|r"
-    end
-    if visit and visit.destination then
-        local nextRegion=visit.destination
-        local tasks=#nextRegion.pickups>0 and nextRegion.pickups or nextRegion.choices
-        summary[#summary+1]="|cff"..self.hex.blue..nextRegion.title.." · "..(#nextRegion.pickups>0 and "接取：" or "继续：")..names(tasks).."|r"
-    end
-    if visit and #visit.revisit>0 then summary[#summary+1]="|cff"..self.hex.muted.."回访："..names(visit.revisit,true).."|r" end
-    T.region.text:SetText(region and (visit.destination and (#visit.handins>0 and "本轮收尾 · 下一站  ›" or "下一站  ›") or
-        (#visit.revisit>0 and "本轮收尾 · 留待回访  ›" or "本轮交付  ›")) or "")
-    T.region.text:SetTextColor(unpack(palette.muted))
-    T.region.summary:SetText(table.concat(summary,"\n"))
-    T.region.region=#summary>0 and region or nil
+    local rows=T.region.rows
+    local handins=visit and visit.handins or {}
+    local ready=true
+    for _,c in ipairs(handins) do ready=ready and (state.quests[c.questId] or {}).ready and not c.itemShortage end
+    rows[1].label:SetText(ready and "先交付" or "做完再交")
+    rows[1].label:SetTextColor(unpack(palette[ready and "green" or "gold"]))
+    rows[1].value:SetText(handins[1] and ((#handins>1 and #handins.."项 · " or "")..handins[1].title) or "")
+
+    local nextRegion=visit and visit.destination
+    rows[2].label:SetText("下一站")
+    if nextRegion then
+        local pickup=nextRegion.pickups[1]
+        local task=pickup or nextRegion.choices[1]
+        rows[2].value:SetText(nextRegion.title..(task and ((pickup and " · 接 " or " · 做 ")..task.title) or ""))
+    else rows[2].value:SetText("") end
+
+    local revisit=visit and visit.revisit or {}
+    rows[3].label:SetText("回访")
+    local first=revisit[1]
+    rows[3].value:SetText(first and (first.level.."级"..(#revisit>1 and ("起 · "..#revisit.."项任务") or (" · "..first.choice.title))) or "")
+    T.region.region=(#handins>0 or nextRegion or first) and region or nil
 
     local instruction=model.instruction
     if model.kind=="accept" then
@@ -1737,12 +1746,26 @@ function UI:LayoutTracker()
         rule:ClearAllPoints();rule:SetPoint("BOTTOMLEFT",label,"TOPLEFT",0,2*scale)
         rule:SetSize(inner,1);rule:SetColorTexture(unpack(palette.line));rule:SetShown(label:IsShown())
     end
-    T.region:ClearAllPoints();T.region:SetPoint("TOPLEFT",0,-bottom);T.region:SetWidth(inner)
-    T.region.text:ClearAllPoints();T.region.text:SetPoint("TOPLEFT");T.region.text:SetWidth(inner);T.region.text:SetMaxLines(1)
-    T.region.summary:ClearAllPoints();T.region.summary:SetPoint("TOPLEFT",indent,-20*scale);T.region.summary:SetWidth(bodyWidth)
-    local regionHeight=20*scale+T.region.summary:GetStringHeight()+spacing.gap*scale
-    T.region:SetHeight(regionHeight);T.region:SetShown(not collapsed and T.region.region~=nil)
-    if T.region:IsShown() then bottom=bottom+regionHeight end
+    T.region:SetShown(not collapsed and T.region.region~=nil)
+    if T.region:IsShown() then
+        T.region:ClearAllPoints();T.region:SetPoint("TOPLEFT",0,-bottom);T.region:SetWidth(inner)
+        T.region.rule:ClearAllPoints();T.region.rule:SetPoint("TOPLEFT");T.region.rule:SetSize(inner,1)
+        T.region.heading:ClearAllPoints();T.region.heading:SetPoint("TOPLEFT",0,-gap)
+        T.region.more:ClearAllPoints();T.region.more:SetPoint("TOPRIGHT",0,-gap);T.region.more:SetSize(spacing.smallIcon*scale,spacing.smallIcon*scale)
+        local height=gap+T.region.heading:GetStringHeight()+gap
+        local labelWidth=0
+        for _,row in ipairs(T.region.rows) do labelWidth=math.max(labelWidth,math.ceil(row.label:GetStringWidth())) end
+        for _,row in ipairs(T.region.rows) do
+            local visible=(row.value:GetText() or "")~=""
+            row.label:SetShown(visible);row.value:SetShown(visible)
+            if visible then
+                row.label:ClearAllPoints();row.label:SetPoint("TOPLEFT",0,-height)
+                row.value:ClearAllPoints();row.value:SetPoint("TOPLEFT",labelWidth+gap,-height);row.value:SetWidth(math.max(1,inner-labelWidth-gap))
+                height=height+math.max(row.label:GetStringHeight(),row.value:GetStringHeight())+spacing.tight*scale
+            end
+        end
+        T.region:SetHeight(height);bottom=bottom+height+gap
+    end
     for _,notice in ipairs({T.career,T.dungeons}) do
         if notice:IsShown() and (notice~=T.dungeons or not batch) then
             notice:ClearAllPoints();notice:SetPoint("TOPLEFT",0,-bottom)
