@@ -254,7 +254,7 @@ local function alongTasks(state,plan,action,paused,byQuest)
     if action and navigation and navigation.Target then target=navigation.Target(action) end
     local direct=not paused and not A.error and action and action.questId and
         (action.kind=="accept" or action.kind=="objective" or action.kind=="turnin") and navigation and navigation.Distance and
-        navigation:Distance(state.position,target)
+        navigation:Distance(state.position,target,true)
     local speed=state.runSpeed
     if direct and speed and speed>0 then
         for _,choice in ipairs(plan.taskChoices or {}) do
@@ -274,8 +274,8 @@ local function alongTasks(state,plan,action,paused,byQuest)
                 local objective=q and step and step.objectiveIndex and (q.objectives or {})[step.objectiveIndex]
                 if step and step.kind==kind and step.position and not step.position.areaOnly and not waiting and
                     (not (objective and objective.finished) or step.itemGain and step.itemGain>0) then
-                    local approach=navigation:Distance(state.position,step.position)
-                    local onward=navigation:Distance(step.position,target)
+                    local approach=navigation:Distance(state.position,step.position,true)
+                    local onward=navigation:Distance(step.position,target,true)
                     local atHub=kind=="accept" and (action.kind=="accept" or action.kind=="turnin") and
                         direct<=180 and approach and approach<=180 and onward and onward<=180
                     if approach and onward and approach<=math.max(direct,180) and onward<=math.max(direct,180) and
@@ -290,7 +290,7 @@ local function alongTasks(state,plan,action,paused,byQuest)
         local ignored=UI.tracker and UI.tracker.nearby and UI.tracker.nearby.map==state.position.map and UI.tracker.nearby.ignored or {}
         for _,stop in ipairs(plan.flightUnlocks or {}) do
             local key="taxi:"..stop.taxiId
-            local distance=navigation:Distance(state.position,stop.position)
+            local distance=navigation:Distance(state.position,stop.position,true)
             if distance and distance<=180 and (state.unlocked or {})[key]==false and not ignored[key] and
                 not (state.serviceStop and state.serviceStop.kind=="unlockFlight" and state.serviceStop.taxiId==stop.taxiId) then
                 along[key]={action=stop,distance=distance}

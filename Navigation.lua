@@ -11,6 +11,7 @@ function N.StaleAction(action,state,plan)
             (state.taxiAvailability or {})[action.fromTaxi..":"..action.toTaxi]~=true then return true end
     end
     if not (action and action.questId and plan and plan.revision and state and plan.revision~=state.revision) then return end
+    action=action.questAction or action
     if action.kind=="transit" or action.kind=="move" or action.kind=="approach" then
         local actions=plan.best and plan.best.actions or plan.travelActions
         local goal=actions and actions[#actions]
@@ -42,8 +43,9 @@ function N:Initialize()
     self.hbdPins = LibStub and LibStub("HereBeDragons-Pins-2.0", true)
 end
 
-function N:Distance(from, to)
+function N:Distance(from, to, onFoot)
     if not from or not to or not self.hbd then return nil end
+    if onFoot and A.Travel.Separated(from,to,self) then return end
     return self.hbd:GetZoneDistance(from.map, from.x, from.y, to.map, to.x, to.y)
 end
 
@@ -96,6 +98,8 @@ end
 
 function N:Navigate(action,keepWaypoint)
     local state=A.state
+    local clicked=action
+    action=action and (action.questAction or action)
     local id=action and action.questId
     local point=action and action.position
     local active=id and (state.quests or {})[id]
@@ -104,6 +108,10 @@ function N:Navigate(action,keepWaypoint)
     if id and (action.kind=="accept" and active or action.kind=="objective" and (not active or active.ready or
         action.objectiveIndex and (active.objectives or {})[action.objectiveIndex] and active.objectives[action.objectiveIndex].finished) or
         action.kind=="turnin" and (not active or not active.ready)) then return false end
+    if clicked.kind=="transit" and clicked==self:Current() then
+        self:RefreshPins(true)
+        return true
+    end
     local target=action
     if action.kind~="accept" and action.kind~="objective" and action.kind~="turnin" then
         target={kind="manual",title=action.title,position=N.Target(action)}
@@ -111,7 +119,8 @@ function N:Navigate(action,keepWaypoint)
     local approach=A.Dungeon and A.Dungeon.TaskApproach and A.Dungeon.TaskApproach(target,state,A.Data) or target
     if not approach.position and not (id and approach.text) then return false end
     local routes=not (point and point.startItemId) and approach.position and A.Flights and A.Flights.Itinerary(state.position,{approach},state,self)
-    local actions=routes and routes[1] and A.Flights.Actions(routes[1],approach,self) or {approach}
+    local actions=routes and routes[1] and A.Flights.Actions(routes[1],approach,self)
+    if not actions then actions={A.Flights and A.Flights.MissingCrossing and A.Flights.MissingCrossing(approach,state,self) or approach} end
     self.manual={title=action.title,action=target,actions=actions,index=1,
         instanceId=state.instanceId,inInstance=state.inInstance,plan={revision=-1,travelActions=actions,itemStock=self.plan and self.plan.itemStock}}
     self:RefreshPins(not keepWaypoint)
@@ -140,10 +149,12 @@ function N:Current()
         if goal and N.StaleAction(goal,A.state,self.manual.plan or {revision=-1}) then
             self:ClearManual(false)
         else
-            if goal and (self.manual.inInstance~=A.state.inInstance or A.state.inInstance and self.manual.instanceId~=A.state.instanceId) then
+            local action=self.manual.actions and self.manual.actions[self.manual.index] or goal
+            local crossing=action and action.crossingFrom
+            if goal and (self.manual.inInstance~=A.state.inInstance or A.state.inInstance and self.manual.instanceId~=A.state.instanceId or
+                crossing and A.state.position and (crossing.map~=A.state.position.map or A.Travel.Separated(crossing,A.state.position,self))) then
                 if self:Navigate(goal,true) then return self:Current() end
             end
-            local action=self.manual.actions and self.manual.actions[self.manual.index] or goal
             if not N.StaleAction(action,A.state,self.manual.plan) then
                 return action or {kind="manual",title=self.manual.title or "手动目的地",position=self.manual}
             end
@@ -499,8 +510,11 @@ function N:Update()
     local action, pos = self:Current(), A.state.position
     if action and action.publicTransit and not A.char.paused and pos then
         local arrival=self:Distance(pos,action.position)
-        if arrival and arrival<=(action.arrival or 40) then self:Advance();return end
-        if not action.atDeparture and self:Near(pos,action.departure,action.departureRadius) then
+        -- Players emerge beside the portal. Crossing onto its destination land
+        -- also handles a load screen ending after the player has moved away.
+        if arrival and arrival<=(action.arrival or 40) or action.mode=="portal" and
+            not A.Travel.Separated(pos,action.position,self) then self:Advance();return end
+        if action.mode~="portal" and not action.atDeparture and self:Near(pos,action.departure,action.departureRadius) then
             action.atDeparture=true;self:RefreshPins();A.dirty=true
         end
     end

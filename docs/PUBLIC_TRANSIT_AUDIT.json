@@ -5,13 +5,14 @@
     ".dependencies/UiMapAssignment-1.60.1.70862.csv": "79267e8be8034e47daab14350411b3acc0b1f64e86efc9d821a217497254ca0a",
     ".dependencies/eg-link-156f29c9/1.60.1.70862/object_details.enUS.json": "63ea8fe2112516932c2633f7cb5507f99211390549c9d2a37d6b63214d906f19",
     ".dependencies/SPF-Data-Transports.lua": "dc874e86cb197bbedd90c417b74b7cacbb403c17789c61b9221fbef7dbe4cce0",
-    ".dependencies/eg-objects-70938-6ff5612.json": "1974e7b86e3ea31758b5903f4e6853a86b0f88b0f97a7bee247dbf95b9bbca40"
+    ".dependencies/eg-objects-70938-6ff5612.json": "1974e7b86e3ea31758b5903f4e6853a86b0f88b0f97a7bee247dbf95b9bbca40",
+    ".dependencies/AreaTrigger-1.60.1.70862.csv": "c42305d819d250a0003159458f458c17f0720ae1561194fdc1283d7e530f8a8e"
   },
   "source": "https://github.com/JIVESCORP/eg-link-output-wowf/tree/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862",
   "attribution": "Efficient Games, CC BY 4.0; Blizzard client tables via Wago",
   "clientVerified": false,
   "serverUpdateSource": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/6ff5612b54191f297eb77ca8eda81de029d9d6f0/data/wowf/1.60.1.70938/object_details.enUS.json",
-  "scope": "10 server-observed boat/zeppelin templates and the client-table Deeprun Tram; 26 directed journeys. Dock geography and faction access are curated. Multi-stop ships retain their forward stop order.",
+  "scope": "10 server-observed boat/zeppelin templates, Deeprun Tram and the Ruttheran portal; 28 directed journeys. Dock geography and faction access are curated. Multi-stop ships retain their forward stop order.",
   "estimation": "Client polyline / server speed + speed / acceleration. Mean wait is half estimated cycle. No load-screen delay or live schedule. Ground travel remains straight distance / player speed.",
   "coverage": {
     "observedObjects": 12,
@@ -329,6 +330,24 @@
       "rideSeconds": 58.633,
       "cycleSeconds": 143.333,
       "source": "https://github.com/cjber/shortest-path-forever/blob/06a819ef3be7920b373b99da377adb7c0e91b125/Data/Transports.lua"
+    },
+    {
+      "name": "Rut'theran Village – Darnassus portal",
+      "triggers": {
+        "542": {
+          "map": 1438,
+          "x": 0.558716142,
+          "y": 0.893359807,
+          "name": "鲁瑟兰村"
+        },
+        "527": {
+          "map": 1457,
+          "x": 0.291328609,
+          "y": 0.412106821,
+          "name": "达纳苏斯"
+        }
+      },
+      "source": "https://wago.tools/db2/AreaTrigger?build=1.60.1.70862"
     }
   ]
 }

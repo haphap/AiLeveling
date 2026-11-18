@@ -15,6 +15,7 @@ SOURCES = {
     f".dependencies/eg-link-156f29c9/{BUILD}/object_details.enUS.json": "63ea8fe2112516932c2633f7cb5507f99211390549c9d2a37d6b63214d906f19",
     ".dependencies/SPF-Data-Transports.lua": "dc874e86cb197bbedd90c417b74b7cacbb403c17789c61b9221fbef7dbe4cce0",
     ".dependencies/eg-objects-70938-6ff5612.json": "1974e7b86e3ea31758b5903f4e6853a86b0f88b0f97a7bee247dbf95b9bbca40",
+    f".dependencies/AreaTrigger-{BUILD}.csv": "c42305d819d250a0003159458f458c17f0720ae1561194fdc1283d7e530f8a8e",
 }
 UPDATE_SOURCE = "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/6ff5612b54191f297eb77ca8eda81de029d9d6f0/data/wowf/1.60.1.70938/object_details.enUS.json"
 # Names and access factions belong to the actual docks, not reused TaxiNodes names.
@@ -41,6 +42,20 @@ def main():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
     nodes = list(csv.DictReader((ROOT / next(iter(SOURCES))).open()))
     assignments = list(csv.DictReader((ROOT / f".dependencies/UiMapAssignment-{BUILD}.csv").open()))
+    def map_point(map_id, name, continent, world_x, world_y):
+        matches = []
+        for a in assignments:
+            if int(a["UiMapID"]) != map_id or a["MapID"] != continent:
+                continue
+            if [float(a[k]) for k in ("UiMin_0", "UiMin_1", "UiMax_0", "UiMax_1")] != [0, 0, 1, 1]:
+                continue
+            x = (float(a["Region_4"]) - world_y) / (float(a["Region_4"]) - float(a["Region_1"]))
+            y = (float(a["Region_3"]) - world_x) / (float(a["Region_3"]) - float(a["Region_0"]))
+            if 0 <= x <= 1 and 0 <= y <= 1:
+                matches.append(dict(map=map_id, x=round(x, 9), y=round(y, 9), name=name))
+        assert len(matches) == 1, (map_id, name, matches)
+        return matches[0]
+
     cache = json.loads((ROOT / list(SOURCES)[2]).read_text())
     assert cache["meta"]["clientBuild"] == BUILD
     updated = json.loads((ROOT / ".dependencies/eg-objects-70938-6ff5612.json").read_text())
@@ -62,18 +77,7 @@ def main():
         points = []
         for i, (map_id, name) in zip(stops, ports):
             r = path[i]
-            matches = []
-            for a in assignments:
-                if int(a["UiMapID"]) != map_id or a["MapID"] != r["ContinentID"]:
-                    continue
-                if [float(a[k]) for k in ("UiMin_0", "UiMin_1", "UiMax_0", "UiMax_1")] != [0, 0, 1, 1]:
-                    continue
-                x = (float(a["Region_4"]) - float(r["Loc_1"])) / (float(a["Region_4"]) - float(a["Region_1"]))
-                y = (float(a["Region_3"]) - float(r["Loc_0"])) / (float(a["Region_3"]) - float(a["Region_0"]))
-                if 0 <= x <= 1 and 0 <= y <= 1:
-                    matches.append(dict(map=map_id, x=round(x, 9), y=round(y, 9), name=name))
-            assert len(matches) == 1, (path_id, map_id, matches)
-            points.append(matches[0])
+            points.append(map_point(map_id, name, r["ContinentID"], float(r["Loc_0"]), float(r["Loc_1"])))
         delays = [int(path[i]["Delay"]) for i in stops]
         closing = None
         # The ferry's final stop repeats its first dock; it is not a third destination.
@@ -115,12 +119,7 @@ def main():
     tram_points = []
     for map_id, name, world_x, world_y in [(1453, "暴风城地铁入口", -8346.46, 514.031),
                                            (1455, "铁炉堡地铁入口", -4840.26, -1330.46)]:
-        a, = [r for r in assignments if int(r["UiMapID"]) == map_id and r["MapID"] == "0"
-              and [float(r[k]) for k in ("UiMin_0", "UiMin_1", "UiMax_0", "UiMax_1")] == [0, 0, 1, 1]]
-        x = (float(a["Region_4"]) - world_y) / (float(a["Region_4"]) - float(a["Region_1"]))
-        y = (float(a["Region_3"]) - world_x) / (float(a["Region_3"]) - float(a["Region_0"]))
-        assert 0 <= x <= 1 and 0 <= y <= 1
-        tram_points.append(dict(map=map_id, x=round(x, 9), y=round(y, 9), name=name))
+        tram_points.append(map_point(map_id, name, "0", world_x, world_y))
     ride, cycle = 58.633, 143.333
     for direction in range(2):
         legs.append(dict(key=f"public:tram:{direction}", kind="tram", fromPoint=tram_points[direction],
@@ -128,6 +127,17 @@ def main():
                          seconds=round(ride+cycle/2, 3), low=ride, high=round(ride+cycle, 3)))
     evidence.append(dict(name="Deeprun Tram", ports=tram_points, rideSeconds=ride, cycleSeconds=cycle,
                          source="https://github.com/cjber/shortest-path-forever/blob/06a819ef3be7920b373b99da377adb7c0e91b125/Data/Transports.lua"))
+    triggers = {int(r["ID"]): r for r in csv.DictReader((ROOT / f".dependencies/AreaTrigger-{BUILD}.csv").open())}
+    portal = {}
+    for trigger_id, map_id, name in [(542, 1438, "鲁瑟兰村"), (527, 1457, "达纳苏斯")]:
+        r = triggers[trigger_id]
+        assert r["ContinentID"] == "1" and int(r["AreaTriggerActionSetID"]) > 0
+        portal[trigger_id] = map_point(map_id, name, r["ContinentID"], float(r["Pos_0"]), float(r["Pos_1"]))
+    for start, end in [(542, 527), (527, 542)]:
+        legs.append(dict(key=f"public:portal:{start}", kind="portal", fromPoint=portal[start], toPoint=portal[end],
+                         faction=None, seconds=0, low=0, high=0))
+    evidence.append(dict(name="Rut'theran Village – Darnassus portal", triggers=portal,
+                         source=f"https://wago.tools/db2/AreaTrigger?build={BUILD}"))
     lines = ['local _,A=...', '-- Generated by tools/import_public_transit.py; reference estimates, not observed arrival times.',
              'A.PublicTransitData={clientVersion="1.60.1",build=70862,interface=16001,legs={']
     for leg in legs:
@@ -141,7 +151,7 @@ def main():
     report = dict(build=BUILD, inputs=SOURCES, source=f'https://github.com/JIVESCORP/eg-link-output-wowf/tree/{COMMIT}/data/wowf/{BUILD}',
                   attribution='Efficient Games, CC BY 4.0; Blizzard client tables via Wago', clientVerified=False,
                   serverUpdateSource=UPDATE_SOURCE,
-                  scope=f'{len(ROUTES)} server-observed boat/zeppelin templates and the client-table Deeprun Tram; {len(legs)} directed journeys. Dock geography and faction access are curated. Multi-stop ships retain their forward stop order.',
+                  scope=f'{len(ROUTES)} server-observed boat/zeppelin templates, Deeprun Tram and the Ruttheran portal; {len(legs)} directed journeys. Dock geography and faction access are curated. Multi-stop ships retain their forward stop order.',
                   estimation='Client polyline / server speed + speed / acceleration. Mean wait is half estimated cycle. No load-screen delay or live schedule. Ground travel remains straight distance / player speed.',
                   coverage=dict(observedObjects=len(observed), includedObjects=sorted(included), excludedObjects=EXCLUDED), routes=evidence)
     (ROOT / 'docs/PUBLIC_TRANSIT_AUDIT.json').write_text(json.dumps(report, ensure_ascii=False, indent=2)+'\n')

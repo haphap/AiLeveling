@@ -102,6 +102,7 @@ end
 
 function D.TaskApproach(action,state,data)
     if not action or action.startItemId or action.position and action.position.startItemId then return action end
+    local questAction=action.questId and action
     local point=action.position
     local info=point and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
     if point and point.areaOnly then
@@ -118,20 +119,20 @@ function D.TaskApproach(action,state,data)
     local pvp=D.TaskPvP(action.position,state,data,action.areaId)
     if pvp then
         if state.inInstance and state.instanceId==pvp.instanceId then return action end
-        return {kind="pvpEnter",questId=action.questId,title=action.title,
+        return {kind="pvpEnter",questAction=questAction,questId=action.questId,title=action.title,
             text=(state.inInstance and "离开当前实例后，" or "").."通过游戏战场界面或战场军官排队进入「"..pvp.title.."」，进入后继续任务。"}
     end
     local currentPvP=state.inInstance and pvpFor(state) and pvpFor(state)[state.instanceId]
     local knownOutdoor=point and (not point.areaOnly or point.sourceAreaId)
     if currentPvP and knownOutdoor then
-        return {kind="pvpLeave",questId=action.questId,title=action.title,
+        return {kind="pvpLeave",questAction=questAction,questId=action.questId,title=action.title,
             text="离开「"..currentPvP.title.."」后，"..(action.kind=="turnin" and "前往任务交付者交付任务。" or "继续野外任务。")}
     end
     if not A.DungeonCatalog then return action end
     local instance=D.TaskInstance(action.position,state,data,action.areaId)
     if not instance and state.inInstance and knownOutdoor and info and (info.mapType==2 or info.mapType==3) then
         local destination=point.entityName or info.name or "任务目的地"
-        return {kind="dungeonLeave",questId=action.questId,title=action.title,
+        return {kind="dungeonLeave",questAction=questAction,questId=action.questId,title=action.title,
             text="离开当前副本后，前往"..destination..(action.kind=="turnin" and "交付任务。" or "继续任务。")}
     end
     if not instance then return action end
@@ -156,7 +157,7 @@ function D.TaskApproach(action,state,data)
         return inside
     end
     if state.inInstance then
-        return {kind="dungeonLeave",questId=action.questId,title=action.title,
+        return {kind="dungeonLeave",questAction=questAction,questId=action.questId,title=action.title,
             text="目标位于"..instance.title.."，先离开当前副本，再前往入口。"}
     end
     if state.instanceEntryError then
@@ -168,7 +169,7 @@ function D.TaskApproach(action,state,data)
         local entryMap=data.maps[entry[1]]
         if entryMap and entryMap>0 then
             local point={map=entryMap,x=entry[2]/100,y=entry[3]/100,label=instance.title.."入口"}
-            local distance=A.Navigation and A.Navigation:Distance(state.position,point)
+            local distance=A.Navigation and A.Navigation:Distance(state.position,point,true)
             if not nearest or distance and (not best or distance<best) then nearest,best=point,distance end
             if #instance.entrances>1 and A.Flights and A.Flights.Routes then
                 for _,route in ipairs(A.Flights.Routes(state.position,point,state,A.Navigation) or {}) do
@@ -178,7 +179,7 @@ function D.TaskApproach(action,state,data)
         end
     end
     nearest=fastest or nearest
-    return {kind="dungeonEnter",questId=action.questId,title=action.title,position=nearest,
+    return {kind="dungeonEnter",questAction=questAction,questId=action.questId,title=action.title,position=nearest,
         text=instance.entryHint or "前往"..instance.title.."入口，进入副本后继续任务。"}
 end
 
@@ -559,8 +560,8 @@ function D.TaskBatchWaitPlan(plan,state,data,options)
         local instance=D.TaskInstance(step.position,state,data,step.areaId) or D.TaskPvP(step.position,state,data,step.areaId)
         if step.kind=="objective" and step.position and not step.position.areaOnly and (kind=="monster" or kind=="item") and not choice.lowValue and
             not choice.entryBlocked and not choice.requireCheck and not (A.TaskGuide and A.TaskGuide.ItemGainBlocked(step,state)) and map and (map.mapType==2 or map.mapType==3) and not instance and entry.position and speed>0 then
-            local outward=A.Navigation:Distance(state.position,step.position)
-            local back=A.Navigation:Distance(step.position,entry.position)
+            local outward=A.Navigation:Distance(state.position,step.position,true)
+            local back=A.Navigation:Distance(step.position,entry.position,true)
             if outward and back and (outward+back)/speed<=wait then action=step;break end
         end
     end
@@ -706,7 +707,7 @@ function D.TaskBatchStage(choices,state,data)
         if localStep and not waiting and not choice.lowValue and not choice.requireCheck and not choice.acceptBlocked then
             preferred[#preferred+1]=choice
             local kind=choice.actions[1].kind
-            local distance=position and state.position and A.Navigation:Distance(state.position,position)
+            local distance=position and state.position and A.Navigation:Distance(state.position,position,true)
             if (kind=="turnin" or kind=="accept") and distance and distance<=40 then here[#here+1]=choice end
             -- Collect this region's dungeon quests before leaving to work on already accepted ones.
             if kind=="accept" and (state.inInstance and (not position or distance and distance<=140) or

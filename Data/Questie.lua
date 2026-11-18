@@ -328,6 +328,24 @@ function D:SpawnPoints(spawnList,allowArea)
     return points
 end
 
+-- Compare actual journeys only when competing locations are on separate land.
+-- A more distant walk can still beat the ferry, or an unlocked flight can win.
+local function nearerSource(state,point,distance,best,bestDistance)
+    if not best then return true end
+    local travel=state.routeState or state
+    if state.position and travel.runSpeed and travel.clientVersion and not travel.inInstance and
+        not point.areaOnly and not best.areaOnly and A.Flights and A.Flights.Routes and
+        A.Travel.Separated(point,best,A.Navigation) then
+        local a=A.Flights.Routes(state.position,point,travel,A.Navigation)
+        local b=A.Flights.Routes(state.position,best,travel,A.Navigation)
+        local first=a and a[1].seconds or math.huge
+        local second=b and b[1].seconds or math.huge
+        if first~=second then return first<second end
+    end
+    if distance then return not bestDistance or distance<bestDistance end
+    return not bestDistance and state.position and point.map==state.position.map and best.map~=point.map
+end
+
 function D:TriggerTarget(q,state)
     local trigger=self.db.Quest.Get(q.id,"triggerEnd")
     local best,bestDistance
@@ -335,7 +353,7 @@ function D:TriggerTarget(q,state)
         local distance=A.Navigation:Distance(state.position,point)
         local precise=best and best.approximate and not point.approximate
         local comparable=not best or (not best.approximate)==(not point.approximate)
-        if not best or precise or comparable and distance and (not bestDistance or distance<bestDistance) then
+        if precise or comparable and nearerSource(state,point,distance,best,bestDistance) then
             best,bestDistance=point,distance
         end
     end
@@ -448,7 +466,8 @@ function D:Target(q, state)
         end
         if target then return target end
         if self:DeliveryOnly(q,state) then
-            return self:Target(q,{position=state.position,faction=state.faction,completed=state.completed,quests={[q.id]={ready=true}}})
+            return self:Target(q,{position=state.position,faction=state.faction,completed=state.completed,
+                routeState=state.routeState or state,quests={[q.id]={ready=true}}})
         end
         if not self:UnmappedTargetArea(q,state) then return self:QuestAreaTarget(q,state) end
         return
@@ -473,13 +492,7 @@ function D:Target(q, state)
     local function nearer(point,priority)
         if priority<bestPriority then return false end
         local distance=A.Navigation:Distance(state.position,point)
-        if priority==bestPriority then
-            if distance then
-                if bestDistance and bestDistance<=distance then return false end
-            elseif bestDistance or not state.position or point.map~=state.position.map or best.map==point.map then
-                return false
-            end
-        end
+        if priority==bestPriority and not nearerSource(state,point,distance,best,bestDistance) then return false end
         best,bestDistance,bestPriority=point,distance,priority
         return true
     end
@@ -711,10 +724,7 @@ function D:ObservedObjectiveTarget(q,state,identity,objective)
             for _,p in ipairs(entry.locations or {}) do
                 if C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(p.map) then
                     local distance=A.Navigation:Distance(state.position,p)
-                    local same=state.position and p.map==state.position.map
-                    local bestSame=best and state.position and best.map==state.position.map
-                    if not best or distance and (not bestDistance or distance<bestDistance) or
-                        not distance and not bestDistance and same and not bestSame then
+                    if nearerSource(state,p,distance,best,bestDistance) then
                         best,bestDistance=p,distance
                     end
                 end
@@ -766,12 +776,9 @@ function D:ObjectiveTargets(q,state)
                     purchases[index]={npcId=id,name=entity.Get(id,"name"),map=point.map,distance=distance}
                 end
             end
-            local same=state.position and point.map==state.position.map
-            local bestSame=best and state.position and best.map==state.position.map
             local precise=best and best.approximate and not point.approximate
             local comparable=not best or (not best.approximate)==(not point.approximate)
-            if not best or precise or comparable and (distance and (not bestDistance or distance<bestDistance) or
-                not distance and not bestDistance and same and not bestSame) then
+            if precise or comparable and nearerSource(state,point,distance,best,bestDistance) then
                 chosen[index],distances[index]=point,distance
                 point.label,point.objectiveIndex=point.travelHint and point.label or point.approximate and "区域参考点" or label,index
                 point.entityKind,point.entityId=kind,id
@@ -881,12 +888,9 @@ function D:ObjectiveTarget(q,state)
     local best,bestDistance
     for _,point in ipairs(self:ObjectiveTargets(q,state)) do
         local distance=A.Navigation:Distance(state.position,point)
-        local same=state.position and point.map==state.position.map
-        local bestSame=best and state.position and best.map==state.position.map
         local precise=best and best.approximate and not point.approximate
         local comparable=not best or (not best.approximate)==(not point.approximate)
-        if not best or precise or comparable and (distance and (not bestDistance or distance<bestDistance) or
-            not distance and not bestDistance and same and not bestSame) then
+        if precise or comparable and nearerSource(state,point,distance,best,bestDistance) then
             best,bestDistance=point,distance
         end
     end
@@ -1089,7 +1093,7 @@ function D:ReferenceObjectiveTargets(q,state)
     -- Query reference placements only; this temporary lookup never becomes a character snapshot.
     -- Malformed requirements leave their native indices unknown.
     local virtual={position=state.position,faction=state.faction,inInstance=state.inInstance,instanceId=state.instanceId,
-        referenceIndexUnknown=complex,quests={[q.id]={objectives=descriptions}},
+        referenceIndexUnknown=complex,routeState=state,quests={[q.id]={objectives=descriptions}},
         clientVersion=state.clientVersion,clientBuild=state.clientBuild,interface=state.interface}
     local positions={}
     local targets,purchases=self:ObjectiveTargets(q,virtual)

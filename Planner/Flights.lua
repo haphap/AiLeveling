@@ -171,7 +171,11 @@ local function routeWithoutHearth(origin,target,state,navigation)
         flights=0,hearths=0,initial=direct.coarse==true,coarse=direct.coarse}
     if not flights.minimum then
         flights.minimum=math.huge
-        for _,flight in ipairs(flights) do flights.minimum=math.min(flights.minimum,flight.seconds) end
+        -- A portal alone connects separate landmasses. To improve a feasible
+        -- walk on the same land it must be combined with at least one ride.
+        for _,flight in ipairs(flights) do
+            if flight.kind~="portal" then flights.minimum=math.min(flights.minimum,flight.seconds) end
+        end
     end
     -- A trip shorter than every transport leg is already optimal by walking.
     if best and best.seconds<=flights.minimum then
@@ -320,6 +324,10 @@ function F.Actions(route,action,navigation)
             actions[#actions+1]={kind="transit",mode="hearth",questId=action.questId,title="炉石返回 "..(leg.name or "绑定地点"),
                 text=(leg.wait>0 and string.format("等待炉石冷却约 %.1f 分钟后，",leg.wait/60) or "").."手动使用炉石返回实际绑定地点，落地后继续任务。",
                 position=leg.to,arrival=12,departure=leg.from,hearthBindingKey=leg.bindingKey,travelSeconds=leg.seconds,travelWait=leg.wait,travelRide=leg.seconds-leg.wait,referenceHearth=true}
+        elseif leg.kind=="portal" then
+            actions[#actions+1]={kind="transit",mode="portal",questId=action.questId,title="穿过传送门前往"..leg.toName,
+                text="进入"..leg.fromName.."的紫色传送门，前往"..leg.toName.."。",departure=leg.from,position=leg.to,
+                fromName=leg.fromName.."传送门",toName=leg.toName,publicTransit=true,transitKey=leg.key,travelSeconds=leg.seconds}
         elseif leg.kind=="boat" or leg.kind=="zeppelin" or leg.kind=="tram" then
             local vehicle=leg.kind=="boat" and "船" or leg.kind=="tram" and "地铁" or "飞艇"
             actions[#actions+1]={kind="transit",mode=leg.kind,questId=action.questId,title="乘"..vehicle.."前往"..leg.toName,
@@ -336,8 +344,18 @@ function F.Actions(route,action,navigation)
                 travelSeconds=leg.seconds,timeSampleKey=F.TimeKey(leg.fromTaxi,leg.toTaxi,leg.faction,leg.hops,leg.taxiSpeed),referenceFlight=true}
         end
     end
+    if action.questId then
+        for _,step in ipairs(actions) do step.questAction=action.questAction or action end
+    end
     actions[#actions+1]=action
     return actions
+end
+
+function F.MissingCrossing(action,state,navigation)
+    if not state.inInstance and A.Travel.Separated(state.position,action.position,navigation) then
+        return {kind="selectionBlocked",questId=action.questId,title=action.title,crossingFrom=state.position,
+            text="当前没有到达任务地点的可用路线。往返泰达希尔需搭船或飞行，鲁瑟兰村与达纳苏斯之间走传送门。"}
+    end
 end
 
 -- Direction-only fallback when the full journey cannot be timed.
@@ -356,13 +374,13 @@ function F.Guide(action,state,navigation)
     if not source or not mask or math.floor(source.factionMask/mask)%2~=1 or
         not (state.unlocked or {})["taxi:"..anchor.id] then return end
     local candidates={}
-    local original=navigation:Distance(state.position,target)
+    local original=navigation:Distance(state.position,target,true)
     for id,node in pairs(data.nodes) do
         local key=anchor.id..":"..id
         if id~=anchor.id and node.instance==source.instance and math.floor(node.factionMask/mask)%2==1 and
             (state.unlocked or {})["taxi:"..id] and (state.taxiAvailability or {})[key]==true then
             local landing=F.Position(node,target.map,navigation.hbd)
-            local remaining=landing and navigation:Distance(landing,target)
+            local remaining=landing and navigation:Distance(landing,target,true)
             if remaining and (not original or remaining+50<original) then
                 candidates[#candidates+1]={id=id,node=node,landing=landing,distance=remaining}
             end
@@ -377,7 +395,7 @@ function F.Guide(action,state,navigation)
     local seconds,sourceLabel=F.Seconds(anchor.id,best.id,state)
     local name=(state.taxiNames or {})[best.id] or best.node.name
     local text="与当前飞行管理员交谈，飞往「"..name.."」，落地后继续任务。"
-    local transit={kind="transit",mode="flight",questId=action.questId,title="飞往 "..name,text=text,
+    local transit={kind="transit",mode="flight",questAction=action.questAction or action,questId=action.questId,title="飞往 "..name,text=text,
         departure=anchor.position,departureRadius=12,position=best.landing,arrival=25,
         fromTaxi=anchor.id,toTaxi=best.id,travelSeconds=seconds,
         timeSampleKey=F.TimeKey(anchor.id,best.id,state.faction,(state.taxiHops or {})[anchor.id..":"..best.id],state.taxiSpeed),referenceFlight=true}

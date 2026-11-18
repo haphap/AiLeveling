@@ -47,6 +47,20 @@ test("公共交通跨大陆双向接续且不依赖金币或解锁飞行点",fun
     eq(routes[1].legs[2],through);eq(routes[1].seconds,through.seconds)
     eq(byKey["public:303:0"].to.map,1444);eq(byKey["public:303:1"].from.map,1444)
     eq(byKey["public:303:2"],nil)
+    local island=byKey["public:293:1"]
+    local portal=byKey["public:portal:542"]
+    -- Geometry reports a short line across the water and up the cliff.
+    local nav={Distance=function(_,a,b) return math.abs(a.x-b.x)*700 end}
+    s.runSpeed=14
+    eq(B.Travel.Walk(island.from,island.to,s,nav),nil)
+    eq(B.Travel.Walk(portal.from,portal.to,s,nav),nil)
+    local times=B.Flights.Routes(island.from,portal.to,s,nav)
+    local hops={}
+    for _,leg in ipairs(times[1].legs) do if leg.kind~="walk" then hops[#hops+1]=leg.key end end
+    eq(table.concat(hops,","),"public:293:1,public:portal:542")
+    s.faction="Horde"
+    eq(B.Flights.Routes(island.from,portal.to,s,nav),nil)
+    eq(B.Flights.Routes(portal.to,portal.from,s,nav)[1].legs[2].key,"public:portal:527")
 end)
 test("公共交通与炉石比较并给出具体上下船指引",function()
     local B,s,legs=fixture();local target=legs[1].to

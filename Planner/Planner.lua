@@ -75,7 +75,7 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         local choice={id="task:"..id,kind="task",questId=id,title=action.title,actions={action},
             status=kind,level=q.questLevel,referenceXP=q.referenceXP,unlock=unlocks[id],lowValue=lowValue,
             requireCheck=not active and (unavailable or not position and not instance and not held) or nil,
-            distance=position and A.Navigation and A.Navigation.Distance and A.Navigation:Distance(state.position,position)}
+            distance=position and A.Navigation and A.Navigation.Distance and A.Navigation:Distance(state.position,position,true)}
         if state.inInstance then choice.currentInstance=currentInstance end
         -- Equivalent follow-ups can be offered by different machines in the same room.
         local objects=not active and q.startedBy and q.startedBy[2]
@@ -95,7 +95,7 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
                 instance=A.Dungeon.TaskInstance(action.position,state,data,action.areaId) or
                     A.Dungeon.TaskPvP and A.Dungeon.TaskPvP(action.position,state,data,action.areaId)
                 if state.inInstance then choice.currentInstance=instance and instance.instanceId==state.instanceId or false end
-                choice.distance=action.position and A.Navigation and A.Navigation.Distance and A.Navigation:Distance(state.position,action.position)
+                choice.distance=action.position and A.Navigation and A.Navigation.Distance and A.Navigation:Distance(state.position,action.position,true)
             end
             choice.remainingXP=A.TaskGuide.XP(q,state.level,state)
             if choice.remainingXP then choice.forecast=A.Progression.Advance(state,choice.remainingXP) end
@@ -170,7 +170,7 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
                     local found
                     for i=cursor,#anchor.stages do
                         local point=i==0 and state.position or anchor.stages[i].position
-                        local distance=stage.position and point and A.Navigation:Distance(stage.position,point)
+                        local distance=stage.position and point and A.Navigation:Distance(stage.position,point,true)
                         if distance and distance<=140 then
                             cursor=i;extra=extra+2*distance/(state.runSpeed or 7);found=true;break
                         end
@@ -240,7 +240,7 @@ function P.TaskOrder(state,choices,data)
             if choice.remainingXP==nil then allXP=false end
             local pos=choice.actions[1].position
             if origin and pos then
-                distances[index]=A.Navigation and A.Navigation.Distance and A.Navigation:Distance(origin,pos)
+                distances[index]=A.Navigation and A.Navigation.Distance and A.Navigation:Distance(origin,pos,true)
                 local total
                 if A.TaskGuide then
                     timings[index]=A.TaskGuide.Timing(origin,choice,projected,A.Navigation)
@@ -583,7 +583,10 @@ function P.Build(state, data, options)
                     local complete=A.Flights and journey and A.Flights.Actions(journey.firstRoute,result.fallback,A.Navigation)
                     if complete then result.travelActions=complete;result.referenceJourney=journey end
                     local flight=not complete and A.Flights and A.Flights.Guide(result.fallback,state,A.Navigation)
-                    if flight then result.travelActions=flight.actions;result.referenceFlight=flight end
+                    if flight then result.travelActions=flight.actions;result.referenceFlight=flight
+                    elseif not journey and A.Flights and A.Flights.MissingCrossing then
+                        result.fallback=A.Flights.MissingCrossing(approach,state,A.Navigation) or approach
+                    end
                     break
                 end
             end

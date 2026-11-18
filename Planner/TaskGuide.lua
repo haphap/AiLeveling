@@ -173,7 +173,9 @@ function G.Stages(q,state,data,first)
         add("objective",active and first.position or nil,deliveryOnly and "前往任务交付者对话，按游戏提示完成任务。" or
             "按任务日志完成要求；完成后再交付。",first.objectiveIndex,not active,active and first.areaId)
     end
-    local lookup={position=state.position,faction=state.faction,completed=state.completed,quests={[q.id]={ready=true}}}
+    local last=stages[#stages] and stages[#stages].position
+    local lookup={position=last and not last.areaOnly and last or state.position,routeState=state,
+        faction=state.faction,completed=state.completed,quests={[q.id]={ready=true}}}
     local finish=data:Target(q,lookup)
     local finishArea=not finish and data.UnmappedTargetArea and data:UnmappedTargetArea(q,lookup)
     reward(add("turnin",finish,"目标全部完成后，前往交付。",nil,true,finishArea))
@@ -302,7 +304,7 @@ function G.Distance(origin,choice,navigation,state)
     for _,stage in ipairs(choice.stages or {}) do
         local target=stage.position
         if not target then return end
-        local distance=navigation:Distance(position,target)
+        local distance=navigation:Distance(position,target,true)
         if distance==nil then return end
         geometric=geometric+distance
         local time=A.Travel.Walk(position,target,state,navigation)
