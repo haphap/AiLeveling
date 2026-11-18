@@ -272,8 +272,9 @@ return function(test,eq,F,plan)
         C_Map={GetMapInfo=function(id) return {parentMapID=id==8 and 7 or 0} end}
         point.map=8;eq(B.Dungeon.TaskApproach(a,s,data).kind,"dungeonEnter")
         point.map=1;eq(B.Dungeon.TaskApproach(a,s,data),a)
-        point.map=7;d.entrances={};eq(B.Dungeon.TaskApproach(a,s,data),a)
-        d.entrances={{999,20,30}};eq(B.Dungeon.TaskApproach(a,s,data),a)
+        point.map=7;d.entrances={}
+        local entry=B.Dungeon.TaskApproach(a,s,data);eq(entry.kind,"dungeonEnter");eq(entry.position,nil)
+        d.entrances={{999,20,30}};eq(B.Dungeon.TaskApproach(a,s,data).position,nil)
         d.entrances={{200,20,0}};B.DungeonCatalog.entries.other={instanceId=99,areas={100}}
         eq(B.Dungeon.TaskApproach(a,s,data),a)
         B.DungeonCatalog.entries.other=nil;point.map=8

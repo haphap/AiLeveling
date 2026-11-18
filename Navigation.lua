@@ -162,7 +162,8 @@ end
 
 function N.Target(action)
     if action and action.kind=="accept" and action.position and action.position.startItemId then return end
-    return action and ((action.kind=="transit" and (action.mode=="flight" or action.publicTransit and not action.atDeparture) and action.departure) or action.position)
+    local point=action and ((action.kind=="transit" and (action.mode=="flight" or action.publicTransit and not action.atDeparture) and action.departure) or action.position)
+    if point and not point.areaOnly then return point end
 end
 
 function N:BeginFlight(origin)

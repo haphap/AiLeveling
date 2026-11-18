@@ -250,7 +250,8 @@ local function alongTasks(state,plan,action,paused,byQuest)
     -- Nearby work is optional: compare the extra straight-line walk without changing navigation.
     local along={}
     local navigation=A.Navigation
-    local target=action and (navigation and navigation.Target and navigation.Target(action) or action.position)
+    local target=action and action.position
+    if action and navigation and navigation.Target then target=navigation.Target(action) end
     local direct=not paused and not A.error and action and action.questId and
         (action.kind=="accept" or action.kind=="objective" or action.kind=="turnin") and navigation and navigation.Distance and
         navigation:Distance(state.position,target)
@@ -271,7 +272,7 @@ local function alongTasks(state,plan,action,paused,byQuest)
                 local group=byQuest[id]
                 local waiting=kind=="turnin" and group and not group.splitDelivery and group.ready<#group.choices
                 local objective=q and step and step.objectiveIndex and (q.objectives or {})[step.objectiveIndex]
-                if step and step.kind==kind and step.position and not waiting and
+                if step and step.kind==kind and step.position and not step.position.areaOnly and not waiting and
                     (not (objective and objective.finished) or step.itemGain and step.itemGain>0) then
                     local approach=navigation:Distance(state.position,step.position)
                     local onward=navigation:Distance(step.position,target)
@@ -1811,7 +1812,8 @@ function UI:SetTrackerNavigation(distance,angle,unverified)
     local meters=A.settings.distanceUnits=="meters"
     self.nav:SetText(string.format("%.0f %s",meters and distance*0.9144 or distance,meters and "米" or "码"))
     local target=A.Navigation.Target(action)
-    self.tracker.navTitle:SetText((action and action.title or "目的地")..(target and target.approximate and " · 区域参考点" or ""))
+    local hint=target and target.approximate and (target.sourceKind=="patrol" and " · 巡逻路线" or " · 区域参考点") or ""
+    self.tracker.navTitle:SetText((action and action.title or "目的地")..hint)
     self.navFrame:SetHeight(math.max(90,70+self.tracker.navTitle:GetStringHeight()))
     local points={{-10,-6,0,7},{0,7,10,-6}}
     local cos,sin=math.cos(-(angle or 0)),math.sin(-(angle or 0))

@@ -249,7 +249,9 @@ test("副本与室外共用地图时按实体原始区域区分且原生野外�
         eq(B.Dungeon.TaskInstance(outside,s,B.Data),nil)
         eq(B.Dungeon.TaskInstance(inside,s,B.Data),dungeon)
         local action={kind="objective",questId=1,position=outside}
-        eq(B.Dungeon.TaskApproach(action,s,B.Data),action)
+        local approach=B.Dungeon.TaskApproach(action,s,B.Data)
+        if marker then eq(approach.kind,"objective");eq(approach.position,nil)
+        else eq(approach,action) end
         action.position=inside;eq(B.Dungeon.TaskApproach(action,s,B.Data).kind,"dungeonEnter")
     end
     eq(B.Dungeon.TaskInstance({map=2,x=0.4,y=0.5},s,B.Data),nil)

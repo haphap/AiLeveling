@@ -272,6 +272,10 @@ test("缺地图收件人仍按真实身份归组且不混同发布者或备选�
     eq(#groups,1);eq(groups[1].key,"npc:9");eq(groups[1].title,"交付者");eq(groups[1].ready,1)
     eq(byQuest[1],byQuest[2]);eq(s.completed[1],nil)
     rows.finishedBy={{9,8}};eq(d:Recipient(q),nil)
+    npcs[8].friendlyToFaction,npcs[9].friendlyToFaction="H","A"
+    npcs[9].spawns={[12]={{90,90}}}
+    s.faction="Alliance";eq(d:Target(q,s).entityId,9)
+    s.faction="Horde";eq(d:Target(q,s).entityId,8)
     local chosen={entityKind="npc",entityId=8,entityName="发布者"}
     eq(d:Recipient(q,chosen).entityId,8)
     rows.finishedBy={nil,{9}};d.db.Object.Get=function() return "交付对象" end
@@ -597,6 +601,10 @@ test("缺地图的接交和实体目标按实际来源区域解析且不猜任�
     s.inInstance,s.instanceId=true,90
     C_QuestLog.GetNextWaypoint=function() return 1,0.5,0.5 end
     eq(d:Target(q,s),nil);eq(d:UnmappedTargetArea(q,s),98)
+    mine.areas={97,98}
+    s.quests[1]={ready=true,mapPin={map=1,x=0.5,y=0.5,ready=true}}
+    C_QuestLog.ReadyForTurnIn=function() return true end
+    eq(d:Target(q,s),nil);eq(d:UnmappedTargetArea(q,s),97)
 end)
 test("副本目标缺地图时不退回野外分类中心且逐目标保留区域",function()
     local B,q,s,rows,npcs=fixture();local d=B.Data

@@ -581,10 +581,10 @@ run("缺本内坐标的已接任务可单独继续并完整加入同NPC交付组
     assert(B.Dungeon:ContinueTask(d,2));eq(s.locked,2)
     assert(B.Dungeon:StartTaskBatch("ref"));eq(B.char.taskBatch.baselines[2],0);eq(s.locked,nil)
     local p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonEnter");eq(p.fallback.questId,2)
-    eq(p.fallback.position.approximate,true);eq(p.fallback.position.x,0.5)
+    eq(p.fallback.position,nil);eq(p.fallback.text,d.entryHint)
     eq(p.taskBatch.remaining,2);eq(p.taskBatch.rewards.count,2)
     eq(#B.TaskGuide.DeliveryGroups(p.taskChoices,s),1)
-    s.position=p.fallback.position;p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonEnter")
+    s.position={map=data.maps[d.entryArea],x=0.5,y=0.5};p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonEnter")
     eq(s.quests[2].ready,nil)
     s.inInstance,s.instanceId,s.position=true,42,nil
     p=plan(s,data,B.settings,B);eq(p.fallback.kind,"objective");eq(p.fallback.areaId,100);eq(p.fallback.position,nil)

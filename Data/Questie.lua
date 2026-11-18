@@ -318,7 +318,7 @@ function D:SpawnPoints(spawnList,allowArea)
         end
     end
     if #points==0 then
-        for map,area in pairs(areas) do points[#points+1]={map=map,x=0.5,y=0.5,sourceAreaId=area or nil,approximate=true,label="区域参考点"} end
+        for map,area in pairs(areas) do points[#points+1]={map=map,x=0.5,y=0.5,sourceAreaId=area or nil,areaOnly=true,approximate=true,label="区域参考点"} end
     end
     table.sort(points,function(a,b)
         if a.map~=b.map then return a.map<b.map end
@@ -347,7 +347,7 @@ function D:AreaTarget(q)
     local area=q.zoneOrSort
     local map=type(area)=="number" and area>0 and self.maps and self.maps[area]
     if map and map>0 and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(map) then
-        return {map=map,x=0.5,y=0.5,label="区域参考点",approximate=true}
+        return {map=map,x=0.5,y=0.5,label="区域参考点",areaOnly=true,approximate=true}
     end
 end
 
@@ -357,7 +357,7 @@ function D:QuestAreaTarget(q,state)
     if point or type(q.zoneOrSort)=="number" and q.zoneOrSort>0 then return point end
     local giver=self:Target(q,{quests={},completed={},position=state.position,faction=state.faction,locked=q.id})
     if giver then
-        return {map=giver.map,x=0.5,y=0.5,sourceAreaId=giver.sourceAreaId,label="区域参考点",approximate=true}
+        return {map=giver.map,x=0.5,y=0.5,label="区域参考点",areaOnly=true,approximate=true}
     end
 end
 
@@ -383,8 +383,19 @@ local function oppositeGiver(entity,id,faction)
     return side=="H" and faction=="Alliance" or side=="A" and faction=="Horde"
 end
 
--- Use a recorded passing point when the giver patrols the player's current zone.
-local function patrolPickup(point,paths,origin,maps)
+local function hasFriendlyRecipient(entity,sources,faction)
+    local npcs=sources[1] or {}
+    if #npcs<2 then return false end
+    local friendly=faction=="Alliance" and "A" or faction=="Horde" and "H"
+    for _,id in ipairs(npcs) do
+        local side=entity.Get(id,"friendlyToFaction")
+        if side=="AH" or friendly and side==friendly then return true end
+    end
+    return false
+end
+
+-- Use a recorded passing point when the contact patrols the player's current zone.
+local function patrolContact(point,paths,origin,maps,turnin)
     if type(paths)~="table" then return end
     local nearest
     for area,segments in pairs(paths) do
@@ -407,7 +418,15 @@ local function patrolPickup(point,paths,origin,maps)
     end
     if point.sourceKind~="patrol" then return end
     point.approximate,point.label=true,"巡逻路线参考点"
-    point.travelHint="沿巡逻路线寻找「"..(point.entityName or "任务发布者").."」接取任务。"
+    point.travelHint="沿巡逻路线寻找「"..(point.entityName or "任务联系人").."」"..(turnin and "交付任务。" or "接取任务。")
+end
+
+local function waypointMatchesInstance(self,q,state,waypoint,target)
+    local instanceFor=state.inInstance and A.Dungeon and A.Dungeon.TaskInstance
+    if not instanceFor then return true end
+    local area=not target and self:UnmappedTargetArea(q,state)
+    local destination=instanceFor(target,state,self,area)
+    return not destination or destination.instanceId~=state.instanceId or instanceFor(waypoint,state,self)==destination
 end
 
 function D:Target(q, state)
@@ -419,15 +438,13 @@ function D:Target(q, state)
     if type(offer)=="table" and offer.nativeOffer then return offer.nativeOffer end
     local group = status == "ready" and "finishedBy" or "startedBy"
     if status == "active" then
-        local target=self:ObjectiveTarget(q,state) or (#(active.objectives or {})==0 and self:TriggerTarget(q,state))
+        local target=self:ObjectiveTarget(q,state)
+        if not target and #(active.objectives or {})==0 then target=self:TriggerTarget(q,state) end
         if target and not target.approximate then return target end
         local waypoint=nativeWaypoint(q.id)
         if waypoint then
-            local instanceFor=state.inInstance and A.Dungeon and A.Dungeon.TaskInstance
-            local area=instanceFor and not target and self:UnmappedTargetArea(q,state)
-            local here=area and instanceFor(nil,state,self,area)
-            if not here or here.instanceId~=state.instanceId or instanceFor(waypoint,state,self)==here then return waypoint end
-            return
+            if waypointMatchesInstance(self,q,state,waypoint,target) then return waypoint end
+            return target
         end
         if target then return target end
         if self:DeliveryOnly(q,state) then
@@ -475,13 +492,14 @@ function D:Target(q, state)
     -- Zero-level records join automatic leveling when an NPC actually offers them.
     local offeredOnly=not active and (q.questLevel==0 and state.locked~=q.id and
         not state.preparingQuest and not state.taskBatch or best and q.taskFacts and q.taskFacts.hidden)
+    local filterFaction=not active or hasFriendlyRecipient(self.db.Npc,sources,state.faction)
     for kind = 1, 2 do
         local entity = kind == 1 and self.db.Npc or self.db.Object
         for _, id in ipairs(sources[kind] or {}) do
             sourceCount=sourceCount+1
             local offers=not active and kind==1 and state.questOffers and state.questOffers[id]
             if offers and not offers[q.id] or not (offers and offers[q.id]) and
-                (offeredOnly or not active and kind==1 and oppositeGiver(entity,id,state.faction)) then
+                (offeredOnly or filterFaction and kind==1 and oppositeGiver(entity,id,state.faction)) then
                 unavailable=unavailable+1
             else
                 for _, point in ipairs(self:EntityPoints(entity, id, active~=nil)) do
@@ -497,7 +515,7 @@ function D:Target(q, state)
         end
     end
     local pin=active and active.ready and active.mapPin
-    if pin and pin.ready then
+    if pin and pin.ready and waypointMatchesInstance(self,q,state,pin,best) then
         local point={map=pin.map,x=pin.x,y=pin.y,label="任务交付点"}
         local recipient=self:Recipient(q)
         if not recipient and best and not best.approximate and A.Navigation:Near(point,best,30) then recipient=best end
@@ -505,15 +523,15 @@ function D:Target(q, state)
         return point
     end
     if best and not best.approximate then
-        if not active and best.entityKind=="npc" and best.sourceAreaId then
-            patrolPickup(best,self.db.Npc.Get(best.entityId,"waypoints"),state.position,self.maps)
+        if best.entityKind=="npc" and best.sourceAreaId then
+            patrolContact(best,self.db.Npc.Get(best.entityId,"waypoints"),state.position,self.maps,active)
         end
-        return best
+        if not best.approximate then return best end
     end
     -- Forecast turn-ins use a virtual ready state; only a genuinely ready quest has a native recipient waypoint.
     if active and active.ready and C_QuestLog and C_QuestLog.ReadyForTurnIn and C_QuestLog.ReadyForTurnIn(q.id) then
         local point=nativeWaypoint(q.id)
-        if point then return point end
+        if point and waypointMatchesInstance(self,q,state,point,best) then return point end
     end
     if best then return best end
     if (sourceCount>0 or offeredOnly) and unavailable==sourceCount then return nil,true end
@@ -909,12 +927,13 @@ function D:UnmappedTargetArea(q,state,objectiveIndex)
     local active=state.quests[q.id]
     if not active or active.ready or self:DeliveryOnly(q,state) then
         local sources=self.db.Quest.Get(q.id,active and "finishedBy" or "startedBy") or {}
+        local filterFaction=not active or hasFriendlyRecipient(self.db.Npc,sources,state.faction)
         local lists={}
         for kind=1,2 do
             local entity=kind==1 and self.db.Npc or self.db.Object
             for _,id in ipairs(sources[kind] or {}) do
                 local offers=not active and kind==1 and state.questOffers and state.questOffers[id]
-                if active or kind==2 or (offers and offers[q.id]) or not offers and not oppositeGiver(entity,id,state.faction) then
+                if kind==2 or (offers and offers[q.id]) or not offers and (not filterFaction or not oppositeGiver(entity,id,state.faction)) then
                     add(lists,entity,id)
                 end
             end

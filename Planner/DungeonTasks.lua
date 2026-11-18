@@ -8,6 +8,7 @@ local function pvpFor(state)
 end
 
 function D.TaskPvP(position,state,data,areaId)
+    if position and position.areaOnly then areaId,position=position.sourceAreaId or areaId,nil end
     local entries=pvpFor(state)
     if not entries then return end
     local area=position and position.sourceAreaId or areaId
@@ -27,6 +28,7 @@ end
 
 -- Resolve the actual map or an unambiguous source area, never the quest category.
 function D.TaskInstance(position,state,data,areaId)
+    if position and position.areaOnly then areaId,position=position.sourceAreaId or areaId,nil end
     local catalog=A.DungeonCatalog
     if not catalog or not data.maps then return end
     local hbd=A.Navigation and A.Navigation.hbd
@@ -100,6 +102,19 @@ end
 
 function D.TaskApproach(action,state,data)
     if not action or action.startItemId or action.position and action.position.startItemId then return action end
+    local point=action.position
+    local info=point and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
+    if point and point.areaOnly then
+        local guide={};for k,v in pairs(action) do guide[k]=v end
+        guide.position,guide.areaId=nil,point.sourceAreaId or action.areaId
+        if point.entityName and action.kind=="turnin" then
+            guide.text="寻找「"..point.entityName.."」交付任务。"
+        else
+            guide.text=action.text or "按任务日志继续任务。"
+        end
+        if info and info.name and point.sourceAreaId then guide.text=info.name.." · "..guide.text end
+        action=guide
+    end
     local pvp=D.TaskPvP(action.position,state,data,action.areaId)
     if pvp then
         if state.inInstance and state.instanceId==pvp.instanceId then return action end
@@ -107,15 +122,15 @@ function D.TaskApproach(action,state,data)
             text=(state.inInstance and "离开当前实例后，" or "").."通过游戏战场界面或战场军官排队进入「"..pvp.title.."」，进入后继续任务。"}
     end
     local currentPvP=state.inInstance and pvpFor(state) and pvpFor(state)[state.instanceId]
-    if currentPvP and action.position then
+    local knownOutdoor=point and (not point.areaOnly or point.sourceAreaId)
+    if currentPvP and knownOutdoor then
         return {kind="pvpLeave",questId=action.questId,title=action.title,
             text="离开「"..currentPvP.title.."」后，"..(action.kind=="turnin" and "前往任务交付者交付任务。" or "继续野外任务。")}
     end
     if not A.DungeonCatalog then return action end
     local instance=D.TaskInstance(action.position,state,data,action.areaId)
-    local info=action.position and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(action.position.map)
-    if not instance and state.inInstance and info and (info.mapType==2 or info.mapType==3) then
-        local destination=action.position.entityName or info.name or "任务目的地"
+    if not instance and state.inInstance and knownOutdoor and info and (info.mapType==2 or info.mapType==3) then
+        local destination=point.entityName or info.name or "任务目的地"
         return {kind="dungeonLeave",questId=action.questId,title=action.title,
             text="离开当前副本后，前往"..destination..(action.kind=="turnin" and "交付任务。" or "继续任务。")}
     end
@@ -163,22 +178,8 @@ function D.TaskApproach(action,state,data)
         end
     end
     nearest=fastest or nearest
-    if not nearest and instance.entryArea and data.maps[instance.entryArea] then
-        local map=data.maps[instance.entryArea]
-        local info=C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(map)
-        if info then
-            return {kind="dungeonEnter",questId=action.questId,title=action.title,
-                position={map=map,x=0.5,y=0.5,approximate=true,label=info.name or instance.title},text=instance.entryHint}
-        end
-    end
-    if not nearest then
-        if action.position then return action end
-        local guide={};for k,v in pairs(action) do guide[k]=v end
-        guide.text="前往"..instance.title.."入口，进入副本后继续任务。"
-        return guide
-    end
     return {kind="dungeonEnter",questId=action.questId,title=action.title,position=nearest,
-        text="前往"..instance.title.."入口，进入副本后继续任务。"}
+        text=instance.entryHint or "前往"..instance.title.."入口，进入副本后继续任务。"}
 end
 
 function D.TaskEntryIssue(choice,state,data,options)
@@ -556,7 +557,7 @@ function D.TaskBatchWaitPlan(plan,state,data,options)
         if step.targetKind=="item" and step.need then step.itemGain=math.max(0,step.need-(step.have or 0)) end
         local map=step.position and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(step.position.map)
         local instance=D.TaskInstance(step.position,state,data,step.areaId) or D.TaskPvP(step.position,state,data,step.areaId)
-        if step.kind=="objective" and (kind=="monster" or kind=="item") and not choice.lowValue and
+        if step.kind=="objective" and step.position and not step.position.areaOnly and (kind=="monster" or kind=="item") and not choice.lowValue and
             not choice.entryBlocked and not choice.requireCheck and not (A.TaskGuide and A.TaskGuide.ItemGainBlocked(step,state)) and map and (map.mapType==2 or map.mapType==3) and not instance and entry.position and speed>0 then
             local outward=A.Navigation:Distance(state.position,step.position)
             local back=A.Navigation:Distance(step.position,entry.position)

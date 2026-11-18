@@ -474,7 +474,7 @@ function G.PlanDungeonTarget(plan,source,state,data)
         action.text=boss.title.."已击败，先拾取装备。未获得时可结束本轮，或出本重置后再刷。"
     end
     action=A.Dungeon.TaskApproach(action,state,data)
-    if action.kind=="dungeonEnter" then action.text="前往"..d.title.."，目标装备："..name.."；首领："..boss.title.."。" end
+    if action.kind=="dungeonEnter" then action.text=action.text.." 击败"..boss.title.."，拾取「"..name.."」。" end
     plan.best,plan.gearTargetBlocked=nil,nil
     plan.gearPlan,plan.preferenceApplied=true,true
     plan.fallback=action
