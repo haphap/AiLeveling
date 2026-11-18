@@ -363,12 +363,13 @@ test("窗口锁定阻止拖动且主详情分别保存位置并恢复",function(
     T.resize.scripts.OnMouseDown(nil,"LeftButton");eq(U.frame.sizing,"BOTTOMRIGHT");eq(B.settings.trackerDocked,false)
     U.frame:SetSize(420,400);T.resize.scripts.OnUpdate()
     eq(U.frame.width,420);eq(U.frame.height,400)
-    eq(T.content.width,420-2*U.metrics.padding);eq(U.title.width,T.content.width-U.metrics.scrollbar-U.metrics.indent)
+    eq(T.content.width,420-2*U.metrics.padding);eq(U.title.width,T.content.width-U.metrics.indent-U.metrics.gap)
     T.resize.scripts.OnMouseUp();eq(T.resizing,nil);eq(T.resize.scripts.OnUpdate,nil)
     eq(B.settings.trackerWidth,420);eq(B.settings.trackerHeight,400);eq(B.settings.position[3],25)
     U:RenderTracker();eq(U.frame.width,420);eq(U.frame.height,400)
     assert(T.currentChild.height>T.currentScroll.height)
-    T.currentScroll:SetVerticalScroll(30);U:LayoutTracker();eq(T.currentScroll.offset,30)
+    local offset=math.min(30,T.currentChild.height-T.currentScroll.height)
+    T.currentScroll:SetVerticalScroll(offset);U:LayoutTracker();eq(T.currentScroll.offset,offset)
     U.folded=true;U:LayoutTracker();assert(U.frame.height<400);eq(T.resize.shown,false)
     U.folded=false;U:LayoutTracker();eq(U.frame.height,400);eq(T.resize.shown,true)
     B:NormalizeSettings(B.settings);eq(B.settings.trackerWidth,420);eq(B.settings.trackerHeight,400)
@@ -503,7 +504,7 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     eq(Q.targetButton.shown,true)
     eq(Q.targetButton.parent,UIParent);eq(Q.targetButton.text,nil);eq(Q.targetButton.status,nil)
     eq(Q.targetButton.template,"SecureActionButtonTemplate")
-    local anchor=B.UI.tracker.stepIcon
+    local anchor=B.UI.tracker.actionIcon
     anchor.centerX,anchor.centerY=500,600;anchor:SetSize(18,18);B.UI.frame.scale=1.5
     Q:LayoutTarget();eq(Q.targetButton.point[2],UIParent)
     eq(Q.targetButton.point[4],750);eq(Q.targetButton.point[5],900);eq(Q.targetButton.width,36)

@@ -607,42 +607,11 @@ local function noticeLine(parent,size,color)
     return line
 end
 
-function UI.ClassReminders(state,plan)
-    local quests,other={},{}
-    if A.TaskGuide and plan.revision==state.revision then
-        for _,choice in ipairs(plan.taskChoices or {}) do
-            local id=choice.questId
-            if id and (choice.unlock or not (state.quests or {})[id]) and not (state.completed or {})[id] and
-                not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] and
-                not choice.lowValue and not choice.revisitLevel and not choice.entryBlocked and not choice.acceptBlocked and not choice.requireCheck then
-                if choice.unlock or A.TaskGuide.IsClassQuest(A.Data:GetQuest(id),state,A.Data) then
-                    local list=choice.unlock and quests or other
-                    list[#list+1]=choice
-                end
-            end
-        end
-    end
-    for _,choice in ipairs(other) do quests[#quests+1]=choice end
-    return {spells=state.trainableSpells or {},quests=quests}
-end
-
 function UI:ClassReminderMenu(owner)
-    local plan=A.plan or {}
-    local reminder=self.ClassReminders(A.state,plan)
     GameTooltip:Hide()
     self:Menu(owner,function(_,menu)
-        for _,spell in ipairs(reminder.spells) do
+        for _,spell in ipairs(A.state.trainableSpells or {}) do
             menu:CreateButton(spell.name.." · "..spell.level.."级",function() SetItemRef("spell:"..spell.id,spell.link,"LeftButton") end)
-        end
-        for _,choice in ipairs(reminder.quests) do
-            if choice.unlock then
-                local choose=menu:CreateButton("切换任务线："..choice.unlock.title,function()
-                    local ok,why=A.Selection:Lock(choice,plan.revision)
-                    if not ok then A:Message(why) end
-                end)
-                choose:SetEnabled(A.Selection.CanChoose(choice,plan.revision)==true)
-            end
-            menu:CreateButton((choice.unlock and "查看：" or "待接：")..choice.title,function() self:QuestClick(choice.questId,"LeftButton") end)
         end
         menu:CreateButton("查看职业任务",function() self.details:Show();self:SelectTab(9) end)
     end)
@@ -752,7 +721,7 @@ function UI:TrackerMenu(owner)
         end
         if owner==self.frame or not id and not owner.dungeonId then
             menu:CreateButton(A.char.paused and "继续引导" or "暂停引导",function() A:TogglePause() end)
-            menu:CreateButton("详细面板",function() self:ToggleDetails() end)
+            menu:CreateButton("详细面板"..(self.tracker.experience:IsShown() and "" or " · "..(self.tracker.experience:GetText() or "")),function() self:ToggleDetails() end)
             if next(A.char.ignoredGear or {}) then
                 menu:CreateButton("恢复装备提醒",function() A.char.ignoredGear={};self:RenderTracker() end)
             end
@@ -885,8 +854,9 @@ function UI:CreateTracker()
     end)
     T.resize:SetScript("OnLeave",function() GameTooltip:Hide() end)
     T.content=CreateFrame("Frame",nil,f);T.content:SetPoint("TOPLEFT",spacing.padding,-spacing.padding)
-    T.zone=text(T.content,"body",palette.white);T.zone:SetPoint("TOPLEFT",0,0)
-    T.zone:SetText("当前行程");T.zone:SetMaxLines(1)
+    T.location=text(T.content,self.daylight and "heading" or "title",palette.white)
+    T.location:SetPoint("TOPLEFT");T.location:SetMaxLines(1)
+    T.area=text(T.content,"caption",palette.muted);T.area:SetMaxLines(1)
     T.experience=text(T.content,"caption",palette.muted);T.experience:SetJustifyH("RIGHT")
     T.collapse=self:Button(T.content,"−",20,function() self.folded=not self.folded;self:LayoutTracker() end,"body")
     T.menu=self:Button(T.content,"≡",22,function() self:TrackerMenu(f) end,"body")
@@ -951,11 +921,9 @@ function UI:CreateTracker()
     T.dungeons:SetScript("OnLeave",function() GameTooltip:Hide() end)
     T.card=CreateFrame("Frame",nil,T.content)
     T.actionIcon=T.card:CreateTexture(nil,"ARTWORK")
-    T.stepIcon=T.card:CreateTexture(nil,"ARTWORK")
+    T.currentMark=T.card:CreateTexture(nil,"ARTWORK")
     T.primaryLabel=text(T.card,"caption",palette.muted)
     self.title=text(T.card,"task",palette.gold)
-    T.location=text(T.card,self.daylight and "heading" or "title",palette.white)
-    T.area=text(T.card,"caption",palette.muted)
     T.questTitle=CreateFrame("Button",nil,T.card);T.questTitle:SetAllPoints(self.title)
     T.questTitle:RegisterForClicks("LeftButtonUp","RightButtonUp")
     T.questTitle:SetScript("OnClick",function(_,mouse)
@@ -966,6 +934,7 @@ function UI:CreateTracker()
     T.questTitle:SetScript("OnLeave",function() GameTooltip:Hide() end)
     T.currentScroll=CreateFrame("ScrollFrame",nil,T.card,"UIPanelScrollFrameTemplate")
     T.currentChild=CreateFrame("Frame",nil,T.currentScroll);T.currentScroll:SetScrollChild(T.currentChild)
+    T.career:SetParent(T.currentChild)
     T.gear=noticeLine(T.currentChild,"caption",palette.gearText)
     T.gear.hint="右键换装 · 点击 × 忽略这件"
     T.gear:EnableMouse(true);T.gear.text:SetMaxLines(1)
@@ -1016,6 +985,7 @@ function UI:CreateTracker()
     T.journeyLabel=text(T.journeyHeader,"caption",palette.muted);T.journeyLabel:SetPoint("LEFT");T.journeyLabel:SetText("行程")
     T.journeySummary=text(T.journeyHeader,"caption",palette.white);T.journeySummary:SetPoint("RIGHT");T.journeySummary:SetJustifyH("RIGHT")
     T.journeyHeader:SetScript("OnClick",function() T.journeyClosed=not T.journeyClosed;self:LayoutTracker() end)
+    T.journeyClosed=true
     T.journeyRows={}
     T.questTitle.progress=self.body
     T.thenText=text(T.currentChild,"caption",palette.muted)
@@ -1036,6 +1006,8 @@ function UI:CreateTracker()
     T.alongLabel=text(T.currentChild,"caption",palette.muted)
     T.alongScroll=CreateFrame("Frame",nil,T.currentChild)
     T.alongChild=CreateFrame("Frame",nil,T.alongScroll);T.alongChild:SetPoint("TOPLEFT")
+    T.queueRule=T.currentChild:CreateTexture(nil,"BACKGROUND")
+    T.alongRule=T.currentChild:CreateTexture(nil,"BACKGROUND")
     T.rows={}
     T.progress=CreateFrame("Frame",nil,f);T.progress:SetPoint("BOTTOMLEFT",spacing.padding,spacing.padding);T.progress:SetPoint("BOTTOMRIGHT",-28,spacing.padding)
     T.progress:SetHeight(14);T.progress:EnableMouse(true)
@@ -1049,6 +1021,7 @@ function UI:CreateTracker()
     if self.daylight then
         T.progressBar=self.daylight.Bar(T.progress);T.progressBar:SetMinMaxValues(0,1)
     end
+    T.progressLabel=text(T.progress,"caption",palette.muted);T.progressLabel:SetPoint("LEFT");T.progressLabel:SetText("当前任务进度")
     T.progressText=text(T.progress,"caption",palette.muted);T.progressText:SetPoint("RIGHT");T.progressText:SetWidth(40);T.progressText:SetJustifyH("RIGHT")
     local nav=CreateFrame("Frame","AiLevelingNavigation",UIParent)
     self.navFrame=nav;nav:SetSize(420,90);nav:SetPoint("CENTER",UIParent,"CENTER",0,-110)
@@ -1102,10 +1075,12 @@ local function renderObjectives(owner,parent,pool,objectives,sharedIndex)
             if stage.kind=="objective" and stage.objectiveIndex==(sharedIndex or i) then purchase=purchase or stage.purchase;break end
         end
         row.purchase=not done and (not row.known or have<need) and UI.PurchaseText(purchase) or nil
-        row.text:SetText((objective.text or "任务目标"):gsub("%s*%d+%s*/%s*%d+",""):gsub("^%s+",""))
+        local label=objective.text or "任务目标"
+        if row.known then label=label:gsub("%s*%d+%s*/%s*%d+",""):gsub("^%s+","") end
+        row.text:SetText(label)
         row.purchaseText:SetText(row.purchase and ("可购买 · "..(purchase.name or ("商人 #"..purchase.npcId))) or "")
         row.purchaseText:SetShown(row.purchase~=nil)
-        row.text:SetTextColor(unpack(done and (UI.daylight and palette.green or palette.muted) or UI.daylight and palette.white or objective.type=="item" and palette.purple or palette.blue))
+        row.text:SetTextColor(unpack(done and palette.muted or UI.daylight and palette.white or objective.type=="item" and palette.purple or palette.blue))
         row.icon:SetTexture(media.."hud-"..(done and "turnin" or objective.type=="item" and "collect" or "objective")..".tga")
         row.icon:SetVertexColor(unpack(done and palette.green or objective.type=="item" and palette.purple or palette.gold))
         row.count:SetText(row.known and string.format("%d/%d",have,need) or "")
@@ -1139,6 +1114,14 @@ local function layoutObjectives(pool,width,scale)
         end
     end
     return y
+end
+
+function UI:DetailObjectives(frame,choice,goals,width)
+    frame.candidate,frame.questId,frame.revision=choice,choice.questId,A.plan and A.plan.revision
+    frame.deferred=(A.state.skipped or {})[choice.questId] or (A.state.chainDeferred or {})[choice.questId]
+    frame.rows=frame.rows or {}
+    renderObjectives(frame,frame,frame.rows,goals)
+    return layoutObjectives(frame.rows,width,self:FontScale())
 end
 
 function UI:TrackerRow(index,parent)
@@ -1253,7 +1236,7 @@ function UI:RenderJourney(journey,dynamic)
             row.icon:SetVertexColor(unpack(i==1 and palette.gold or palette.blue))
             row.title:SetText(step.title);row.title:SetTextColor(unpack(i==1 and palette.gold or palette.white))
             row.detail:SetText(step.detail or "")
-            row:SetShown(not T.journeyClosed)
+            row:SetShown(i==1 or not T.journeyClosed)
         end
         row.time:SetText(step.task and "" or clockText(step.seconds))
     end
@@ -1326,24 +1309,15 @@ function UI:RenderTracker(along)
     trackerMoved(T,state.position)
     T.model,T.action,T.lastStep=model,action,navigationStep(action)
     self:UpdateNearby(model.along)
-    local reminder=self.ClassReminders(state,plan)
-    local notice={}
-    T.career.heading:SetText("")
-    if (#reminder.spells>0 or #reminder.quests>0) and A.char.classReminderLevel~=state.level then
-        T.career.heading:SetText(self:Icon("class",12).." "..state.level.."级 · 职业成长")
-        if #reminder.spells>0 then
-            local links={};for i=1,math.min(2,#reminder.spells) do links[i]=reminder.spells[i].link end
-            notice[#notice+1]="可学："..table.concat(links,"、")..(#reminder.spells>2 and (" 等"..#reminder.spells.."项") or "")
-        end
-        local quest=reminder.quests[1]
-        if quest then
-            notice[#notice+1]=(quest.unlock and (A.TaskGuide.UnlockText(quest.unlock).."：") or "待接：").."|cff"..UI.hex.accept.."|Hquest:"..quest.questId..":"..(quest.level or state.level).."|h["..quest.title.."]|h|r"..
-                (#reminder.quests>1 and (" 等"..#reminder.quests.."项") or "")
-        end
+    local spells=state.trainableSpells or {}
+    local links={}
+    if #spells>0 and A.char.classReminderLevel~=state.level then
+        T.career.heading:SetText(self:Icon("class",12).." "..state.level.."级 · 可学技能")
+        for i=1,math.min(2,#spells) do links[i]=spells[i].link end
     end
-    T.career.text:SetText(table.concat(notice,"\n"))
+    T.career.text:SetText(#links>0 and table.concat(links,"、")..(#spells>2 and (" 等"..#spells.."项") or "") or "")
     local training=state.serviceStop and state.serviceStop.kind=="train"
-    T.career.train:SetShown(#reminder.spells>0)
+    T.career.train:SetShown(#spells>0)
     T.career.train.text:SetText(training and "已安排" or "去训练")
     T.career.train:SetEnabled(not training and not state.inInstance and not state.dead and not state.onTaxi)
     local dungeons=self.DungeonReminders(state,plan)
@@ -1377,19 +1351,19 @@ function UI:RenderTracker(along)
     local current=(state.quests or {})[model.questId]
     local count=0;for _ in pairs(state.quests or {}) do count=count+1 end
     T.experience:SetText(A.char.paused and "已暂停" or "已接 "..count.." 项")
-    T.stepIcon:SetTexture(media.."hud-target.tga")
-    T.stepIcon:SetShown(model.questId~=nil)
+    T.currentMark:SetColorTexture(self:Accent())
+    T.currentMark:SetShown(model.questId~=nil)
     T.actionIcon:SetTexture(media..(({accept="hud-accept",objective="hud-objective",turnin="hud-turnin"})[model.kind] or "compass")..".tga")
     self.title:SetText(questTitle(model.questId,model.title))
     self.title:SetTextColor(unpack(model.kind=="turnin" and palette.green or self.daylight and palette.white or model.kind=="accept" and palette.blue or palette.gold))
     local place,name,area
     if model.kind and not A.error then place,name,area=destination(action) end
-    T.location:SetText(name and (self:Icon("hud-location",18).." "..name) or "")
+    T.location:SetText(name and (self:Icon("hud-location",18).." "..name) or "当前行程")
     T.actionIcon:SetVertexColor(unpack(model.kind=="turnin" and palette.green or model.kind=="accept" and palette.blue or palette.gold))
     T.area:SetText(area or "")
     local nextStep,nextId,nextTitle=model.nextStep,model.nextId,model.nextTitle
-    T.primaryLabel:SetText(model.kind=="turnin" and "本次交付" or model.kind=="accept" and "先接任务" or "主要目标")
-    if model.unlock then T.primaryLabel:SetText(A.TaskGuide.UnlockText(model.unlock)) end
+    T.primaryLabel:SetText(model.questId and (model.kind=="objective" and current and not current.ready and "进行中" or self.QuestStatus(state,model.questId,plan)) or "")
+    T.primaryLabel:SetTextColor(unpack(model.kind=="turnin" and palette.green or model.kind=="accept" and palette.blue or palette.muted))
     local nextRow=T.thenButton
     local nextQuest=(state.quests or {})[nextId]
     local taskStep=nextStep and (nextStep.kind=="accept" or nextStep.kind=="objective" or nextStep.kind=="turnin")
@@ -1492,6 +1466,7 @@ function UI:RenderTracker(along)
         not (action.position and action.position.sourceKind=="vendor") then
         guidance=model.deliverySummary or model.hint or ""
     end
+    if model.unlock then guidance=A.TaskGuide.UnlockText(model.unlock)..(guidance~="" and (" · "..guidance) or "") end
     self.body:SetText(guidance)
     self.body:SetTextColor(unpack(model.kind=="turnin" and palette.green or palette.muted))
     T.questTitle.detail=(place and (place.."\n") or "")..table.concat(lines,"\n")
@@ -1590,11 +1565,21 @@ function UI:LayoutTracker()
     T.resize:SetShown(not collapsed and not A.settings.lockWindow and not InCombatLockdown())
     T.content:SetWidth(width);T.card:SetWidth(width);T.queuePanel:SetWidth(width)
     T.header:SetHeight(29*scale)
-    T.zone:SetWidth(width-138*scale)
     T.menu:ClearAllPoints();T.menu:SetPoint("TOPRIGHT",-(spacing.hit+spacing.tight)*scale,2);T.menu:SetSize(spacing.hit*scale,spacing.hit*scale)
     T.collapse:ClearAllPoints();T.collapse:SetPoint("TOPRIGHT",0,2);T.collapse:SetSize(spacing.hit*scale,spacing.hit*scale)
     T.collapse.text:SetText(collapsed and "+" or "−")
-    T.experience:ClearAllPoints();T.experience:SetPoint("TOPRIGHT",-62*scale,-3);T.experience:SetWidth(64*scale);T.experience:SetMaxLines(1)
+    local headerRoom=width-(2*spacing.hit+2*spacing.tight)*scale
+    T.location:SetWidth(0);T.area:SetWidth(0);T.experience:SetWidth(0)
+    local placeWidth=math.ceil(T.location:GetStringWidth())
+    local areaWidth=math.ceil(T.area:GetStringWidth())
+    local gap=spacing.gap*scale
+    local showArea=(T.area:GetText() or "")~="" and placeWidth+gap+areaWidth<=headerRoom
+    local used=math.min(headerRoom,placeWidth)+(showArea and gap+areaWidth or 0)
+    T.location:SetWidth(math.max(1,math.min(headerRoom,placeWidth)))
+    T.area:ClearAllPoints();T.area:SetPoint("TOPLEFT",placeWidth+gap,-3*scale);T.area:SetWidth(math.max(1,areaWidth));T.area:SetShown(showArea)
+    T.experience:ClearAllPoints();T.experience:SetPoint("TOPRIGHT",headerRoom-width,-3*scale)
+    local countWidth=math.ceil(T.experience:GetStringWidth())
+    T.experience:SetWidth(math.max(1,countWidth));T.experience:SetShown(used+gap+countWidth<=headerRoom)
     local function layoutRow(row,y)
         row:SetWidth(inner)
         row.icon:ClearAllPoints();row.icon:SetPoint("TOPLEFT",0,-2);row.icon:SetSize(16*scale,16*scale)
@@ -1613,10 +1598,10 @@ function UI:LayoutTracker()
     end
     local cardTop=36*scale
     T.divider:ClearAllPoints();T.divider:SetPoint("TOPLEFT",0,-cardTop+7);T.divider:SetSize(width,1)
-    T.career:ClearAllPoints();T.career:SetPoint("TOPLEFT",T.content,"TOPLEFT",0,-cardTop);T.career:SetWidth(width)
-    T.career.heading:ClearAllPoints();T.career.heading:SetPoint("TOPLEFT");T.career.heading:SetWidth(width)
+    T.career:SetWidth(inner)
+    T.career.heading:ClearAllPoints();T.career.heading:SetPoint("TOPLEFT");T.career.heading:SetWidth(inner)
     local noticeHeight=T.career.heading:GetStringHeight()+spacing.tight*scale
-    T.career.text:ClearAllPoints();T.career.text:SetPoint("TOPLEFT",indent,-noticeHeight);T.career.text:SetWidth(width-indent)
+    T.career.text:ClearAllPoints();T.career.text:SetPoint("TOPLEFT",indent,-noticeHeight);T.career.text:SetWidth(bodyWidth)
     noticeHeight=noticeHeight+T.career.text:GetStringHeight()+spacing.tight*scale
     local noticeX=indent
     for _,button in ipairs({T.career.view,T.career.train,T.career.later}) do
@@ -1625,65 +1610,52 @@ function UI:LayoutTracker()
         if button:IsShown() then noticeX=noticeX+buttonWidth+8*scale end
     end
     T.career:SetHeight(noticeHeight+24*scale);T.career:SetShown(not collapsed and (T.career.text:GetText() or "")~="")
-    if T.career:IsShown() then cardTop=cardTop+T.career:GetHeight()+spacing.padding*scale end
-    T.dungeons:ClearAllPoints();T.dungeons:SetPoint("TOPLEFT",T.content,"TOPLEFT",0,-cardTop);T.dungeons:SetWidth(width)
-    T.dungeons.heading:ClearAllPoints();T.dungeons.heading:SetPoint("TOPLEFT");T.dungeons.heading:SetWidth(width)
+    local batch=A.char.taskBatch
+    local dungeonParent=batch and T.content or T.currentChild
+    if dungeonParent~=T.dungeonParent then T.dungeons:SetParent(dungeonParent);T.dungeonParent=dungeonParent end
+    T.dungeons:SetWidth(inner)
+    T.dungeons.heading:ClearAllPoints();T.dungeons.heading:SetPoint("TOPLEFT");T.dungeons.heading:SetWidth(inner)
     local dungeonTop=T.dungeons.heading:GetStringHeight()+spacing.tight*scale
-    T.dungeons.text:ClearAllPoints();T.dungeons.text:SetPoint("TOPLEFT",0,-dungeonTop);T.dungeons.text:SetWidth(width)
+    T.dungeons.text:ClearAllPoints();T.dungeons.text:SetPoint("TOPLEFT",0,-dungeonTop);T.dungeons.text:SetWidth(inner)
     T.dungeons:SetHeight(dungeonTop+T.dungeons.text:GetStringHeight())
     T.dungeons:SetShown(not collapsed and (A.char.taskBatch~=nil or T.dungeons.dismissedLevel~=A.state.level) and (T.dungeons.text:GetText() or "")~="")
-    if T.dungeons:IsShown() then cardTop=cardTop+T.dungeons:GetHeight()+spacing.padding*scale end
+    if batch and T.dungeons:IsShown() then
+        T.dungeons:ClearAllPoints();T.dungeons:SetPoint("TOPLEFT",0,-cardTop)
+        cardTop=cardTop+T.dungeons:GetHeight()+gap
+    end
     T.card:ClearAllPoints();T.card:SetPoint("TOPLEFT",0,-cardTop)
-    local top=0
-    T.area:SetShown((T.area:GetText() or "")~="")
-    local areaWidth=T.area:IsShown() and math.min(math.ceil(T.area:GetStringWidth()),width*0.4) or 0
-    T.area:ClearAllPoints();T.area:SetPoint("TOPRIGHT",0,-6*scale)
-    T.area:SetWidth(math.max(1,areaWidth));T.area:SetJustifyH("RIGHT")
-    T.location:ClearAllPoints();T.location:SetPoint("TOPLEFT",0,0)
-    T.location:SetWidth(width-(areaWidth>0 and areaWidth+spacing.padding*scale or 0))
-    T.location:SetShown((T.location:GetText() or "")~="")
-    if T.location:IsShown() then top=T.location:GetStringHeight()+4 end
-    if T.area:IsShown() then top=math.max(top,T.area:GetStringHeight()+6*scale+spacing.tight) end
-    if top>0 then top=top+spacing.gap*scale end
-    T.primaryLabel:ClearAllPoints();T.primaryLabel:SetPoint("TOPLEFT",0,-top);T.primaryLabel:SetWidth(inner)
-    T.primaryLabel:SetShown(not collapsed and T.model~=nil and T.model.kind~=nil)
-    if T.primaryLabel:IsShown() then top=top+24*scale end
-    T.actionIcon:ClearAllPoints();T.actionIcon:SetPoint("TOPLEFT",0,-top-2);T.actionIcon:SetSize(16*scale,16*scale)
-    T.stepIcon:ClearAllPoints();T.stepIcon:SetPoint("TOPRIGHT",-2,-top-2);T.stepIcon:SetSize(15*scale,15*scale)
-    self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT",indent,-top);self.title:SetWidth(bodyWidth);self.title:SetMaxLines(2)
-    top=top+math.max(20*scale,self.title:GetStringHeight())+6
+    T.primaryLabel:SetShown((T.primaryLabel:GetText() or "")~="")
+    T.actionIcon:ClearAllPoints();T.actionIcon:SetPoint("TOPLEFT",gap,-2);T.actionIcon:SetSize(16*scale,16*scale)
+    self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT",indent+gap,0)
+    local titleWidth=width-indent-gap
+    if T.primaryLabel:IsShown() then
+        self.title:SetWidth(0)
+        titleWidth=math.min(math.ceil(self.title:GetStringWidth()),titleWidth-math.ceil(T.primaryLabel:GetStringWidth())-gap)
+        T.primaryLabel:ClearAllPoints();T.primaryLabel:SetPoint("TOPLEFT",indent+2*gap+titleWidth,-3*scale)
+    end
+    self.title:SetWidth(math.max(1,titleWidth));self.title:SetMaxLines(2)
+    local top=math.max(20*scale,self.title:GetStringHeight())+gap
+    T.currentMark:ClearAllPoints();T.currentMark:SetPoint("TOPLEFT",0,0);T.currentMark:SetSize(2*scale,top-gap)
     T.currentScroll:SetWidth(inner);T.currentChild:SetWidth(inner)
-    local noticeOffset=0
-    local scrollNotices=not collapsed and cardTop+top+80*scale>available
-    local noticeParent=scrollNotices and T.currentChild or T.content
-    if T.noticeParent~=noticeParent then
-        T.career:SetParent(noticeParent);T.dungeons:SetParent(noticeParent);T.noticeParent=noticeParent
-    end
-    if scrollNotices then
-        for _,notice in ipairs({T.career,T.dungeons}) do
-            notice:ClearAllPoints();notice:SetPoint("TOPLEFT",0,-noticeOffset)
-            if notice:IsShown() then noticeOffset=noticeOffset+notice:GetHeight()+spacing.padding*scale end
-        end
-        cardTop=36*scale
-        T.card:ClearAllPoints();T.card:SetPoint("TOPLEFT",0,-cardTop)
-    end
-    T.reward:ClearAllPoints();T.reward:SetPoint("TOPLEFT",indent,-noticeOffset);T.reward:SetWidth(bodyWidth)
+    T.reward:ClearAllPoints();T.reward:SetPoint("TOPLEFT",indent,0);T.reward:SetWidth(bodyWidth)
     local rewardInset=T.reward.icon:IsShown() and 14*scale or 0
     T.reward.icon:ClearAllPoints();T.reward.icon:SetPoint("TOPLEFT",0,-2*scale);T.reward.icon:SetSize(11*scale,11*scale)
     T.reward.text:ClearAllPoints();T.reward.text:SetPoint("TOPLEFT",rewardInset,0);T.reward.text:SetWidth(bodyWidth-rewardInset)
     T.reward:SetHeight(T.reward.text:GetStringHeight()+8*scale);T.reward:SetShown((T.reward.text:GetText() or "")~="")
-    local childHeight=noticeOffset+(T.reward:IsShown() and T.reward:GetHeight() or 0)
+    local childHeight=T.reward:IsShown() and T.reward:GetHeight() or 0
     T.objectiveFrame:ClearAllPoints();T.objectiveFrame:SetPoint("TOPLEFT",indent,-childHeight);T.objectiveFrame:SetWidth(bodyWidth)
     local goals=layoutObjectives(T.objectives,bodyWidth,scale)
     T.objectiveFrame:SetHeight(math.max(1,goals));childHeight=childHeight+goals
-    local queueHeight,alongHeight,alongCount=0,0,0
+    local queueHeight,alongHeight,alongCount,pickups=0,0,0,0
     for i,item in ipairs(T.model and T.model.rows or {}) do
         local row=T.rows[i]
         local current=item.questId and item.questId==T.model.questId
         row:SetShown(not current)
         if not current then
             if row.atStop then childHeight=childHeight+layoutRow(row,childHeight+4)+4
-            elseif row.along then alongHeight=alongHeight+layoutRow(row,alongHeight);alongCount=alongCount+1
+            elseif row.along then
+                alongHeight=alongHeight+layoutRow(row,alongHeight);alongCount=alongCount+1
+                if item.kind=="accept" then pickups=pickups+1 end
             else queueHeight=queueHeight+layoutRow(row,queueHeight) end
         end
     end
@@ -1709,7 +1681,7 @@ function UI:LayoutTracker()
     T.journeySummary:SetText((T.journeyTime or "")..(T.journeyClosed and "  +" or "  −"))
     local journeyHeight=28*scale
     for i,row in ipairs(T.journeyRows) do
-        local shown=not T.journeyClosed and T.model and T.model.journey and T.model.journey.steps[i]~=nil
+        local shown=(i==1 or not T.journeyClosed) and T.model and T.model.journey and T.model.journey.steps[i]~=nil
         row:SetShown(shown==true)
         if shown then
             row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-journeyHeight);row:SetWidth(inner)
@@ -1749,7 +1721,7 @@ function UI:LayoutTracker()
     T.queuePanel:SetHeight(visible);T.queuePanel:SetShown(not collapsed and queueHeight>0)
     bottom=bottom+(not collapsed and queueHeight>0 and visible+4 or 0)
     T.alongLabel:ClearAllPoints();T.alongLabel:SetPoint("TOPLEFT",0,-bottom);T.alongLabel:SetWidth(inner)
-    T.alongLabel:SetText("顺路可做 · "..alongCount);T.alongLabel:SetShown(not collapsed and alongCount>0)
+    T.alongLabel:SetText((pickups==alongCount and "顺路可接" or pickups==0 and "顺路可做" or "顺路机会").." · "..alongCount);T.alongLabel:SetShown(not collapsed and alongCount>0)
     if T.alongLabel:IsShown() then bottom=bottom+24*scale end
     T.alongScroll:ClearAllPoints();T.alongScroll:SetPoint("TOPLEFT",0,-bottom);T.alongScroll:SetWidth(inner)
     T.alongChild:SetWidth(inner);T.alongChild:SetHeight(math.max(1,alongHeight))
@@ -1757,21 +1729,33 @@ function UI:LayoutTracker()
     local alongVisible=alongHeight
     T.alongScroll:SetHeight(math.max(1,alongVisible));T.alongScroll:SetShown(not collapsed and alongCount>0)
     if T.alongScroll:IsShown() then bottom=bottom+alongVisible+spacing.gap*scale end
+    for rule,label in pairs({[T.queueRule]=T.queueLabel,[T.alongRule]=T.alongLabel}) do
+        rule:ClearAllPoints();rule:SetPoint("BOTTOMLEFT",label,"TOPLEFT",0,2*scale)
+        rule:SetSize(inner,1);rule:SetColorTexture(unpack(palette.line));rule:SetShown(label:IsShown())
+    end
     T.region:ClearAllPoints();T.region:SetPoint("TOPLEFT",0,-bottom);T.region:SetWidth(inner)
     T.region.text:ClearAllPoints();T.region.text:SetPoint("TOPLEFT");T.region.text:SetWidth(inner);T.region.text:SetMaxLines(1)
     T.region.summary:ClearAllPoints();T.region.summary:SetPoint("TOPLEFT",indent,-20*scale);T.region.summary:SetWidth(bodyWidth)
     local regionHeight=20*scale+T.region.summary:GetStringHeight()+spacing.gap*scale
     T.region:SetHeight(regionHeight);T.region:SetShown(not collapsed and T.region.region~=nil)
     if T.region:IsShown() then bottom=bottom+regionHeight end
+    for _,notice in ipairs({T.career,T.dungeons}) do
+        if notice:IsShown() and (notice~=T.dungeons or not batch) then
+            notice:ClearAllPoints();notice:SetPoint("TOPLEFT",0,-bottom)
+            bottom=bottom+notice:GetHeight()+gap
+        end
+    end
     T.progress:SetShown(not collapsed and T.progressRatio~=nil)
-    local progressWidth=width-62*scale
-    T.progressText:SetWidth(40*scale)
-    T.progressBack:ClearAllPoints();T.progressBack:SetPoint("LEFT",0,0);T.progressBack:SetSize(progressWidth,3)
-    T.progressFill:ClearAllPoints();T.progressFill:SetPoint("LEFT",0,0);T.progressFill:SetSize(math.max(1,progressWidth*(T.progressRatio or 0)),3)
+    local labelWidth=40*scale
+    T.progressText:SetWidth(labelWidth);T.progressText:SetMaxLines(1)
+    local barStart=math.ceil(T.progressLabel:GetStringWidth())+gap
+    local progressWidth=math.max(1,width-24*scale-labelWidth-barStart)
+    T.progressBack:ClearAllPoints();T.progressBack:SetPoint("LEFT",barStart,0);T.progressBack:SetSize(progressWidth,3)
+    T.progressFill:ClearAllPoints();T.progressFill:SetPoint("LEFT",barStart,0);T.progressFill:SetSize(math.max(1,progressWidth*(T.progressRatio or 0)),3)
     T.progressFill:SetShown(T.progressRatio~=nil and T.progressRatio>0)
     if T.progressBar then
         T.progressBack:Hide();T.progressFill:Hide()
-        T.progressBar:ClearAllPoints();T.progressBar:SetPoint("LEFT");T.progressBar:SetSize(progressWidth,4)
+        T.progressBar:ClearAllPoints();T.progressBar:SetPoint("LEFT",barStart,0);T.progressBar:SetSize(progressWidth,4)
         T.progressBar:SetStatusBarColor(self.daylight.Accent());T.progressBar:SetValue(T.progressRatio or 0)
     end
     local fixed=cardTop+top+24+(T.progress:IsShown() and 24*scale or 0)

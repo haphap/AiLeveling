@@ -101,7 +101,7 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     assert(T.rows[1].title.color[2]>T.rows[1].title.color[1])
     assert(T.rows[2].title.color[1]>T.rows[2].title.color[2])
     assert(T.queueScroll.width+16<=T.queuePanel.width);assert(T.card.width<=300)
-    eq(T.location.width+T.area.width+12,T.card.width);eq(T.career.width,T.card.width)
+    assert(T.location.width+2*B.UI.metrics.hit<=T.card.width);eq(T.career.width,T.currentChild.width)
     local goal=T.objectives[1]
     eq(goal.count.width,math.ceil(goal.count:GetStringWidth())+6)
     eq(goal.text.width,goal.width-goal.count.width-42)
@@ -172,7 +172,7 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     eq(B.UI.Plan.preview.questId,4);eq(B.UI.details.shown,true);eq(B.char.locked,nil)
     local row
     for _,card in ipairs(B.UI.Browser.rows) do if card.questId==4 then row=card end end
-    assert(B.UI.Browser.detail.value:find("|Hquest:4:0|h",1,true))
+    assert(B.UI.Browser.title.value:find("|Hquest:4:0|h",1,true))
     local browser=B.UI.Browser
     local build,builds=browser.TaskRows,0
     browser.TaskRows=function(...) builds=builds+1;return build(...) end
@@ -236,7 +236,7 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.state.locked=1;B.UI:RenderTracker()
     eq(T.model.rows[1].questId,4);assert(T.rows[1].progress.value:find("顺路接取 · 焦焚残骸",1,true))
     eq(T.rows[1].parent,T.alongChild);eq(T.alongLabel.shown,true)
-    eq(T.alongLabel.value,"顺路可做 · 1")
+    eq(T.alongLabel.value,"顺路可接 · 1")
     starter.position.y=0.58;B.UI:RenderTracker();eq(T.alongLabel.shown,false)
     starter.position.y=0.5;B.UI:RenderTracker();eq(T.alongLabel.shown,true)
     eq(T.model.questId,1);eq(B.state.locked,1)
@@ -473,7 +473,7 @@ test("原生更新后清除旧目标和旧任务行且拒绝过期任务点击",
     B.UI:RenderTracker()
     eq(B.UI.title.value,"正在安排行程");eq(T.queueLabel.value,"已接任务");eq(#T.model.rows,30)
     eq(T.queueScroll.shown,true);eq(T.rows[1].status,"已接取");eq(T.rows[1].objectives[1].count.value,"2/5")
-    eq(T.career.shown,false);eq(T.thenButton.shown,false);eq(T.location.shown,false);eq(T.footer.shown,false)
+    eq(T.career.shown,false);eq(T.thenButton.shown,false);eq(T.location.value,"当前行程");eq(T.footer.shown,false)
     eq(T.reward.shown,false)
     B.planningResumeAt=10;B.UI:RenderTracker()
     eq(B.UI.title.value,"停下后更新行程");eq(#T.model.rows,30)
@@ -532,9 +532,10 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     B.Navigation.Distance=function(...) reads=reads+1;return distance(...) end
     for _=1,10 do U.frame.scripts.OnUpdate(nil,1) end
     eq(models,0);eq(layouts,0);eq(reads,0)
-    T.journeyHeader.scripts.OnClick();eq(T.journeyRows[1].shown,false);eq(U.title.value,"新的任务")
-    U.frame.scripts.OnUpdate(nil,1);eq(T.journeyRows[1].shown,false)
-    T.journeyHeader.scripts.OnClick();eq(T.journeyRows[1].shown,true)
+    eq(T.journeyRows[1].shown,true);eq(T.journeyRows[2].shown,false)
+    T.journeyHeader.scripts.OnClick();eq(T.journeyRows[2].shown,true);eq(U.title.value,"新的任务")
+    U.frame.scripts.OnUpdate(nil,1);eq(T.journeyRows[2].shown,true)
+    T.journeyHeader.scripts.OnClick();eq(T.journeyRows[1].shown,true);eq(T.journeyRows[2].shown,false)
     B.state.position=transit.departure;U.frame.scripts.OnUpdate(nil,1)
     eq(#T.model.journey.steps,3);eq(T.model.journey.seconds,130);eq(models,0);assert(reads>0)
     U.TrackerModel,U.LayoutTracker=model,layout
@@ -683,7 +684,7 @@ test("分散交付点明确现在就近交和等同NPC任务一起交并跟随�
 end)
 
 test("职业提醒随可学技能和待接任务更新，稍后保留行程并只导航本职业训练师",function()
-    local B=ready();assert(loadfile("Services.lua"))("AiLeveling",B)
+    local B=ready(true);assert(loadfile("Services.lua"))("AiLeveling",B)
     assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
     B.state.level,B.state.class,B.state.className,B.state.classMask=22,"PALADIN","圣骑士",2
     Enum={SpellBookSpellBank={Player=0},SpellBookItemType={Spell=1,FutureSpell=2}}
@@ -702,13 +703,10 @@ test("职业提醒随可学技能和待接任务更新，稍后保留行程并�
     local quest={questId=1641,title="圣洁之书",level=12,kind="task",actions={{kind="accept",questId=1641}}}
     B.plan.taskChoices[#B.plan.taskChoices+1]=quest
     local T=B.UI.tracker;B.UI:RenderTracker()
-    eq(T.career.shown,true);assert(T.career.text.value:find("圣光术 · 等级 4",1,true));assert(T.career.text.value:find("圣洁之书",1,true))
+    eq(T.career.shown,true);assert(T.career.text.value:find("圣光术 · 等级 4",1,true));assert(not T.career.text.value:find("圣洁之书",1,true))
     eq(T.model.questId,1);eq(T.objectives[1].count.value,"3/10")
     local clicked;SetItemRef=function(link) clicked=link end
     T.career.view:Click();B.menu["圣光术 · 等级 4 · 22级"].callback();eq(clicked,"spell:101")
-    local questClick=B.UI.QuestClick;B.UI.QuestClick=function(_,id) clicked=id end
-    B.menu["待接：圣洁之书"].callback();eq(clicked,1641)
-    T.career.scripts.OnHyperlinkClick(T.career,"quest:1641:12","","LeftButton");eq(clicked,1641);B.UI.QuestClick=questClick
     T.career.later:Click();eq(T.career.shown,false);eq(B.char.classReminderLevel,22);eq(T.model.questId,1);eq(B.char.skipped[1641],nil)
     B:NormalizeCharacter(B.char);B.UI:RenderTracker();eq(T.career.shown,false)
     B.UI:TrackerMenu(B.UI.frame);B.menu["恢复职业提醒"].callback();eq(T.career.shown,true)
@@ -731,10 +729,12 @@ test("职业提醒随可学技能和待接任务更新，稍后保留行程并�
     local unlock={questId=900,title="职业技能解锁",kind="class",spell=355}
     quest.unlock=unlock;B.char.classReminderLevel=nil
     B.plan.revision=B.state.revision
-    B.UI:RenderTracker();eq(T.career.shown,true)
-    assert(T.career.text.value:find("解锁职业技能",1,true));eq(T.model.questId,1)
-    eq(B.UI.ClassReminders(B.state,B.plan).quests[1],quest)
-    T.career.view:Click();B.menu["切换任务线：职业技能解锁"].callback();eq(B.char.locked,900)
+    B.UI:RenderTracker();eq(T.career.shown,false);eq(T.model.questId,1)
+    local browser=B.UI.Browser
+    assert(loadfile("Planner/Eligibility.lua"))("AiLeveling",B)
+    B.Data.ids={1641};browser:Refresh(9);eq(browser.selected.questId,1641);eq(B.char.locked,1)
+    eq(browser.buttons[1].text.value,"跟随这条职业任务线");browser.buttons[1].run();eq(B.char.locked,900)
+    browser.buttons[3].run();eq(B.char.locked,nil)
     B.finish()
 end)
 

@@ -103,19 +103,19 @@ function Q:LayoutTarget()
     local button,T=self.targetButton,A.UI.tracker
     if not button or not T then return end
     if not InCombatLockdown() then
-        local x,y=T.stepIcon:GetCenter()
+        local x,y=T.actionIcon:GetCenter()
         local visible=self.targetActive~=nil and A.UI.frame:IsShown() and x~=nil and y~=nil
         if visible then
             -- Screen coordinates keep the secure button separate from the resizable tracker.
             local scale=A.UI.frame:GetEffectiveScale()/UIParent:GetEffectiveScale()
-            local size=T.stepIcon:GetWidth()*scale
+            local size=T.actionIcon:GetWidth()*scale
             button:ClearAllPoints();button:SetPoint("CENTER",UIParent,"BOTTOMLEFT",x*scale,y*scale)
             button:SetSize(size+6*scale,size+6*scale);button.icon:SetSize(size,size)
             button.icon:SetVertexColor(A.UI:Accent())
         end
         button:SetShown(visible)
     end
-    T.stepIcon:SetShown(not button:IsShown())
+    T.actionIcon:SetShown(not button:IsShown())
 end
 
 function Q:ApplyTarget()

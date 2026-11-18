@@ -203,6 +203,20 @@ function UI:Button(parent, label, width, callback, fontSize)
     return b
 end
 
+-- Flat list, sidebar and link controls share the same hover and selection surface.
+function UI:ListButton(parent,label,width,callback,role)
+    local b=CreateFrame("Button",nil,parent)
+    b:SetSize(width,metrics.button)
+    local fill=b:CreateTexture(nil,"BACKGROUND");fill:SetAllPoints()
+    b.SetBackdropColor=function(_,...) fill:SetColorTexture(...) end
+    b.baseColor=colors.panel;b:SetBackdropColor(unpack(colors.panel))
+    b.text=self:Text(b,role or "body");b.text:SetPoint("CENTER");b.text:SetText(label)
+    b:SetScript("OnClick",callback)
+    b:SetScript("OnEnter",function() b:SetBackdropColor(unpack(colors.rowHover)) end)
+    b:SetScript("OnLeave",function() b:SetBackdropColor(unpack(b.baseColor)) end)
+    return b
+end
+
 function UI:Movable(frame,key)
     frame:SetMovable(true);frame:EnableMouse(true);frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart",function()
@@ -278,21 +292,22 @@ function UI:Create()
     divider:SetColorTexture(unpack(colors.line))
     local header=self.details:CreateTexture(nil,"BACKGROUND")
     header:SetPoint("TOPLEFT",194,-74);header:SetPoint("TOPRIGHT",-22,-74);header:SetHeight(1)
-    header:SetColorTexture(unpack(colors.line))
+    header:SetColorTexture(unpack(colors.line));self.detailRule=header
     self.detailMark=side:CreateTexture(nil,"ARTWORK")
     self.detailMark:SetTexture(media.."compass.tga");self.detailMark:SetSize(24,24);self.detailMark:SetPoint("TOPLEFT",12,-16)
     local brand=self:Text(side,"brand",colors.gold);brand:SetPoint("TOPLEFT",42,-18);brand:SetText("AILeveling")
     local subtitle=self:Text(side,"caption",colors.muted);subtitle:SetPoint("TOPLEFT",12,-50);subtitle:SetText("少跑路 · 多经验")
-    local labels={"任务行程","任务链","装备","地下城","设置","数据","服务","专业任务","职业任务","练级区域","坐骑任务"}
+    local labels={"练级任务","任务链","装备","地下城","设置","数据","服务","专业任务","职业任务","练级区域","坐骑任务"}
     local icons={"compass","chain","gear","entry","settings","xp","accept","profession","class","location","mount"}
-    for n,i in ipairs({1,10,9,8,11,4,3,2,7,5,6}) do
-        local b=self:Button(side,self:Icon(icons[i],16).."  "..labels[i],148,function() self:SelectTab(i) end,"body")
+    for n,i in ipairs({1,9,10,8,11,4,3,2,7,5,6}) do
+        local b=self:ListButton(side,self:Icon(icons[i],16).."  "..labels[i],148,function() self:SelectTab(i) end,"body")
         b:SetPoint("TOPLEFT",8,-84-(n-1)*40);b:SetHeight(30)
         b.text:ClearAllPoints();b.text:SetPoint("LEFT",10,0);b.text:SetJustifyH("LEFT")
         self.tabs[i]=b
     end
+    self.tabMark=side:CreateTexture(nil,"ARTWORK");self.tabMark:SetWidth(2)
     self.detailHeading=self:Text(self.details,"title",colors.white)
-    self.detailHeading:SetPoint("TOPLEFT",194,-22);self.detailHeading:SetText("任务行程")
+    self.detailHeading:SetPoint("TOPLEFT",194,-22);self.detailHeading:SetText("练级任务")
     self.detailSubtitle=self:Text(self.details,"body",colors.muted)
     self.detailSubtitle:SetPoint("TOPLEFT",194,-54)
     self.scroll = CreateFrame("ScrollFrame", nil, self.details, "UIPanelScrollFrameTemplate")
@@ -389,10 +404,15 @@ function UI:SelectTab(index,reuse)
         tab:SetBackdropColor(unpack(tab.baseColor))
         if i==index then tab.text:SetTextColor(r,g,b) else tab.text:SetTextColor(unpack(colors.muted)) end
     end
-    local names={"任务行程","任务链","装备情况","地下城","设置","运行数据","附近服务","专业任务","职业任务","练级区域","坐骑任务"}
+    local selected=self.tabs[index]
+    self.tabMark:ClearAllPoints();self.tabMark:SetPoint("TOPLEFT",selected,"TOPLEFT");self.tabMark:SetPoint("BOTTOMLEFT",selected,"BOTTOMLEFT")
+    self.tabMark:SetColorTexture(self:Accent())
+    local names={"练级任务","任务链","装备情况","地下城","设置","运行数据","附近服务","专业任务","职业任务","练级区域","坐骑任务"}
     self.detailHeading:SetText(names[index])
     self.detailSubtitle:SetText(({[1]="当前安排与可选任务",[3]="当前装备、背包提升与任务奖励",[4]="选择副本，查看等级和任务安排",
         [8]="按专业查看条件、奖励与前置",[9]="当前职业的任务与解锁奖励",[10]="比较适合当前等级的任务区域",[11]="坐骑奖励及其前置任务"})[index] or "")
+    self.detailSubtitle:SetShown(index~=1 and index~=9)
+    self.detailRule:SetShown(index~=1 and index~=9)
     self.details:SetSize(1000,600)
     self.scroll:SetPoint("BOTTOMRIGHT",-36,18);self.scrollChild:SetWidth(750);self.detailText:SetWidth(742)
     self.Settings.frame:SetShown(index==5)
@@ -466,8 +486,10 @@ function UI:QuestClick(id,button)
     else
         for _,candidate in ipairs(self.Plan.Rows(A.plan)) do
             if candidate.questId==id then
-                self.Plan.key=self.Plan.Key(candidate);self.Plan.message=nil
-                self.Browser:ClearSearch();self.scroll:SetVerticalScroll(0);self.details:Show();self:SelectTab(1)
+                local career=self.Browser:IsCareerChoice(candidate)
+                if career then self.Browser.selection[9]="q:"..id
+                else self.Plan.key=self.Plan.Key(candidate);self.Plan.message=nil end
+                self.Browser:ClearSearch();self.scroll:SetVerticalScroll(0);self.details:Show();self:SelectTab(career and 9 or 1)
                 return true
             end
         end

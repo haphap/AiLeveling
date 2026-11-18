@@ -114,7 +114,7 @@ RAID_CLASS_COLORS={PALADIN={r=0.96,g=0.55,b=0.73}}
 if os.getenv("AILEVELING_PREVIEW_DAYLIGHT")=="1" then
     local sizes={small=12,body=13,head=15,title=18}
     local ink={TEXT={.949,.933,.902},VALUE={1,1,1},LABEL={.76,.71,.62},GOOD={.55,.85,.55},WARN={.95,.72,.32},BAD={.93,.36,.30}}
-    local api={major=1,Colors=function() return ink end,Accent=function() return .72,.70,.66 end,
+    local api={major=1,Colors=function() return ink end,Accent=function() local c=RAID_CLASS_COLORS.PALADIN;return c.r,c.g,c.b end,
         GetSetting=function(_,key) return key=="fontScale" and 1 or nil end,On=function() end}
     api.Text=function(parent,role)
         local fs=parent:CreateFontString(nil,"OVERLAY");fs:SetFont("preview",sizes[role],"");return fs
@@ -134,7 +134,7 @@ if os.getenv("AILEVELING_PREVIEW_DAYLIGHT")=="1" then
         local b=CreateFrame("StatusBar",nil,parent)
         b.track=b:CreateTexture(nil,"BACKGROUND");b.track:SetColorTexture(.2,.2,.22,1);b.track:SetAllPoints()
         b.fill=b:CreateTexture(nil,"ARTWORK");b.fill:SetPoint("LEFT");b.fill:SetHeight(4)
-        function b:SetValue(value) self.fill:SetWidth(self:GetWidth()*value);self.fill:SetColorTexture(.72,.70,.66,1) end
+        function b:SetValue(value) self.fill:SetWidth(self:GetWidth()*value);self.fill:SetColorTexture(unpack(self.barColor)) end
         return b
     end
     DaylightUI={API=api}
@@ -383,7 +383,7 @@ if arg[1]=="region" or arg[1]=="region-detail" then
 end
 if not regionDetail then A.UI:CreateTracker();A.UI:RenderTracker();A.UI:SetTrackerNavigation(285,0.25,true) end
 if arg[1]=="class" then
-    assert(A.UI.tracker.career:IsShown() and A.UI.tracker.career.text:GetText():find("圣洁之书",1,true))
+    assert(A.UI.tracker.career:IsShown() and A.UI.tracker.career.text:GetText():find("圣光术",1,true))
 end
 if arg[1]=="gear" then
     local T=A.UI.tracker

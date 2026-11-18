@@ -46,7 +46,7 @@ function B:Create(parent)
     self.frame=CreateFrame("Frame",nil,parent);self.frame:SetPoint("TOPLEFT",194,-88);self.frame:SetSize(784,490)
     local divider=self.frame:CreateTexture(nil,"BACKGROUND")
     divider:SetPoint("TOPLEFT",410,0);divider:SetPoint("BOTTOMLEFT",410,0);divider:SetWidth(1)
-    divider:SetColorTexture(unpack(colors.line))
+    divider:SetColorTexture(unpack(colors.line));self.divider=divider
     self.summary=A.UI:Text(self.frame,"body",colors.muted);self.summary:SetPoint("TOPLEFT");self.summary:SetWidth(392)
     self.search=A.UI.daylight and A.UI.daylight.Input(self.frame,{search=true}) or CreateFrame("EditBox",nil,self.frame,"BackdropTemplate")
     self.search:SetPoint("TOPLEFT",0,-32);self.search:SetSize(392,28);self.search:SetAutoFocus(false)
@@ -84,10 +84,13 @@ function B:Create(parent)
     self.infoChild:SetScript("OnHyperlinkLeave",function() GameTooltip:Hide() end)
     self.title=A.UI:Text(self.infoChild,"title",colors.white);self.title:SetPoint("TOPLEFT");self.title:SetWidth(326)
     self.detail=A.UI:Text(self.infoChild,"body",colors.white);self.detail:SetWidth(326)
+    self.goals=CreateFrame("Frame",nil,self.infoChild)
+    self.goalHeading=A.UI:Text(self.infoChild,"caption",colors.muted);self.goalHeading:SetText("任务目标")
     self.buttons={}
     for i=1,3 do
-        local b=A.UI:Button(self.frame,"",330,function() local f=self.buttons[i].run;if f then f() end end,"body")
-        b:SetPoint("TOPLEFT",430,-390-(i-1)*33);self.buttons[i]=b
+        local create=i==1 and A.UI.Button or A.UI.ListButton
+        local b=create(A.UI,self.infoChild,"",330,function() local f=self.buttons[i].run;if f then f() end end,"body")
+        self.buttons[i]=b
     end
     self.rows={};self.frame:Hide()
 end
@@ -123,6 +126,11 @@ function B:CatalogQuests(mode,state)
     return quests
 end
 
+function B:IsCareerChoice(choice)
+    return choice.unlock and choice.unlock.kind=="class" or
+        (A.Data.db or A.indexReady) and A.TaskGuide and A.TaskGuide.IsClassQuest and A.TaskGuide.IsClassQuest(A.Data:GetQuest(choice.questId,A.state),A.state,A.Data)
+end
+
 function B:TaskRows(mode)
     local rows,seen={},{}
     local state=A.state
@@ -134,6 +142,7 @@ function B:TaskRows(mode)
         local id=choice.questId
         if seen[id] or (state.completed or {})[id] and not state.quests[id] then return end
         seen[id]=true
+        if mode==1 and self:IsCareerChoice(choice) then return end
         local status=A.UI.QuestStatus(state,id,A.plan)
         local allowed,why,pre=true
         if q then allowed,why,pre=A.Eligibility.Check(q,state,A.Data) end
@@ -164,6 +173,15 @@ function B:TaskRows(mode)
         local ids={};for id in pairs(state.quests or {}) do ids[#ids+1]=id end;table.sort(ids)
         for _,id in ipairs(ids) do add({id="task:"..id,questId=id,title=state.quests[id].title,kind="task",actions={}}) end
     else
+        -- An unlock chain may start with a shared, unrestricted prerequisite.
+        if mode==9 then
+            for _,c in ipairs(A.plan and A.plan.taskChoices or {}) do
+                if c.unlock and c.unlock.kind=="class" then
+                    local q=A.Data:GetQuest(c.questId)
+                    if q then add(c,q) end
+                end
+            end
+        end
         for _,q in ipairs(self:CatalogQuests(mode,state)) do
             add(choices[q.id] or {id="task:"..q.id,kind="task",questId=q.id,title=q.title,level=q.questLevel,actions={},
                 remainingXP=A.TaskGuide.XP(q,state.level,state)},q)
@@ -239,7 +257,24 @@ end
 function B:Refresh(mode,reuse)
     gold,blue,green,muted=A.UI.hex.gold,A.UI.hex.blue,A.UI.hex.green,A.UI.hex.muted
     reuse=reuse and self.mode==mode and self.entriesRevision==A.state.revision and self.entriesPlan==A.plan
-    if self.mode~=mode then self.list:SetVerticalScroll(0);self.info:SetVerticalScroll(0) end
+    if self.mode~=mode then
+        self.message=nil
+        local tasks=mode==1 or mode==9
+        local listWidth=tasks and 320 or 382
+        local split=listWidth+28
+        self.frame:ClearAllPoints();self.frame:SetPoint("TOPLEFT",194,tasks and -22 or -88)
+        self.frame:SetHeight(tasks and 552 or 490)
+        self.summary:ClearAllPoints();self.summary:SetPoint("TOPLEFT",tasks and 106 or 0,tasks and -5 or 0)
+        self.summary:SetWidth(listWidth-(tasks and 96 or 0));self.summary:SetJustifyH(tasks and "RIGHT" or "LEFT")
+        self.search:SetWidth(listWidth+10)
+        self.list:SetSize(listWidth,tasks and 482 or 420);self.child:SetWidth(listWidth)
+        self.divider:ClearAllPoints();self.divider:SetPoint("TOPLEFT",split,0);self.divider:SetPoint("BOTTOMLEFT",split,0)
+        self.info:ClearAllPoints();self.info:SetPoint("TOPLEFT",split+24,tasks and 0 or -14)
+        local right=tasks and 378 or 326
+        self.info:SetWidth(right);self.infoChild:SetWidth(right)
+        self.title:SetWidth(right);self.detail:SetWidth(right)
+        self.list:SetVerticalScroll(0);self.info:SetVerticalScroll(0)
+    end
     self.mode=mode
     local rows
     if reuse then rows=self.entries
@@ -277,7 +312,7 @@ function B:Refresh(mode,reuse)
     self.selected=selected or rows[1]
     self.selection[mode]=self.selected and self.selected.key
     if mode==1 then A.UI.Plan.preview=self.selected and self.selected.choice end
-    local summary=#rows..(mode==10 and " 个练级区域" or mode==4 and " 个地下城" or mode==3 and " 件装备" or " 项任务").." · 点击查看详情"
+    local summary=#rows..(mode==10 and " 个练级区域" or mode==4 and " 个地下城" or mode==3 and " 件装备" or " 项任务")
     if mode==1 then
         local status=A.char.paused and "引导已暂停" or A.char.locked and "单任务锁定" or
             A.Navigation.manual and "手动导航" or A.char.taskBatch and "副本任务安排" or
@@ -308,6 +343,7 @@ end
 function B:DrawRows(offset)
     local rows,pitch=self.filtered,self.rowPitch
     if not rows or not pitch then return end
+    local width=self.child:GetWidth()
     local first=math.max(1,math.floor(offset/pitch)+1)
     local last=math.min(#rows,math.ceil((offset+self.list:GetHeight())/pitch))
     local scale=A.UI:FontScale()
@@ -315,7 +351,7 @@ function B:DrawRows(offset)
         local i=index-first+1
         local entry,row=rows[index],self.rows[i]
         if not row then
-            row=A.UI:Button(self.child,"",382,function() end,"task")
+            row=A.UI:ListButton(self.child,"",width,function() end,"task")
             row.text:SetMaxLines(1)
             row.icon=A.UI:Text(row,"body");row.icon:SetPoint("TOPLEFT",metrics.gap,-metrics.gap)
             row.sub=A.UI:Text(row,"caption",colors.muted);row.sub:SetMaxLines(1)
@@ -325,6 +361,7 @@ function B:DrawRows(offset)
             row:RegisterForClicks("LeftButtonUp","RightButtonUp")
             row:SetScript("OnClick",function(f,button)
                 if button=="RightButton" and f.entry.questId then A.UI:TrackerMenu(f);return end
+                self.message=nil
                 local previous=self.selected
                 self.selected=f.entry;self.selection[self.mode]=f.entry.key;self.info:SetVerticalScroll(0)
                 if self.mode==1 then
@@ -350,12 +387,12 @@ function B:DrawRows(offset)
             row.questId,row.candidate,row.revision=entry.questId,entry.choice,A.plan and A.plan.revision
             row.deferred=entry.questId and ((A.state.skipped or {})[entry.questId] or (A.state.chainDeferred or {})[entry.questId])
             local inset=metrics.gap+(metrics.icon+metrics.gap)*scale
-            row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",inset,-metrics.gap);row.text:SetWidth(382-inset-metrics.gap)
+            row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",inset,-metrics.gap);row.text:SetWidth(width-inset-metrics.gap)
             row.text:SetText(entry.title);row.text:SetTextColor(unpack(colors.white))
             row.icon:SetText(A.UI:Icon(entry.icon,metrics.icon));row.sub:SetText(entry.sub or "")
-            row.sub:ClearAllPoints();row.sub:SetPoint("TOPLEFT",inset,-metrics.gap-23*scale);row.sub:SetWidth(382-inset-metrics.gap)
+            row.sub:ClearAllPoints();row.sub:SetPoint("TOPLEFT",inset,-metrics.gap-23*scale);row.sub:SetWidth(width-inset-metrics.gap)
             row.line:ClearAllPoints();row.line:SetPoint("BOTTOMLEFT",inset,0);row.line:SetPoint("BOTTOMRIGHT",-metrics.gap,0)
-            row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-(index-1)*pitch);row:SetSize(382,pitch-metrics.tight)
+            row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-(index-1)*pitch);row:SetSize(width,pitch-metrics.tight)
             row.marker:SetColorTexture(unpack(colors.accent))
             markRow(row,entry==self.selected)
         elseif row.marker:IsShown()~=(entry==self.selected) then
@@ -372,15 +409,32 @@ function B:Action(index,label,run,enabled)
     b.text:SetTextColor(unpack(enabled==false and colors.muted or index==1 and colors.gold or colors.white))
 end
 
-function B:Detail()
+function B:PlaceActions(y)
+    local x,bottom=0,y
     for i,button in ipairs(self.buttons) do
-        button:Hide();button:ClearAllPoints();button:SetPoint("TOPLEFT",430,-390-(i-1)*33)
+        if button:IsShown() then
+            local w=math.min(self.info:GetWidth(),math.ceil(button.text:GetStringWidth())+24)
+            if x>0 and x+w>self.info:GetWidth() then x=0;y=bottom end
+            button:ClearAllPoints();button:SetPoint("TOPLEFT",x,-y);button:SetWidth(w)
+            if i>1 then
+                button.baseColor=colors.panel;button:SetBackdropColor(unpack(colors.panel))
+                button.text:SetTextColor(unpack(button:IsEnabled() and colors.blue or colors.muted))
+            end
+            x=x+w+metrics.gap;bottom=y+button:GetHeight()+metrics.gap
+        end
     end
-    self.info:SetHeight(368);self.detail:Show()
+    return bottom
+end
+
+function B:Detail()
+    for _,button in ipairs(self.buttons) do button:Hide() end
+    self.info:SetHeight(self.frame:GetHeight()-18);self.detail:Show()
     if self.dungeonDetail then self.dungeonDetail:Hide() end
+    self.goals:Hide();self.goalHeading:Hide();if self.meta then self.meta:Hide() end
     local e=self.selected
     self.title:SetText(e and e.title or "暂无项目")
     local lines={}
+    local detailTop=self.title:GetStringHeight()+18
     if not e then lines[1]=self.query and self.query~="" and "清空搜索或换一个关键词。" or "角色状态更新后，相关内容会显示在这里。"
     elseif e.dungeonCandidate then
         local c=e.dungeonCandidate
@@ -394,21 +448,30 @@ function B:Detail()
         self:Action(2,"查看地下城",function() A.UI.Dungeon.selected=c.dungeonId;A.UI:SelectTab(4) end)
     elseif e.choice then
         local q=e.q or A.Data:GetQuest(e.questId)
-        lines[#lines+1]=questLink(e.questId,e.title)
-        lines[#lines+1]=e.sub
+        self.title:SetText("|Hquest:"..e.questId..":0|h"..e.title.."|h")
+        local timing=e.choice.executionTiming or e.choice.timing
+        local status=e.sub
+        if e.current then status=status:gsub("^.- · ","",1) end
+        local meta=status..(timing and timing.seconds and (" · 路程 "..time(timing.seconds)) or "")
+        if not self.meta then self.meta=A.UI:Text(self.infoChild,"caption",colors.muted) end
+        self.meta:ClearAllPoints();self.meta:SetPoint("TOPLEFT",0,-detailTop);self.meta:SetWidth(self.info:GetWidth())
+        self.meta:SetText(meta);self.meta:Show()
+        detailTop=detailTop+self.meta:GetStringHeight()+metrics.section
         if q and q.requiredSkill then lines[#lines+1]="需要 "..skillName(q.requiredSkill[1]).." "..q.requiredSkill[2] end
         if e.prerequisite then
             local pre=A.Data:GetQuest(e.prerequisite)
             lines[#lines+1]="前置  "..questLink(e.prerequisite,pre and pre.title or "任务 #"..e.prerequisite)
         end
         local active=(A.state.quests or {})[e.questId]
-        for _,o in ipairs(active and active.objectives or {}) do
-            if o.text then lines[#lines+1]=A.UI:Icon(o.finished and "turnin" or "objective",14).." "..color(o.finished and muted or blue,o.text) end
+        if active and active.objectives and #active.objectives>0 then
+            self.goalHeading:ClearAllPoints();self.goalHeading:SetPoint("TOPLEFT",0,-detailTop);self.goalHeading:Show()
+            detailTop=detailTop+self.goalHeading:GetStringHeight()+metrics.gap
+            self.goals:ClearAllPoints();self.goals:SetPoint("TOPLEFT",0,-detailTop);self.goals:SetWidth(self.info:GetWidth())
+            local h=A.UI:DetailObjectives(self.goals,e.choice,active.objectives,self.info:GetWidth())
+            self.goals:SetHeight(h);self.goals:Show();detailTop=detailTop+h+metrics.gap
         end
-        local timing=e.choice.executionTiming or e.choice.timing
-        if timing and timing.seconds then lines[#lines+1]="路程  "..time(timing.seconds) end
         for _,stage in ipairs(e.choice.stages or {}) do
-            if stage.purchase and (not stage.need or stage.need<=0 or (stage.have or 0)<stage.need) then
+            if not (active and active.objectives and active.objectives[stage.objectiveIndex or 0]) and stage.purchase and (not stage.need or stage.need<=0 or (stage.have or 0)<stage.need) then
                 local item=A.Data.db and A.Data.db.Item.Get(stage.targetId,"name") or stage.text or "任务物品"
                 lines[#lines+1]=color(gold,(item or "任务物品").." · "..A.UI.PurchaseText(stage.purchase))
             end
@@ -424,7 +487,7 @@ function B:Detail()
         local planned=false
         for _,c in ipairs(A.plan and A.plan.taskChoices or {}) do if c==e.choice then planned=true;break end end
         local can=not planned or A.Selection.CanChoose(e.choice,A.plan.revision)
-        self:Action(1,e.allowed==false and e.prerequisite and "查看前置任务" or e.choice.unlock and "切换到解锁任务线" or "优先做此任务",function()
+        self:Action(1,e.allowed==false and e.prerequisite and "查看前置任务" or self.mode==9 and "跟随这条职业任务线" or e.choice.unlock and "切换到解锁任务线" or "优先做此任务",function()
             if not e.allowed and e.prerequisite then A.UI.Chains:Focus(e.prerequisite);return end
             local ok,why
             if planned then ok,why=A.UI.Plan:Choose(e.choice,A.plan.revision)
@@ -432,7 +495,9 @@ function B:Detail()
             self.message=not ok and why or nil;self:Refresh(self.mode)
         end,(can and e.allowed) or e.prerequisite~=nil)
         self:Action(2,"查看任务链",function() A.UI.Chains:Focus(e.questId) end)
-        self:Action(3,"恢复自动安排",function() A.Selection:Automatic();self:Refresh(self.mode) end)
+        if A.char.locked or A.char.itinerary or A.char.taskBatch or A.char.gearTarget or A.Navigation.manual or A.char.serviceStop or A.char.paused then
+            self:Action(3,"恢复练级导航",function() A.Selection:Automatic();self:Refresh(self.mode) end)
+        end
     elseif e.dungeon then
         A.UI.Dungeon.selected=e.key
         local batch=A.char.taskBatch
@@ -518,9 +583,11 @@ function B:Detail()
         end) end
     end
     if self.message then lines[#lines+1]=color(gold,self.message) end
-    self.detail:ClearAllPoints();self.detail:SetPoint("TOPLEFT",0,-self.title:GetStringHeight()-18)
+    self.detail:ClearAllPoints();self.detail:SetPoint("TOPLEFT",0,-detailTop)
     self.detail:SetText(table.concat(lines,"\n\n"))
-    self.infoChild:SetHeight(math.max(1,self.title:GetStringHeight()+self.detail:GetStringHeight()+30))
+    local height=detailTop+(#lines>0 and self.detail:GetStringHeight()+12 or 0)
+    height=self:PlaceActions(height)
+    self.infoChild:SetHeight(math.max(1,height))
 end
 
 function B:DungeonDetail(e)
@@ -581,7 +648,7 @@ function B:DungeonDetail(e)
     end
     view.hint:ClearAllPoints();view.hint:SetPoint("TOPLEFT",0,-y)
     view.hint:SetText(A.UI:Icon("entry",14).." "..(self.message or hint))
-    y=y+view.hint:GetStringHeight()+18
+    y=self:PlaceActions(top+y+view.hint:GetStringHeight()+metrics.gap)-top+metrics.gap
     view.heading:ClearAllPoints();view.heading:SetPoint("TOPLEFT",0,-y)
     view.heading:SetText("关联任务");y=y+view.heading:GetStringHeight()+6
     local _,group=A.Dungeon.GroupStatus(e.dungeon,A.state)
@@ -590,10 +657,19 @@ function B:DungeonDetail(e)
         view.tip[#view.tip+1]=line
     end
     local tones={colors.turnin,colors.objective,colors.accept,colors.muted,colors.muted}
-    local tasks={}
-    -- Put pickup prompts first without changing the planner's task order.
-    for _,task in ipairs(e.tasks) do if task.group==3 or task.preparation then tasks[#tasks+1]=task end end
-    for _,task in ipairs(e.tasks) do if task.group~=3 and not task.preparation then tasks[#tasks+1]=task end end
+    local tasks,prep,inside,other={},{},{},{}
+    for _,task in ipairs(e.tasks) do
+        local group=other
+        if task.group==3 then
+            local instance=A.Dungeon.TaskInstance and A.Dungeon.TaskInstance(task.position,A.state,A.Data,task.areaId)
+            group=instance and inside or tasks
+        elseif task.preparation then group=prep end
+        group[#group+1]=task
+    end
+    local insideFirst=#tasks+#prep+1
+    for _,group in ipairs({prep,inside,other}) do
+        for _,task in ipairs(group) do tasks[#tasks+1]=task end
+    end
     for i,task in ipairs(tasks) do
         local row=view.rows[i]
         if not row then
@@ -649,7 +725,7 @@ function B:DungeonDetail(e)
         row.revision=A.plan and A.plan.revision
         row.text:SetWidth(292-64*(A.settings.fontScale or 1));row.text:SetText(task.title);row.text:SetTextColor(unpack(colors.blue))
         row.icon:SetText(A.UI:Icon(task.group==1 and "turnin" or task.group==2 and "objective" or "accept",14))
-        row.status:SetWidth(64*(A.settings.fontScale or 1));row.status:SetText(task.group==4 and (task.preparation and "需前置" or "未解锁") or task.status)
+        row.status:SetWidth(64*(A.settings.fontScale or 1));row.status:SetText(i>=insideFirst and i<insideFirst+#inside and "副本内接" or task.group==4 and (task.preparation and "需前置" or "未解锁") or task.status)
         row.status:SetTextColor(unpack(tones[task.group]))
         local direction,seconds=d:TaskDirection(task)
         row.direction=direction
@@ -682,13 +758,7 @@ function B:DungeonDetail(e)
         view.loot:ClearAllPoints();view.loot:SetPoint("TOPLEFT",0,-y);y=y+34
     end
     view:SetHeight(y);self.infoChild:SetHeight(top+y+8)
-    local count=0
-    for _,button in ipairs(self.buttons) do if button:IsShown() then count=count+1 end end
-    local actionTop=490-count*33-8
-    self.info:SetHeight(actionTop-28)
-    for _,button in ipairs(self.buttons) do
-        if button:IsShown() then button:ClearAllPoints();button:SetPoint("TOPLEFT",430,-actionTop);actionTop=actionTop+33 end
-    end
+
 end
 
 function B:IndexMounts()
