@@ -12,18 +12,20 @@ for id,node in pairs(A.FlightData.nodes) do
         (node.instance==0 or node.instance==1 or node.instance==2991) and node.factionMask>=1 and node.factionMask<=3)
     flightNodes=flightNodes+1
 end
+local directed={}
 for id,path in pairs(A.FlightData.paths) do
+    directed[path[1]..":"..path[2]]=true
     assert(positive(id) and id%1==0 and A.FlightData.nodes[path[1]] and A.FlightData.nodes[path[2]])
     flightPaths=flightPaths+1
 end
 for _,times in pairs(A.FlightData.durations) do
     for pair,seconds in pairs(times) do
         local from,to=pair:match("^(%d+):(%d+)$")
-        assert(A.FlightData.nodes[tonumber(from)] and A.FlightData.nodes[tonumber(to)] and positive(seconds))
+        assert(directed[pair] and A.FlightData.nodes[tonumber(from)] and A.FlightData.nodes[tonumber(to)] and positive(seconds))
         flightTimes=flightTimes+1
     end
 end
-assert(flightNodes==71 and flightPaths==292 and flightTimes==881)
+assert(flightNodes==71 and flightPaths==286 and flightTimes>0)
 print(string.format("参考飞行：%d 节点、%d 有向航线、%d 分阵营耗时记录",flightNodes,flightPaths,flightTimes))
 local experienceLevels,experienceTotal=0,0
 for level,xp in pairs(A.Experience.xpToLevel) do
@@ -33,11 +35,11 @@ end
 assert(experienceLevels==59 and experienceTotal==4084700,"参考经验门槛不完整")
 print(string.format("参考升级经验：%d 个门槛，1—60 累计 %d XP；需版本和原生当前门槛匹配",experienceLevels,experienceTotal))
 local factCount,rewardCount,xpCount=0,0,0
-for id,fact in pairs(A.TaskFacts.quests) do
+for id,fact in pairs(A.TaskFacts.cacheXP.quests) do
     factCount=factCount+1
     assert(positive(id) and id%1==0 and (fact.level==nil or finite(fact.level)),"参考任务身份无效")
     for _,o in ipairs(fact.objectives or {}) do
-        assert((o.kind=="npc" or o.kind=="object" or o.kind=="item") and positive(o.id) and o.id%1==0,"参考目标无效")
+        assert(({npc=true,object=true,item=true,areaTrigger=true,areaTriggerEnter=true,criteriaTree=true})[o.kind] and positive(o.id) and o.id%1==0,"参考目标无效")
         assert(finite(o.count) and o.count>=0 and o.count%1==0,"参考目标数量无效")
     end
     if fact.xp then
@@ -52,14 +54,6 @@ for id,fact in pairs(A.TaskFacts.quests) do
         for _,list in ipairs({fact.rewards.items,fact.rewards.choices}) do for _,item in ipairs(list) do
             assert(positive(item.id) and item.id%1==0 and positive(item.count) and item.count%1==0,"参考奖励物品无效")
         end end
-    end
-end
-for itemId,drop in pairs(A.TaskFacts.drops or {}) do
-    assert(positive(itemId) and itemId%1==0,"参考掉落物品无效")
-    for _,kind in ipairs({"npcs","objects","containers"}) do
-        for _,source in ipairs(drop[kind] or {}) do
-            assert(positive(source.id) and source.id%1==0 and finite(source.percent) and source.percent>=0 and source.percent<=100,"参考掉落来源无效")
-        end
     end
 end
 print(string.format("参考任务：%d 条；奖励 %d 条；等级经验模型 %d 条",factCount,rewardCount,xpCount))

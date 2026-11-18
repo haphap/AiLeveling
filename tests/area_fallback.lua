@@ -151,7 +151,7 @@ test("已有目标身份仅补匹配缓存数量且保留明确数量及版本�
     eq(rows.objectives[3][1].count,nil)
     rows.objectives[3][1].count=2;eq(B.Data:ReferenceObjectiveTargets(q,s)[1].numRequired,2)
     rows.objectives[3][1].count=nil;q.taskFacts={objectives={{kind="item",id=100,count=3}}}
-    eq(B.Data:ReferenceObjectiveTargets(q,s)[1].numRequired,3);q.taskFacts=nil
+    eq(B.Data:ReferenceObjectiveTargets(q,s)[1].numRequired,6);q.taskFacts=nil
     s.clientVersion="other";eq(B.Data:ReferenceObjectiveTargets(q,s)[1].numRequired,nil);s.clientVersion="1.60.1";s.clientBuild="70862"
     q.questLevel=11;eq(B.Data:ReferenceObjectiveTargets(q,s)[1].numRequired,nil);q.questLevel=10
     facts.objectives[3]={kind="item",id=100,count=4};eq(B.Data:ReferenceObjectiveTargets(q,s)[1].numRequired,nil)

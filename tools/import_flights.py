@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Import pinned client topology, InFlight times and same-build flight observations."""
+"""Import Forever flight paths and estimate their duration from same-build observations."""
 import argparse
 import csv
 import hashlib
@@ -8,47 +8,19 @@ import math
 import re
 from collections import defaultdict
 from pathlib import Path
+from statistics import median
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = '1.60.1.70862'
-REV = '2efdd7ba6d0e094edf84a04eeb40c038f004ea52'
-EG_REV = '156f29c9af78b1586883e8eb94a13467eb89638c'
+
+EG_REV = '30c3bb9c8e792208feab362357471603dc51e12e'
 EG_FILE = f'eg-link-{EG_REV[:8]}/{BUILD}/flights.json'
-EG_HASH = '5e79d3e676517a43d243cca9f1adbdfff495bd75abf2f012885bab14798f89aa'
+EG_HASH = '41531a30f3900c91f5c62f9d888779e92e6673318f541d5df1b2cd1df10c82f3'
 PINS = {
     f'TaxiNodes-{BUILD}.csv': '4360793e0edfbb8de62d12d87a69260b6a1bc6314b1e506b141c33e8802d8249',
     f'TaxiPath-{BUILD}.csv': '3e5c18b53621ca7cd2618447e12498874e6aba7aa7f1f6bfda9a7977979da179',
     f'TaxiPathNode-{BUILD}.csv': 'f83f8d8e5bbeae889214f48af477dd51a4c1771ff3c3b53c3fa2cacf2cba7cdb',
-    f'InFlight-{REV}-Defaults.lua': '1cffe287a433e423a29d5b0442dc547da477dfc41a23f313108f33bd735b3a0a',
-    f'InFlight-{REV}-LICENSE': 'e5f058cf153f069d5b93e3742b8b9ea1013e0ba4a5248bc60414b954699ed4e3',
 }
-
-
-def observations(text, section):
-    # Only consume these literal tables, never execute the addon's settings or era-selection code.
-    match = re.search(r'^local ' + section + r' = \{\n(.*?)^\}', text, re.M | re.S)
-    assert match, section
-    result, side, origin = {}, None, None
-    for line in match[1].splitlines():
-        faction = re.fullmatch(r'  \["(Horde|Alliance)"\] = \{', line)
-        source = re.fullmatch(r'    \[(\d+)\] = \{', line)
-        value = re.fullmatch(r'      \[(\d+)\] = (\d+),', line)
-        if faction:
-            side, origin = faction[1], None
-        elif source:
-            origin = int(source[1])
-        elif re.fullmatch(r'    \[".*"\] = \{.*', line):
-            origin = None  # Named gossip flights have no native taxi node identity.
-        elif value:
-            if origin is None:
-                continue
-            assert side
-            key = (side, origin, int(value[1]))
-            assert key not in result and int(value[2]) > 0
-            result[key] = int(value[2])
-        elif line.strip().startswith('[') and not re.fullmatch(r'      \[".*"\] = (".*"|\d+),.*', line):
-            raise ValueError('Unexpected literal in ' + section + ': ' + line)
-    return result
 
 
 def build_observations(data, nodes, paths):
@@ -96,19 +68,18 @@ def main():
     for name, digest in PINS.items():
         path = ROOT / '.dependencies' / name
         assert hashlib.sha256(path.read_bytes()).hexdigest() == digest, name
-        if name.startswith('InFlight-'):
-            continue
         table = name.split('-')[0]
         tables[table] = list(csv.DictReader(path.open()))
         sources.append({'url': f'https://wago.tools/db2/{table}/csv?build={BUILD}&locale=enUS', 'sha256': digest})
-    defaults = ROOT / '.dependencies' / f'InFlight-{REV}-Defaults.lua'
-    license_path = ROOT / '.dependencies' / f'InFlight-{REV}-LICENSE'
-    for path in [defaults, license_path]:
-        sources.append({'url': f'https://raw.githubusercontent.com/LudiusMaximus/InFlight/{REV}/{path.name.split(REV + "-")[1]}',
-                        'sha256': hashlib.sha256(path.read_bytes()).hexdigest()})
-    text = defaults.read_text()
-    durations = observations(text, 'global_classic')
-    durations.update(observations(text, 'global_forever'))
+    # SPELL_EFFECT_SEND_TAXI tracks belong to spells or gossip, not the regular taxi menu.
+    effects_name = f'SpellEffect-{BUILD}-zhCN.csv'
+    effects = ROOT / '.dependencies' / effects_name
+    digest = 'cc8f167fe246b495294b560196f6c59439f703e8f937ddb6acd81157bd5f8b9c'
+    assert hashlib.sha256(effects.read_bytes()).hexdigest() == digest
+    with effects.open() as stream:
+        spell_paths = {r['EffectMiscValue_0'] for r in csv.DictReader(stream) if r['Effect'] == '123'}
+    spell_pairs = {(r['FromTaxiNode'], r['ToTaxiNode']) for r in tables['TaxiPath'] if r['ID'] in spell_paths}
+    sources.append({'url': f'https://wago.tools/db2/SpellEffect/csv?build={BUILD}&locale=zhCN', 'sha256': digest})
     nodes = {}
     excluded = []
     for row in tables['TaxiNodes']:
@@ -122,11 +93,12 @@ def main():
     geometry = defaultdict(list)
     for row in tables['TaxiPathNode']:
         geometry[int(row['PathID'])].append(row)
-    paths, rejected = [], []
+    paths, rejected, lengths = [], [], {}
     for row in tables['TaxiPath']:
         origin, dest = int(row['FromTaxiNode']), int(row['ToTaxiNode'])
         track = geometry[int(row['ID'])]
-        if (origin not in nodes or dest not in nodes or len(track) < 2 or
+        if ((row['FromTaxiNode'], row['ToTaxiNode']) in spell_pairs or
+                origin not in nodes or dest not in nodes or len(track) < 2 or
                 any(int(p['Delay']) or int(p['ContinentID']) != int(nodes[origin]['ContinentID']) for p in track) or
                 nodes[origin]['ContinentID'] != nodes[dest]['ContinentID']):
             rejected.append(int(row['ID']))
@@ -136,18 +108,29 @@ def main():
                 node = nodes[int(row[key])]
                 assert math.hypot(float(endpoint['Loc_0']) - float(node['Pos_0']),
                                   float(endpoint['Loc_1']) - float(node['Pos_1'])) <= 25, row['ID']
+            coords = [tuple(float(point[f'Loc_{i}']) for i in range(3)) for point in ordered]
+            length = sum(math.dist(a, b) for a, b in zip(coords, coords[1:]))
+            assert length > 0, row['ID']
+            # The client can contain alternate tracks between identical endpoints.
+            lengths[origin, dest] = length if (origin, dest) not in lengths else None
             paths.append(row)
-    kept = {(side, origin, dest): seconds for (side, origin, dest), seconds in durations.items()
-            if origin in nodes and dest in nodes and nodes[origin]['ContinentID'] == nodes[dest]['ContinentID'] and
-            int(nodes[origin]['Flags']) & (1 if side == 'Alliance' else 2) and
-            int(nodes[dest]['Flags']) & (1 if side == 'Alliance' else 2)}
     observed_path = ROOT / '.dependencies' / EG_FILE
     assert hashlib.sha256(observed_path.read_bytes()).hexdigest() == EG_HASH
     observed, excluded_observed = build_observations(json.loads(observed_path.read_text()), nodes, paths)
     sources.append({'url': f'https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/{EG_REV}/data/wowf/{BUILD}/flights.json',
                     'sha256': EG_HASH, 'license': 'CC BY 4.0'})
+    speeds = [lengths[tuple(row['hops'])] / row['seconds'] for row in observed if len(row['hops']) == 2 and lengths[tuple(row['hops'])]]
+    base_speed = median(speeds)
+    kept = {}
+    for (origin, dest), distance in lengths.items():
+        if distance is None:
+            continue
+        for side, bit in [('Alliance', 1), ('Horde', 2)]:
+            if int(nodes[origin]['Flags']) & int(nodes[dest]['Flags']) & bit:
+                kept[side, origin, dest] = max(1, round(distance / base_speed))
+    # Retain the key used by saved character measurements. It is independent of estimated times.
     lines = ['local _,A=...', '-- Generated by tools/import_flights.py; external reference, not client verification.',
-             f'A.FlightData={{version="{BUILD}:{REV[:12]}",clientVersion="1.60.1",build=70862,interface=16001,nodes={{']
+             f'A.FlightData={{version="{BUILD}:2efdd7ba6d0e",clientVersion="1.60.1",build=70862,interface=16001,nodes={{']
     quote = lambda value: json.dumps(value, ensure_ascii=False)
     for node, row in sorted(nodes.items()):
         xyz = ','.join(row[f'Pos_{i}'] for i in range(3))
@@ -182,16 +165,14 @@ def main():
              'referenceNodes': len(nodes), 'referenceDirectedPaths': len(paths), 'factionDurationPairs': len(kept),
              'excludedNodes': sorted(excluded), 'excludedPaths': sorted(rejected), 'clientVerified': False,
              'buildObservations': observed, 'excludedBuildObservations': excluded_observed,
-             'notes': ['Durations are directed and faction-specific; Classic Era plus Forever overrides only.',
-                       'Same-build EG Link duration histograms override InFlight references; local valid samples retain priority.',
-                       'Observed routes must match client topology and identify exactly one faction; speed-modified variants are excluded.',
-                       'Observation counts are external evidence, not this character\'s learned samples; native unlocks remain required.',
-                       'A duration pair may contain intermediate stops; it is not an assertion of a direct flight edge.',
-                       'Native discovered/available destinations determine flight availability; fares are ignored.',
-                       'Client base costs are catalog metadata, never substituted for unknown native fares.']}
+             'spellTaxiPaths': sorted(int(r['ID']) for r in tables['TaxiPath'] if r['ID'] in spell_paths),
+             'calibration': {'directObservations': len(speeds), 'medianYardsPerSecond': base_speed},
+             'notes': ['Estimates use only directed Forever TaxiPathNode tracks with same-faction endpoints.',
+                       'The reference speed is the median of direct regular-speed Forever route measurements.',
+                       'Matching observed hops and then character samples supersede the geometry estimate.',
+                       'Flight eligibility still requires learned nodes and native availability.']}
     outputs = {ROOT / 'Data/Flights.lua': '\n'.join(lines),
-               ROOT / 'docs/FLIGHT_DATA_AUDIT.json': json.dumps(audit, ensure_ascii=False, indent=2) + '\n',
-               ROOT / 'docs/LICENSE.InFlight.txt': license_path.read_text()}
+               ROOT / 'docs/FLIGHT_DATA_AUDIT.json': json.dumps(audit, ensure_ascii=False, indent=2) + '\n'}
     for path, output in outputs.items():
         if args.check:
             assert path.read_text() == output, path

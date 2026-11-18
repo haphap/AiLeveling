@@ -70,6 +70,8 @@ test("原生停靠改变时按实际分段估时且隔离不同路线的本地�
     s.samples[via]=nil;B.FlightData.observedDurations.Alliance["4:2"]=nil
     eq(B.Flights.Seconds(1,2,s),nil)
     s.taxiHops={};eq(B.Flights.Seconds(1,2,s),30)
+    s.samples={};B.FlightData.observedHops.Alliance["1:2"]="1:4:2"
+    eq(B.Flights.Seconds(1,2,s),100)
 end)
 test("飞行加速只读取当前构建已学法术且接口未知保持未知",function()
     local B,s=fixture();local old=C_SpellBook
@@ -87,6 +89,7 @@ test("加速参考按速度缩短且各速度实测原值隔离不重复缩放",
     local B,s=fixture();B.FlightData.durations.Alliance["1:2"]=120
     s.taxiSpeed=1.2;eq(B.Flights.Seconds(1,2,s),100)
     B.FlightData.observedDurations={Alliance={["1:2"]=240}}
+    B.FlightData.observedHops={Alliance={["1:2"]="1:2"}}
     eq(B.Flights.Seconds(1,2,s),200)
     local base=B.Flights.TimeKey(1,2,s.faction,nil,1)
     local fast=B.Flights.TimeKey(1,2,s.faction,nil,1.2)

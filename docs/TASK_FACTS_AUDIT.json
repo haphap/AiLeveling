@@ -1,58 +1,18 @@
 {
-  "source": "LibQuestDB-0.1.0-Forever",
-  "archiveSHA256": "5da5f5b968521d60fc1f17ca6884118e2c41053a4d2aeb96440416662044e30b",
-  "url": "https://www.curseforge.com/wow/addons/questdb/files/9014639",
-  "clientVerified": false,
-  "scope": "Classic server reference facts on Forever client XP tiers; QuestieDB qualifications remain authoritative.",
-  "quests": 4245,
-  "matchedQuestieIds": 4245,
-  "rewardRows": 4140,
-  "xpRows": 3492,
-  "objectives": 4096,
-  "itemDropRows": 1906,
-  "sourceFiles": {
-    "LibQuestDB-1.0.lua": "90673cb7e4b449dbb07326631b9694bf95101a3befb56e124a26a44a6cffe6b4",
-    "Data/Forever/_core/Quests.lua": "976246fae848dc2343f8dd7f0a80c7ab9473ead82def4fb4b6882c62aceb9077",
-    "Data/Forever/_core/Rewards.lua": "0d12a0e9ff2631a624c3f54b23959d5500512b9fa632895de3610825301f93b3",
-    "Data/Forever/_core/QuestXP.lua": "7b08a90c46a8ce9981d07fea6a08ed56f9f082e0684be51341519a60ddad395a",
-    "Data/Forever/_core/Drops.lua": "b7e7e807cb6a1913a3aa0fdca5ed17a18a4d3178cd39cfcfd2e079bc28c08eab"
+  "source": "EG Link server quest cache + Forever QuestXP client table",
+  "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/30c3bb9c8e792208feab362357471603dc51e12e/data/wowf/1.60.1.70862/quests.enUS.json",
+  "license": "CC BY 4.0",
+  "build": "1.60.1.70862",
+  "questAudit": "TASK_XP_AUDIT.json",
+  "effectTables": {
+    "ItemEffect": "df9f123861be4e180736e79dcee708151c6f79de9f5e6773ff8e2066430aa434",
+    "ItemXItemEffect": "15dc36eec90ca5768e00469cb8065aedf82efcf205ca03281daf6aac69ca1885",
+    "SpellEffect": "cc8f167fe246b495294b560196f6c59439f703e8f937ddb6acd81157bd5f8b9c"
   },
-  "mountRewards": {
-    "quests": 18,
-    "build": "1.60.1.70862",
-    "effectTables": {
-      "ItemEffect": "df9f123861be4e180736e79dcee708151c6f79de9f5e6773ff8e2066430aa434",
-      "ItemXItemEffect": "15dc36eec90ca5768e00469cb8065aedf82efcf205ca03281daf6aac69ca1885",
-      "SpellEffect": "cc8f167fe246b495294b560196f6c59439f703e8f937ddb6acd81157bd5f8b9c"
-    }
-  },
-  "skillRewards": {
-    "quests": 122,
-    "build": "1.60.1.70862",
-    "effectTables": {
-      "ItemEffect": "df9f123861be4e180736e79dcee708151c6f79de9f5e6773ff8e2066430aa434",
-      "ItemXItemEffect": "15dc36eec90ca5768e00469cb8065aedf82efcf205ca03281daf6aac69ca1885",
-      "SpellEffect": "cc8f167fe246b495294b560196f6c59439f703e8f937ddb6acd81157bd5f8b9c"
-    }
-  },
-  "missingQuestLevels": [
-    8193,
-    8194,
-    8221,
-    8224,
-    8225,
-    8856,
-    9154,
-    9318,
-    9334,
-    9335,
-    9336,
-    9337,
-    9341,
-    9343
-  ],
-  "cacheXP": {
-    "audit": "TASK_XP_AUDIT.json",
-    "rows": 3383
-  }
+  "quests": 5350,
+  "rewardRows": 5350,
+  "xpRows": 5350,
+  "objectives": 5485,
+  "mountRewards": 28,
+  "skillRewards": 234
 }

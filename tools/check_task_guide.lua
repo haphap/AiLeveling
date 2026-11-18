@@ -4,7 +4,7 @@ local client,metadata=dofile("emulator/client.lua"),dofile("emulator/metadata.lu
 client.install({expansion="Forever",faction=faction,classFile="WARRIOR",locale="zhCN"})
 metadata.load(package.."/QuestieDB_Forever.toc","QuestieDB")
 local db=metadata.loadAddon(package.."/QuestieDB_Forever.toc","QuestieDB",package)
-local A={Navigation={Distance=function(_,a,b)
+local A={clientVersion="1.60.1",build="70862",interface=16001,Navigation={Distance=function(_,a,b)
     if a and b and a.map==b.map then return math.sqrt((a.x-b.x)^2+(a.y-b.y)^2)*1000 end
 end}}
 C_Map={GetMapInfo=function(id) return {mapID=id} end};C_QuestLog={}
@@ -35,7 +35,11 @@ local options={minutes=60,gearPreference="xp",dungeons=false,role="DAMAGER"}
 local plan=run(function() return A.Planner.Build(s,A.Data,options) end)
 assert(plan.fallback and #plan.taskChoices>0)
 for _,c in ipairs(plan.taskChoices) do
-    assert(c.stages[1].kind=="accept" and c.stages[#c.stages].kind=="turnin")
+    if c.stages[1] then
+        assert(c.stages[1].kind=="accept" and c.stages[#c.stages].kind=="turnin")
+    else
+        assert(c.lowValue or c.revisitLevel)
+    end
     if c.questId==plan.fallback.questId then assert(not c.requireCheck) end
 end
 print(faction..": "..#plan.taskChoices.." reference task chains; automatic #"..plan.fallback.questId)
@@ -43,7 +47,7 @@ s.questCount=s.questLimit
 local full=run(function() return A.Planner.Build(s,A.Data,options) end)
 assert(full.fallback.kind=="selectionBlocked" and full.fallback.text:find("任务日志已满",1,true))
 assert(#full.taskChoices==#plan.taskChoices)
-for _,choice in ipairs(full.taskChoices) do assert(choice.acceptBlocked) end
+for _,choice in ipairs(full.taskChoices) do if choice.stages[1] then assert(choice.acceptBlocked) end end
 s.locked=plan.fallback.questId
 local locked=run(function() return A.Planner.Build(s,A.Data,options) end)
 assert(locked.fallback.kind=="selectionBlocked" and s.locked==plan.fallback.questId)
@@ -135,24 +139,24 @@ plan=run(function() return A.Planner.Build(s,A.Data,options) end)
 assert(not plan.maintenance and plan.fallback.questId==id)
 print("resolved maintenance returns to the native ready task")
 
-local lowCount,chainCount=0,0
+local lowCount=0
+local fixture=dofile(root.."/tests/fixtures.lua")
 for _,id in ipairs(A.Data.ids) do
     local q=A.Data:GetQuest(id)
     if q and q.questLevel and q.questLevel>0 and q.questLevel<50 then
-        local probe={level=q.questLevel+10,quests={[id]={}},items={},equipment={},class="WARRIOR"}
+        local probe=fixture.State()
+        probe.level,probe.quests,probe.class=q.questLevel+10,{[id]={}},"WARRIOR"
+        probe.classMask,probe.raceMask=s.classMask,s.raceMask
         local low=A.TaskGuide.LowValue(q,probe,A.Data)
-        local index=A.Data.chainIndex
-        local related=#(index.incoming[id] or {})+#(index.outgoing[id] or {})>0
-        if related then assert(not low);chainCount=chainCount+1 end
         if low then
-            assert(low.xp<=low.baseXP*0.25 and not related)
+            assert(low.xp<=low.baseXP*0.25)
             probe.quests[id].ready=true;assert(not A.TaskGuide.LowValue(q,probe,A.Data))
             lowCount=lowCount+1
         end
     end
 end
-assert(lowCount>0 and chainCount>0)
-print(string.format("real-data low-value checks: %d isolated low-XP quests without item-cache dependency; %d chain quests protected",lowCount,chainCount))
+assert(lowCount>0)
+print(string.format("real-data low-value checks: %d low-XP objectives still allow delivery when ready",lowCount))
 
 do
     local pickupState=dofile(root.."/tests/fixtures.lua").State()
@@ -214,7 +218,8 @@ do
     for _,choice in ipairs(offered) do if choice.questId==q.id then found=choice end end
     assert(found and found.actions[1].position.entityId==manual.entityId)
     context.questOffers={[manual.entityId]={}}
-    assert(#run(function() return A.Planner.TaskChoices(context,A.Data,{q.id},true,options) end)==0)
+    local unavailable=run(function() return A.Planner.Build(context,A.Data,options) end)
+    assert(unavailable.fallback and unavailable.fallback.questId~=q.id)
     context.quests[q.id]={ready=true,objectives={}}
     assert(A.Data:Target(q,context) and not context.completed[q.id])
     print(faction..": real #60860 enters automatic choices only when offered; manual target and native ready delivery remain available")
@@ -229,9 +234,10 @@ do
         context.faction,context.classMask,context.raceMask=faction,s.classMask,s.raceMask
         context.clientVersion,context.clientBuild,context.interface="1.60.1","70862",16001
         context.position=s.position
+        if id==91741 then context.bags[247834]=1 end
         context.position=assert(A.Data:Target(q,context))
         if id==91741 then assert(q.startedBy[3][1]==247834 and supplied~=247834) end
-        assert(A.Data:CacheQuest(q,context) and supplied>0 and not A.TaskGuide.XP(q,context.level,context))
+        assert(A.Data:CacheQuest(q,context) and supplied>0 and A.TaskGuide.XP(q,context.level,context)>0)
         local descriptions,_,complex=A.Data:ReferenceObjectiveTargets(q,context)
         assert(not complex and #descriptions==1 and descriptions[1].targetId==supplied and
             descriptions[1].numRequired==1 and descriptions[1].providedOnAccept)
@@ -262,7 +268,7 @@ do
         context.position=s.position
         local facts=assert(A.Data:CacheQuest(q,context))
         local descriptions,_,complex=A.Data:ReferenceObjectiveTargets(q,context)
-        assert(not complex and #descriptions==#facts.objectives and not A.TaskGuide.XP(q,context.level,context))
+        assert(not complex and #descriptions==#facts.objectives)
         for _,o in ipairs(descriptions) do
             local matched=false
             for _,fact in ipairs(facts.objectives) do
@@ -311,7 +317,8 @@ for _,row in ipairs(faction=="Horde" and {{97246,3368},{1507,5909}} or {{99047,6
         end
         context.level=19;assert(not A.Eligibility.Check(q,context,A.Data));context.level=20
     end
-    assert(A.Data:DeliveryOnly(q,context) and not A.TaskGuide.XP(q,context.level,context))
+    assert(A.Data:DeliveryOnly(q,context))
+    if q.questLevel>0 then assert(A.TaskGuide.XP(q,context.level,context)>0) end
     local stages,complete=A.TaskGuide.Stages(q,context,A.Data,
         {kind="accept",questId=q.id,title=q.title,position=assert(A.Data:Target(q,context))})
     assert(complete and #stages==2 and stages[2].kind=="turnin" and stages[2].position.entityId==recipient)
@@ -352,7 +359,7 @@ if faction=="Horde" then
     local eligible,reason=A.Eligibility.Check(q,context,A.Data)
     assert(eligible,reason)
     assert(A.Data:DeliveryOnly(q,context),"Fire Sapta must be a delivery-only restock")
-    assert(A.TaskGuide.ItemLimit(6636,context)==1 and not A.TaskGuide.XP(q,context.level,context))
+    assert(A.TaskGuide.ItemLimit(6636,context)==1 and A.TaskGuide.XP(q,context.level,context)==0)
     local held=run(function() return A.Planner.TaskChoices(context,A.Data,{q.id},true,options) end)
     assert(#held==1 and held[1].lowValue and not context.completed[q.id] and context.bags[6636]==1)
     local full=run(function() return A.Planner.Build(context,A.Data,options) end)
@@ -395,33 +402,33 @@ if faction=="Horde" then
     context.locked=q.id;assert(not choices()[1].lowValue);context.locked=nil
     context.quests[q.id]={ready=true,objectives={}};assert(not choices()[1].lowValue)
     context.quests={};context.completed[q.id]=nil;assert(not choices()[1].lowValue)
-    local unknown=assert(A.Data:GetQuest(16));assert(A.TaskGuide.XP(unknown,20,context)==nil)
+    local unknown=assert(A.Data:GetQuest(16));assert(A.TaskGuide.XP(unknown,20,context)==0)
     context.completed[16]=true;assert(not A.TaskGuide.LowValue(unknown,context,A.Data))
-    print("Horde: real #889 is deprioritized after turn-in at 0 XP; manual, active and first-run remain; #16 XP stays unknown")
+    print("Horde: real #889 is deprioritized after turn-in at 0 XP; manual, active and first-run remain; #16 rewards an item")
     local courier=assert(A.Data:GetQuest(79007))
     context.quests,context.completed={},{};context.level=20
     context.position=assert(A.Data:Target(courier,context))
-    assert(A.Data:DeliveryOnly(courier,context) and not A.Data:Recipient(courier))
+    assert(A.Data:DeliveryOnly(courier,context))
     local stages,complete=A.TaskGuide.Stages(courier,context,A.Data,{kind="accept",questId=courier.id,position=context.position})
     assert(complete and #stages==2 and stages[2].kind=="turnin")
     local recipient=stages[2].position
-    assert(recipient.entityKind=="object" and (recipient.entityId==415107 or recipient.entityId==424010))
+    assert(recipient.entityKind=="object" and recipient.entityId==415107)
     context.quests[courier.id]={objectives={}}
     assert(A.Data:Target(courier,context).entityId==recipient.entityId)
     assert(not context.quests[courier.id].ready and not context.completed[courier.id])
     print("Horde: real #79007 continues to one of its actual object recipients; native completion remains required")
     local pet=assert(A.Data:GetQuest(97583))
-    context.level,context.quests,context.completed=8,{}, {[pet.id]=true}
+    context.level,context.quests,context.completed=10,{}, {[pet.id]=true}
     context.position=assert(A.Data:Target(pet,context))
-    assert(A.Data:CacheQuest(pet,context).companionReward==275682 and A.TaskGuide.XP(pet,8,context)==nil)
+    assert(A.Data:CacheQuest(pet,context).companionReward==275682 and A.TaskGuide.XP(pet,context.level,context)==0)
     assert(A.TaskGuide.LowValue(pet,context,A.Data))
     local continued=run(function() return A.Planner.Build(context,A.Data,options) end)
     assert(continued.fallback and continued.fallback.questId~=pet.id)
     context.locked=pet.id;assert(not A.TaskGuide.LowValue(pet,context,A.Data));context.locked=nil
     context.quests[pet.id]={objectives={}};assert(not A.TaskGuide.LowValue(pet,context,A.Data));context.quests={}
-    context.clientBuild="other";assert(not A.TaskGuide.LowValue(pet,context,A.Data));context.clientBuild="70862"
+    context.clientVersion="other";assert(not A.TaskGuide.LowValue(pet,context,A.Data));context.clientVersion="1.60.1"
     context.completed={};assert(not A.TaskGuide.LowValue(pet,context,A.Data))
-    print("Horde: real #97583 companion repeat yields to leveling after turn-in; XP stays unknown; first-run, active and manual remain")
+    print("Horde: real #97583 companion repeat yields to leveling after turn-in; first-run, active and manual remain")
 end
 
 -- Legacy entries remain browseable until the actual NPC offers them.
@@ -432,13 +439,13 @@ do
     context.position=assert(A.Data:Target(q,context))
     local descriptions=A.Data:ReferenceObjectiveTargets(q,context)
     assert(#descriptions==1 and descriptions[1].targetId==210187 and descriptions[1].numRequired==1)
-    assert(A.TaskGuide.XP(q,23,context)==nil and not A.Data:DeliveryOnly(q,context))
+    assert(A.TaskGuide.XP(q,23,context)==0 and not A.Data:DeliveryOnly(q,context))
     local function choice() return run(function() return A.Planner.TaskChoices(context,A.Data,{q.id},true,options) end)[1] end
     assert(choice().requireCheck)
     context.locked=q.id;assert(choice());context.locked=nil
     context.questOffers={[4086]={[q.id]=true}};assert(not choice().requireCheck)
     context.questOffers=nil;context.quests[q.id]={objectives=descriptions}
     assert(not choice().requireCheck and not context.quests[q.id].ready and not context.completed[q.id])
-    context.quests={};context.clientBuild="other";assert(A.Data:CacheQuest(q,context)==nil)
+    context.quests={};context.clientVersion="other";assert(A.Data:CacheQuest(q,context)==nil)
     print(faction..": real #78270 keeps its work-order requirement; automatic selection waits for the actual NPC offer; active and manual remain")
 end

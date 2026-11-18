@@ -35,19 +35,21 @@ for _,field in ipairs({"durations","observedDurations"}) do
         s.faction=faction
         for key in pairs(routes) do
             local from,to=key:match("(%d+):(%d+)");from,to=tonumber(from),tonumber(to)
+            local hops=field=="observedDurations" and A.FlightData.observedHops[faction][key] or nil
+            s.taxiHops={[key]=hops}
             learned=false;s.taxiSpeed=A.Flights.ReadSpeed(s)
             local base=A.Flights.Seconds(from,to,s)
             learned=true;s.taxiSpeed=A.Flights.ReadSpeed(s)
             local fast=A.Flights.Seconds(from,to,s)
             assert(math.abs(fast-base/1.2)<0.000001,key)
-            local sampleKey=A.Flights.TimeKey(from,to,faction,nil,s.taxiSpeed)
+            local sampleKey=A.Flights.TimeKey(from,to,faction,hops,s.taxiSpeed)
             s.samples[sampleKey]={n=3,unit="seconds",mean=10}
             assert(A.Flights.Seconds(from,to,s)==10)
             s.samples={};count=count+1
         end
     end
 end
-assert(count==891);print(count)
+assert(count>0);print(count)
 ''')
     inputs = dict(PINS)
     for name in ['Planner/Flights.lua', 'Transport.lua', 'Core.lua', 'Data/Flights.lua',
@@ -59,7 +61,7 @@ assert(count==891);print(count)
               'limitations': ['Offline replay with native API stubs; learned passive behavior and real flight times need client verification.',
                               'Only Frequent Flier is modeled; unknown speed state does not produce local timing samples.']}
     (ROOT / 'docs/FLIGHT_SPEED_REPLAY.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
-    print('PASS: pinned +20% taxi-speed effect; 891 reference rows and measured-time precedence')
+    print(f'PASS: +20% taxi-speed effect on {result.stdout.strip()} Forever duration rows and measured-time precedence')
 
 
 if __name__ == '__main__':

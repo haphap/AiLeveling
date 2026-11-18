@@ -5,22 +5,31 @@
   "license": "CC BY 4.0",
   "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
   "url": "https://github.com/JIVESCORP/eg-link-output-wowf/tree/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862",
+  "questURL": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/30c3bb9c8e792208feab362357471603dc51e12e/data/wowf/1.60.1.70862/quests.enUS.json",
+  "sortURL": "https://wago.tools/db2/QuestSort?build=1.60.1.70862",
   "tierURL": "https://wago.tools/db2/QuestXP/csv?build=1.60.1.70862",
   "inputs": {
-    ".dependencies/eg-link-156f29c9/1.60.1.70862/quests.enUS.json": "0f8b890bbedc79f6c80b99511a88ff5f699048f4a34303bd6d0a0281cfde4b7a",
+    ".dependencies/eg-link-30c3bb9c/1.60.1.70938/quests.enUS.json": "cc038ecb07f37a74b4bde7e6663950288205487b26d11fdd30687e2811b870f7",
+    ".dependencies/QuestXP-1.60.1.70938.csv": "1513f3f2646ae0b33b79de6219614792f0dbc050bb5bd76c1c4f0fce668a86fd",
+    ".dependencies/QuestSort-1.60.1.70862.csv": "9cc9cbe418ab27ecc218e4699180520471eb3521514fe0b6b25e591e86a94a3f",
+    ".dependencies/eg-link-30c3bb9c/1.60.1.70862/quests.enUS.json": "7b96a1e976a6746492f8a17e8de9ab1b014f236ebfb01e5f03dbe81880777877",
     ".dependencies/eg-link-156f29c9/1.60.1.70862/turn_ins.json": "567debf36003b2c7010e449d3b6f40ce2d7f277e6ea179c60d909b04b2847f02",
     ".dependencies/eg-link-156f29c9/1.60.1.70862/objectives.json": "c71832408f23261698a60c69f6ed69223944d85cd1d931028be36693dda557f9",
     ".dependencies/eg-link-156f29c9/1.60.1.70862/item_uses.json": "2994bdaa81f0db8fff891eb9bc30e8b46a3acac126ad801d3787fa0f1b8f5f01",
     ".dependencies/QuestXP-1.60.1.70862.csv": "1513f3f2646ae0b33b79de6219614792f0dbc050bb5bd76c1c4f0fce668a86fd"
   },
-  "sourceQuests": 3392,
-  "xpRows": 3369,
+  "baseQuests": 3944,
+  "supplementOnly": 1434,
+  "sourceQuests": 5378,
+  "supplementURL": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/30c3bb9c8e792208feab362357471603dc51e12e/data/wowf/1.60.1.70938/quests.enUS.json",
+  "xpRows": 5350,
   "excluded": {
     "259": "outside_fixed_level_1_60",
     "946": "outside_fixed_level_1_60",
     "1279": "outside_fixed_level_1_60",
     "1280": "outside_fixed_level_1_60",
     "1291": "outside_fixed_level_1_60",
+    "1292": "outside_fixed_level_1_60",
     "1293": "outside_fixed_level_1_60",
     "1294": "outside_fixed_level_1_60",
     "1295": "outside_fixed_level_1_60",
@@ -33,10 +42,14 @@
     "4905": "outside_fixed_level_1_60",
     "6843": "outside_fixed_level_1_60",
     "7069": "outside_fixed_level_1_60",
+    "7869": "outside_fixed_level_1_60",
     "7870": "outside_fixed_level_1_60",
     "8230": "outside_fixed_level_1_60",
+    "8247": "outside_fixed_level_1_60",
     "8248": "outside_fixed_level_1_60",
     "63769": "outside_fixed_level_1_60",
+    "84213": "outside_fixed_level_1_60",
+    "91736": "outside_fixed_level_1_60",
     "92521": "outside_fixed_level_1_60",
     "96735": "outside_fixed_level_1_60"
   },
@@ -261,7 +274,7 @@
       "objectives": [
         {
           "kind": "item",
-          "id": 271912,
+          "id": 271894,
           "count": 1
         },
         {
@@ -276,7 +289,7 @@
         },
         {
           "kind": "item",
-          "id": 271894,
+          "id": 271912,
           "count": 1
         }
       ],
@@ -2606,5 +2619,5 @@
   },
   "scope": "Base rewards only; native current-level rewards take priority. No character XP bonuses inferred.",
   "flagReference": "https://master.trinitycore.net/d8/d60/structquestobjective",
-  "transformation": "IDs, fixed levels, XP curves and monster/object/item/area-trigger/criteria-tree requirements. Criteria trees retain independent event IDs and counts, never entity identities or inferred completion. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; payment quests remain complex objectives. Checked companion reward IDs classify optional repeats without inferring XP. No text, eligibility or other item rewards copied."
+  "transformation": "IDs, fixed levels, XP curves and monster/object/item/area-trigger/criteria-tree requirements. Criteria trees retain independent event IDs and counts, never entity identities or inferred completion. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; payment quests remain complex objectives. Checked companion reward IDs classify optional repeats without inferring XP. Quest reward items, choices and completion spells are read from the Forever server cache."
 }

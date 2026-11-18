@@ -11,8 +11,15 @@ ROOT = Path(__file__).resolve().parents[1]
 BUILD = '1.60.1.70862'
 COMMIT = '156f29c9af78b1586883e8eb94a13467eb89638c'
 BASE = f'.dependencies/eg-link-{COMMIT[:8]}/{BUILD}'
+QUEST_REV = "30c3bb9c8e792208feab362357471603dc51e12e"
+QUEST_FILE = f".dependencies/eg-link-{QUEST_REV[:8]}/{BUILD}/quests.enUS.json"
+SUPPLEMENT_BUILD = "1.60.1.70938"
+SUPPLEMENT_FILE = f".dependencies/eg-link-{QUEST_REV[:8]}/{SUPPLEMENT_BUILD}/quests.enUS.json"
 PINS = {
-    f'{BASE}/quests.enUS.json': '0f8b890bbedc79f6c80b99511a88ff5f699048f4a34303bd6d0a0281cfde4b7a',
+    SUPPLEMENT_FILE: "cc038ecb07f37a74b4bde7e6663950288205487b26d11fdd30687e2811b870f7",
+    f".dependencies/QuestXP-{SUPPLEMENT_BUILD}.csv": "1513f3f2646ae0b33b79de6219614792f0dbc050bb5bd76c1c4f0fce668a86fd",
+    f'.dependencies/QuestSort-{BUILD}.csv': '9cc9cbe418ab27ecc218e4699180520471eb3521514fe0b6b25e591e86a94a3f',
+    QUEST_FILE: '7b96a1e976a6746492f8a17e8de9ab1b014f236ebfb01e5f03dbe81880777877',
     f'{BASE}/turn_ins.json': '567debf36003b2c7010e449d3b6f40ce2d7f277e6ea179c60d909b04b2847f02',
     f'{BASE}/objectives.json': 'c71832408f23261698a60c69f6ed69223944d85cd1d931028be36693dda557f9',
     f'{BASE}/item_uses.json': '2994bdaa81f0db8fff891eb9bc30e8b46a3acac126ad801d3787fa0f1b8f5f01',
@@ -31,7 +38,7 @@ def reward(tier, multiplier, quest_level, player_level):
 def load():
     for name, digest in PINS.items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
-    cache = json.loads((ROOT / BASE / 'quests.enUS.json').read_text())
+    cache = json.loads((ROOT / QUEST_FILE).read_text())
     observations = json.loads((ROOT / BASE / 'turn_ins.json').read_text())
     locations = json.loads((ROOT / BASE / 'objectives.json').read_text())
     uses = json.loads((ROOT / BASE / 'item_uses.json').read_text())
@@ -45,8 +52,18 @@ def load():
         tiers = {int(r['ID']): [int(r[f'Difficulty_{i}']) for i in range(10)] for r in rows}
         assert len(tiers) == len(rows) and all(level in tiers for level in range(1, 61))
         assert all(v >= 0 for values in tiers.values() for v in values)
+    supplement = json.loads((ROOT / SUPPLEMENT_FILE).read_text())
+    meta = supplement['meta']
+    assert (meta['clientBuild'], meta['product'], meta['dataset'], meta['schemaVersion']) == (SUPPLEMENT_BUILD, 'wowf', 'quests', 1)
+    assert PINS[f'.dependencies/QuestXP-{BUILD}.csv'] == PINS[f'.dependencies/QuestXP-{SUPPLEMENT_BUILD}.csv']
+    # Prefer the base client where both have records, including any build-specific money reward.
+    quests = {**supplement['quests'], **cache['quests']}
+    event_names = {'Seasonal', 'Darkmoon Faire', "Ahn'Qiraj War", 'Lunar Festival', 'Invasion', 'Midsummer'}
+    with (ROOT / f'.dependencies/QuestSort-{BUILD}.csv').open() as stream:
+        event_sorts = {r['ID']: True for r in csv.DictReader(stream) if r['SortName_lang'] in event_names}
+    assert len(event_sorts) == len(event_names)
     curves, excluded = {}, {}
-    for id, q in cache['quests'].items():
+    for id, q in quests.items():
         assert id.isdigit() and int(id) > 0
         level, rewards = q.get('level'), q.get('rewards', {})
         if type(level) is not int or not 1 <= level <= 60:
@@ -74,9 +91,18 @@ def load():
             else:
                 complex_objectives = True
         curves[id] = dict(level=level, xp=curve, objectives=objectives, complex=complex_objectives)
+        items = {key: [{'id': item['itemId'], 'count': item['count']} for item in rewards.get(key, [])]
+                 for key in ('items', 'choices')}
+        if rewards.get('spellId'):
+            items['spellCast'] = rewards['spellId']
+        if q.get('startItemId'):
+            items['srcItem'] = q['startItemId']
+        curves[id]['rewards'] = items
+        if str(q.get('categoryId')) in event_sorts:
+            curves[id]['hidden'] = 'event'
         if rewards.get('money', 0) < 0:
             curves[id]['complex'] = True
-    # Independently checked requirements missing from the pinned server cache.
+    # Supplements agree with or fill gaps in the pinned Forever cache.
     # These add no XP/rewards; item IDs and counts remain separate from quest eligibility.
     supplements = [
         {'id': 99101, 'level': 9, 'sourceItemId': 286104,
@@ -122,7 +148,7 @@ def load():
          'objectives': [{'kind': 'item', 'id': 286209, 'count': 6}],
          'url': 'https://www.wowhead.com/forever/quest=99143/bottles-and-baubles'},
         {'id': 95928, 'level': 60, 'dungeonMapId': 3001, 'areaId': 16667,
-         'objectives': [{'kind': 'item', 'id': item, 'count': 1} for item in (271912, 271898, 271902, 271894)],
+         'objectives': [{'kind': 'item', 'id': item, 'count': 1} for item in (271894, 271898, 271902, 271912)],
          'url': 'https://www.curseforge.com/wow/addons/dungeonjournal/files/9518674',
          'archiveSHA256': '4c24917aae32a495d0dabae551e86615635ba4a37eca934b8dd599a93439a83b',
          'scope': 'Crystalline Elements factual quest/item IDs, quantities and dungeon association only; no source code, descriptions, assets or rewards copied.',
@@ -132,7 +158,7 @@ def load():
         fact.setdefault('checked', '2026-11-09')
         fact['captureBuild'] = None
         previous = curves.get(str(fact['id']))
-        assert previous is None or (previous['level'] == fact['level'] and not previous['objectives'] and not previous['complex'])
+        assert previous is None or (previous['level'] == fact['level'] and (not previous['objectives'] or previous['objectives'] == fact['objectives']) and not previous['complex'])
         row = curves.setdefault(str(fact['id']), dict(level=fact['level']))
         row.update(objectives=fact['objectives'], complex=False)
         if 'sourceItemId' in fact:
@@ -188,19 +214,23 @@ def load():
             if id not in curves or type(level) is not int or not 1 <= level < 60 or observed.get('xpDisabled') or 'xp' not in observed:
                 skipped.append(dict(id=int(id), observation=observed))
                 continue
-            q = cache['quests'][id]
+            q = quests[id]
             r = q['rewards']
             xp = reward(tiers[q['level']][r['xpDifficulty']], r['xpMultiplier'], q['level'], level)
             assert xp == observed['xp'], (id, level, xp, observed['xp'])
             matched.append(dict(id=int(id), questLevel=q['level'], playerLevel=level, xp=xp,
                                 multiplier=r['xpMultiplier'], sources=observed['sources']))
     assert matched, 'No independent turn-in observations checked'
-    data = dict(version='1.60.1', build='70862', interface=16001, quests=curves)
+    data = dict(version='1.60.1', build='70862', interface=16001, quests=curves, eventSorts=event_sorts)
     report = dict(source='EG Link server quest cache + Forever QuestXP client table', build=BUILD,
                   commit=COMMIT, license='CC BY 4.0', attribution=cache['meta']['attribution'],
                   url=f'https://github.com/JIVESCORP/eg-link-output-wowf/tree/{COMMIT}/data/wowf/{BUILD}',
+                  questURL=f'https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/{QUEST_REV}/data/wowf/{BUILD}/quests.enUS.json',
+                  sortURL=f'https://wago.tools/db2/QuestSort?build={BUILD}',
                   tierURL=f'https://wago.tools/db2/QuestXP/csv?build={BUILD}', inputs=PINS,
-                  sourceQuests=len(cache['quests']), xpRows=sum('xp' in q for q in curves.values()), excluded=excluded,
+                  baseQuests=len(cache['quests']), supplementOnly=len(quests)-len(cache['quests']), sourceQuests=len(quests),
+                  supplementURL=f'https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/{QUEST_REV}/data/wowf/{SUPPLEMENT_BUILD}/quests.enUS.json',
+                  xpRows=sum('xp' in q for q in curves.values()), excluded=excluded,
                   objectiveSupplements=supplements,
                   observationChecks=matched, skippedObservations=skipped, clientVerified=False,
                   objectiveLocations=dict(quests=len({o['id'] for o in located}), objectives=len(located),
@@ -210,5 +240,5 @@ def load():
                                 rejected=rejected_uses, scope='Successful item spells followed by quest progress. Use purpose and observed targets only; no required quantities, consumption or recovery inferred.'),
                   scope='Base rewards only; native current-level rewards take priority. No character XP bonuses inferred.',
                   flagReference='https://master.trinitycore.net/d8/d60/structquestobjective',
-                  transformation='IDs, fixed levels, XP curves and monster/object/item/area-trigger/criteria-tree requirements. Criteria trees retain independent event IDs and counts, never entity identities or inferred completion. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; payment quests remain complex objectives. Checked companion reward IDs classify optional repeats without inferring XP. No text, eligibility or other item rewards copied.')
+                  transformation='IDs, fixed levels, XP curves and monster/object/item/area-trigger/criteria-tree requirements. Criteria trees retain independent event IDs and counts, never entity identities or inferred completion. AreaTrigger and AreaTriggerEnter retain zero amounts as completion flags, not quantities; unsupported or invalid objective types remain complex; payment quests remain complex objectives. Checked companion reward IDs classify optional repeats without inferring XP. Quest reward items, choices and completion spells are read from the Forever server cache.')
     return data, report

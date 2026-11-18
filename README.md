@@ -103,6 +103,6 @@
 
 ## 致谢与许可
 
-任务数据由 [QuestieDB](https://github.com/Questie/QuestieDB) 提供，坐标与地图标记使用 [HereBeDragons](https://www.wowace.com/projects/herebedragons)。界面与交互参考 [Polestar](https://github.com/fitzforge/polestar)、[LumensUI](https://www.curseforge.com/wow/addons/lumensui)、[RestedXP](https://github.com/RestedXP/RXPGuides) 和 [Lueur](https://www.curseforge.com/wow/addons/lueur)。
+任务接取、目标与交付使用无限版 [QuestieDB](https://github.com/Questie/QuestieDB)。任务奖励和飞行耗时采用无限版客户端与服务器记录。坐标与地图标记使用 [HereBeDragons](https://www.wowace.com/projects/herebedragons)。界面与交互参考 [Polestar](https://github.com/fitzforge/polestar)、[LumensUI](https://www.curseforge.com/wow/addons/lumensui)、[RestedXP](https://github.com/RestedXP/RXPGuides) 和 [Lueur](https://www.curseforge.com/wow/addons/lueur)。
 
 自有代码采用 [MIT](https://github.com/haphap/AiLeveling/blob/main/LICENSE)。Polestar 装备图标按 [GPL-3.0](https://github.com/haphap/AiLeveling/blob/main/docs/LICENSE.Polestar.txt) 分发；RestedXP 危险位置与急救参考数据按 [CC BY-NC-SA 4.0](https://github.com/haphap/AiLeveling/blob/main/docs/LICENSE.RestedXP.txt) 分发。游戏界面素材版权归 Blizzard Entertainment，来源与版本见 [来源记录](https://github.com/haphap/AiLeveling/blob/main/docs/SOURCES.json)。

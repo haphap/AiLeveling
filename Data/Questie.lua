@@ -61,6 +61,7 @@ function D:Connect(db)
     if not db or type(db.RequireContract) ~= "function" then return false, "请安装 QuestieDB v1.0.12 或兼容版本。" end
     local ok, message = db.RequireContract(4)
     if not ok then return false, message end
+    if not db.flavor or db.flavor.expansion~="Forever" then return false, "请安装无限版 QuestieDB。" end
     self.db = db
     self.cache,self.chainIndex,self.byArea={},nil,{}
     self.servicesByMap,self.serviceCount={},0
@@ -73,8 +74,6 @@ function D:Connect(db)
     for area, map in pairs(D.ParseMap(zones and zones.private and zones.private.areaIdToUiMapIdOverride)) do
         self.maps[area] = map
     end
-    local xp = db.Support.Get("QuestXP")
-    self.xp = xp and xp.db or {}
     return true
 end
 
@@ -252,12 +251,9 @@ function D:GetQuest(id,state)
     end
     q.repeatable = math.floor((q.specialFlags or 0) / 1) % 2 == 1
     q.title = q.name or ("任务 #" .. id)
-    local xp = self.xp[id]
-    if type(xp)=="table" and type(xp[1])=="number" and xp[1]>=1 and xp[1]<=60 and xp[1]%1==0 and
-        type(xp[2])=="number" and xp[2]>=0 and xp[2]<math.huge and xp[2]%1==0 then
-        q.referenceXPLevel,q.referenceXP=xp[1],xp[2]
-    end
-    q.taskFacts=A.TaskFacts and A.TaskFacts.quests[id]
+    q.taskFacts=self:CacheQuest(q,A)
+    local sorts=A.TaskFacts and A.TaskFacts.cacheXP and A.TaskFacts.cacheXP.eventSorts
+    if not q.taskFacts and sorts and sorts[-(q.zoneOrSort or 0)] then q.taskFacts={hidden="event"} end
     self.cache[id] = q
     return q
 end
@@ -587,7 +583,7 @@ function D:CacheQuest(q,state)
     local facts=cache.quests[q.id]
     -- Scaling quests retain their objective requirements; their XP still needs a matching level in TaskGuide.XP.
     if facts and (facts.level==q.questLevel or q.questLevel==-1) and
-        (not facts.sourceItemId or facts.sourceItemId==q.sourceItemId) then return facts end
+        (not facts.sourceItemId or facts.sourceItemId==(q.sourceItemId or 0)) then return facts end
 end
 
 local function dungeonAreas(q,state)
@@ -1016,9 +1012,6 @@ function D:ReferenceObjectiveTargets(q,state)
             local description={text=name or ("目标 #"..row[1]),finished=false,
                 targetKind=({"npc","object","item"})[kind],targetId=row[1]}
             local need=row.count
-            for _,fact in ipairs(q.taskFacts and q.taskFacts.objectives or {}) do
-                if not need and fact.kind==description.targetKind and fact.id==row[1] then need=fact.count end
-            end
             if not need then
                 local count
                 for _,fact in ipairs(cache and cache.objectives or {}) do

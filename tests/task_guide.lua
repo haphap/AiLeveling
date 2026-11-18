@@ -52,13 +52,7 @@ test("等级经验按分段来源读取且等级修正不匹配时保留未知",
     eq(B.TaskGuide.XP(q,60),nil);q.questLevel=11;eq(B.TaskGuide.XP(q,10),nil)
     q.questLevel,q.taskFacts.level=nil,nil;eq(B.TaskGuide.XP(q,10),nil)
     q.questLevel,q.taskFacts,q.referenceXPLevel,q.referenceXP=10,nil,10,1000
-    eq(B.TaskGuide.XP(q,10),1000);eq(B.TaskGuide.XP(q,15),1000);eq(B.TaskGuide.XP(q,16),800)
-    eq(B.TaskGuide.XP(q,20),100);eq(B.TaskGuide.XP(q,60),nil)
-    q.referenceXP=335;eq(B.TaskGuide.XP(q,10),340);eq(B.TaskGuide.XP(q,16),270)
-    q.referenceXP=0;eq(B.TaskGuide.XP(q,10),0)
-    q.referenceXPLevel=11;eq(B.TaskGuide.XP(q,10),nil)
-    q.referenceXPLevel=10;q.referenceXP=2000;q.taskFacts={level=10,xp={{1,1000}}}
-    eq(B.TaskGuide.XP(q,10),1000)
+    eq(B.TaskGuide.XP(q,10),nil) -- Era base XP alone cannot price a Forever route.
 end)
 test("服务器缓存经验按构建与任务等级启用且原生奖励优先",function()
     local B,s,_,q=fixture()
@@ -91,9 +85,7 @@ test("缓存经验补齐后进入任务收益排序与低价值保护",function(
     local p=plan(s,d,nil,B);eq(p.fallback.questId,2)
     eq(q1.taskFacts,nil);eq(B.TaskGuide.LowValue(q1,s,d,p.taskChoices[2]),nil)
     s.clientVersion="other";p=plan(s,d,nil,B);eq(p.fallback.questId,1)
-    q1.referenceXPLevel,q1.referenceXP=20,100;q2.referenceXPLevel,q2.referenceXP=20,2000
-    p=plan(s,d,nil,B);eq(p.fallback.questId,2)
-    q2.referenceXPLevel=21;p=plan(s,d,nil,B);eq(p.fallback.questId,1)
+
 end)
 test("节日退役参考任务不抢占自动首选但实际日志和明确锁定保留",function()
     local s=F.State();s.position={map=1,x=0};local q1,q2=F.Quest(1),F.Quest(2)

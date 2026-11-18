@@ -120,14 +120,6 @@
       ]
     },
     {
-      "name": "Questie public quest XP support interpretation",
-      "url": "https://github.com/Questie/Questie/blob/d6f33444c2f4266aace3fa57ba667c92ac18a335/Database/QuestXP/QuestieXP.lua",
-      "retrieved": "2026-11-09",
-      "sha256": "b3b04221bcf7caf3197df40ece32c967a580644acf3490ba357c0f5dff434816",
-      "scope": "QuestXP.db rows are base XP and quest level; level reduction and tier rounding independently implemented as a fallback; native rewards and existing matching curves retain priority. Compared against the upstream consumer for every added row at player levels 1-59. Buff multipliers are not inferred.",
-      "code_copied": false
-    },
-    {
       "name": "RestedXP feature baseline",
       "url": "https://github.com/RestedXP/RXPGuides/tree/d583b89e455d73be6b93970579f074ecf6bb6326",
       "commit": "d583b89e455d73be6b93970579f074ecf6bb6326",
@@ -633,34 +625,6 @@
       "transformation": "tools/import_dungeon_loot.py joins atlas dungeon and boss identities with observed encounter rolls and client equippable weapon/armor IDs. Atlas assignments include Classic and beta references. Only a live roll is shown as observed. No drop-rate estimate or quest rewards. This browse index is independent of route scoring."
     },
     {
-      "name": "LibQuestDB walking graph",
-      "version": "v0.1.0 Forever",
-      "url": "https://www.curseforge.com/wow/addons/questdb/files/9014639",
-      "archive_sha256": "5da5f5b968521d60fc1f17ca6884118e2c41053a4d2aeb96440416662044e30b",
-      "data_sha256": "7c0b6a66140e0192858af19590aca7654db5de51a77f34e45ad4728c18e0c400",
-      "license": "MIT; Copyright (c) 2026 Pimptasty",
-      "license_file": "LICENSE.LibQuestDB.txt",
-      "scope": "1245 nodes, 4061 directed walk links, 40153 source points; no inferred approach bridges or unpriced transport links",
-      "client_verified": false
-    },
-    {
-      "name": "LibQuestDB quest reference facts",
-      "version": "v0.1.0 Forever",
-      "url": "https://www.curseforge.com/wow/addons/questdb/files/9014639",
-      "archive_sha256": "5da5f5b968521d60fc1f17ca6884118e2c41053a4d2aeb96440416662044e30b",
-      "license": "MIT; Copyright (c) 2026 Pimptasty",
-      "license_file": "LICENSE.LibQuestDB.txt",
-      "scope": "Classic server reference facts on Forever client XP tiers; QuestieDB qualifications remain authoritative.",
-      "source_files": {
-        "LibQuestDB-1.0.lua": "90673cb7e4b449dbb07326631b9694bf95101a3befb56e124a26a44a6cffe6b4",
-        "Data/Forever/_core/Quests.lua": "976246fae848dc2343f8dd7f0a80c7ab9473ead82def4fb4b6882c62aceb9077",
-        "Data/Forever/_core/Rewards.lua": "0d12a0e9ff2631a624c3f54b23959d5500512b9fa632895de3610825301f93b3",
-        "Data/Forever/_core/QuestXP.lua": "7b08a90c46a8ce9981d07fea6a08ed56f9f082e0684be51341519a60ddad395a",
-        "Data/Forever/_core/Drops.lua": "b7e7e807cb6a1913a3aa0fdca5ed17a18a4d3178cd39cfcfd2e079bc28c08eab"
-      },
-      "client_verified": false
-    },
-    {
       "id": "Forever-LevelExperience-1.60.1.70862",
       "url": "https://wago.tools/db2/LevelExperience/csv?build=1.60.1.70862",
       "build": "1.60.1.70862",
@@ -677,9 +641,8 @@
     {
       "id": "Forever-flight-reference-1.60.1.70862",
       "build": "1.60.1.70862",
-      "scope": "71 reference taxi nodes; 292 directed client path records; 881 faction-specific Era/Forever duration references; 10 same-build EG Link routes with 17 observations; native availability and fares required",
+      "scope": "Forever client taxi nodes and regular directed paths. Missing durations use the client track length calibrated against same-build direct flight measurements. Spell taxi routes are excluded from the regular flight network.",
       "audit": "docs/FLIGHT_DATA_AUDIT.json",
-      "license": "docs/LICENSE.InFlight.txt",
       "sources": [
         {
           "url": "https://wago.tools/db2/TaxiNodes/csv?build=1.60.1.70862&locale=enUS",
@@ -694,16 +657,12 @@
           "sha256": "f83f8d8e5bbeae889214f48af477dd51a4c1771ff3c3b53c3fa2cacf2cba7cdb"
         },
         {
-          "url": "https://raw.githubusercontent.com/LudiusMaximus/InFlight/2efdd7ba6d0e094edf84a04eeb40c038f004ea52/Defaults.lua",
-          "sha256": "1cffe287a433e423a29d5b0442dc547da477dfc41a23f313108f33bd735b3a0a"
+          "url": "https://wago.tools/db2/SpellEffect/csv?build=1.60.1.70862&locale=zhCN",
+          "sha256": "cc8f167fe246b495294b560196f6c59439f703e8f937ddb6acd81157bd5f8b9c"
         },
         {
-          "url": "https://raw.githubusercontent.com/LudiusMaximus/InFlight/2efdd7ba6d0e094edf84a04eeb40c038f004ea52/LICENSE",
-          "sha256": "e5f058cf153f069d5b93e3742b8b9ea1013e0ba4a5248bc60414b954699ed4e3"
-        },
-        {
-          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862/flights.json",
-          "sha256": "5e79d3e676517a43d243cca9f1adbdfff495bd75abf2f012885bab14798f89aa",
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/30c3bb9c8e792208feab362357471603dc51e12e/data/wowf/1.60.1.70862/flights.json",
+          "sha256": "41531a30f3900c91f5c62f9d888779e92e6673318f541d5df1b2cd1df10c82f3",
           "license": "CC BY 4.0"
         }
       ],
@@ -872,21 +831,23 @@
     },
     {
       "name": "Efficient Games EG Link quest cache",
-      "url": "https://github.com/JIVESCORP/eg-link-output-wowf/tree/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862",
+      "supplement": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/30c3bb9c8e792208feab362357471603dc51e12e/data/wowf/1.60.1.70938/quests.enUS.json",
+      "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/30c3bb9c8e792208feab362357471603dc51e12e/data/wowf/1.60.1.70862/quests.enUS.json",
       "license": "CC BY 4.0",
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
-      "scope": "Server XP difficulty/multiplier and fixed quest level transformed to XP curves; verified against 170 turn-in observations. Basic monster/object/item requirements fill empty Questie objectives for the matching build and level; unsupported objective kinds remain complex. No copied eligibility, text, item rewards or planner code.",
+      "scope": "Forever 70862 quest cache and character turn-ins, supplemented by missing quests from Forever 70938. Both client XP tables have identical checksums. Objective quantities, reward items and completion spells come from these records. Additional Forever quest evidence is listed in the audit.",
       "audit": "TASK_XP_AUDIT.json",
       "client_verified": false,
       "deliveryOnly": "Explicit simple empty objectives may describe delivery-only reference steps; event, item, payment, source-item and native requirements are excluded. Native completion remains authoritative.",
-      "schemaSource": ".dependencies/eg-link-156f29c9/DATASETS.md"
+      "schemaSource": ".dependencies/eg-link-156f29c9/DATASETS.md",
+      "rewardAudit": "TASK_FACTS_AUDIT.json"
     },
     {
       "name": "Efficient Games EG Link transport object cache and matching client TaxiPathNode",
       "url": "https://github.com/JIVESCORP/eg-link-output-wowf/tree/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862",
       "license": "CC BY 4.0 (server cache)",
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
-      "scope": "Ten observed public boat/zeppelin templates plus the Deeprun Tram: 26 directed journeys. Three-stop loops preserve stop order and intermediate waits. All 12 observed type-15 objects are classified; two Skycutters lack boarding/access evidence. No ground pathfinding.",
+      "scope": "Ten observed boat and zeppelin templates, the Deeprun Tram and the Ruttheran portal. The 28 directed journeys use Forever dock records, city triggers and client tram animation.",
       "audit": "PUBLIC_TRANSIT_AUDIT.json",
       "client_verified": false,
       "additional_source": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/6ff5612b54191f297eb77ca8eda81de029d9d6f0/data/wowf/1.60.1.70938/object_details.enUS.json",

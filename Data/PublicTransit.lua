@@ -25,8 +25,8 @@ A.PublicTransitData={clientVersion="1.60.1",build=70862,interface=16001,legs={
     {key="public:303:1",kind="boat",from={map=1444,x=0.431265612,y=0.427585708},to={map=1444,x=0.310077433,y=0.395102321},fromName="被遗忘的海岸码头",toName="羽月要塞码头",seconds=295.5,low=137,high=454,faction="Alliance"},
     {key="public:11391:0",kind="boat",from={map=1446,x=0.685801184,y=0.229913171},to={map=2548,x=0.806004551,y=0.546071894},fromName="热砂港码头",toName="Powderfuse Port 码头",seconds=226.0,low=83,high=369},
     {key="public:11391:1",kind="boat",from={map=2548,x=0.806004551,y=0.546071894},to={map=1446,x=0.685801184,y=0.229913171},fromName="Powderfuse Port 码头",toName="热砂港码头",seconds=226.0,low=83,high=369},
-    {key="public:tram:0",kind="tram",from={map=1453,x=0.695761859,y=0.302700389},to={map=1455,x=0.780229037,y=0.513677941},fromName="暴风城地铁入口",toName="铁炉堡地铁入口",seconds=130.299,low=58.633,high=201.966,faction="Alliance"},
-    {key="public:tram:1",kind="tram",from={map=1455,x=0.780229037,y=0.513677941},to={map=1453,x=0.695761859,y=0.302700389},fromName="铁炉堡地铁入口",toName="暴风城地铁入口",seconds=130.299,low=58.633,high=201.966,faction="Alliance"},
+    {key="public:tram:0",kind="tram",from={map=1453,x=0.695761856,y=0.302700356},to={map=1455,x=0.780228988,y=0.513677496},fromName="暴风城地铁入口",toName="铁炉堡地铁入口",seconds=130.299,low=58.633,high=201.966,faction="Alliance"},
+    {key="public:tram:1",kind="tram",from={map=1455,x=0.780228988,y=0.513677496},to={map=1453,x=0.695761856,y=0.302700356},fromName="铁炉堡地铁入口",toName="暴风城地铁入口",seconds=130.299,low=58.633,high=201.966,faction="Alliance"},
     {key="public:portal:542",kind="portal",from={map=1438,x=0.558716142,y=0.893359807},to={map=1457,x=0.291328609,y=0.412106821},fromName="鲁瑟兰村",toName="达纳苏斯",seconds=0,low=0,high=0},
     {key="public:portal:527",kind="portal",from={map=1457,x=0.291328609,y=0.412106821},to={map=1438,x=0.558716142,y=0.893359807},fromName="达纳苏斯",toName="鲁瑟兰村",seconds=0,low=0,high=0},
 }}

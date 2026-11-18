@@ -9,16 +9,11 @@ local function cacheXP(state)
 end
 function G.Counts()
     local quests,rewards,xp=0,0,0
-    local facts=A.TaskFacts and A.TaskFacts.quests or {}
-    for _,fact in pairs(facts) do
+    local cache=cacheXP()
+    for _,fact in pairs(cache and cache.quests or {}) do
         quests=quests+1
         if fact.rewards then rewards=rewards+1 end
         if fact.xp then xp=xp+1 end
-    end
-    local cache=cacheXP()
-    for id,row in pairs(cache and cache.quests or {}) do
-        if not facts[id] then quests=quests+1 end
-        if row.xp and (not facts[id] or not facts[id].xp) then xp=xp+1 end
     end
     return quests,rewards,xp
 end
@@ -34,16 +29,11 @@ function G.XP(q,level,state)
     local facts=q.taskFacts
     local cache=cacheXP(state)
     if cache and cache.quests[q.id] then facts=cache.quests[q.id] end
-    if facts and facts.xp and type(facts.level)=="number" and facts.level==q.questLevel then
+    if facts and facts.xp and facts.level==q.questLevel and type(facts.level)=="number" and
+        (not facts.sourceItemId or facts.sourceItemId==(q.sourceItemId or 0)) then
         local value
         for _,change in ipairs(facts.xp) do if level>=change[1] then value=change[2] else break end end
         if value~=nil then return value end
-    end
-    if type(q.referenceXPLevel)=="number" and q.referenceXPLevel==q.questLevel and q.referenceXP~=nil then
-        local factor=math.max(1,math.min(10,20+2*(q.referenceXPLevel-level)))
-        local raw=math.floor(q.referenceXP*factor/10)
-        local unit=raw>1000 and 50 or raw>500 and 25 or raw>100 and 10 or 5
-        return math.floor((raw+unit/2)/unit)*unit
     end
 end
 
@@ -161,8 +151,13 @@ function G.Stages(q,state,data,first)
                 stage.areaTriggerId=o.areaTriggerId
                 stage.criteriaTreeId=o.criteriaTreeId
                 stage.have,stage.need=o.numFulfilled,o.numRequired
-                for _,fact in ipairs(q.taskFacts and q.taskFacts.objectives or {}) do
-                    if not stage.need and fact.kind==o.targetKind and fact.id==o.targetId and (fact.count or 0)>0 then stage.need=fact.count;break end
+                if not stage.need then
+                    for _,fact in ipairs(q.taskFacts and q.taskFacts.objectives or {}) do
+                        if fact.kind==o.targetKind and fact.id==o.targetId and (fact.count or 0)>0 then
+                            if stage.need and stage.need~=fact.count then stage.need=nil;break end
+                            stage.need=fact.count
+                        end
+                    end
                 end
                 added=added+1
             end

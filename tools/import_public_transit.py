@@ -13,7 +13,7 @@ SOURCES = {
     f".dependencies/TaxiPathNode-{BUILD}.csv": "f83f8d8e5bbeae889214f48af477dd51a4c1771ff3c3b53c3fa2cacf2cba7cdb",
     f".dependencies/UiMapAssignment-{BUILD}.csv": "79267e8be8034e47daab14350411b3acc0b1f64e86efc9d821a217497254ca0a",
     f".dependencies/eg-link-156f29c9/{BUILD}/object_details.enUS.json": "63ea8fe2112516932c2633f7cb5507f99211390549c9d2a37d6b63214d906f19",
-    ".dependencies/SPF-Data-Transports.lua": "dc874e86cb197bbedd90c417b74b7cacbb403c17789c61b9221fbef7dbe4cce0",
+    f".dependencies/TransportAnimation-{BUILD}.csv": "d734b9cc688c122e2e57cd0c890a3d0545034d48c8a377dfa4da0df50f5836eb",
     ".dependencies/eg-objects-70938-6ff5612.json": "1974e7b86e3ea31758b5903f4e6853a86b0f88b0f97a7bee247dbf95b9bbca40",
     f".dependencies/AreaTrigger-{BUILD}.csv": "c42305d819d250a0003159458f458c17f0720ae1561194fdc1283d7e530f8a8e",
 }
@@ -114,20 +114,25 @@ def main():
                 ride += delays[at]
         evidence.append(dict(objectId=object_id, pathId=path_id, serverName=obj["name"], sources=obj["sources"],
                              speed=speed, acceleration=acceleration, ports=points, rideSeconds=rides, cycleSeconds=cycle))
-    # Client AreaTrigger 2173/2175 (city entrances), TransportAnimation 176080.
-    # Facts from SPF's pinned client-table export; no track geometry or schedule prediction at runtime.
+    triggers = {int(r["ID"]): r for r in csv.DictReader((ROOT / f".dependencies/AreaTrigger-{BUILD}.csv").open())}
     tram_points = []
-    for map_id, name, world_x, world_y in [(1453, "暴风城地铁入口", -8346.46, 514.031),
-                                           (1455, "铁炉堡地铁入口", -4840.26, -1330.46)]:
-        tram_points.append(map_point(map_id, name, "0", world_x, world_y))
-    ride, cycle = 58.633, 143.333
+    for trigger, map_id, name in [(2173, 1453, "暴风城地铁入口"), (2175, 1455, "铁炉堡地铁入口")]:
+        row = triggers[trigger]
+        assert row["ContinentID"] == "0"
+        tram_points.append(map_point(map_id, name, row["ContinentID"], float(row["Pos_0"]), float(row["Pos_1"])))
+    with (ROOT / f".dependencies/TransportAnimation-{BUILD}.csv").open() as stream:
+        track = sorted((r for r in csv.DictReader(stream) if r["TransportID"] == "176080"),
+                       key=lambda r: int(r["TimeIndex"]))
+    stops = [(int(a["TimeIndex"]), int(b["TimeIndex"])) for a, b in zip(track, track[1:])
+             if all(a[f"Pos_{i}"] == b[f"Pos_{i}"] for i in range(3))]
+    assert len(stops) == 2 and int(track[0]["TimeIndex"]) == 0 and stops[1][0] - stops[0][1] == stops[0][0]
+    ride, cycle = stops[0][0] / 1000, int(track[-1]["TimeIndex"]) / 1000
     for direction in range(2):
         legs.append(dict(key=f"public:tram:{direction}", kind="tram", fromPoint=tram_points[direction],
                          toPoint=tram_points[1-direction], faction="Alliance",
                          seconds=round(ride+cycle/2, 3), low=ride, high=round(ride+cycle, 3)))
     evidence.append(dict(name="Deeprun Tram", ports=tram_points, rideSeconds=ride, cycleSeconds=cycle,
-                         source="https://github.com/cjber/shortest-path-forever/blob/06a819ef3be7920b373b99da377adb7c0e91b125/Data/Transports.lua"))
-    triggers = {int(r["ID"]): r for r in csv.DictReader((ROOT / f".dependencies/AreaTrigger-{BUILD}.csv").open())}
+                         triggers=[2173, 2175], transportId=176080, source=f"https://wago.tools/db2/TransportAnimation?build={BUILD}"))
     portal = {}
     for trigger_id, map_id, name in [(542, 1438, "鲁瑟兰村"), (527, 1457, "达纳苏斯")]:
         r = triggers[trigger_id]

@@ -33,8 +33,8 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
             local facts=q.taskFacts or data.CacheQuest and data:CacheQuest(q,state)
             local map=data.maps and data.maps[q.zoneOrSort]
             choices[#choices+1]={id="task:"..id,kind="task",questId=id,title=title,status=kind,
-                level=q.questLevel,referenceXP=q.referenceXP,remainingXP=A.TaskGuide.XP(q,state.level,state),
-                rewards=facts and facts.rewards,groupReference=facts and facts.group,lowValue=lowValue,
+                level=q.questLevel,remainingXP=A.TaskGuide.XP(q,state.level,state),
+                rewards=facts and facts.rewards,lowValue=lowValue,
                 regionMap=map and map>0 and map or nil,
                 revisitLevel=later and math.max(q.requiredLevel or 0,q.questLevel-2) or nil,
                 stages={},stagesComplete=false,actions={{kind=kind,questId=id,title=title,
@@ -73,7 +73,7 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         end
         if position and position.travelHint then action.text=position.travelHint end
         local choice={id="task:"..id,kind="task",questId=id,title=action.title,actions={action},
-            status=kind,level=q.questLevel,referenceXP=q.referenceXP,unlock=unlocks[id],lowValue=lowValue,
+            status=kind,level=q.questLevel,unlock=unlocks[id],lowValue=lowValue,
             requireCheck=not active and (unavailable or not position and not instance and not held) or nil,
             distance=position and A.Navigation and A.Navigation.Distance and A.Navigation:Distance(state.position,position,true)}
         if state.inInstance then choice.currentInstance=currentInstance end
@@ -103,7 +103,7 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         if kind=="accept" and A.Supplies then choice.acceptBlocked=A.Supplies.AcceptIssue(state) end
         local facts=q.taskFacts or not active and data.CacheQuest and data:CacheQuest(q,state)
         if facts then
-            choice.rewards,choice.groupReference=facts.rewards,facts.group
+            choice.rewards=facts.rewards
             if not active then
                 local offers=position and position.entityKind=="npc" and state.questOffers and state.questOffers[position.entityId]
                 choice.requireCheck=choice.requireCheck or facts.hidden and not (offers and offers[id])

@@ -275,8 +275,8 @@ run("副本任务行程随前置、接取、本内完成和交付更新",functio
     data.byArea={[100]={2}};d.quests.Alliance[2]=nil
     local suggested=plan(s,data,B.settings,B).suggestedDungeon
     eq(suggested.dungeonId,"ref");eq(suggested.rewards.prepare,1);eq(s.taskBatch,nil)
-    q[1].questLevel=20;q[1].referenceXPLevel=20;q[1].referenceXP=100000
-    q[2].questLevel=20;q[2].referenceXPLevel=20;q[2].referenceXP=1000
+    q[1].questLevel=20;q[1].taskFacts={level=20,xp={{1,100000}}}
+    q[2].questLevel=20;q[2].taskFacts={level=20,xp={{1,1000}}}
     B.DungeonCatalog.recommendedLevels={[42]={20,26},[43]={21,30},[44]={10,19}}
     B.DungeonCatalog.entries.later={id="later",title="准备副本",reference=true,instanceId=43,areas={101},
         entrances={{200,1,0}},quests={Alliance={[1]="inside"}}}

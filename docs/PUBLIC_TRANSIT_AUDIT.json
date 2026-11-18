@@ -4,7 +4,7 @@
     ".dependencies/TaxiPathNode-1.60.1.70862.csv": "f83f8d8e5bbeae889214f48af477dd51a4c1771ff3c3b53c3fa2cacf2cba7cdb",
     ".dependencies/UiMapAssignment-1.60.1.70862.csv": "79267e8be8034e47daab14350411b3acc0b1f64e86efc9d821a217497254ca0a",
     ".dependencies/eg-link-156f29c9/1.60.1.70862/object_details.enUS.json": "63ea8fe2112516932c2633f7cb5507f99211390549c9d2a37d6b63214d906f19",
-    ".dependencies/SPF-Data-Transports.lua": "dc874e86cb197bbedd90c417b74b7cacbb403c17789c61b9221fbef7dbe4cce0",
+    ".dependencies/TransportAnimation-1.60.1.70862.csv": "d734b9cc688c122e2e57cd0c890a3d0545034d48c8a377dfa4da0df50f5836eb",
     ".dependencies/eg-objects-70938-6ff5612.json": "1974e7b86e3ea31758b5903f4e6853a86b0f88b0f97a7bee247dbf95b9bbca40",
     ".dependencies/AreaTrigger-1.60.1.70862.csv": "c42305d819d250a0003159458f458c17f0720ae1561194fdc1283d7e530f8a8e"
   },
@@ -316,20 +316,25 @@
       "ports": [
         {
           "map": 1453,
-          "x": 0.695761859,
-          "y": 0.302700389,
+          "x": 0.695761856,
+          "y": 0.302700356,
           "name": "暴风城地铁入口"
         },
         {
           "map": 1455,
-          "x": 0.780229037,
-          "y": 0.513677941,
+          "x": 0.780228988,
+          "y": 0.513677496,
           "name": "铁炉堡地铁入口"
         }
       ],
       "rideSeconds": 58.633,
       "cycleSeconds": 143.333,
-      "source": "https://github.com/cjber/shortest-path-forever/blob/06a819ef3be7920b373b99da377adb7c0e91b125/Data/Transports.lua"
+      "triggers": [
+        2173,
+        2175
+      ],
+      "transportId": 176080,
+      "source": "https://wago.tools/db2/TransportAnimation?build=1.60.1.70862"
     },
     {
       "name": "Rut'theran Village – Darnassus portal",

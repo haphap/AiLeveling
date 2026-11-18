@@ -25,7 +25,6 @@ def main():
     subprocess.run(['lua5.1', 'tests/run.lua'], cwd=ROOT, check=True)
     subprocess.run(['lua5.1', 'tools/validate.lua'], cwd=ROOT, check=True)
     entries += [toc, ROOT / 'README.md', ROOT / 'LICENSE', ROOT / 'docs' / 'SOURCES.json']
-    entries.append(ROOT / 'docs' / 'LICENSE.LibQuestDB.txt')
     entries.append(ROOT / 'docs' / 'TASK_FACTS_AUDIT.json')
     entries.append(ROOT / 'docs' / 'TASK_XP_AUDIT.json')
     entries.append(ROOT / 'docs' / 'LICENSE.EfficientGames.txt')
@@ -40,7 +39,6 @@ def main():
     entries.append(ROOT / 'docs' / 'FLIGHT_DATA_AUDIT.json')
     entries.append(ROOT / 'docs' / 'PUBLIC_TRANSIT_AUDIT.json')
     entries.append(ROOT / 'docs' / 'PVP_MAP_AUDIT.json')
-    entries.append(ROOT / 'docs' / 'LICENSE.InFlight.txt')
     entries.append(ROOT / 'docs' / 'LICENSE.RestedXP.txt')
     entries.append(ROOT / 'docs' / 'LICENSE.Polestar.txt')
     entries.append(ROOT / 'docs' / 'DANGER_DATA_AUDIT.json')

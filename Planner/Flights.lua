@@ -21,13 +21,14 @@ end
 
 function F.Seconds(from,to,state,hops)
     if not F.Matches(state) then return end
-    hops=hops or (state.taxiHops or {})[from..":"..to]
+    local pair=from..":"..to
+    hops=hops or (state.taxiHops or {})[pair]
     local sample=state.taxiSpeed and (state.samples or {})[F.TimeKey(from,to,state.faction,hops,state.taxiSpeed)]
     if sample and sample.unit=="seconds" and sample.n>=3 and sample.mean>=1 and sample.mean<=7200 then return sample.mean,"本地实测" end
     local observed=A.FlightData.observedDurations and A.FlightData.observedDurations[state.faction]
     local paths=A.FlightData.observedHops and A.FlightData.observedHops[state.faction]
-    if observed and observed[from..":"..to] and (not hops or paths and paths[from..":"..to]==hops) then
-        return observed[from..":"..to]/(state.taxiSpeed or 1),"当前构建飞行记录"
+    if observed and observed[pair] and paths and paths[pair]==(hops or pair) then
+        return observed[pair]/(state.taxiSpeed or 1),"当前构建飞行记录"
     end
     if hops and not hops:match("^%d+:%d+$") then
         local previous,total=nil,0
@@ -44,7 +45,7 @@ function F.Seconds(from,to,state,hops)
     end
     local side=A.FlightData.durations[state.faction]
     local seconds=side and side[from..":"..to]
-    if seconds then return seconds/(state.taxiSpeed or 1),"InFlight 参考" end
+    if seconds then return seconds/(state.taxiSpeed or 1),"无限版航线估时" end
 end
 
 function F.Position(node,map,hbd)

@@ -16,15 +16,20 @@ def main():
     old_gaps = json.loads((ROOT / 'dist/xp-gap-classification-0.1.74.json').read_text())['rows']
     code = ['local A={};assert(loadfile("Data/TaskFacts.lua"))("AiLeveling",A)',
             'assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",A)',
-            'local s={clientVersion="1.60.1",clientBuild="70862",interface=16001,quests={}}']
+            'local s={clientVersion="1.60.1",clientBuild="70862",interface=16001,quests={}}',
+            'local function check(q,expected) for level,xp in ipairs(expected) do ',
+            'assert(A.TaskGuide.XP(q,level,s)==xp,q.id..":"..level) end end']
     checks = 0
     for id, q in data['quests'].items():
         curve, index = q['xp'], 0
+        source_item = q.get('sourceItemId', 0)
+        expected = []
         for level in range(1, 60):
             while index + 1 < len(curve) and curve[index + 1][0] <= level:
                 index += 1
-            code.append(f'assert(A.TaskGuide.XP({{id={id},questLevel={q["level"]}}},{level},s)=={curve[index][1]},"{id}:{level}")')
+            expected.append(str(curve[index][1]))
             checks += 1
+        code.append(f'check({{id={id},questLevel={q["level"]},sourceItemId={source_item}}},{{{",".join(expected)}}})')
     with tempfile.NamedTemporaryFile(mode='w', suffix='.lua') as f:
         f.write('\n'.join(code));f.flush()
         subprocess.run(['lua5.1', f.name], cwd=ROOT, check=True)
