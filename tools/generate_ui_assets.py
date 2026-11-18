@@ -148,4 +148,22 @@ for y in range(64):
 for x, y in [(28, 7), (74, 15), (135, 5), (206, 10), (280, 4), (344, 13), (415, 6), (484, 17)]:
     draw.ellipse((x, y, x+2, y+2), fill=(194, 210, 244, 55))
 sky.save(OUT / 'hud-header.tga')
-print('Generated 30 RGBA textures in Media/')
+# Four 32 px cells: pin face, focus ring, pickup and turn-in.
+markers = Image.new('RGBA', (128*S, 32*S))
+draw = ImageDraw.Draw(markers)
+def bounds(cell, box):
+    x, y, right, bottom = box
+    return tuple(round(n) for n in ((cell*32+x)*S, y*S, (cell*32+right)*S-1, bottom*S-1))
+
+draw.ellipse(bounds(0, (1, 1, 31, 31)), fill='white')
+draw.ellipse(bounds(1, (1, 1, 31, 31)), outline='white', width=2*S)
+draw.rounded_rectangle(bounds(2, (13, 3, 19, 20)), radius=2*S, fill='white')
+draw.ellipse(bounds(2, (13, 23, 19, 29)), fill='white')
+draw.arc(bounds(3, (6, 3, 26, 20)), 172, 433, fill='white', width=5*S)
+draw.line([(116*S, 16*S), (112*S, 20*S), (112*S, 22*S)], fill='white', width=5*S)
+draw.ellipse(bounds(3, (13.5, 24, 19, 29.5)), fill='white')
+markers.resize((128, 32), Image.Resampling.LANCZOS).save(OUT / 'map-markers.tga')
+dash = Image.new('RGBA', (8, 2))
+ImageDraw.Draw(dash).rectangle((0, 0, 3, 1), fill='white')
+dash.save(OUT / 'map-dash.tga')
+print('Generated UI textures in Media/')

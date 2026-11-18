@@ -41,13 +41,17 @@ UI.metrics={tight=4,gap=8,padding=12,section=16,indent=24,icon=16,smallIcon=12,
     button=28,hit=24,scrollbar=16,radius=6,controlRadius=4}
 local metrics=UI.metrics
 local media="Interface\\AddOns\\AiLeveling\\Media\\"
-function UI:Accent()
-    if self.daylight then return self.daylight.Accent() end
+function UI:ClassColor()
     local class=A.state and A.state.class
     if not class and UnitClass then local _,playerClass=UnitClass("player");class=playerClass end
     local color=RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
     if color then return color.r,color.g,color.b end
     return 1,1,1
+end
+
+function UI:Accent()
+    if self.daylight then return self.daylight.Accent() end
+    return self:ClassColor()
 end
 
 function UI:FontScale()

@@ -62,6 +62,7 @@ local function widget()
     w.Click=function(self) if self.enabled~=false and self.scripts.OnClick then self.scripts.OnClick(self,"LeftButton") end end
     w.GetChecked=function(self) return self.checked end;w.SetChecked=function(self,v) self.checked=v end
     w.SetAttribute=function(self,k,v) assert(not InCombatLockdown(),"战斗中修改了受保护按钮");self.attributeWrites=self.attributeWrites+1;self[k]=v end
+    w.SetRotation=function(self,value) self.rotation=value end
     w.SetDesaturated=function() end
     w.SetScrollChild=function(self,child) self.child=child end
     w.SetVerticalScroll=function(self,v) self.offset=v end
@@ -148,7 +149,7 @@ local function setupMap()
     local B=setup();B.Transport.FlightGate=function() end
     assert(loadfile("Navigation.lua"))("AiLeveling",B)
     local adds={world=0,mini=0}
-    B.Navigation.hbdPins={RemoveAllWorldMapIcons=function() end,RemoveAllMinimapIcons=function() end,
+    B.Navigation.hbdPins={IsMinimapIconOnEdge=function(_,pin) return pin.onEdge end,RemoveAllWorldMapIcons=function() end,RemoveAllMinimapIcons=function() end,
         AddWorldMapIconMap=function(_,owner,pin) adds.world=adds.world+1;pin:Show() end,
         AddMinimapIconMap=function(_,owner,pin,map,x,y,parent,floatOnEdge) adds.mini=adds.mini+1;pin.floats=floatOnEdge;pin:Show() end}
     return B,adds

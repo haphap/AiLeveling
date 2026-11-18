@@ -1,5 +1,5 @@
 local _, A = ...
-A.Routes={lines={}}
+A.Routes={}
 local R=A.Routes
 
 function R.Project(p,map,hbd,overview)
@@ -10,71 +10,49 @@ function R.Project(p,map,hbd,overview)
     return hbd:GetZoneCoordinatesFromWorldInstance(x,y,instance,map)
 end
 
-function R.Segments(actions,index,map,project,origin)
-    local result,seen,missing={},{},0
-    local previous=origin
-    for i=index,#actions do
-        local action=actions[i]
-        local target=action.kind=="transit" and action.departure or action.position
-        local from=previous or action.fromPosition
-        if from and target then
-            local x,y=project(from,map)
-            local tx,ty=project(target,map)
-            if x and tx and x>=0 and x<=1 and y>=0 and y<=1 and tx>=0 and tx<=1 and ty>=0 and ty<=1 and (x~=tx or y~=ty) then
-                local a,b=x..":"..y,tx..":"..ty
-                local key=a<b and (a..">"..b) or (b..">"..a)
-                if not seen[key] then
-                    seen[key]=true;result[#result+1]={x=x,y=y,tx=tx,ty=ty,current=i==index}
-                end
-            end
-        elseif not target then missing=missing+1 end
-        previous=action.position
-    end
-    return result,missing
+function R.Endpoints(origin,target,map,hbd,overview)
+    if not origin or not target then return end
+    local x,y=R.Project(origin,map,hbd,overview)
+    local tx,ty=R.Project(target,map,hbd,overview)
+    if x and tx and x>=0 and x<=1 and y>=0 and y<=1 and tx>=0 and tx<=1 and ty>=0 and ty<=1 and
+        (x~=tx or y~=ty) then return x,y,tx,ty end
 end
 
 function R:Hide()
-    if self.overlay then self.overlay:Hide() end
+    if self.line then self.line:Hide() end
 end
 
 function R:Update(force)
     local nav=A.Navigation
-    if not A.settings.routes or A.char.paused or (nav.manual and not nav.manual.actions) or (A.Transport and A.Transport:InFlight()) or
+    if not A.settings.routes or A.char.paused or (A.Transport and A.Transport:InFlight()) or
         not WorldMapFrame or not WorldMapFrame:IsShown() then self:Hide();return end
     local canvas,map=WorldMapFrame:GetCanvas(),WorldMapFrame:GetMapID()
     if not canvas or not map then self:Hide();return end
     local width,height=canvas:GetSize()
     if not width or width<=0 or height<=0 then self:Hide();return end
-    if self.canvas~=canvas then
-        self:Hide();self.canvas=canvas;self.lines={}
-        self.overlay=CreateFrame("Frame",nil,canvas);self.overlay:SetAllPoints(canvas)
-        self.key=nil
-    end
-    local sequence=nav.Sequence and nav:Sequence() or nav
-    local key=table.concat({tostring(sequence.actions),sequence.index or 1,map,width,height,A.settings.accent or "teal",
-        A.state.position and string.format("%s:%.4f:%.4f",A.state.position.map,A.state.position.x,A.state.position.y) or ""},":")
-    if force or key~=self.key then
-        for _,line in ipairs(self.lines) do line:Hide() end
+    if map~=self.map or force then
         local info=C_Map.GetMapInfo(map)
         local kinds=Enum and Enum.UIMapType
-        local overview=kinds and info and (info.mapType==kinds.World or info.mapType==kinds.Continent)
-        self.segments=R.Segments(sequence.actions or {},sequence.index or 1,map,function(p,view)
-            return R.Project(p,view,nav.hbd,overview)
-        end,A.state.position)
-        self.key,self.cursor=key,1
+        self.map=map
+        self.overview=info and kinds and (info.mapType==kinds.World or info.mapType==kinds.Continent)
     end
-    local r,g,b=A.UI:Accent()
-    local finish=math.min(#self.segments,(self.cursor or 1)+63)
-    for i=self.cursor or 1,finish do
-        local segment=self.segments[i]
-        local line=self.lines[i]
-        if not line then line=self.overlay:CreateLine(nil,"OVERLAY");self.lines[i]=line end
-        line:ClearAllPoints()
-        line:SetStartPoint("TOPLEFT",self.overlay,segment.x*width,-segment.y*height)
-        line:SetEndPoint("TOPLEFT",self.overlay,segment.tx*width,-segment.ty*height)
-        line:SetThickness(segment.current and 2.5 or 1.5)
-        line:SetColorTexture(r,g,b,segment.current and 1 or 0.3);line:Show()
+    local x,y,tx,ty=R.Endpoints(A.state.position,nav.Target(nav:Current()),map,nav.hbd,self.overview)
+    if not x then self:Hide();return end
+    if self.canvas~=canvas then
+        self:Hide();self.canvas=canvas
+        local overlay=CreateFrame("Frame",nil,canvas);overlay:SetAllPoints(canvas)
+        self.line=overlay:CreateLine(nil,"OVERLAY")
+        self.line:SetTexture("Interface\\AddOns\\AiLeveling\\Media\\map-dash.tga","REPEAT","CLAMP")
+        self.line:SetThickness(2)
+        force=true
     end
-    self.cursor=finish+1
-    self.overlay:Show()
+    x,y,tx,ty=x*width,-y*height,tx*width,-ty*height
+    if force or self.x~=x or self.y~=y or self.tx~=tx or self.ty~=ty then
+        self.line:SetStartPoint("TOPLEFT",canvas,x,y)
+        self.line:SetEndPoint("TOPLEFT",canvas,tx,ty)
+        self.line:SetTexCoord(0,math.sqrt((tx-x)^2+(ty-y)^2)/8,0,1)
+        self.line:SetVertexColor(A.UI:ClassColor())
+        self.x,self.y,self.tx,self.ty=x,y,tx,ty
+    end
+    self.line:Show()
 end

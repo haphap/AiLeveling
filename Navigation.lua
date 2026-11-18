@@ -213,7 +213,10 @@ function N:MapPoints()
             point={position=pos,action=action,actions={},seen={}}
             points[#points+1]=point;seen[key]=point
         end
-        if not catalog and not point.order then routeCount=routeCount+1;point.order=routeCount end
+        if not catalog and not point.order and routeCount<6 then
+            routeCount=routeCount+1
+            point.order,point.action=routeCount,action
+        end
         if action==current then point.current=true end
         local identity=table.concat({action.kind or "",action.questId or "",action.objectiveIndex or action.targetId or ""},":")
         if not point.seen[identity] then
@@ -223,8 +226,6 @@ function N:MapPoints()
             point.actions[point.seen[identity]]=action
             if point.action==previous then point.action=action end
         end
-        if catalog and not point.current and not point.available then point.action=action end
-        point.available=point.available or catalog
     end
     add(current)
     if self.manual then
@@ -270,17 +271,79 @@ function N:MapPoints()
     return points
 end
 
-local function mapPin()
+local media="Interface\\AddOns\\AiLeveling\\Media\\"
+local function cell(texture,index)
+    texture:SetTexture(media.."map-markers.tga")
+    texture:SetTexCoord(index/4,(index+1)/4,0,1)
+end
+
+local function availableAction(action)
+    local active=A.state.quests[action.questId]
+    if action.kind=="accept" then return not active and not action.expected end
+    if action.kind=="turnin" then return active and active.ready end
+    if action.kind=="objective" and active and not active.ready then
+        local objective=active.objectives and active.objectives[action.objectiveIndex]
+        return not (objective and objective.finished)
+    end
+end
+
+local function showPinTip(pin)
+    local point,primary=pin.point,pin.action
+    local quest=(primary.kind=="accept" or primary.kind=="objective" or primary.kind=="turnin") and A.state.quests[primary.questId]
+    local title=quest and quest.title or primary.title or "目的地"
+    GameTooltip:SetOwner(pin,"ANCHOR_RIGHT")
+    GameTooltip:SetText((point.current and "当前目标 · " or "")..title)
+    for _,action in ipairs(point.actions) do
+        if not pin.mini or action==primary or availableAction(action) then
+            local active=A.state.quests[action.questId]
+            local label=action.kind=="accept" and "接取任务" or action.kind=="turnin" and
+                (active and active.ready and "交付任务" or "完成后交付") or action.kind=="objective" and
+                (not active and "接取后目标" or action.targetKind=="item" and "收集目标" or "任务目标") or "前往"
+            local objective=active and active.objectives and active.objectives[action.objectiveIndex]
+            local detail=action.kind=="objective" and (objective and objective.text or action.text)
+            if detail and objective and objective.numRequired and objective.numRequired>0 then
+                detail=detail:gsub("%s*%d+%s*/%s*%d+",""):match("^%s*(.-)%s*$"):gsub("：$",""):gsub(":$","")
+                detail=detail.."  "..(objective.numFulfilled or 0).."/"..objective.numRequired
+            end
+            if action~=primary then label=label.." · "..(active and active.title or action.title or "任务") end
+            if detail then
+                label=action==primary and active and detail or label.."\n"..detail
+            end
+            GameTooltip:AddLine(label,1,1,1,true)
+        end
+    end
+    local pos=point.position
+    local info=C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(pos.map)
+    local area=pos.sourceAreaId and C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(pos.sourceAreaId) or info and info.name
+    local place=pos.entityName or area
+    if place then
+        if area and area~=place then place=place.." · "..area end
+        if pos.approximate then place=place.." · 区域参考点" end
+        GameTooltip:AddLine(place,0.8,0.8,0.82,true)
+    end
+    GameTooltip:AddLine("左键导航"..(N.manual and "  ·  右键返回原行程" or ""),0.9,0.77,0.57)
+    GameTooltip:Show()
+end
+
+local function mapPin(mini)
     local pin=CreateFrame("Button",nil,UIParent)
-    pin.texture=pin:CreateTexture(nil,"OVERLAY");pin.texture:SetAllPoints()
-    pin.number=pin:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
-    pin.number:SetPoint("TOP",pin,"BOTTOM",0,1)
-    pin.number:SetTextColor(1,1,1);pin.number:SetShadowOffset(1,-1)
+    pin.mini=mini
+    local face=pin:CreateTexture(nil,"BACKGROUND")
+    cell(face,0);face:SetAllPoints();face:SetVertexColor(0.09,0.09,0.12)
+    pin.ring=pin:CreateTexture(nil,"BORDER")
+    cell(pin.ring,1);pin.ring:SetPoint("CENTER")
+    pin.texture=pin:CreateTexture(nil,"ARTWORK");pin.texture:SetPoint("CENTER")
+    if not mini then
+        pin.badge=pin:CreateTexture(nil,"ARTWORK",nil,1)
+        cell(pin.badge,0);pin.badge:SetSize(15,15);pin.badge:SetPoint("CENTER",pin,"TOPRIGHT",-1,-2)
+        pin.number=pin:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
+        pin.number:SetPoint("CENTER",pin.badge)
+    end
     pin:Hide();pin:EnableMouse(true)
     pin:RegisterForClicks("LeftButtonUp","RightButtonUp")
     pin:SetScript("OnClick",function(f,button)
         GameTooltip:Hide()
-        local action=f.point.action
+        local action=f.action
         if button=="RightButton" then
             if N.manual then N:ClearManual() end
         elseif IsModifiedClick and IsModifiedClick("CHATLINK") and action.questId then
@@ -289,21 +352,7 @@ local function mapPin()
             if not N:NavigateQuest(action.questId) then A.UI:QuestClick(action.questId,button) end
         end
     end)
-    pin:SetScript("OnEnter",function(f)
-        local point=f.point
-        GameTooltip:SetOwner(f,"ANCHOR_RIGHT")
-        GameTooltip:SetText((point.current and "当前目的地 · " or point.order and string.format("%02d · ",point.order) or "")..
-            (point.action.title or "AILeveling")..(point.position.approximate and " · 区域参考点" or ""))
-        for _,action in ipairs(point.actions) do
-            local active=(A.state.quests or {})[action.questId]
-            local label=action.kind=="accept" and "接取任务" or action.kind=="turnin" and (active and active.ready and "交付任务" or "完成后交付") or
-                action.kind=="objective" and (not active and "接取后目标" or action.targetKind=="item" and "收集目标" or "任务目标") or "前往"
-            local detail=action.kind=="objective" and action.text
-            GameTooltip:AddLine(label.." · "..(action.title or "目的地")..(detail and ("\n"..detail) or ""),1,1,1,true)
-        end
-        GameTooltip:AddLine("左键：导航到此处"..(N.manual and "\n右键：返回原行程" or ""),1,0.83,0.45,true)
-        GameTooltip:Show()
-    end)
+    pin:SetScript("OnEnter",showPinTip)
     pin:SetScript("OnLeave",function() GameTooltip:Hide() end)
     return pin
 end
@@ -343,38 +392,88 @@ function N:SyncWaypointUI(force)
         iconTexture=atlas,iconType="ATLAS",stripCoordinates=true,suppressAudio=true})
 end
 
+local function stylePin(pin,point,action,r,g,b)
+    pin.point,pin.action=point,action
+    local size=(pin.mini and 19 or 24)+(point.current and 4 or 0)
+    pin:SetSize(size,size)
+    pin.texture:SetSize(size-4,size-4)
+    pin.ring:SetSize(size+(point.current and 5 or 0),size+(point.current and 5 or 0))
+    if point.current then pin.ring:SetVertexColor(r,g,b) else pin.ring:SetVertexColor(0.43,0.39,0.37) end
+    if pin.badge then
+        pin.badge:SetShown(point.order~=nil);pin.number:SetText(point.order and tostring(point.order) or "")
+        if point.current then pin.badge:SetVertexColor(r,g,b);pin.number:SetTextColor(0.08,0.07,0.09)
+        else pin.badge:SetVertexColor(0.16,0.16,0.19);pin.number:SetTextColor(1,1,1) end
+    end
+    local tex=pin.texture
+    if action.kind=="accept" then
+        cell(tex,2);tex:SetVertexColor(1,0.84,0.46)
+    elseif action.kind=="turnin" then
+        cell(tex,3)
+        if availableAction(action) then tex:SetVertexColor(0.56,0.93,0.77) else tex:SetVertexColor(0.73,0.72,0.69) end
+    elseif action.kind=="objective" then
+        local item=action.targetKind=="item"
+        tex:SetTexture(media..(item and "hud-collect.tga" or "hud-objective.tga"))
+        tex:SetTexCoord(0,1,0,1)
+        if item then tex:SetVertexColor(0.87,0.74,1) else tex:SetVertexColor(0.64,0.83,1) end
+    else
+        tex:SetAtlas(actionAtlas(action),false);tex:SetVertexColor(1,1,1)
+    end
+end
+
+local function updateEdge(pin,pins)
+    if not pin then return end
+    if not pin:IsShown() or not pins:IsMinimapIconOnEdge(pin) then pin.arrow:Hide();return end
+    local _,_,_,x,y=pin:GetPoint()
+    if not x or not y or x==0 and y==0 then pin.arrow:Hide();return end
+    if pin.arrow:IsShown() and pin.arrowX==x and pin.arrowY==y then return end
+    pin.arrowX,pin.arrowY=x,y
+    local offset=(pin:GetWidth()/2+4)/math.sqrt(x*x+y*y)
+    pin.arrow:ClearAllPoints();pin.arrow:SetPoint("CENTER",pin,"CENTER",x*offset,y*offset)
+    pin.arrow:SetRotation(math.atan2(-x,y));pin.arrow:Show()
+end
+
 function N:RefreshPins(force)
     self:SyncWaypointUI(force)
     if not self.hbdPins then return end
     self.hbdPins:RemoveAllWorldMapIcons(self)
     self.hbdPins:RemoveAllMinimapIcons(self)
-    for _, pin in pairs(self.pins) do pin:Hide() end
+    if self.edgePin then self.edgePin.arrow:Hide();self.edgePin=nil end
+    for _,pin in pairs(self.pins) do pin:Hide() end
     if (not A.settings.pins and not A.settings.minimapPins) or A.char.paused then return end
+    local r,g,b=A.UI:ClassColor()
     for order,point in ipairs(self:MapPoints()) do
         local action,pos=point.action,point.position
-        local atlas=actionAtlas(action)
-        -- HBD-Pins requires separate frames for minimap/world map ownership.
-        for surface=A.settings.pins and 1 or 2,A.settings.minimapPins and 2 or 1 do
-            local index=(order-1)*2+surface
-            local pin=self.pins[index] or mapPin();self.pins[index]=pin
-            pin.point,pin.order=point,order
-            local size=(surface==1 and 24 or 18)+(point.current and 4 or 0)
-            pin:SetSize(size,size)
-            pin:SetAlpha(1)
-            pin.number:SetText(point.order and string.format("%02d",point.order) or #point.actions>1 and tostring(#point.actions) or "")
-            if action.kind=="objective" then
-                pin.texture:SetTexture("Interface\\AddOns\\AiLeveling\\Media\\hud-"..
-                    (action.targetKind=="item" and "collect" or "objective")..".tga")
-            else pin.texture:SetAtlas(atlas,false) end
-            local color=action.kind=="objective" and (action.targetKind=="item" and {0.78,0.68,1} or {0.58,0.79,1}) or {1,1,1}
-            pin.texture:SetVertexColor(unpack(color))
-            if surface==1 then self.hbdPins:AddWorldMapIconMap(self,pin,pos.map,pos.x,pos.y,1)
-            else self.hbdPins:AddMinimapIconMap(self,pin,pos.map,pos.x,pos.y,false,point.current or false) end
+        local nearby=availableAction(action) and action
+        if not nearby then
+            for _,other in ipairs(point.actions) do
+                if availableAction(other) then nearby=other;break end
+            end
+        end
+        -- A walk ending at the quest pin should show what to do on arrival.
+        if nearby and (not point.current or nearby.questId==action.questId and (action.kind=="move" or action.kind=="approach")) then action=nearby end
+        local index=(order-1)*2
+        if A.settings.pins then
+            local pin=self.pins[index+1] or mapPin(false);self.pins[index+1]=pin
+            stylePin(pin,point,action,r,g,b)
+            self.hbdPins:AddWorldMapIconMap(self,pin,pos.map,pos.x,pos.y,1)
+        end
+        if A.settings.minimapPins and (point.current or nearby) then
+            local pin=self.pins[index+2] or mapPin(true);self.pins[index+2]=pin
+            stylePin(pin,point,point.current and action or nearby,r,g,b)
+            if point.current then
+                if not pin.arrow then
+                    pin.arrow=pin:CreateTexture(nil,"OVERLAY");pin.arrow:SetTexture(media.."hud-chevron-up.tga")
+                    pin.arrow:SetSize(12,12)
+                end
+                pin.arrow:SetVertexColor(r,g,b);pin.arrow:Hide();self.edgePin=pin
+            end
+            self.hbdPins:AddMinimapIconMap(self,pin,pos.map,pos.x,pos.y,false,point.current or false)
         end
     end
 end
 
 function N:Update()
+    updateEdge(self.edgePin,self.hbdPins)
     self:SyncWaypointUI()
     if self.externalWaypoint then A.UI:SetNavigation(nil);return end
     if not self.hbd then return end

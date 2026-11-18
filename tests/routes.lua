@@ -2,18 +2,18 @@ return function(test,eq,F,A,setupMap)
 local function point(x,y,map) return {map=map or 1,x=x,y=y} end
 local function engine()
     local B={Travel=A.Travel,settings={routes=true},char={},Navigation={index=1,actions={}},state={position=point(0,0)},
-        Transport={InFlight=function() return false end},UI={}}
+        Transport={InFlight=function() return false end,FlightGate=function() end},UI={}}
+    assert(loadfile("Navigation.lua"))("AiLeveling",B)
     assert(loadfile("Routes.lua"))("AiLeveling",B)
     return B
 end
-local function direct(p,map) if p.map==map then return p.x,p.y end end
-test("目的地连线去重且不会把飞行航程画成地面连接",function()
+test("目的地连线与当前交通停靠点一致",function()
     local B=engine();local a,b,c=point(0,0),point(1,1),point(1,1,2)
-    local actions={{kind="transit",departure=b,position=c,mode="flight"},{kind="objective",position=point(0,0,2)}}
-    local segments=B.Routes.Segments(actions,1,1,direct,a);eq(#segments,1);eq(segments[1].tx,1)
-    eq(#B.Routes.Segments(actions,2,1,direct,c),0)
-    actions={{kind="move",position=b},{kind="objective",position=a}}
-    eq(#B.Routes.Segments(actions,1,1,direct,a),1)
+    local boat={kind="transit",publicTransit=true,departure=b,position=c}
+    local _,_,tx=B.Routes.Endpoints(a,B.Navigation.Target(boat),1)
+    eq(tx,1);boat.atDeparture=true
+    eq(B.Routes.Endpoints(a,B.Navigation.Target(boat),1),nil)
+    eq(B.Routes.Endpoints(c,c,2),nil)
 end)
 test("总览坐标转换须匹配世界实例且区域楼层只精确匹配",function()
     local B=engine()
@@ -31,7 +31,7 @@ local function widget()
     w.SetStartPoint=function(self,anchor,parent,x,y) self.start={x,y} end
     w.SetEndPoint=function(self,anchor,parent,x,y) self.finish={x,y} end
     w.SetThickness=function(self,n) self.thickness=n end
-    w.SetColorTexture=function(self,r,g,b,a) self.alpha=a end
+    w.SetTexture=function() end;w.SetTexCoord=function() end;w.SetVertexColor=function() end
     w.CreateLine=function() return widget() end
     return w
 end
@@ -41,25 +41,24 @@ test("原生地图绘制目的地直线且关闭和换图清除旧连线",functi
     local canvas=widget();canvas:SetSize(1000,500)
     local map=1;WorldMapFrame=widget();WorldMapFrame.GetCanvas=function() return canvas end;WorldMapFrame.GetMapID=function() return map end
     Enum={UIMapType={World=1,Continent=2,Zone=3}};C_Map={GetMapInfo=function() return {mapType=3} end}
-    B.UI.Accent=function() return 0.2,0.8,0.7 end
-    B.Navigation.actions={{kind="objective",position=point(1,0)}}
-    B.Routes:Update();eq(#B.Routes.lines,1)
-    eq(B.Routes.lines[1].start[1],0);eq(B.Routes.lines[1].finish[1],1000)
-    B.settings.routes=false;B.Routes:Update();eq(B.Routes.overlay.shown,false)
-    B.settings.routes=true;map=2;B.Routes:Update();eq(#B.Routes.segments,0);eq(B.Routes.lines[1].shown,false)
+    B.UI.ClassColor=function() return 0.2,0.8,0.7 end
+    B.Navigation.actions={{kind="objective",position=point(1,0)},{kind="move",position=point(0.6,0.6)}}
+    B.Routes:Update();assert(B.Routes.line.shown)
+    eq(B.Routes.line.start[1],0);eq(B.Routes.line.finish[1],1000)
+    B.settings.routes=false;B.Routes:Update();eq(B.Routes.line.shown,false)
+    B.settings.routes=true;map=2;B.Routes:Update();eq(B.Routes.line.shown,false)
     for key,value in pairs(saved) do _G[key]=value end
     if saved.WorldMapFrame==nil then WorldMapFrame=nil end
     if saved.Enum==nil then Enum=nil end
 end)
 test("地图标记按任务阶段合并并移除失效的导航步骤",function()
     local B,adds=setupMap()
-    for _,row in ipairs({{"accept","QuestNormal"},{"turnin","UI-QuestPoi-QuestBangTurnIn"},
-        {"objective","Waypoint-MapPin-Tracked"},{"transit","FlightPath"},{"dungeonEnter","Dungeon"}}) do
-        B.Navigation.actions={{kind=row[1],mode="flight",position={map=1,x=0.5,y=0.5}}}
+    for _,kind in ipairs({"accept","turnin","objective","transit","dungeonEnter"}) do
+        B.Navigation.actions={{kind=kind,mode="flight",position={map=1,x=0.5,y=0.5}}}
         B.Navigation:RefreshPins()
-        if row[1]=="objective" then
-            assert(B.Navigation.pins[1].texture.texture:find("hud-objective.tga",1,true))
-        else eq(B.Navigation.pins[1].texture.atlas,row[2]);eq(B.Navigation.pins[2].texture.atlas,row[2]) end
+        local tex=B.Navigation.pins[1].texture
+        if kind=="transit" or kind=="dungeonEnter" then eq(tex.atlas,kind=="transit" and "FlightPath" or "Dungeon")
+        else assert(tex.texture:find(kind=="objective" and "hud-objective.tga" or "map-markers.tga",1,true)) end
     end
     local current={kind="objective",questId=1,title="当前目标",position={map=1,x=0.1,y=0.2}}
     local nextGoal={kind="objective",questId=2,expected=true,title="跨区目标",position={map=2,x=0.3,y=0.4}}
@@ -70,19 +69,29 @@ test("地图标记按任务阶段合并并移除失效的导航步骤",function(
     end
     B.Navigation:SetPlan({fallback=current,taskQueue={steps=steps}})
     B.settings.pins,B.settings.minimapPins=true,true;adds.world,adds.mini=0,0
-    B.Navigation:RefreshPins();eq(adds.world,3);eq(adds.mini,3);eq(#B.Navigation.pins,6)
+    B.Navigation:RefreshPins();eq(adds.world,3);eq(adds.mini,1)
     local pins=B.Navigation.pins
     eq(pins[1].point.action,current);eq(pins[3].point.action,nextGoal);eq(pins[3].point.position.map,2)
-    eq(#pins[5].point.actions,5);eq(pins[5].number.value,"03");eq(pins[2].floats,true);eq(pins[4].floats,false)
+    eq(#pins[5].point.actions,5);eq(pins[5].number.value,"3");eq(pins[2].floats,true);eq(pins[2].number,nil);eq(pins[4],nil)
     local oldTooltip,tooltip=GameTooltip,{lines={}}
     GameTooltip={SetOwner=function() end,SetText=function(_,text) tooltip.title=text end,
         AddLine=function(_,text) tooltip.lines[#tooltip.lines+1]=text end,Show=function() end,Hide=function() end}
     pins[5].scripts.OnEnter(pins[5]);eq(#tooltip.lines,6)
     assert(tooltip.title:find("一起交付 2",1,true));assert(tooltip.lines[5]:find("完成后交付 · 一起交付 6",1,true))
+    pins[2].onEdge=true;B.Navigation:Update();eq(pins[2].arrow.shown,true)
+    pins[2].onEdge=false;B.Navigation:Update();eq(pins[2].arrow.shown,false)
+    -- One giver can accept a finished quest even while other hand-ins there are future steps.
+    B.state.quests[4]={ready=true,title="可以交付"}
+    B.Navigation:RefreshPins()
+    eq(pins[6].action.questId,4);eq(pins[6].floats,false)
+    eq(pins[6].texture.color[2],0.93);eq(pins[5].number.value,"3")
+    tooltip.lines={};pins[6].scripts.OnEnter(pins[6]);eq(tooltip.title,"可以交付")
+    eq(tooltip.lines[1],"交付任务");eq(#tooltip.lines,2)
+    B.state.quests[4]=nil;B.Navigation:RefreshPins();eq(pins[6].shown,false)
     GameTooltip=oldTooltip
     B.Navigation.manual={map=3,x=0.5,y=0.5};adds.world,adds.mini=0,0
     B.Navigation:RefreshPins();eq(adds.world,1);eq(adds.mini,1);eq(pins[3].shown,false);eq(pins[6].shown,false)
-    B.Navigation.manual=nil;adds.world,adds.mini=0,0;B.Navigation:RefreshPins();eq(adds.world,3);eq(adds.mini,3)
+    B.Navigation.manual=nil;adds.world,adds.mini=0,0;B.Navigation:RefreshPins();eq(adds.world,3);eq(adds.mini,1)
     B.Navigation.plan={};B.Navigation.actions={nextGoal};adds.world,adds.mini=0,0
     B.Navigation:RefreshPins();eq(adds.world,1);eq(adds.mini,1);eq(pins[1].point.action,nextGoal);eq(pins[5].shown,false)
     B.Navigation.plan={taskChoices={{questId=2,stages={nextGoal,steps[3].choice.stages[1]}},
@@ -110,6 +119,10 @@ test("地图标记按任务阶段合并并移除失效的导航步骤",function(
     B.state.quests[1]={objectives={{finished=false},{finished=false}}};B.state.revision=B.state.revision+1
     eq(B.Navigation:Current(),nil);eq(#B.Navigation:MapPoints(),4)
     B.Navigation:SetPlan({revision=B.state.revision,fallback=current,taskQueue={steps=stages}})
+    B.state.quests[1].objectives[1]={text="大蜡烛：6/8",numFulfilled=6,numRequired=8}
+    GameTooltip={SetOwner=function() end,SetText=function() end,
+        AddLine=function(_,text) tooltip.lines[#tooltip.lines+1]=text end,Show=function() end}
+    tooltip.lines={};pins[1].scripts.OnEnter(pins[1]);eq(tooltip.lines[1],"大蜡烛  6/8");GameTooltip=oldTooltip
     B.state.quests[1].objectives[1].finished=true;B.state.revision=B.state.revision+1
     eq(B.Navigation:Current(),nil);eq(#B.Navigation:MapPoints(),3)
     B.Navigation:RefreshPins();eq(pins[1].point.action,other)
@@ -150,9 +163,9 @@ test("普通任务地图点只显示可执行的接取、目标和交付",functi
     local p={revision=B.state.revision,fallback=collect,taskChoices=choices,taskQueue={steps={}}}
     B.Navigation:SetPlan(p);eq(#B.Navigation:MapPoints(),11)
     local pins=B.Navigation.pins
-    eq(pins[1].number.value,"01");eq(pins[3].number.value,"")
-    assert(pins[1].texture.texture:find("hud-collect.tga",1,true));eq(pins[3].texture.atlas,"QuestNormal")
-    eq(pins[3].texture.color[1],1);eq(pins[3].texture.color[3],1)
+    eq(pins[1].number.value,"1");eq(pins[3].number.value,"")
+    assert(pins[1].texture.texture:find("hud-collect.tga",1,true));assert(pins[3].texture.texture:find("map-markers.tga",1,true))
+    eq(pins[3].texture.color[1],1);eq(pins[3].texture.color[3],0.46)
     assert(B.Navigation:Navigate(choices[1].actions[1]));eq(#B.Navigation:MapPoints(),11)
     eq(B.Navigation:Current(),choices[1].actions[1]);eq(pins[1].point.current,true)
     B.Navigation:ClearManual();B.state.quests[108].objectives[1].finished=true;B.state.revision=B.state.revision+1

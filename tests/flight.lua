@@ -1,4 +1,4 @@
-return function(test,eq,F,A)
+return function(test,eq,F,A,widget)
 local globals={"UnitOnTaxi","GetTime","GetPlayerFacing","UnitIsDeadOrGhost","UnitIsAFK","IsPlayerMoving","UnitAffectingCombat","CreateFrame","SlashCmdList","debugprofilestop","C_SpellBook",
     "TakeTaxiNode","hooksecurefunc","C_TaxiMap","GetTaxiMapID","WaypointUIAPI"}
 local saved={}
@@ -20,7 +20,7 @@ local function fixture(actions)
     B.Replan=function(self) self.replans=self.replans+1 end
     B.Message=function(self) self.messages=self.messages+1 end
     B.QuestAssist={Update=function() end}
-    B.UI={SetNavigation=function(_,distance) B.distance=distance end}
+    B.UI={ClassColor=function() return 1,1,1 end,SetNavigation=function(_,distance) B.distance=distance end}
     B.State={Observe=A.State.Observe,Refresh=function(_,force)
         eq(force,true);B.refreshes=B.refreshes+1;B.state.onTaxi=flying
     end}
@@ -54,9 +54,7 @@ test("飞行前导航出发点且飞越终点不算落地",function()
     B.Navigation:Update();eq(B.distance,0);eq(B.Navigation.index,1)
     local pinX
     B.settings.pins=true
-    local function pin() return {Hide=function() end,SetSize=function() end,SetAlpha=function() end,
-        number={SetText=function() end},texture={SetAtlas=function() end,SetVertexColor=function() end}} end
-    B.Navigation.pins={pin(),pin()}
+    CreateFrame=widget
     B.Navigation.hbdPins={RemoveAllWorldMapIcons=function() pinX=nil end,RemoveAllMinimapIcons=function() end,
         AddWorldMapIconMap=function(_,owner,pin,map,x) pinX=x end,AddMinimapIconMap=function() end}
     B.Navigation:RefreshPins();eq(pinX,0)

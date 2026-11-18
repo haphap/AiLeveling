@@ -188,10 +188,7 @@ return function(test,eq,F,plan)
         local model=B.UI.TrackerModel(s,p,p.fallback,false)
         eq(model.questId,1);eq(model.title,s.quests[1].title);eq(model.objectives[1].have,0)
         assert(model.instruction:find("入口",1,true))
-        local segments,missing=B.Routes.Segments(p.travelActions,1,1,function(point,map)
-            if point.map==map then return point.x,point.y end
-        end,s.position)
-        eq(#segments,1);eq(segments[1].tx,0.2);eq(missing,0)
+        local _,_,tx=B.Routes.Endpoints(s.position,p.fallback.position,1);eq(tx,0.2)
         s.position=p.fallback.position
         p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonEnter")
         s.inInstance,s.instanceId,s.position=true,42,point
