@@ -99,7 +99,7 @@ function D.OrderTaskObjectives(stages,state,data)
 end
 
 function D.TaskApproach(action,state,data)
-    if not action then return action end
+    if not action or action.startItemId or action.position and action.position.startItemId then return action end
     local pvp=D.TaskPvP(action.position,state,data,action.areaId)
     if pvp then
         if state.inInstance and state.instanceId==pvp.instanceId then return action end
@@ -132,6 +132,10 @@ function D.TaskApproach(action,state,data)
                 local room=object and sparklematicObjects[contact.entityId] and "清洁区" or "内"
                 inside.text="在"..instance.title..room.."，"..(object and "使用" or "找到").."「"..contact.entityName.."」"..
                     (action.kind=="accept" and "接取任务。" or "交付任务。")
+                if room=="清洁区" then
+                    if action.sameMachine then inside.text="继续使用清洁区的同一台「"..contact.entityName.."」接取后续任务。"
+                    else inside.text=inside.text.."从齿轮大厅上层走西南通道，岔路向北下楼。" end
+                end
             end
         end
         return inside
@@ -239,8 +243,8 @@ function D.Tasks(d,state,data,targets)
             local allowed,reason=A.Eligibility.Check(q,state,data)
             local group=status=="ready" and 1 or status=="active" and 2 or
                 status=="turnedIn" and not q.repeatable and 5 or allowed and 3 or 4
-            local point,unavailable,areaId
-            if allowed then point,unavailable=data:Target(q,state) end
+            local point,unavailable,pickupItem,areaId
+            if allowed then point,unavailable,pickupItem=data:Target(q,state) end
             if allowed and not point and not unavailable and data.UnmappedTargetArea then
                 local area=data:UnmappedTargetArea(q,state)
                 if D.TaskInstance(nil,state,data,area) then areaId=area end
@@ -254,7 +258,7 @@ function D.Tasks(d,state,data,targets)
             local key=recipient and recipient.entityId and (recipient.entityKind..":"..recipient.entityId)
             local rewards={}
             if group~=5 and A.Gear and A.Gear.TaskBenefits then A.Gear.TaskBenefits(rewards,q,state,data) end
-            rows[#rows+1]={id=id,title=q.title,group=group,allowed=allowed,reason=reason,position=point,areaId=areaId,
+            rows[#rows+1]={id=id,title=q.title,group=group,allowed=allowed,reason=reason,position=point,areaId=areaId,pickupItem=pickupItem,
                 xp=group~=5 and A.TaskGuide and A.TaskGuide.XP(q,state.level,state) or nil,
                 gear=rewards.gear,gearSources=rewards.gearSources,
                 requireCheck=not active and (unavailable or q.taskFacts and q.taskFacts.hidden) or nil,
@@ -273,7 +277,7 @@ function D.Tasks(d,state,data,targets)
 end
 
 function D.CanContinueTask(row)
-    return row~=nil and (row.allowed and (row.position~=nil or row.areaId~=nil) or row.preparation~=nil)
+    return row~=nil and (row.allowed and (row.position~=nil or row.areaId~=nil or row.pickupItem and row.pickupItem.held) or row.preparation~=nil)
 end
 
 local function belongsInTrip(row,state)

@@ -52,16 +52,20 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
             end
             return
         end
-        local position,unavailable=data:Target(q,state)
+        local position,unavailable,pickupItem=data:Target(q,state)
         local areaId,objectiveIndex
         if not position and data.UnmappedTargetArea then areaId,objectiveIndex=data:UnmappedTargetArea(q,state) end
         local instance=A.Dungeon and A.Dungeon.TaskInstance and A.Dungeon.TaskInstance(position,state,data,areaId) or
             A.Dungeon and A.Dungeon.TaskPvP and A.Dungeon.TaskPvP(position,state,data,areaId)
-        local currentInstance=state.inInstance and instance and instance.instanceId==state.instanceId or false
+        local held=pickupItem and pickupItem.held
+        local currentInstance=state.inInstance and (held or instance and instance.instanceId==state.instanceId) or false
         local action={kind=kind,questId=id,title=active and active.title or q.title,position=position,
             areaId=areaId,objectiveIndex=position and position.objectiveIndex or objectiveIndex,
             text=({accept="前往任务发布者，查看并接取任务。",objective="按任务日志继续完成目标。",turnin="目标已完成，前往任务交付者。"})[kind]}
-        if kind=="accept" and position and position.startItemId then
+        if pickupItem then
+            action.text=pickupItem.text
+            action.startItemId=held and pickupItem.id or nil
+        elseif kind=="accept" and position and position.startItemId then
             action.text="使用「"..position.label.."」接取任务。"
         end
         if kind=="objective" and data.DeliveryOnly and data:DeliveryOnly(q,state) then
@@ -70,9 +74,19 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         if position and position.travelHint then action.text=position.travelHint end
         local choice={id="task:"..id,kind="task",questId=id,title=action.title,actions={action},
             status=kind,level=q.questLevel,referenceXP=q.referenceXP,unlock=unlocks[id],lowValue=lowValue,
-            requireCheck=not active and (unavailable or not position and not areaId) or nil,
+            requireCheck=not active and (unavailable or not position and not instance and not held) or nil,
             distance=position and A.Navigation and A.Navigation.Distance and A.Navigation:Distance(state.position,position)}
         if state.inInstance then choice.currentInstance=currentInstance end
+        -- Equivalent follow-ups can be offered by different machines in the same room.
+        local objects=not active and q.startedBy and q.startedBy[2]
+        if objects and #objects==1 and q.exclusiveTo and data.QuestContact then
+            for _,parent in ipairs(q.preQuestSingle or {}) do
+                if state.completed[parent] then
+                    local contact=data:QuestContact(parent,"finishedBy")
+                    if contact and contact.entityKind=="object" and contact.entityId==objects[1] then action.sameMachine=true;break end
+                end
+            end
+        end
         if A.TaskGuide then
             choice.stages,choice.stagesComplete=A.TaskGuide.Stages(q,state,data,action)
             local localAction=A.Dungeon and A.Dungeon.OrderTaskObjectives and A.Dungeon.OrderTaskObjectives(choice.stages,state,data)
@@ -97,7 +111,7 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         end
         if choice.requireCheck then
             choice.stagesComplete=false
-            action.text="向任务发布者查看此任务。"
+            action.text=pickupItem and pickupItem.text or "向任务发布者查看此任务。"
         end
         if A.TaskGuide then
             if not choice.lowValue and (not automatic or kind=="turnin" or choice.unlock or
@@ -192,6 +206,8 @@ function P.TaskChoices(state,data,ids,onlySelected,options)
         end
         if (a.distance~=nil)~=(b.distance~=nil) then return a.distance~=nil end
         if a.distance and a.distance~=b.distance then return a.distance<b.distance end
+        local am,bm=a.actions[1].sameMachine,b.actions[1].sameMachine
+        if am~=bm then return am==true end
         return a.questId<b.questId
     end)
     return choices

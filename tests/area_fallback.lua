@@ -239,7 +239,8 @@ test("缺交付坐标或目标对应时使用任务区域中心且精确位置�
     active.ready=true;p=d:Target(q,s);eq(p.x,0.2);eq(p.entityId,9)
     active.mapPin={map=1,x=0.85,y=0.95,ready=true}
     p=d:Target(q,s);eq(p.x,0.85);eq(p.entityName,"交付者")
-    C_QuestLog.GetNextWaypoint=nil;s.quests={};p=d:Target(q,s);eq(p.x,0.5);eq(p.entityId,8)
+    C_QuestLog.GetNextWaypoint=nil;s.quests={};eq(d:Target(q,s),nil)
+    npcs[8].spawns={[12]={{36,41}}};p=d:Target(q,s);eq(p.x,0.36);eq(p.entityId,8)
     q.zoneOrSort=-12;eq(d:AreaTarget(q),nil)
     q.zoneOrSort=99;eq(d:AreaTarget(q),nil)
 end)
@@ -253,7 +254,7 @@ test("已知实体区域的缺坐标标记优先于任务分类并保留身份",
     s.quests[1].ready=true;npcs[9].spawns={[99]={{-1,-1}}}
     p=d:Target(q,s);eq(p.map,2);eq(p.entityId,9);eq(p.approximate,true)
     s.quests={};npcs[8].spawns={[99]={{-1,-1}}}
-    p=d:Target(q,s);eq(p.map,2);eq(p.entityId,8)
+    eq(d:Target(q,s),nil);eq(d:UnmappedTargetArea(q,s),99)
 end)
 test("缺地图收件人仍按真实身份归组且不混同发布者或备选收件人",function()
     local B,q,s,rows,npcs=fixture();local d=B.Data
@@ -632,6 +633,9 @@ test("缺地图接交与未接任务的未来目标优先保留各自实际区�
     d.db.Object.Get=function(_,key) if key=="spawns" then return {[98]={{-1,-1}}} end end
     eq(d:Target(q,s),nil);eq(d:UnmappedTargetArea(q,s),98)
     s.bags[100]=1;eq(d:Target(q,s).startItemId,100);eq(d:UnmappedTargetArea(q,s),nil)
+    local previous=s.position;s.position=nil
+    local point,_,item=d:Target(q,s);eq(point,nil);eq(item.held,true);eq(item.id,100)
+    s.position=previous
     s.bags[100]=nil;rows.startedBy={};rows.finishedBy={}
     s.clientVersion,s.clientBuild="1.60.1","70862"
     B.DungeonCatalog={version="1.60.1",build="70862",objectiveAreas={[1]={accept=98,turnin=98}}}
@@ -694,9 +698,9 @@ test("区域中心覆盖全部未匹配目标和额外要求并参与完整移�
     choices[2].stages[1].position.entityId=10;groups=B.TaskGuide.DeliveryGroups(choices,s);eq(#groups,0)
     s.quests={};rows.objectives={nil,nil,nil,{1}}
     stages,complete=B.TaskGuide.Stages(q,s,d,{kind="accept",position=d:Target(q,s)})
-    eq(complete,true);eq(#stages,3);eq(stages[2].position.approximate,true)
+    eq(complete,false);eq(stages[1].position,nil);eq(#stages,3);eq(stages[2].position.approximate,true)
     rows.objectives={};stages,complete=B.TaskGuide.Stages(q,s,d,{kind="accept",position=d:Target(q,s)})
-    eq(complete,true);eq(#stages,3)
+    eq(complete,false);eq(stages[1].position,nil);eq(#stages,3)
 end)
 test("职业分类缺目标位置时沿用发布者区域中心并保持真实目标身份",function()
     local B,q,s,rows,npcs=fixture();local d=B.Data

@@ -23,7 +23,7 @@ function N.StaleAction(action,state,plan)
         if (action.kind=="objective" or action.kind=="turnin") and not action.expected then return true end
     end
     if action.kind=="accept" then
-        local item=action.position and action.position.startItemId
+        local item=action.startItemId or action.position and action.position.startItemId
         return active~=nil or item and ((state.bags or {})[item] or 0)==0
     end
     if not active then return end
@@ -318,7 +318,7 @@ local function showPinTip(pin)
     local place=pos.siteName or pos.entityName or area
     if place then
         if area and area~=place then place=place.." · "..area end
-        if pos.approximate then place=place.." · 区域参考点" end
+        if pos.approximate then place=place.." · "..(pos.sourceKind=="patrol" and "巡逻路线" or "区域参考点") end
         GameTooltip:AddLine(place,0.8,0.8,0.82,true)
     end
     GameTooltip:AddLine("左键导航"..(N.manual and "  ·  右键返回原行程" or ""),0.9,0.77,0.57)

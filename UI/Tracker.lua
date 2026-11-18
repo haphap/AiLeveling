@@ -437,7 +437,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
             accepted=q~=nil,status=status,metrics=metrics(candidate),
             progress=q and (q.ready and "目标已完成，前往交付" or (#counts>0 and table.concat(counts," · ") or "查看任务日志中的目标")) or
                 (candidate and candidate.acceptBlocked or candidate and candidate.requireCheck and "先确认任务当前是否开放" or
-                    pickup.position and pickup.position.startItemId and pickup.text or pickupPlace and ("接取："..pickupPlace) or "先接取，再推进任务目标"),deferred=deferred,candidate=candidate,
+                    (pickup.startItemId or pickup.position and pickup.position.startItemId) and pickup.text or pickupPlace and ("接取："..pickupPlace) or "先接取，再推进任务目标"),deferred=deferred,candidate=candidate,
             shared=sharedByQuest[id] and true,sharedObjective=sharedByQuest[id]}
         if sharedByQuest[id] then
             local row=model.rows[#model.rows]
@@ -662,7 +662,9 @@ local function questTooltip(owner)
     elseif owner.progress then GameTooltip:AddLine(owner.progress:GetText(),0.94,0.91,0.83,true) end
     if owner.metrics then GameTooltip:AddLine(owner.metrics,1,0.83,0.45,true) end
     if owner.pickupAction then
-        GameTooltip:AddLine(owner.pickupAction.position.startItemId and "左键：显示接任务物品" or "左键：导航到接取地点",1,1,1,true)
+        local pickup=owner.pickupAction
+        local item=pickup.startItemId or pickup.position and pickup.position.startItemId
+        GameTooltip:AddLine(item and "左键：显示接任务物品" or "左键：导航到接取地点",1,1,1,true)
     end
     if owner.questId then GameTooltip:AddLine("右键：任务操作\nShift+左键：插入任务链接",1,1,1,true) end
     GameTooltip:Show()

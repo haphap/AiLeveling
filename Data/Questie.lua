@@ -378,6 +378,38 @@ local function soleContact(self,sources)
         entityName=(npc and self.db.Npc or self.db.Object).Get(id,"name")}
 end
 
+local function oppositeGiver(entity,id,faction)
+    local side=entity.Get(id,"friendlyToFaction")
+    return side=="H" and faction=="Alliance" or side=="A" and faction=="Horde"
+end
+
+-- Use a recorded passing point when the giver patrols the player's current zone.
+local function patrolPickup(point,paths,origin,maps)
+    if type(paths)~="table" then return end
+    local nearest
+    for area,segments in pairs(paths) do
+        local hasPath=type(segments)=="table" and type(segments[1])=="table" and type(segments[1][1])=="table"
+        if hasPath then point.sourceKind="patrol" end
+        if hasPath and origin and maps[area]==origin.map then
+            for _,path in ipairs(segments) do
+                for _,p in ipairs(path) do
+                    if usableSpawn(p) then
+                        local x,y=p[1]/100,p[2]/100
+                        local distance=((x-origin.x)*1.5)^2+(y-origin.y)^2
+                        if not nearest or distance<nearest then
+                            nearest=distance
+                            point.map,point.x,point.y,point.sourceAreaId=origin.map,x,y,area
+                        end
+                    end
+                end
+            end
+        end
+    end
+    if point.sourceKind~="patrol" then return end
+    point.approximate,point.label=true,"巡逻路线参考点"
+    point.travelHint="沿巡逻路线寻找「"..(point.entityName or "任务发布者").."」接取任务。"
+end
+
 function D:Target(q, state)
     local status = A.State.Status(state, q.id)
     local active = state.quests[q.id]
@@ -405,12 +437,17 @@ function D:Target(q, state)
         return
     end
     local sources = self.db.Quest.Get(q.id, group) or {}
-    if not active and state.position then
+    local pickupItem
+    if not active then
         for _,item in ipairs(sources[3] or {}) do
-            if (state.bags or {})[item] and state.bags[item]>0 then
-                local p=state.position
-                return {map=p.map,x=p.x,y=p.y,node=p.node,startItemId=item,
-                    label=self.db.Item.Get(item,"name") or ("物品 #"..item)}
+            local held=((state.bags or {})[item] or 0)>0
+            if held or not pickupItem and not next(sources[1] or {}) and not next(sources[2] or {}) then
+                local name=self.db.Item.Get(item,"name") or ("物品 #"..item)
+                pickupItem={id=item,held=held,text=(held and "使用「" or "获得并使用「")..name.."」接取任务。"}
+                if held then
+                    local p=state.position
+                    return p and {map=p.map,x=p.x,y=p.y,node=p.node,startItemId=item,label=name},nil,pickupItem
+                end
             end
         end
     end
@@ -443,10 +480,11 @@ function D:Target(q, state)
         for _, id in ipairs(sources[kind] or {}) do
             sourceCount=sourceCount+1
             local offers=not active and kind==1 and state.questOffers and state.questOffers[id]
-            if offers and not offers[q.id] or offeredOnly and not (offers and offers[q.id]) then
+            if offers and not offers[q.id] or not (offers and offers[q.id]) and
+                (offeredOnly or not active and kind==1 and oppositeGiver(entity,id,state.faction)) then
                 unavailable=unavailable+1
             else
-                for _, point in ipairs(self:EntityPoints(entity, id, true)) do
+                for _, point in ipairs(self:EntityPoints(entity, id, active~=nil)) do
                     -- Current giver, known location, then area fallback.
                     local priority=offer and kind==1 and id==state.questNPC and 3 or point.approximate and 1 or 2
                     if nearer(point,priority) then
@@ -466,7 +504,12 @@ function D:Target(q, state)
         if recipient then point.entityKind,point.entityId,point.entityName=recipient.entityKind,recipient.entityId,recipient.entityName end
         return point
     end
-    if best and not best.approximate then return best end
+    if best and not best.approximate then
+        if not active and best.entityKind=="npc" and best.sourceAreaId then
+            patrolPickup(best,self.db.Npc.Get(best.entityId,"waypoints"),state.position,self.maps)
+        end
+        return best
+    end
     -- Forecast turn-ins use a virtual ready state; only a genuinely ready quest has a native recipient waypoint.
     if active and active.ready and C_QuestLog and C_QuestLog.ReadyForTurnIn and C_QuestLog.ReadyForTurnIn(q.id) then
         local point=nativeWaypoint(q.id)
@@ -474,8 +517,10 @@ function D:Target(q, state)
     end
     if best then return best end
     if (sourceCount>0 or offeredOnly) and unavailable==sourceCount then return nil,true end
+    -- The journal category and a starter item's drop area are not the quest giver's position.
+    if not active then return nil,nil,pickupItem end
     if self:UnmappedTargetArea(q,state) then return end
-    local point=status=="ready" and self:QuestAreaTarget(q,state) or self:AreaTarget(q)
+    local point=self:QuestAreaTarget(q,state)
     if point then
         local contact=soleContact(self,sources)
         if contact then
@@ -833,14 +878,14 @@ end
 -- Preserve a destination's known area when no UI-map coordinate can be produced.
 function D:UnmappedTargetArea(q,state,objectiveIndex)
     local objectiveAreas=dungeonAreas(q,state)
-    local function areaOf(lists)
+    local function areaOf(lists,pickup)
         local found
         for _,spawns in ipairs(lists) do
             for area,points in pairs(spawns) do
                 for _,p in ipairs(points) do
                     if usableSpawn(p) or areaOnlySpawn(p) then
                         local map=self.maps[area]
-                        if map and map>0 and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(map) then return end
+                        if (not pickup or usableSpawn(p)) and map and map>0 and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(map) then return end
                         if found and found~=area then
                             -- Different floors can still identify one instance even without a pin.
                             local instanceFor=A.Dungeon and A.Dungeon.TaskInstance
@@ -850,7 +895,7 @@ function D:UnmappedTargetArea(q,state,objectiveIndex)
                         else
                             found=area
                         end
-                        break
+                        if not pickup then break end
                     end
                 end
             end
@@ -865,7 +910,15 @@ function D:UnmappedTargetArea(q,state,objectiveIndex)
     if not active or active.ready or self:DeliveryOnly(q,state) then
         local sources=self.db.Quest.Get(q.id,active and "finishedBy" or "startedBy") or {}
         local lists={}
-        for kind=1,2 do for _,id in ipairs(sources[kind] or {}) do add(lists,kind==1 and self.db.Npc or self.db.Object,id) end end
+        for kind=1,2 do
+            local entity=kind==1 and self.db.Npc or self.db.Object
+            for _,id in ipairs(sources[kind] or {}) do
+                local offers=not active and kind==1 and state.questOffers and state.questOffers[id]
+                if active or kind==2 or (offers and offers[q.id]) or not offers and not oppositeGiver(entity,id,state.faction) then
+                    add(lists,entity,id)
+                end
+            end
+        end
         if not active then
             for _,item in ipairs(sources[3] or {}) do
                 if (state.bags or {})[item] and state.bags[item]>0 then return end
@@ -873,7 +926,7 @@ function D:UnmappedTargetArea(q,state,objectiveIndex)
                 for _,id in ipairs(self.db.Item.Get(item,"objectDrops") or {}) do add(lists,self.db.Object,id) end
             end
         end
-        return areaOf(lists) or #lists==0 and objectiveAreas and objectiveAreas[active and "turnin" or "accept"] or nil
+        return areaOf(lists,not active) or #lists==0 and objectiveAreas and objectiveAreas[active and "turnin" or "accept"] or nil
     end
     if objectiveAreas and objectiveAreas.objective then
         for index,o in ipairs(active.objectives or {}) do
