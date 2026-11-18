@@ -12,6 +12,41 @@ local function usableSpawn(p)
         (not p[3] or p[3]==0)
 end
 
+local function areaOnlySpawn(p)
+    return p[1]==-1 and p[2]==-1 and (not p[3] or p[3]==0)
+end
+
+-- A drop available in the current dungeon takes precedence over outdoor alternatives.
+local function eachItemDrop(self,item,state,visit)
+    local sources={{self.db.Npc,"npcDrops","npc"},{self.db.Object,"objectDrops","object"}}
+    local current=state.inInstance and state.instanceId and A.DungeonCatalog and
+        A.DungeonCatalog.entries["reference:"..state.instanceId]
+    local function scan(insideOnly)
+        local found=false
+        for _,source in ipairs(sources) do
+            for _,id in ipairs(self.db.Item.Get(item,source[2]) or {}) do
+                local spawns=source[1].Get(id,"spawns")
+                if insideOnly then
+                    local localSpawns={}
+                    for _,area in ipairs(current.areas) do
+                        local points=spawns and spawns[area]
+                        if points and A.Dungeon.TaskInstance(nil,state,self,area)==current then
+                            for _,p in ipairs(points) do
+                                if usableSpawn(p) or areaOnlySpawn(p) then localSpawns[area]=points;break end
+                            end
+                        end
+                    end
+                    spawns=next(localSpawns) and localSpawns
+                end
+                if spawns then visit(source[1],id,source[3],spawns);found=true end
+            end
+        end
+        return found
+    end
+    if current and current.areas and A.Dungeon and A.Dungeon.TaskInstance and scan(true) then return end
+    scan(false)
+end
+
 -- Parse only numeric map entries from the provider's documented Lua data string.
 -- No user content or upstream source string is executed.
 function D.ParseMap(source)
@@ -250,8 +285,8 @@ function D:Candidates(snapshot)
     return ids
 end
 
-function D:EntityPoints(entity, id, allowArea)
-    local spawns=entity.Get(id,"spawns")
+function D:EntityPoints(entity, id, allowArea, spawns)
+    spawns=spawns or entity.Get(id,"spawns")
     local points=self:SpawnPoints(spawns,allowArea)
     -- The two tram quests have no zone map. Guide to the existing entrance, then name the platform.
     local map=entity==self.db.Npc and ({[12997]=1455,[13016]=1455,[13018]=1453})[id]
@@ -276,7 +311,7 @@ function D:SpawnPoints(spawnList,allowArea)
             for _, p in ipairs(spawns) do
                 if usableSpawn(p) then
                     points[#points + 1] = { map = map, x = p[1] / 100, y = p[2] / 100, sourceAreaId=area }
-                elseif allowArea and p[1]==-1 and p[2]==-1 and (not p[3] or p[3]==0) then
+                elseif allowArea and areaOnlySpawn(p) then
                     if areas[map]==nil then areas[map]=area elseif areas[map]~=area then areas[map]=false end
                 end
             end
@@ -335,6 +370,14 @@ local function nativeWaypoint(id)
     end
 end
 
+local function soleContact(self,sources)
+    if not sources or #(sources[1] or {})+#(sources[2] or {})~=1 then return end
+    local npc=#(sources[1] or {})==1
+    local id=sources[npc and 1 or 2][1]
+    return {entityKind=npc and "npc" or "object",entityId=id,
+        entityName=(npc and self.db.Npc or self.db.Object).Get(id,"name")}
+end
+
 function D:Target(q, state)
     local status = A.State.Status(state, q.id)
     local active = state.quests[q.id]
@@ -347,7 +390,13 @@ function D:Target(q, state)
         local target=self:ObjectiveTarget(q,state) or (#(active.objectives or {})==0 and self:TriggerTarget(q,state))
         if target and not target.approximate then return target end
         local waypoint=nativeWaypoint(q.id)
-        if waypoint then return waypoint end
+        if waypoint then
+            local instanceFor=state.inInstance and A.Dungeon and A.Dungeon.TaskInstance
+            local area=instanceFor and not target and self:UnmappedTargetArea(q,state)
+            local here=area and instanceFor(nil,state,self,area)
+            if not here or here.instanceId~=state.instanceId or instanceFor(waypoint,state,self)==here then return waypoint end
+            return
+        end
         if target then return target end
         if self:DeliveryOnly(q,state) then
             return self:Target(q,{position=state.position,faction=state.faction,completed=state.completed,quests={[q.id]={ready=true}}})
@@ -427,14 +476,17 @@ function D:Target(q, state)
     if (sourceCount>0 or offeredOnly) and unavailable==sourceCount then return nil,true end
     if self:UnmappedTargetArea(q,state) then return end
     local point=status=="ready" and self:QuestAreaTarget(q,state) or self:AreaTarget(q)
-    -- A known sole recipient remains the same recipient even when its placement is missing.
-    if point and #(sources[1] or {})+#(sources[2] or {})==1 then
-        local npc=#(sources[1] or {})==1
-        point.entityKind=npc and "npc" or "object"
-        point.entityId=(sources[npc and 1 or 2])[1]
-        point.entityName=(npc and self.db.Npc or self.db.Object).Get(point.entityId,"name")
+    if point then
+        local contact=soleContact(self,sources)
+        if contact then
+            point.entityKind,point.entityId,point.entityName=contact.entityKind,contact.entityId,contact.entityName
+        end
     end
     return point
+end
+
+function D:QuestContact(id,group)
+    return soleContact(self,self.db.Quest.Get(id,group))
 end
 
 -- A recipient's identity remains useful for batching even without a usable map.
@@ -442,12 +494,7 @@ function D:Recipient(q,point)
     if point and point.entityKind and point.entityId then
         return {entityKind=point.entityKind,entityId=point.entityId,entityName=point.entityName}
     end
-    local sources=self.db.Quest.Get(q.id,"finishedBy") or {}
-    if #(sources[1] or {})+#(sources[2] or {})~=1 then return end
-    local npc=#(sources[1] or {})==1
-    local id=sources[npc and 1 or 2][1]
-    return {entityKind=npc and "npc" or "object",entityId=id,
-        entityName=(npc and self.db.Npc or self.db.Object).Get(id,"name")}
+    return soleContact(self,self.db.Quest.Get(q.id,"finishedBy"))
 end
 
 local function requirementName(kind,id)
@@ -685,11 +732,9 @@ function D:ObjectiveTargets(q,state)
             consider(self.db.Npc,1031,"铁须之墓",index,"npc",entry)
             if chosen[index] then chosen[index].siteName="铁须之墓" end
         elseif entry.kind=="item" then
-            for _,source in ipairs({{self.db.Npc,"npcDrops","npc"},{self.db.Object,"objectDrops","object"}}) do
-                for _,id in ipairs(self.db.Item.Get(entry.id,source[2]) or {}) do
-                    consider(source[1],id,"QuestieDB 任务物品来源分布",index,source[3],entry)
-                end
-            end
+            eachItemDrop(self,entry.id,state,function(entity,id,kind,spawns)
+                consider(entity,id,"QuestieDB 任务物品来源分布",index,kind,entry,nil,self:EntityPoints(entity,id,true,spawns))
+            end)
             for _,id in ipairs(self.db.Item.Get(entry.id,"vendors") or {}) do
                 local faction=self.db.Npc.Get(id,"friendlyToFaction")
                 if faction=="AH" or faction==(state.faction=="Alliance" and "A" or state.faction=="Horde" and "H") then
@@ -793,11 +838,19 @@ function D:UnmappedTargetArea(q,state,objectiveIndex)
         for _,spawns in ipairs(lists) do
             for area,points in pairs(spawns) do
                 for _,p in ipairs(points) do
-                    if usableSpawn(p) or p[1]==-1 and p[2]==-1 and (not p[3] or p[3]==0) then
+                    if usableSpawn(p) or areaOnlySpawn(p) then
                         local map=self.maps[area]
                         if map and map>0 and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(map) then return end
-                        if found and found~=area then return end
-                        found=area
+                        if found and found~=area then
+                            -- Different floors can still identify one instance even without a pin.
+                            local instanceFor=A.Dungeon and A.Dungeon.TaskInstance
+                            local instance=instanceFor and instanceFor(nil,state,self,found)
+                            if not instance or instanceFor(nil,state,self,area)~=instance then return end
+                            found=math.min(found,area)
+                        else
+                            found=area
+                        end
+                        break
                     end
                 end
             end
@@ -848,9 +901,7 @@ function D:UnmappedTargetArea(q,state,objectiveIndex)
             elseif entry and (entry.kind=="npc" or entry.kind=="object") then add(lists,entry.kind=="npc" and self.db.Npc or self.db.Object,entry.id)
             elseif entry and entry.kind=="killcredit" then for _,id in ipairs(entry.npcIds or {}) do add(lists,self.db.Npc,id) end
             elseif entry and entry.kind=="item" then
-                for _,source in ipairs({{self.db.Npc,"npcDrops"},{self.db.Object,"objectDrops"}}) do
-                    for _,id in ipairs(self.db.Item.Get(entry.id,source[2]) or {}) do add(lists,source[1],id) end
-                end
+                eachItemDrop(self,entry.id,state,function(_,_,_,spawns) lists[#lists+1]=spawns end)
                 for _,id in ipairs(self.db.Item.Get(entry.id,"vendors") or {}) do
                     local faction=self.db.Npc.Get(id,"friendlyToFaction")
                     if faction=="AH" or faction==(state.faction=="Alliance" and "A" or state.faction=="Horde" and "H") then add(lists,self.db.Npc,id) end
@@ -965,7 +1016,8 @@ function D:ReferenceObjectiveTargets(q,state)
     end
     -- Query reference placements only; this temporary lookup never becomes a character snapshot.
     -- Malformed requirements leave their native indices unknown.
-    local virtual={position=state.position,faction=state.faction,referenceIndexUnknown=complex,quests={[q.id]={objectives=descriptions}},
+    local virtual={position=state.position,faction=state.faction,inInstance=state.inInstance,instanceId=state.instanceId,
+        referenceIndexUnknown=complex,quests={[q.id]={objectives=descriptions}},
         clientVersion=state.clientVersion,clientBuild=state.clientBuild,interface=state.interface}
     local positions={}
     local targets,purchases=self:ObjectiveTargets(q,virtual)

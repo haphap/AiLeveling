@@ -583,6 +583,19 @@ test("缺地图的接交和实体目标按实际来源区域解析且不猜任�
     eq(d:UnmappedTargetArea(q,s),96)
     npcs[7].spawns={[95]={{50,60}}};eq(d:UnmappedTargetArea(q,s),nil)
     npcs[7].spawns={[12]={{50,60}}};eq(d:UnmappedTargetArea(q,s),nil)
+    local mine={instanceId=90,areas={97,98}}
+    B.Dungeon={};B.DungeonCatalog={entries={["reference:90"]=mine}}
+    assert(loadfile("Planner/DungeonTasks.lua"))("AiLeveling",B)
+    q.zoneOrSort=12;s.quests={};npcs[8].spawns={[97]={{-1,-1}},[98]={{-1,-1}}}
+    eq(d:Target(q,s),nil);eq(d:UnmappedTargetArea(q,s),97)
+    mine.areas={98};eq(d:UnmappedTargetArea(q,s),nil)
+    rows.objectives={[3]={{9308}}}
+    d.db.Item.Get=function(_,key) if key=="npcDrops" then return {7,8} end end
+    s.quests[1]={objectives={{type="item",targetKind="item",targetId=9308}}}
+    eq(d:Target(q,s).entityId,7)
+    s.inInstance,s.instanceId=true,90
+    C_QuestLog.GetNextWaypoint=function() return 1,0.5,0.5 end
+    eq(d:Target(q,s),nil);eq(d:UnmappedTargetArea(q,s),98)
 end)
 test("副本目标缺地图时不退回野外分类中心且逐目标保留区域",function()
     local B,q,s,rows,npcs=fixture();local d=B.Data

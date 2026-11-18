@@ -22,7 +22,10 @@ for _,id in ipairs(A.Data.ids) do
     stages=stages+1
     local action={kind=kind,questId=id,title=q.title,areaId=area,objectiveIndex=index}
     local outside=A.Dungeon.TaskApproach(action,s,A.Data)
-    if outside.position then
+    if outside.position and outside.position.approximate then
+     assert(outside.kind=="dungeonEnter" and #instance.entrances==0 and instance.entryArea)
+     assert(outside.position.map==A.Data.maps[instance.entryArea] and outside.text==instance.entryHint)
+    elseif outside.position then
      assert(outside.kind=="dungeonEnter")
      local matched=false
      for _,entry in ipairs(instance.entrances) do

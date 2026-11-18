@@ -1,5 +1,6 @@
 local _,A=...
 local D=A.Dungeon
+local sparklematicObjects={[142487]=true,[175084]=true,[175085]=true}
 
 local function pvpFor(state)
     local catalog=A.PvPCatalog
@@ -123,6 +124,16 @@ function D.TaskApproach(action,state,data)
         if action.position then return action end
         local inside={};for k,v in pairs(action) do inside[k]=v end
         inside.text="在"..instance.title.."内，"..(action.text or "按任务日志继续任务。")
+        if action.questId and data.QuestContact and (action.kind=="accept" or action.kind=="turnin") then
+            local group=action.kind=="accept" and "startedBy" or "finishedBy"
+            local contact=data:QuestContact(action.questId,group)
+            if contact and contact.entityName then
+                local object=contact.entityKind=="object"
+                local room=object and sparklematicObjects[contact.entityId] and "清洁区" or "内"
+                inside.text="在"..instance.title..room.."，"..(object and "使用" or "找到").."「"..contact.entityName.."」"..
+                    (action.kind=="accept" and "接取任务。" or "交付任务。")
+            end
+        end
         return inside
     end
     if state.inInstance then
