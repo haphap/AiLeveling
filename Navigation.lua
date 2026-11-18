@@ -86,15 +86,15 @@ end
 
 function N:NavigateQuest(id)
     for _,choice in ipairs(self.plan and self.plan.taskChoices or {}) do
-        if choice.questId==id and not choice.acceptBlocked and not choice.revisitLevel and
+        if choice.questId==id and not choice.acceptBlocked and
             not choice.requireCheck and not choice.entryBlocked then
-            return self:Navigate(choice.actions and choice.actions[1])
+            return self:Navigate(choice.pickupAction or not choice.revisitLevel and choice.actions and choice.actions[1])
         end
     end
     return false
 end
 
-function N:Navigate(action)
+function N:Navigate(action,keepWaypoint)
     local state=A.state
     local id=action and action.questId
     local point=action and action.position
@@ -114,7 +114,7 @@ function N:Navigate(action)
     local actions=routes and routes[1] and A.Flights.Actions(routes[1],approach,self) or {approach}
     self.manual={title=action.title,action=target,actions=actions,index=1,
         instanceId=state.instanceId,inInstance=state.inInstance,plan={revision=-1,travelActions=actions,itemStock=self.plan and self.plan.itemStock}}
-    self:RefreshPins(true)
+    self:RefreshPins(not keepWaypoint)
     self:Update()
     A.QuestAssist:Update()
     A.dirty=true
@@ -141,7 +141,7 @@ function N:Current()
             self:ClearManual(false)
         else
             if goal and (self.manual.inInstance~=A.state.inInstance or A.state.inInstance and self.manual.instanceId~=A.state.instanceId) then
-                if self:Navigate(goal) then return self:Current() end
+                if self:Navigate(goal,true) then return self:Current() end
             end
             local action=self.manual.actions and self.manual.actions[self.manual.index] or goal
             if not N.StaleAction(action,A.state,self.manual.plan) then
@@ -475,7 +475,7 @@ end
 function N:Update()
     updateEdge(self.edgePin,self.hbdPins)
     self:SyncWaypointUI()
-    if self.externalWaypoint then A.UI:SetNavigation(nil);return end
+    if self.externalWaypoint then A.UI:SetNavigation(nil) end
     if not self.hbd then return end
     if A.Transport and A.Transport:InFlight() then A.UI:SetNavigation(nil);return end
     if A.Hearth and A.Hearth:InTransit() then A.UI:SetNavigation(nil);return end
@@ -522,6 +522,7 @@ function N:Update()
             return
         end
     end
+    if self.externalWaypoint then return end
     local x, y, instance = self.hbd:GetWorldCoordinatesFromZone(pos.x, pos.y, pos.map)
     local tx, ty, targetInstance = self.hbd:GetWorldCoordinatesFromZone(target.x, target.y, target.map)
     local angle

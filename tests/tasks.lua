@@ -150,6 +150,12 @@ test("接交点目标分布与物品来源按跨区域直线距离选择",functi
     end}}
     local s=F.State();s.position={map=1,x=0,y=0.5}
     eq(B.Data:Target({id=1},s).map,2)
+    local observed={map=1,x=0.7,y=0.5,entityKind="npc",entityId=12,approximate=true}
+    s.questOffers={[12]={[1]={nativeOffer=observed}}}
+    eq(B.Data:Target({id=1},s).entityId,11)
+    s.position.x=0.69;eq(B.Data:Target({id=1},s),observed)
+    s.position.x=0;s.questNPC=12;eq(B.Data:Target({id=1},s),observed)
+    s.questNPC,s.questOffers=nil,nil
     s.quests[1]={ready=true};eq(B.Data:Target({id=1},s).map,2)
     s.quests[1]={objectives={{text="狼 0/1",type="monster"},{text="野猪 0/1",type="monster"},{text="狼皮 0/1",type="item"}}}
     local points=B.Data:ObjectiveTargets({id=1},s)

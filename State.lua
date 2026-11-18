@@ -232,6 +232,7 @@ function State:Refresh(force, manual)
     local restart=force
     local s = { revision = previous.revision }
     s.questOffers=self.questOffers
+    s.questNPC=s.questOffers and A.Merchant and UnitGUID and A.Merchant.NpcId(UnitGUID("npc"))
     s.clientVersion,s.clientBuild,s.interface=A.clientVersion,A.build,A.interface
     s.level, s.xp, s.maxXP = UnitLevel("player"), UnitXP("player"), UnitXPMax("player")
     local className, class, classId = UnitClass("player")

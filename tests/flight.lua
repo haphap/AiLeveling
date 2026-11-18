@@ -247,6 +247,12 @@ test("飞行保留手动目的地且不混入步行校准",function()
     B.Navigation:Update();eq(created,1)
     local external={mapID=1,x=0.3,y=0,name="手动点"};nav=external
     B.Navigation:Update();eq(nav,external);eq(B.distance,nil);eq(B.Navigation.externalWaypoint,true)
+    B.state.position=position(1);B.Navigation:Update();eq(B.Navigation.index,index+1);eq(nav,external)
+    local boat={kind="transit",publicTransit=true,departure=position(1),position=position(0.2,2)}
+    B.Navigation:SetPlan({travelActions={boat}})
+    B.Navigation:Update();eq(boat.atDeparture,true)
+    B.state.position=position(0.2,2);B.Navigation:Update();eq(B.Navigation.index,2);eq(nav,external)
+    B.state.position=position(0.7)
     B.Navigation:SetPlan({best={actions={{kind="objective",questId=42,title="继续任务",position=position(0.9)}}}})
     eq(nav,external);eq(created,1)
     nav=nil;B.Navigation:Update();eq(nav.name,"继续任务");eq(nav.x,0.9);eq(B.Navigation.externalWaypoint,nil)
@@ -262,7 +268,8 @@ test("飞行保留手动目的地且不混入步行校准",function()
     nav=external;B.Navigation:RefreshPins();eq(nav,external)
     B.settings.waypointUI=true
     local pickup={kind="accept",questId=44,title="顺路任务",position=position(0.8)}
-    eq(B.Navigation:Pickup(pickup),true);eq(B.Navigation:Current(),pickup)
+    B.Navigation.plan.taskChoices={{questId=44,revisitLevel=29,pickupAction=pickup}}
+    eq(B.Navigation:NavigateQuest(44),true);eq(B.Navigation:Current(),pickup)
     eq(nav.flags,"AiLeveling");eq(nav.x,0.8);eq(math.floor(B.distance+0.5),100)
     B.state.position=position(0.8);B.Navigation:Update()
     eq(B.Navigation:Current(),pickup);eq(B.Navigation.index,index)

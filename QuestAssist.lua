@@ -146,14 +146,20 @@ function Q:ApplyFollow()
     self.followButton:SetShown(wanted~=nil)
 end
 
-function Q.DialogChoice(id,kind)
+function Q.DialogChoice(id,kind,pickupId)
     local state,plan=A.state,A.plan
-    if not state or not plan or plan.revision and plan.revision~=state.revision or state.locked and state.locked~=id then return end
+    if not state or not plan or plan.revision and plan.revision~=state.revision then return end
+    if pickupId then
+        if id~=pickupId or kind~="accept" then return end
+    elseif state.locked and state.locked~=id then return end
     local active=(state.quests or {})[id]
     if kind=="accept" and active or kind=="turnin" and not (active and active.ready) then return end
     for _,choice in ipairs(plan.taskChoices or {}) do
         if choice.questId==id and not choice.lowValue and not choice.requireCheck and not choice.entryBlocked then
-            if kind=="accept" then return not choice.acceptBlocked and choice.status=="accept" or nil end
+            if kind=="accept" then
+                return choice.status=="accept" and not choice.acceptBlocked and
+                    (not choice.revisitLevel or choice.pickupAction~=nil)
+            end
             if A.TaskGuide and not state.locked then
                 local _,groups=A.TaskGuide.DeliveryGroups(plan.taskChoices,state,plan.taskOrder)
                 local group=groups[id]
@@ -199,8 +205,11 @@ function Q:DialogEvent(event)
     if event~="GOSSIP_SHOW" and event~="QUEST_DETAIL" and event~="QUEST_PROGRESS" and event~="QUEST_COMPLETE" then return end
     self.dialogPending=nil
     if not A.ready or not A.settings or not A.char or A.char.paused or
-        InCombatLockdown and InCombatLockdown() or IsShiftKeyDown and IsShiftKeyDown() or
-        A.Navigation and A.Navigation.manual then return end
+        InCombatLockdown and InCombatLockdown() or IsShiftKeyDown and IsShiftKeyDown() then return end
+    local manual=A.Navigation and A.Navigation.manual
+    local action=manual and manual.action
+    local pickupId=action and action.kind=="accept" and action.questId
+    if manual and (not pickupId or not A.settings.autoAccept or event~="GOSSIP_SHOW" and event~="QUEST_DETAIL") then return end
     local function valid(id)
         return (not canaccessvalue or canaccessvalue(id)) and type(id)=="number" and id>0 and id<2147483648 and id%1==0
     end
@@ -213,7 +222,7 @@ function Q:DialogEvent(event)
         A:Queue("quest:dialog",function()
             -- This event can update NPC offers and the plan before selecting a quest or service.
             while self.dialogPending==pending and (A.refreshAt or A.jobs.plan) do coroutine.yield() end
-            if self.dialogPending~=pending then return end
+            if self.dialogPending~=pending or manual~=(A.Navigation and A.Navigation.manual) then return end
             local current=UnitGUID and UnitGUID("npc")
             if canaccessvalue and not canaccessvalue(current) or current~=guid then return end
             if event~="GOSSIP_SHOW" then
@@ -233,6 +242,7 @@ function Q:DialogEvent(event)
     end
     if event=="GOSSIP_SHOW" then
         if not C_GossipInfo then return end
+        local manualQuest=false
         for _,kind in ipairs({"turnin","accept"}) do
             local enabled=kind=="accept" and A.settings.autoAccept or kind=="turnin" and A.settings.autoTurnIn
             local getter=kind=="accept" and C_GossipInfo.GetAvailableQuests or C_GossipInfo.GetActiveQuests
@@ -240,24 +250,27 @@ function Q:DialogEvent(event)
                 local ok,list=pcall(getter)
                 if ok and type(list)=="table" then
                     for _,row in ipairs(list) do
-                        if type(row)=="table" and valid(row.questID) and (kind=="accept" or row.isComplete==true) and Q.DialogChoice(row.questID,kind) then
+                        if type(row)=="table" and valid(row.questID) and (kind=="accept" or row.isComplete==true) and Q.DialogChoice(row.questID,kind,pickupId) then
                             if enabled then
                                 local selectQuest=kind=="accept" and C_GossipInfo.SelectAvailableQuest or C_GossipInfo.SelectActiveQuest
                                 once("select:"..row.questID,selectQuest,row.questID)
+                                return
                             end
-                            return
+                            manualQuest=true
+                            break
                         end
                     end
                 end
             end
         end
+        if manual or manualQuest then return end
         local option=A.Services and A.Services.GossipOption and (A.Services:GossipOption() or self:TaskGossipOption())
         if option then once(option.key,option.select,option.value) end
         return
     end
     local id=GetQuestID and GetQuestID()
     if not valid(id) then return end
-    if event=="QUEST_DETAIL" and A.settings.autoAccept and Q.DialogChoice(id,"accept") then
+    if event=="QUEST_DETAIL" and A.settings.autoAccept and Q.DialogChoice(id,"accept",pickupId) then
         once("accept:"..id,AcceptQuest)
     elseif event=="QUEST_PROGRESS" and A.settings.autoTurnIn and Q.DialogChoice(id,"turnin") and IsQuestCompletable and IsQuestCompletable() then
         once("progress:"..id,CompleteQuest)

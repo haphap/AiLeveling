@@ -189,7 +189,15 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     C_GossipInfo.SelectOption=function(value) calls[#calls+1]="service:"..value end
     assert(loadfile("Services.lua"))("AiLeveling",B)
     local function dialog() event("GOSSIP_SHOW") end
-    dialog();eq(menus,0);eq(#calls,0) -- Manual turn-in takes priority over service automation.
+    dialog();eq(menus,0);eq(calls[1],"select:2");calls={}
+    event("GOSSIP_CLOSED");id=2;accept.revisitLevel=30
+    event("QUEST_DETAIL");eq(#calls,0)
+    accept.pickupAction={kind="accept",questId=2};B.Navigation.manual={action=accept.pickupAction}
+    B.plan.taskChoices[4]={questId=99,status="accept"}
+    B.state.locked=1;id=99;event("QUEST_DETAIL");eq(#calls,0)
+    dialog();id=2;event("QUEST_DETAIL");eq(calls[1],"select:2");eq(calls[2],"accept:2")
+    eq(B.state.locked,1);B.state.locked=nil;B.Navigation.manual=nil;B.plan.taskChoices[4]=nil
+    accept.revisitLevel,accept.pickupAction=nil,nil;calls={};event("GOSSIP_CLOSED")
     C_GossipInfo.GetActiveQuests=function() return {} end
     B.settings.autoAccept=false;dialog();eq(menus,0);eq(#calls,0)
     C_GossipInfo.GetAvailableQuests=function() return {{questID=99}} end

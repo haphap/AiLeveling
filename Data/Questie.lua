@@ -337,12 +337,10 @@ function D:Target(q, state)
         local point=nativeWaypoint(q.id)
         if point then return point end
     end
-    if not active then
-        for _,offers in pairs(state.questOffers or {}) do
-            local offered=offers[q.id]
-            if type(offered)=="table" and offered.nativeOffer then return offered.nativeOffer end
-        end
-    end
+    local observations=not active and state.questOffers
+    local speaker=observations and observations[state.questNPC]
+    local offer=speaker and speaker[q.id]
+    if type(offer)=="table" and offer.nativeOffer then return offer.nativeOffer end
     local group = status == "ready" and "finishedBy" or "startedBy"
     if status == "active" then
         local target=self:ObjectiveTarget(q,state) or (#(active.objectives or {})==0 and self:TriggerTarget(q,state))
@@ -364,9 +362,29 @@ function D:Target(q, state)
         end
     end
     local best, bestDistance, sourceCount, unavailable = nil, nil, 0, 0
+    local bestPriority=0
+    local function nearer(point,priority)
+        if priority<bestPriority then return false end
+        local distance=A.Navigation:Distance(state.position,point)
+        if priority==bestPriority then
+            if distance then
+                if bestDistance and bestDistance<=distance then return false end
+            elseif bestDistance or not state.position or point.map~=state.position.map or best.map==point.map then
+                return false
+            end
+        end
+        best,bestDistance,bestPriority=point,distance,priority
+        return true
+    end
+    if observations then
+        for _,offers in pairs(observations) do
+            local observed=offers[q.id]
+            if type(observed)=="table" and observed.nativeOffer then nearer(observed.nativeOffer,2) end
+        end
+    end
     -- Zero-level records join automatic leveling when an NPC actually offers them.
-    local offeredOnly=not active and q.questLevel==0 and state.locked~=q.id and
-        not state.preparingQuest and not state.taskBatch
+    local offeredOnly=not active and (q.questLevel==0 and state.locked~=q.id and
+        not state.preparingQuest and not state.taskBatch or best and q.taskFacts and q.taskFacts.hidden)
     for kind = 1, 2 do
         local entity = kind == 1 and self.db.Npc or self.db.Object
         for _, id in ipairs(sources[kind] or {}) do
@@ -376,14 +394,9 @@ function D:Target(q, state)
                 unavailable=unavailable+1
             else
                 for _, point in ipairs(self:EntityPoints(entity, id, true)) do
-                    local distance = A.Navigation:Distance(state.position, point)
-                    local same=state.position and point.map==state.position.map
-                    local bestSame=best and state.position and best.map==state.position.map
-                    local precise=best and best.approximate and not point.approximate
-                    local comparable=not best or (not best.approximate)==(not point.approximate)
-                    if not best or precise or comparable and (distance and (not bestDistance or distance<bestDistance) or
-                        not distance and not bestDistance and same and not bestSame) then
-                        best, bestDistance = point, distance
+                    -- Current giver, known location, then area fallback.
+                    local priority=offer and kind==1 and id==state.questNPC and 3 or point.approximate and 1 or 2
+                    if nearer(point,priority) then
                         best.label=best.travelHint and best.label or best.approximate and "区域参考点" or (kind==1 and "QuestieDB NPC 位置" or "QuestieDB 对象位置")
                         best.entityKind,best.entityId=kind==1 and "npc" or "object",id
                         best.entityName=entity.Get(id,"name")
