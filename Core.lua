@@ -498,6 +498,9 @@ frame:SetScript("OnEvent", function(_, event, ...)
             if event=="TAXI_NODE_STATUS_CHANGED" then A.Transport:InvalidateFlights() end
         end
         if event=="PLAYER_ENTERING_WORLD" then A.Instances:Request();A.Transport:World() end
+        if (event=="SKILL_LINES_CHANGED" or event=="UPDATE_FACTION") and A.UI.Browser then
+            A.UI.Browser.entriesRevision=nil
+        end
         A:RequestRefresh(event=="BAG_UPDATE_DELAYED" or event=="SKILL_LINES_CHANGED" or event=="UPDATE_FACTION")
     end
     if A.ready and A.QuestAssist and A.QuestAssist.DialogEvent then A.QuestAssist:DialogEvent(event) end
@@ -512,7 +515,8 @@ frame:SetScript("OnUpdate", function(_, elapsed)
         A.State:Refresh()
         if A.redrawAfterRefresh then
             A.redrawAfterRefresh=nil;A.dirty=true
-            if A.UI.Browser then A.UI.Browser.entriesRevision=nil end
+            local browser=A.UI.Browser
+            if browser and (browser.mode==3 or browser.mode==4) then browser.entriesRevision=nil end
         end
         if A.Merchant then A.Merchant:SellJunk() end
     end

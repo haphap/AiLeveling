@@ -59,7 +59,9 @@ function B:Create(parent)
     self.searchHint=A.UI:Text(self.frame,"caption",colors.muted);self.searchHint:SetPoint("TOPLEFT",A.UI.daylight and 26 or 10,-38);self.searchHint:SetText("搜索名称或任务编号")
     self.search:SetScript("OnEscapePressed",function(box) box:SetText("");box:ClearFocus() end)
     local onTextChanged=function(box)
-        self.query=box:GetText():lower();self.searchHint:SetShown(self.query=="")
+        local query=box:GetText():lower()
+        if self.query==query then return end
+        self.query=query;self.searchHint:SetShown(query=="")
         if self.mode then self.list:SetVerticalScroll(0);self:Refresh(self.mode,true) end
     end
     if A.UI.daylight then self.search:HookScript("OnTextChanged",onTextChanged)
@@ -67,6 +69,7 @@ function B:Create(parent)
     self.list=CreateFrame("ScrollFrame",nil,self.frame,"UIPanelScrollFrameTemplate")
     self.list:SetPoint("TOPLEFT",0,-70);self.list:SetSize(382,420)
     self.child=CreateFrame("Frame",nil,self.list);self.child:SetSize(382,460);self.list:SetScrollChild(self.child)
+    self.list:HookScript("OnVerticalScroll",function(_,offset) self:DrawRows(offset) end)
     self.info=CreateFrame("ScrollFrame",nil,self.frame,"UIPanelScrollFrameTemplate")
     self.info:SetPoint("TOPLEFT",434,-14);self.info:SetSize(326,368)
     self.infoChild=CreateFrame("Frame",nil,self.info);self.infoChild:SetSize(330,382);self.info:SetScrollChild(self.infoChild)
@@ -87,6 +90,37 @@ function B:Create(parent)
         b:SetPoint("TOPLEFT",430,-390-(i-1)*33);self.buttons[i]=b
     end
     self.rows={};self.frame:Hide()
+end
+
+-- Membership comes from the database. Eligibility and progress are evaluated against the live character.
+function B:CatalogQuests(mode,state)
+    local ids=A.Data.ids
+    local cache=self.catalog
+    if not cache or cache.ids~=ids or cache.race~=state.raceMask or cache.class~=state.class or cache.mask~=state.classMask then
+        cache={ids=ids,race=state.raceMask,class=state.class,mask=state.classMask}
+        self.catalog=cache
+    end
+    if cache[mode] then return cache[mode] end
+    local quests={}
+    local enums=A.Data.db and A.Data.db.Enum or {}
+    local professions={}
+    for key in pairs(enums.professionKeys or {}) do
+        local sort=(enums.sortKeys or {})[key]
+        if sort then professions[sort]=true end
+    end
+    for _,id in ipairs(ids or {}) do
+        if mode~=11 or self.mountQuests[id] then
+            local q=A.Data:GetQuest(id)
+            if q and A.Eligibility.InMask(q.requiredRaces,state.raceMask)==true and A.Eligibility.InMask(q.requiredClasses,state.classMask)==true then
+                if mode==11 or mode==9 and A.TaskGuide.IsClassQuest(q,state,A.Data) or
+                    mode==8 and (q.requiredSkill or q.requiredRanks or professions[q.zoneOrSort]) then
+                    quests[#quests+1]=q
+                end
+            end
+        end
+    end
+    cache[mode]=quests
+    return quests
 end
 
 function B:TaskRows(mode)
@@ -130,18 +164,9 @@ function B:TaskRows(mode)
         local ids={};for id in pairs(state.quests or {}) do ids[#ids+1]=id end;table.sort(ids)
         for _,id in ipairs(ids) do add({id="task:"..id,questId=id,title=state.quests[id].title,kind="task",actions={}}) end
     else
-        for _,id in ipairs(A.Data.ids or {}) do
-            local q=A.Data:GetQuest(id)
-            if q and A.Eligibility.InMask(q.requiredRaces,state.raceMask)==true and A.Eligibility.InMask(q.requiredClasses,state.classMask)==true then
-                local enums=A.Data.db and A.Data.db.Enum or {}
-                local sorts=enums.sortKeys or {}
-                local profession=q.requiredSkill or q.requiredRanks
-                for key in pairs(enums.professionKeys or {}) do if sorts[key]==q.zoneOrSort then profession=true end end
-                local classQuest=A.TaskGuide.IsClassQuest(q,state,A.Data)
-                local matches=mode==8 and profession or mode==9 and classQuest or mode==11 and self.mountQuests[id]
-                if matches then add(choices[id] or {id="task:"..id,kind="task",questId=id,title=q.title,level=q.questLevel,actions={},
-                    remainingXP=A.TaskGuide.XP(q,state.level,state)},q) end
-            end
+        for _,q in ipairs(self:CatalogQuests(mode,state)) do
+            add(choices[q.id] or {id="task:"..q.id,kind="task",questId=q.id,title=q.title,level=q.questLevel,actions={},
+                remainingXP=A.TaskGuide.XP(q,state.level,state)},q)
         end
         table.sort(rows,function(a,b)
             if a.allowed~=b.allowed then return a.allowed end
@@ -202,6 +227,15 @@ function B:GearRows()
     return rows
 end
 
+function B:ClearSearch()
+    if self.query and self.query~="" then
+        self.query=""
+        self.search:SetText("")
+        self.searchHint:Show()
+        self.list:SetVerticalScroll(0)
+    end
+end
+
 function B:Refresh(mode,reuse)
     gold,blue,green,muted=A.UI.hex.gold,A.UI.hex.blue,A.UI.hex.green,A.UI.hex.muted
     reuse=reuse and self.mode==mode and self.entriesRevision==A.state.revision and self.entriesPlan==A.plan
@@ -250,21 +284,48 @@ function B:Refresh(mode,reuse)
             A.char.gearTarget and "装备目标" or "自动安排"
         summary=status.." · "..#rows.." 项可查看"
     end
+    if #rows==0 and self.query and self.query~="" then
+        summary="没有匹配的"..(({[3]="装备",[4]="地下城",[10]="练级区域"})[mode] or "任务")
+    end
     self.summary:SetText(summary)
-    local y,scale=0,A.settings.fontScale or 1
-    for i,entry in ipairs(rows) do
-        local row=self.rows[i]
+    self.filtered=rows
+    local scale=A.UI:FontScale()
+    self.rowPitch=math.ceil(40*scale)+2*metrics.gap+metrics.tight
+    local height=math.max(1,#rows*self.rowPitch)
+    self.child:SetHeight(height)
+    local offset=math.min(self.list:GetVerticalScroll(),math.max(0,height-self.list:GetHeight()))
+    if offset~=self.list:GetVerticalScroll() then self.list:SetVerticalScroll(offset) end
+    self:DrawRows(offset)
+    self:Detail()
+end
+
+local function markRow(row,selected)
+    row.baseColor=selected and colors.selected or colors.panel
+    row:SetBackdropColor(unpack(row.baseColor))
+    row.marker:SetShown(selected)
+end
+
+function B:DrawRows(offset)
+    local rows,pitch=self.filtered,self.rowPitch
+    if not rows or not pitch then return end
+    local first=math.max(1,math.floor(offset/pitch)+1)
+    local last=math.min(#rows,math.ceil((offset+self.list:GetHeight())/pitch))
+    local scale=A.UI:FontScale()
+    for index=first,last do
+        local i=index-first+1
+        local entry,row=rows[index],self.rows[i]
         if not row then
             row=A.UI:Button(self.child,"",382,function() end,"task")
-            row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",metrics.indent+metrics.gap,-metrics.gap);row.text:SetWidth(342);row.text:SetMaxLines(2)
+            row.text:SetMaxLines(1)
             row.icon=A.UI:Text(row,"body");row.icon:SetPoint("TOPLEFT",metrics.gap,-metrics.gap)
-            row.sub=A.UI:Text(row,"caption",colors.muted);row.sub:SetWidth(342);row.sub:SetMaxLines(2)
+            row.sub=A.UI:Text(row,"caption",colors.muted);row.sub:SetMaxLines(1)
             row.line=row:CreateTexture(nil,"ARTWORK");row.line:SetPoint("BOTTOMLEFT",metrics.indent+metrics.gap,0);row.line:SetPoint("BOTTOMRIGHT",-8,0);row.line:SetHeight(1)
             row.line:SetColorTexture(unpack(colors.line))
             row.marker=row:CreateTexture(nil,"ARTWORK");row.marker:SetPoint("TOPLEFT");row.marker:SetPoint("BOTTOMLEFT");row.marker:SetWidth(2)
             row:RegisterForClicks("LeftButtonUp","RightButtonUp")
             row:SetScript("OnClick",function(f,button)
                 if button=="RightButton" and f.entry.questId then A.UI:TrackerMenu(f);return end
+                local previous=self.selected
                 self.selected=f.entry;self.selection[self.mode]=f.entry.key;self.info:SetVerticalScroll(0)
                 if self.mode==1 then
                     A.UI.Plan.key=A.UI.Plan.Key(f.entry.choice or f.entry.dungeonCandidate)
@@ -272,8 +333,7 @@ function B:Refresh(mode,reuse)
                 end
                 if self.mode==4 then A.UI.Dungeon.selected=f.entry.key end
                 for _,r in ipairs(self.rows) do
-                    r.baseColor=r.entry==self.selected and colors.selected or colors.panel
-                    r:SetBackdropColor(unpack(r.baseColor));r.marker:SetShown(r.entry==self.selected)
+                    if r.entry==previous or r==f then markRow(r,r==f) end
                 end
                 self:Detail()
             end)
@@ -285,22 +345,25 @@ function B:Refresh(mode,reuse)
             row:HookScript("OnLeave",function(f) f:SetBackdropColor(unpack(f.baseColor));GameTooltip:Hide() end)
             self.rows[i]=row
         end
-        row.entry,row.questId,row.candidate,row.revision=entry,entry.questId,entry.choice,A.plan and A.plan.revision
-        row.deferred=entry.questId and ((A.state.skipped or {})[entry.questId] or (A.state.chainDeferred or {})[entry.questId])
-        local inset=metrics.gap+(metrics.icon+metrics.gap)*scale
-        row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",inset,-metrics.gap);row.text:SetWidth(382-inset-metrics.gap)
-        row.text:SetText(entry.title);row.text:SetTextColor(unpack(colors.white))
-        row.icon:SetText(A.UI:Icon(entry.icon,metrics.icon));row.sub:SetText(entry.sub or "")
-        local titleHeight=math.max(20*scale,row.text:GetStringHeight())
-        row.sub:ClearAllPoints();row.sub:SetPoint("TOPLEFT",inset,-(metrics.gap+titleHeight+metrics.tight*scale));row.sub:SetWidth(382-inset-metrics.gap)
-        row.line:ClearAllPoints();row.line:SetPoint("BOTTOMLEFT",inset,0);row.line:SetPoint("BOTTOMRIGHT",-metrics.gap,0)
-        local h=titleHeight+row.sub:GetStringHeight()+2*metrics.gap+metrics.tight*scale
-        row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y);row:SetSize(382,h);row:Show();y=y+h+metrics.tight
-        local r,g,b=unpack(colors.accent);row.baseColor=entry==self.selected and colors.selected or colors.panel
-        row:SetBackdropColor(unpack(row.baseColor));row.marker:SetColorTexture(r,g,b,1);row.marker:SetShown(entry==self.selected)
+        if row.entry~=entry or row.pitch~=pitch or row.index~=index then
+            row.entry,row.pitch,row.index=entry,pitch,index
+            row.questId,row.candidate,row.revision=entry.questId,entry.choice,A.plan and A.plan.revision
+            row.deferred=entry.questId and ((A.state.skipped or {})[entry.questId] or (A.state.chainDeferred or {})[entry.questId])
+            local inset=metrics.gap+(metrics.icon+metrics.gap)*scale
+            row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",inset,-metrics.gap);row.text:SetWidth(382-inset-metrics.gap)
+            row.text:SetText(entry.title);row.text:SetTextColor(unpack(colors.white))
+            row.icon:SetText(A.UI:Icon(entry.icon,metrics.icon));row.sub:SetText(entry.sub or "")
+            row.sub:ClearAllPoints();row.sub:SetPoint("TOPLEFT",inset,-metrics.gap-23*scale);row.sub:SetWidth(382-inset-metrics.gap)
+            row.line:ClearAllPoints();row.line:SetPoint("BOTTOMLEFT",inset,0);row.line:SetPoint("BOTTOMRIGHT",-metrics.gap,0)
+            row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-(index-1)*pitch);row:SetSize(382,pitch-metrics.tight)
+            row.marker:SetColorTexture(unpack(colors.accent))
+            markRow(row,entry==self.selected)
+        elseif row.marker:IsShown()~=(entry==self.selected) then
+            markRow(row,entry==self.selected)
+        end
+        row:Show()
     end
-    for i=#rows+1,#self.rows do self.rows[i]:Hide() end
-    self.child:SetHeight(math.max(1,y));self:Detail()
+    for i=math.max(1,last-first+2),#self.rows do self.rows[i]:Hide() end
 end
 
 function B:Action(index,label,run,enabled)
@@ -318,7 +381,7 @@ function B:Detail()
     local e=self.selected
     self.title:SetText(e and e.title or "暂无项目")
     local lines={}
-    if not e then lines[1]="角色状态更新后，相关内容会显示在这里。"
+    if not e then lines[1]=self.query and self.query~="" and "清空搜索或换一个关键词。" or "角色状态更新后，相关内容会显示在这里。"
     elseif e.dungeonCandidate then
         local c=e.dungeonCandidate
         lines[#lines+1]=e.sub

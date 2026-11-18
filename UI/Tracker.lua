@@ -855,6 +855,8 @@ function UI:CreateTracker()
     T.headerLine=f:CreateTexture(nil,"ARTWORK");T.headerLine:SetColorTexture(unpack(palette.accent))
     T.headerLine:SetPoint("TOPLEFT",8,0);T.headerLine:SetPoint("TOPRIGHT",-8,0);T.headerLine:SetHeight(2)
     if self.daylight then T.headerLine:Hide() end
+    f:RegisterEvent("DISPLAY_SIZE_CHANGED");f:RegisterEvent("UI_SCALE_CHANGED")
+    f:SetScript("OnEvent",function() self:LayoutTracker() end)
     f:SetResizable(true);f:SetClampedToScreen(true)
     T.resize=CreateFrame("Button",nil,f);T.resize:SetSize(18,18);T.resize:SetPoint("BOTTOMRIGHT",-2,2)
     for _,length in ipairs({6,11}) do
@@ -1174,10 +1176,12 @@ function UI:UpdateNearby(along)
     notice.key,notice.action=nil,nil
     local best,goal,bestKey
     if position and not A.char.paused and not state.dead and not state.onTaxi and not navigation.manual and not A.error then
-        local action=navigation:Current()
-        local journey=self.TrackerJourney(state,action)
-        action=journey and journey.goal or action
-        for id,side in pairs(along or alongTasks(state,plan,action,false)) do
+        if not along then
+            local action=navigation:Current()
+            local journey=self.TrackerJourney(state,action)
+            along=alongTasks(state,plan,journey and journey.goal or action,false,self.tracker.model and self.tracker.model.deliveryGroups)
+        end
+        for id,side in pairs(along) do
             local q=(state.quests or {})[id]
             local objective=q and (q.objectives or {})[side.action.objectiveIndex]
             if side.action.kind=="objective" and objective and not objective.finished and side.distance<=180 and
@@ -1257,11 +1261,33 @@ function UI:RenderJourney(journey,dynamic)
     T.journeySummary:SetText((T.journeyTime or "")..(T.journeyClosed and "  +" or "  −"))
 end
 
+local function trackerMoved(T,position)
+    local map,x,y=position and position.map,position and position.x,position and position.y
+    local moved=map~=T.lastMap or x~=T.lastX or y~=T.lastY
+    T.lastMap,T.lastX,T.lastY=map,x,y
+    return moved
+end
+
+local function navigationStep(action)
+    if action and action.kind=="manual" then return A.Navigation.manual or action end
+    if action and action.kind=="flight" then return A.Transport and A.Transport.flight or action end
+    if action and action.kind=="hearthCast" then return A.Hearth and (A.Hearth.cast or A.Hearth.pending) or action end
+    return action
+end
+
 function UI:UpdateTrackerDynamic()
     local T=self.tracker
     if not T or not T.model then return end
     local state,plan=A.state,A.plan or {}
     local action=A.Navigation:Current()
+    if navigationStep(action)~=T.lastStep then self:RenderTracker();return end
+    if not trackerMoved(T,state.position) then
+        if T.model.journey and action and (action.kind=="flight" or action.kind=="hearthCast") then
+            T.model.journey=self.TrackerJourney(state,action)
+            self:RenderJourney(T.model.journey,true)
+        end
+        return
+    end
     local journey=not A.char.paused and not A.error and self.TrackerJourney(state,action)
     local goal=journey and journey.goal or action
     local along=alongTasks(state,plan,goal,A.char.paused,T.model.deliveryGroups)
@@ -1297,7 +1323,8 @@ function UI:RenderTracker(along)
     local state,plan=A.state or {},A.plan or {}
     local action=A.Navigation:Current()
     local model=UI.TrackerModel(state,plan,action,A.char.paused,along)
-    T.model,T.action=model,action
+    trackerMoved(T,state.position)
+    T.model,T.action,T.lastStep=model,action,navigationStep(action)
     self:UpdateNearby(model.along)
     local reminder=self.ClassReminders(state,plan)
     local notice={}
@@ -1541,6 +1568,14 @@ function UI:LayoutTracker()
         if minimap then self.frame:SetPoint("TOPRIGHT",minimap,"BOTTOMRIGHT",0,-12)
         else self.frame:SetPoint("TOPRIGHT",UIParent,"TOPRIGHT",-24,-260) end
     end
+    local frameScale=self.frame:GetEffectiveScale()
+    local available=UIParent:GetHeight()*UIParent:GetEffectiveScale()/frameScale
+    if A.settings.trackerDocked~=false then
+        if minimap then
+            local _,center=minimap:GetCenter()
+            if center then available=(center-minimap:GetHeight()/2)*minimap:GetEffectiveScale()/frameScale-12 end
+        else available=available-260 end
+    end
     local requestedWidth=T.resizing and self.frame:GetWidth() or A.settings.trackerWidth or 0
     if requestedWidth>0 then width=math.max(260,math.min(800,requestedWidth)) end
     local requestedHeight=T.resizing and self.frame:GetHeight() or A.settings.trackerHeight or 0
@@ -1578,7 +1613,7 @@ function UI:LayoutTracker()
     end
     local cardTop=36*scale
     T.divider:ClearAllPoints();T.divider:SetPoint("TOPLEFT",0,-cardTop+7);T.divider:SetSize(width,1)
-    T.career:ClearAllPoints();T.career:SetPoint("TOPLEFT",0,-cardTop);T.career:SetWidth(width)
+    T.career:ClearAllPoints();T.career:SetPoint("TOPLEFT",T.content,"TOPLEFT",0,-cardTop);T.career:SetWidth(width)
     T.career.heading:ClearAllPoints();T.career.heading:SetPoint("TOPLEFT");T.career.heading:SetWidth(width)
     local noticeHeight=T.career.heading:GetStringHeight()+spacing.tight*scale
     T.career.text:ClearAllPoints();T.career.text:SetPoint("TOPLEFT",indent,-noticeHeight);T.career.text:SetWidth(width-indent)
@@ -1591,7 +1626,7 @@ function UI:LayoutTracker()
     end
     T.career:SetHeight(noticeHeight+24*scale);T.career:SetShown(not collapsed and (T.career.text:GetText() or "")~="")
     if T.career:IsShown() then cardTop=cardTop+T.career:GetHeight()+spacing.padding*scale end
-    T.dungeons:ClearAllPoints();T.dungeons:SetPoint("TOPLEFT",0,-cardTop);T.dungeons:SetWidth(width)
+    T.dungeons:ClearAllPoints();T.dungeons:SetPoint("TOPLEFT",T.content,"TOPLEFT",0,-cardTop);T.dungeons:SetWidth(width)
     T.dungeons.heading:ClearAllPoints();T.dungeons.heading:SetPoint("TOPLEFT");T.dungeons.heading:SetWidth(width)
     local dungeonTop=T.dungeons.heading:GetStringHeight()+spacing.tight*scale
     T.dungeons.text:ClearAllPoints();T.dungeons.text:SetPoint("TOPLEFT",0,-dungeonTop);T.dungeons.text:SetWidth(width)
@@ -1618,12 +1653,26 @@ function UI:LayoutTracker()
     self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT",indent,-top);self.title:SetWidth(bodyWidth);self.title:SetMaxLines(2)
     top=top+math.max(20*scale,self.title:GetStringHeight())+6
     T.currentScroll:SetWidth(inner);T.currentChild:SetWidth(inner)
-    T.reward:ClearAllPoints();T.reward:SetPoint("TOPLEFT",indent,0);T.reward:SetWidth(bodyWidth)
+    local noticeOffset=0
+    local scrollNotices=not collapsed and cardTop+top+80*scale>available
+    local noticeParent=scrollNotices and T.currentChild or T.content
+    if T.noticeParent~=noticeParent then
+        T.career:SetParent(noticeParent);T.dungeons:SetParent(noticeParent);T.noticeParent=noticeParent
+    end
+    if scrollNotices then
+        for _,notice in ipairs({T.career,T.dungeons}) do
+            notice:ClearAllPoints();notice:SetPoint("TOPLEFT",0,-noticeOffset)
+            if notice:IsShown() then noticeOffset=noticeOffset+notice:GetHeight()+spacing.padding*scale end
+        end
+        cardTop=36*scale
+        T.card:ClearAllPoints();T.card:SetPoint("TOPLEFT",0,-cardTop)
+    end
+    T.reward:ClearAllPoints();T.reward:SetPoint("TOPLEFT",indent,-noticeOffset);T.reward:SetWidth(bodyWidth)
     local rewardInset=T.reward.icon:IsShown() and 14*scale or 0
     T.reward.icon:ClearAllPoints();T.reward.icon:SetPoint("TOPLEFT",0,-2*scale);T.reward.icon:SetSize(11*scale,11*scale)
     T.reward.text:ClearAllPoints();T.reward.text:SetPoint("TOPLEFT",rewardInset,0);T.reward.text:SetWidth(bodyWidth-rewardInset)
     T.reward:SetHeight(T.reward.text:GetStringHeight()+8*scale);T.reward:SetShown((T.reward.text:GetText() or "")~="")
-    local childHeight=T.reward:IsShown() and T.reward:GetHeight() or 0
+    local childHeight=noticeOffset+(T.reward:IsShown() and T.reward:GetHeight() or 0)
     T.objectiveFrame:ClearAllPoints();T.objectiveFrame:SetPoint("TOPLEFT",indent,-childHeight);T.objectiveFrame:SetWidth(bodyWidth)
     local goals=layoutObjectives(T.objectives,bodyWidth,scale)
     T.objectiveFrame:SetHeight(math.max(1,goals));childHeight=childHeight+goals
@@ -1726,9 +1775,11 @@ function UI:LayoutTracker()
         T.progressBar:SetStatusBarColor(self.daylight.Accent());T.progressBar:SetValue(T.progressRatio or 0)
     end
     local fixed=cardTop+top+24+(T.progress:IsShown() and 24*scale or 0)
-    local minHeight=math.max(200,fixed+40*scale)
+    available=math.max(fixed+1,math.floor(available))
+    local minHeight=math.min(available,math.max(200,fixed+40*scale))
     self.frame:SetResizeBounds(260,collapsed and fixed or minHeight,800,math.max(1200,minHeight))
     local total=collapsed and fixed or requestedHeight>0 and math.max(minHeight,requestedHeight) or fixed+bottom-clipped
+    total=math.min(total,available)
     T.currentScroll:ClearAllPoints();T.currentScroll:SetPoint("TOPLEFT",0,-top)
     T.currentScroll:SetHeight(math.max(1,total-fixed));T.currentScroll:SetShown(not collapsed)
     T.currentChild:SetHeight(math.max(1,bottom))

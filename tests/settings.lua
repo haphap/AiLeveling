@@ -405,7 +405,7 @@ test("地图开关控制两张地图的标记范围且不改变导航",function(
     local B,adds=setupMap()
     B.Navigation.manual={map=1,x=0.5,y=0.5}
     B.settings.pins=false;B.settings.minimapPins=true;B.Navigation:RefreshPins()
-    eq(adds.world,0);eq(adds.mini,1);eq(B.Navigation.pins[1].shown,false);eq(B.Navigation.pins[2].shown,true)
+    eq(adds.world,0);eq(adds.mini,1);eq(B.Navigation.pins[1],nil);eq(B.Navigation.pins[2].shown,true)
     B.settings.pins=true;B.settings.minimapPins=false;B.Navigation:RefreshPins()
     eq(adds.world,1);eq(adds.mini,1);eq(B.Navigation.pins[2].shown,false)
     eq(B.Navigation.pins[1].texture.atlas,"Waypoint-MapPin-Tracked")

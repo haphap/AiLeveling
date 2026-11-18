@@ -348,13 +348,13 @@ function N:RefreshPins(force)
     if not self.hbdPins then return end
     self.hbdPins:RemoveAllWorldMapIcons(self)
     self.hbdPins:RemoveAllMinimapIcons(self)
-    for _, pin in ipairs(self.pins) do pin:Hide() end
+    for _, pin in pairs(self.pins) do pin:Hide() end
     if (not A.settings.pins and not A.settings.minimapPins) or A.char.paused then return end
     for order,point in ipairs(self:MapPoints()) do
         local action,pos=point.action,point.position
         local atlas=actionAtlas(action)
         -- HBD-Pins requires separate frames for minimap/world map ownership.
-        for surface=1,2 do
+        for surface=A.settings.pins and 1 or 2,A.settings.minimapPins and 2 or 1 do
             local index=(order-1)*2+surface
             local pin=self.pins[index] or mapPin();self.pins[index]=pin
             pin.point,pin.order=point,order
@@ -368,8 +368,8 @@ function N:RefreshPins(force)
             else pin.texture:SetAtlas(atlas,false) end
             local color=action.kind=="objective" and (action.targetKind=="item" and {0.78,0.68,1} or {0.58,0.79,1}) or {1,1,1}
             pin.texture:SetVertexColor(unpack(color))
-            if surface==1 and A.settings.pins then self.hbdPins:AddWorldMapIconMap(self,pin,pos.map,pos.x,pos.y,1)
-            elseif surface==2 and A.settings.minimapPins then self.hbdPins:AddMinimapIconMap(self,pin,pos.map,pos.x,pos.y,false,point.current or false) end
+            if surface==1 then self.hbdPins:AddWorldMapIconMap(self,pin,pos.map,pos.x,pos.y,1)
+            else self.hbdPins:AddMinimapIconMap(self,pin,pos.map,pos.x,pos.y,false,point.current or false) end
         end
     end
 end

@@ -381,7 +381,7 @@ end
 function UI:SelectTab(index,reuse)
     self.exporting = false
     self.copyBox:ClearFocus(); self.copyBox:Hide(); self.detailText:Show()
-    if self.selectedTab~=index then self.scroll:SetVerticalScroll(0) end
+    if self.selectedTab~=index then self.Browser:ClearSearch();self.scroll:SetVerticalScroll(0) end
     self.selectedTab = index
     local r,g,b=unpack(colors.accent)
     for i,tab in ipairs(self.tabs or {}) do
@@ -467,10 +467,11 @@ function UI:QuestClick(id,button)
         for _,candidate in ipairs(self.Plan.Rows(A.plan)) do
             if candidate.questId==id then
                 self.Plan.key=self.Plan.Key(candidate);self.Plan.message=nil
-                self.scroll:SetVerticalScroll(0);self.details:Show();self:SelectTab(1)
-                break
+                self.Browser:ClearSearch();self.scroll:SetVerticalScroll(0);self.details:Show();self:SelectTab(1)
+                return true
             end
         end
+        self.details:Show();self.Chains:Focus(id)
     end
     return true
 end

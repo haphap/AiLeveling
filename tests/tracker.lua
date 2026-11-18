@@ -528,13 +528,15 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     local model,models,layout,layouts=U.TrackerModel,0,U.LayoutTracker,0
     U.TrackerModel=function(...) models=models+1;return model(...) end
     U.LayoutTracker=function(...) layouts=layouts+1;return layout(...) end
+    local distance,reads=B.Navigation.Distance,0
+    B.Navigation.Distance=function(...) reads=reads+1;return distance(...) end
     for _=1,10 do U.frame.scripts.OnUpdate(nil,1) end
-    eq(models,0);eq(layouts,0)
+    eq(models,0);eq(layouts,0);eq(reads,0)
     T.journeyHeader.scripts.OnClick();eq(T.journeyRows[1].shown,false);eq(U.title.value,"新的任务")
     U.frame.scripts.OnUpdate(nil,1);eq(T.journeyRows[1].shown,false)
     T.journeyHeader.scripts.OnClick();eq(T.journeyRows[1].shown,true)
     B.state.position=transit.departure;U.frame.scripts.OnUpdate(nil,1)
-    eq(#T.model.journey.steps,3);eq(T.model.journey.seconds,130);eq(models,0)
+    eq(#T.model.journey.steps,3);eq(T.model.journey.seconds,130);eq(models,0);assert(reads>0)
     U.TrackerModel,U.LayoutTracker=model,layout
     transit.atDeparture=true;B.state.position={map=1,x=0.2,y=0};U:RenderTracker()
     eq(#T.model.journey.steps,3);eq(T.model.journey.steps[1].kind,"tram")

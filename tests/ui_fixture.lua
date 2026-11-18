@@ -74,7 +74,7 @@ local function setup(fullUI,daylight)
     local saved={};for _,name in ipairs(names) do saved[name]=_G[name] end
     DaylightUI=daylight and {API=daylight}
     local clock,combat=10,false
-    UIParent=widget();STANDARD_TEXT_FONT="font";GameFontHighlight={};SlashCmdList={};NUM_CONTAINER_FRAMES=0;ContainerFrameCombinedBags=nil
+    UIParent=widget();UIParent:SetSize(1920,1080);STANDARD_TEXT_FONT="font";GameFontHighlight={};SlashCmdList={};NUM_CONTAINER_FRAMES=0;ContainerFrameCombinedBags=nil
     MinimapCluster=widget();MinimapCluster:SetSize(280,280);ObjectiveTrackerFrame=widget()
     CreateFrame=function(kind,_,parent,template)
         local w=widget();w.kind,w.template,w.parent=kind,template,parent;if kind=="CheckButton" then w.Text=widget() end;return w
