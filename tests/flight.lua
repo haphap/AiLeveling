@@ -244,9 +244,9 @@ test("飞行保留手动目的地且不混入步行校准",function()
             created=created+1;nav=options;nav.x,nav.y=nav.x/100,nav.y/100;return nav
         end,ClearUserNavigation=function() nav=nil;cleared=cleared+1 end}}
     B.char.paused=false;B.Navigation:RefreshPins();eq(nav.flags,"AiLeveling");eq(nav.x,1)
-    B.Navigation:Update();eq(created,1)
+    B.Navigation:Update();eq(created,1);eq(B.distance,nil)
     local external={mapID=1,x=0.3,y=0,name="手动点"};nav=external
-    B.Navigation:Update();eq(nav,external);eq(B.distance,nil);eq(B.Navigation.externalWaypoint,true)
+    B.Navigation:Update();eq(nav,external);eq(B.distance,nil)
     B.state.position=position(1);B.Navigation:Update();eq(B.Navigation.index,index+1);eq(nav,external)
     local boat={kind="transit",publicTransit=true,departure=position(1),position=position(0.2,2)}
     B.Navigation:SetPlan({travelActions={boat}})
@@ -255,27 +255,32 @@ test("飞行保留手动目的地且不混入步行校准",function()
     B.state.position=position(0.7)
     B.Navigation:SetPlan({best={actions={{kind="objective",questId=42,title="继续任务",position=position(0.9)}}}})
     eq(nav,external);eq(created,1)
-    nav=nil;B.Navigation:Update();eq(nav.name,"继续任务");eq(nav.x,0.9);eq(B.Navigation.externalWaypoint,nil)
+    nav=nil;B.Navigation:Update();eq(nav.name,"继续任务");eq(nav.x,0.9);eq(B.distance,nil)
     eq(B.char.locked,42);eq(B.state.completed[42],nil)
     local previousSuper,previousEnum=C_SuperTrack,Enum
     C_SuperTrack={GetHighestPrioritySuperTrackingType=function() return 7 end};Enum={SuperTrackingType={UserWaypoint=7}}
     WaypointUIAPI.Navigation.IsUserNavigationTracked=function() return false end
     local previousNav=nav;B.Navigation.actions[1].title="下一任务"
-    B.Navigation:Update();eq(nav,previousNav);eq(B.Navigation.externalWaypoint,true)
+    B.Navigation:Update();eq(nav,previousNav);eq(B.distance,nil)
     C_SuperTrack,Enum=previousSuper,previousEnum
     WaypointUIAPI.Navigation.IsUserNavigationTracked=function() return nav~=nil end
     B.settings.waypointUI=false;B.Navigation:RefreshPins();eq(nav,nil);eq(cleared,1)
-    nav=external;B.Navigation:RefreshPins();eq(nav,external)
+    nav=external;B.Navigation:Update();eq(nav,external);eq(math.floor(B.distance+0.5),200)
     B.settings.waypointUI=true
     local pickup={kind="accept",questId=44,title="顺路任务",position=position(0.8)}
     B.Navigation.plan.taskChoices={{questId=44,revisitLevel=29,pickupAction=pickup}}
     eq(B.Navigation:NavigateQuest(44),true);eq(B.Navigation:Current(),pickup)
-    eq(nav.flags,"AiLeveling");eq(nav.x,0.8);eq(math.floor(B.distance+0.5),100)
+    eq(nav.flags,"AiLeveling");eq(nav.x,0.8);eq(B.distance,nil)
     B.state.position=position(0.8);B.Navigation:Update()
     eq(B.Navigation:Current(),pickup);eq(B.Navigation.index,index)
     B.state.quests[44]={ready=false};B.Navigation:Update()
     eq(B.Navigation.manual,nil);eq(B.Navigation.index,index);eq(nav.x,0.9)
     eq(B.char.locked,42);eq(B.replans,replans+2)
+    local previousMap=C_Map
+    C_Map={CanSetUserWaypointOnMap=function() return false end}
+    local before=created
+    B.Navigation:Update();B.Navigation:Update();eq(nav,nil);eq(created,before);eq(math.floor(B.distance+0.5),100)
+    C_Map=previousMap
     WaypointUIAPI=nil
 end)
 test("空中规划门控并丢弃起飞前尚未发布的计算",function()

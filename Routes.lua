@@ -24,7 +24,7 @@ end
 
 function R:Update(force)
     local nav=A.Navigation
-    if not A.settings.routes or A.char.paused or (A.Transport and A.Transport:InFlight()) or
+    if not A.settings.routes or nav.waypointDisplay or A.char.paused or (A.Transport and A.Transport:InFlight()) or
         not WorldMapFrame or not WorldMapFrame:IsShown() then self:Hide();return end
     local canvas,map=WorldMapFrame:GetCanvas(),WorldMapFrame:GetMapID()
     if not canvas or not map then self:Hide();return end

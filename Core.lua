@@ -603,7 +603,7 @@ SlashCmdList.AILEVELING = function(command)
             A.Transport:InvalidateSample()
             if A.Hearth then A.Hearth:InvalidateSample() end
             A.QuestAssist:Update()
-            A.Navigation:RefreshPins(); A.dirty = true
+            A.Navigation:RefreshPins(true); A.dirty = true
         else A:Message("格式：/ail way 地图ID 横坐标 纵坐标（0—100）") end
     elseif command == "audit" then
         if not A.ready then return end

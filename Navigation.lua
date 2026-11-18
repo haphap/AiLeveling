@@ -363,33 +363,38 @@ local function actionAtlas(action)
 end
 
 function N:SyncWaypointUI(force)
-    self.externalWaypoint=nil
     local api=WaypointUIAPI and WaypointUIAPI.Navigation
-    if not (api and api.GetUserNavigation and api.NewUserNavigation and api.ClearUserNavigation) then return end
+    if not (api and api.GetUserNavigation and api.NewUserNavigation and api.ClearUserNavigation and api.IsUserNavigationTracked) then return end
+    local enabled=A.settings.waypointUI~=false
+    local action=enabled and self:Current()
     local nav=api.GetUserNavigation()
     local owned=nav and nav.flags=="AiLeveling"
-    local enabled=A.settings.waypointUI~=false
-    local tracked=api.IsUserNavigationTracked() or api.IsPathStepWaypointTracked()
+    if not enabled and not owned then return end
+    local userTracked=api.IsUserNavigationTracked()
+    local tracked=userTracked or api.IsPathStepWaypointTracked and api.IsPathStepWaypointTracked()
     local rawPin=not tracked and C_SuperTrack and C_SuperTrack.GetHighestPrioritySuperTrackingType and Enum and Enum.SuperTrackingType and
         C_SuperTrack.GetHighestPrioritySuperTrackingType()==Enum.SuperTrackingType.UserWaypoint
-    if not force and (nav and not owned and tracked or rawPin) then
-        self.externalWaypoint=enabled
-        return
+    if enabled and not force and (not owned and tracked or rawPin) then
+        return "external"
     end
-    local action=self:Current()
     local target=action and N.Target(action)
-    if not enabled or A.char.paused or action and (action.kind=="flight" or action.kind=="hearth" or action.publicTransit and action.atDeparture) then target=nil end
-    if not target then
-        if owned and tracked then api.ClearUserNavigation(false,true) end
+    if not target or A.char.paused or action.kind=="flight" or action.kind=="hearth" or action.publicTransit and action.atDeparture or
+        C_Map and C_Map.CanSetUserWaypointOnMap and not C_Map.CanSetUserWaypointOnMap(target.map) then
+        if owned then api.ClearUserNavigation(not userTracked,true) end
         return
     end
     local q=action.questId and ((A.state.quests or {})[action.questId] or A.Data and A.Data:GetQuest(action.questId))
     local label=action.title or q and q.title or target.entityName or action.text or "任务目的地"
     local atlas=actionAtlas(action)
     if owned and nav.mapID==target.map and math.abs(nav.x-target.x)<0.000001 and math.abs(nav.y-target.y)<0.000001 and
-        nav.name==label and nav.iconTexture==atlas then return end
-    api.NewUserNavigation({mapID=target.map,x=target.x*100,y=target.y*100,name=label,flags="AiLeveling",
+        nav.name==label and nav.iconTexture==atlas and (tracked or not force) then
+        if tracked then return "itinerary" end
+        return
+    end
+    local placed=api.NewUserNavigation({mapID=target.map,x=target.x*100,y=target.y*100,name=label,flags="AiLeveling",
         iconTexture=atlas,iconType="ATLAS",stripCoordinates=true,suppressAudio=true})
+    if placed then return "itinerary" end
+    if owned then api.ClearUserNavigation(not userTracked,true) end
 end
 
 local function stylePin(pin,point,action,r,g,b)
@@ -433,7 +438,11 @@ local function updateEdge(pin,pins)
 end
 
 function N:RefreshPins(force)
-    self:SyncWaypointUI(force)
+    self.waypointDisplay=self:SyncWaypointUI(force)
+    self:DrawPins()
+end
+
+function N:DrawPins()
     if not self.hbdPins then return end
     self.hbdPins:RemoveAllWorldMapIcons(self)
     self.hbdPins:RemoveAllMinimapIcons(self)
@@ -452,30 +461,37 @@ function N:RefreshPins(force)
         -- A walk ending at the quest pin should show what to do on arrival.
         if nearby and (not point.current or nearby.questId==action.questId and (action.kind=="move" or action.kind=="approach")) then action=nearby end
         local index=(order-1)*2
-        if A.settings.pins then
+        -- Keep grouped quest tooltips even when WaypointUI draws the destination.
+        local delegated=point.current and self.waypointDisplay=="itinerary" and #point.actions==1
+        local edge=point.current and not self.waypointDisplay
+        if A.settings.pins and not delegated then
             local pin=self.pins[index+1] or mapPin(false);self.pins[index+1]=pin
             stylePin(pin,point,action,r,g,b)
             self.hbdPins:AddWorldMapIconMap(self,pin,pos.map,pos.x,pos.y,1)
         end
-        if A.settings.minimapPins and (point.current or nearby) then
+        if A.settings.minimapPins and not delegated and (point.current or nearby) then
             local pin=self.pins[index+2] or mapPin(true);self.pins[index+2]=pin
             stylePin(pin,point,point.current and action or nearby,r,g,b)
-            if point.current then
+            if edge then
                 if not pin.arrow then
                     pin.arrow=pin:CreateTexture(nil,"OVERLAY");pin.arrow:SetTexture(media.."hud-chevron-up.tga")
                     pin.arrow:SetSize(12,12)
                 end
                 pin.arrow:SetVertexColor(r,g,b);pin.arrow:Hide();self.edgePin=pin
             end
-            self.hbdPins:AddMinimapIconMap(self,pin,pos.map,pos.x,pos.y,false,point.current or false)
+            self.hbdPins:AddMinimapIconMap(self,pin,pos.map,pos.x,pos.y,false,edge or false)
         end
     end
 end
 
 function N:Update()
+    local display=self:SyncWaypointUI()
+    if display~=self.waypointDisplay then
+        self.waypointDisplay=display
+        self:DrawPins()
+    end
     updateEdge(self.edgePin,self.hbdPins)
-    self:SyncWaypointUI()
-    if self.externalWaypoint then A.UI:SetNavigation(nil) end
+    if display then A.UI:SetNavigation(nil) end
     if not self.hbd then return end
     if A.Transport and A.Transport:InFlight() then A.UI:SetNavigation(nil);return end
     if A.Hearth and A.Hearth:InTransit() then A.UI:SetNavigation(nil);return end
@@ -522,7 +538,7 @@ function N:Update()
             return
         end
     end
-    if self.externalWaypoint then return end
+    if display then return end
     local x, y, instance = self.hbd:GetWorldCoordinatesFromZone(pos.x, pos.y, pos.map)
     local tx, ty, targetInstance = self.hbd:GetWorldCoordinatesFromZone(target.x, target.y, target.map)
     local angle

@@ -1775,10 +1775,10 @@ end
 
 function UI:SetTrackerNavigation(distance,angle,unverified)
     if not self.navFrame then return end
-    local action=A.Navigation:Current()
     local show=A.settings.arrow and distance~=nil and not A.char.paused
     self.navFrame:SetShown(show==true)
     if not show then return end
+    local action=A.Navigation:Current()
     local meters=A.settings.distanceUnits=="meters"
     self.nav:SetText(string.format("%.0f %s",meters and distance*0.9144 or distance,meters and "米" or "码"))
     local target=A.Navigation.Target(action)

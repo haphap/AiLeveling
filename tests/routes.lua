@@ -45,6 +45,8 @@ test("原生地图绘制目的地直线且关闭和换图清除旧连线",functi
     B.Navigation.actions={{kind="objective",position=point(1,0)},{kind="move",position=point(0.6,0.6)}}
     B.Routes:Update();assert(B.Routes.line.shown)
     eq(B.Routes.line.start[1],0);eq(B.Routes.line.finish[1],1000)
+    B.Navigation.waypointDisplay="itinerary";B.Routes:Update();eq(B.Routes.line.shown,false)
+    B.Navigation.waypointDisplay=nil;B.Routes:Update();eq(B.Routes.line.shown,true)
     B.settings.routes=false;B.Routes:Update();eq(B.Routes.line.shown,false)
     B.settings.routes=true;map=2;B.Routes:Update();eq(B.Routes.line.shown,false)
     for key,value in pairs(saved) do _G[key]=value end
@@ -73,6 +75,9 @@ test("地图标记按任务阶段合并并移除失效的导航步骤",function(
     local pins=B.Navigation.pins
     eq(pins[1].point.action,current);eq(pins[3].point.action,nextGoal);eq(pins[3].point.position.map,2)
     eq(#pins[5].point.actions,5);eq(pins[5].number.value,"3");eq(pins[2].floats,true);eq(pins[2].number,nil);eq(pins[4],nil)
+    B.Navigation.waypointDisplay="itinerary";B.Navigation:DrawPins()
+    eq(pins[1].shown,false);eq(pins[2].shown,false);eq(pins[3].shown,true);eq(pins[5].shown,true)
+    B.Navigation:RefreshPins();eq(pins[1].shown,true);eq(pins[2].floats,true)
     local oldTooltip,tooltip=GameTooltip,{lines={}}
     GameTooltip={SetOwner=function() end,SetText=function(_,text) tooltip.title=text end,
         AddLine=function(_,text) tooltip.lines[#tooltip.lines+1]=text end,Show=function() end,Hide=function() end}
