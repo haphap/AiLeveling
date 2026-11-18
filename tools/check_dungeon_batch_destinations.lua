@@ -2,7 +2,6 @@ local root=assert(arg[1])
 local A,db,run=dofile(root.."/tools/quest_runtime.lua")
 local faction,class,raceId=arg[3],arg[4],tonumber(arg[5])
 
-assert(loadfile(root.."/Data/Dungeons.lua"))("AiLeveling",A)
 assert(loadfile(root.."/Planner/DungeonTasks.lua"))("AiLeveling",A)
 local native={}
 for id in assert(arg[7]):gmatch("%d+") do native[tonumber(id)]=true end
@@ -32,8 +31,9 @@ for id,d in pairs(A.Dungeon.Catalog(s,A.Content)) do
  local rows=A.Dungeon.Tasks(d,s,A.Data)
  local expected,missing={},{}
  for _,row in ipairs(rows) do
-  if row.allowed and (row.position or row.areaId) or row.preparation then expected[row.id]=true end
-  if row.allowed and not row.position and row.areaId then
+  if not row.lowValue and not row.requireCheck and
+   (row.allowed and (s.quests[row.id] or row.position or row.areaId) or row.preparation) then expected[row.id]=true end
+  if expected[row.id] and row.allowed and not row.position and row.areaId then
    assert(A.Dungeon.TaskInstance(nil,s,A.Data,row.areaId));missing[row.id]=row.areaId
   end
  end

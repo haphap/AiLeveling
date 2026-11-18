@@ -228,9 +228,9 @@ function D.Tasks(d,state,data,targets)
             local allowed,reason=A.Eligibility.Check(q,state,data)
             local group=status=="ready" and 1 or status=="active" and 2 or
                 status=="turnedIn" and not q.repeatable and 5 or allowed and 3 or 4
-            local point=allowed and data:Target(q,state)
-            local areaId
-            if allowed and not point and data.UnmappedTargetArea then
+            local point,unavailable,areaId
+            if allowed then point,unavailable=data:Target(q,state) end
+            if allowed and not point and not unavailable and data.UnmappedTargetArea then
                 local area=data:UnmappedTargetArea(q,state)
                 if D.TaskInstance(nil,state,data,area) then areaId=area end
             end
@@ -246,7 +246,7 @@ function D.Tasks(d,state,data,targets)
             rows[#rows+1]={id=id,title=q.title,group=group,allowed=allowed,reason=reason,position=point,areaId=areaId,
                 xp=group~=5 and A.TaskGuide and A.TaskGuide.XP(q,state.level,state) or nil,
                 gear=rewards.gear,gearSources=rewards.gearSources,
-                requireCheck=not active and q.taskFacts and q.taskFacts.hidden or nil,
+                requireCheck=not active and (unavailable or q.taskFacts and q.taskFacts.hidden) or nil,
                 lowValue=group~=5 and A.TaskGuide and A.TaskGuide.LowValue(q,state,data) or nil,
                 relation=relation,recipient=key,recipientName=recipient and recipient.entityName,
                 status=group==1 and "可交付" or group==2 and "已接取" or group==3 and "未接取" or group==5 and "已交付" or "未接取",
@@ -265,6 +265,11 @@ function D.CanContinueTask(row)
     return row~=nil and (row.allowed and (row.position~=nil or row.areaId~=nil) or row.preparation~=nil)
 end
 
+local function belongsInTrip(row,state)
+    return not row.lowValue and not row.requireCheck and
+        (row.allowed and state.quests[row.id]~=nil or D.CanContinueTask(row))
+end
+
 -- Report task rewards separately from dungeon kills and future prerequisite rewards.
 function D.TaskRewards(rows,baselines,choices)
     local result={count=0,xp=0,unknownXP=0,ready=0,active=0,prepare=0,blocked=0,excluded=0,upgrades=0}
@@ -275,7 +280,7 @@ function D.TaskRewards(rows,baselines,choices)
             seen[row.id]=true
             local choice=byId[row.id]
             if row.lowValue or choice and choice.lowValue then result.excluded=result.excluded+1
-            elseif not row.requireCheck and D.CanContinueTask(row) then
+            elseif not row.requireCheck and (D.CanContinueTask(row) or baselines and row.allowed and row.group<=2) then
                 result.count=result.count+1
                 if row.xp==nil then result.unknownXP=result.unknownXP+1 else result.xp=result.xp+row.xp end
                 if row.group==1 then result.ready=result.ready+1
@@ -456,11 +461,12 @@ function D:TaskBatchSnapshot(state)
         if done or excluded then batch.baselines[id]=nil
         else ids[#ids+1]=id;baselines[id]=n end
     end
-    -- A quest picked up during the trip joins the same batch, including quests absent at departure.
+    -- Reconcile the saved trip with the log and newly available pickups after each turn-in.
     local d=D.Catalog()[batch.id]
     for _,row in ipairs(d and D.Tasks(d,state,A.Data) or {}) do
-        if state.quests[row.id] and not (A.State.confirmed and A.State.confirmed[row.id]) and
-            baselines[row.id]==nil and not row.lowValue and D.CanContinueTask(row) then
+        if baselines[row.id]==nil and not (A.State.confirmed and A.State.confirmed[row.id]) and
+            belongsInTrip(row,state) and (state.quests[row.id] or
+                not batch.returning and row.group==3 and not state.completed[row.id] and (A.char.turnIns[row.id] or 0)==0) then
             local n=(A.char.turnIns or {})[row.id] or 0
             batch.baselines[row.id],baselines[row.id]=n,n;ids[#ids+1]=row.id
             batch.returning=nil
@@ -483,7 +489,7 @@ function D:StartTaskBatch(id)
     if not d then return false,"当前构建没有这项副本目录" end
     local baselines={}
     for _,row in ipairs(D.Tasks(d,A.state,A.Data)) do
-        if not row.lowValue and not row.requireCheck and D.CanContinueTask(row) then
+        if belongsInTrip(row,A.state) then
             baselines[row.id]=(A.char.turnIns or {})[row.id] or 0
         end
     end

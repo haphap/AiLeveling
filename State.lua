@@ -328,7 +328,6 @@ function State:Refresh(force, manual)
     for id in pairs(previous.quests) do if not s.quests[id] then restart=true end end
     if A.Selection then fingerprint[#fingerprint+1]=A.Selection:Snapshot(s) end
     if A.Chains then fingerprint[#fingerprint+1]=A.Chains:Snapshot(s) end
-    if A.Dungeon.TaskBatchSnapshot then fingerprint[#fingerprint+1]=A.Dungeon:TaskBatchSnapshot(s) end
     self:SnapshotBags(s,fingerprint)
     for slot = 1, 19 do
         local id = GetInventoryItemID("player", slot)
@@ -348,6 +347,7 @@ function State:Refresh(force, manual)
     end
     for id,item in pairs(s.items) do fingerprint[#fingerprint+1]="i"..id..":"..A.Items.Key(item) end
     self:Position(s)
+    if A.Dungeon.TaskBatchSnapshot then fingerprint[#fingerprint+1]=A.Dungeon:TaskBatchSnapshot(s) end
     fingerprint[#fingerprint+1]="map:"..tostring(s.position and s.position.map)
     if A.Services then fingerprint[#fingerprint+1]=A.Services:Snapshot(s) end
     for kind, sample in pairs(A.char.samples) do

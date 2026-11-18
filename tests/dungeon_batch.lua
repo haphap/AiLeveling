@@ -633,6 +633,15 @@ run("缺图目的地必须能对应副本，资格受阻和真正未知仍不加
     eq(B.Dungeon:StartTaskBatch("ref"),false);eq(B.Dungeon.TaskRewards(rows).count,0)
     data.UnmappedTargetArea=function() return 100 end;q[1].requiredLevel=40
     rows=B.Dungeon.Tasks(d,s,data);eq(rows[1].areaId,nil);eq(B.Dungeon:ContinueTask(d,1),false)
+    -- Restore a partial trip: a logged objective needs no waypoint to appear in the HUD.
+    d.quests.Alliance[2]="inside";s.quests[1]={title="本内材料",objectives={{text="材料",numFulfilled=1,numRequired=4}}}
+    s.quests[4]={title="野外任务",objectives={}}
+    data.UnmappedTargetArea=function() end;data.ObjectiveTargets=function() return {} end
+    B.char.taskBatch={id="ref",baselines={[2]=0}};B.State:Refresh()
+    eq(s.taskBatch.baselines[1],0);eq(s.taskBatch.baselines[4],nil)
+    local action={questId=2,kind="accept",title="领取任务"}
+    local model=B.UI.TrackerModel(s,{taskBatch={id="ref",title=d.title,remaining=2}},action)
+    eq(#model.rows,1);eq(model.rows[1].questId,1);assert(model.rows[1].progress:find("1/4",1,true))
 end)
 
 run("混合目标先做当前位置目标，缺图本内目标完成后才出本且真实交付后结束",function()

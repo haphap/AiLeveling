@@ -85,6 +85,11 @@ def render():
             pairs = ','.join(f'[{json.dumps(key)}]={area}' for key, area in sorted(targets.items()))
             lines.append(f'    [{qid}]={{{pairs}}},')
     lines.append('}')
+    lines.append('A.DungeonCatalog.prerequisites={')
+    for m in announced.values():
+        for quest, parent in sorted(m.get('prerequisites', {}).items()):
+            lines.append(f'    [{int(quest)}]={int(parent)},')
+    lines.append('}')
     admission = json.loads((ROOT / 'docs/DUNGEON_ADMISSION.json').read_text())
     lines.append('-- Client entrance minimums; distinct from recommended quest levels.')
     lines.append('A.DungeonCatalog.entryLevels={')

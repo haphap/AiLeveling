@@ -405,6 +405,8 @@ function UI.TrackerModel(state,plan,action,paused,along)
         batchPhases[step.action.questId]=step.phase
     end
     model.batchPhases=batchPhases
+    local batchMembers=plan.taskBatch and not plan.taskBatch.waiting and state.taskBatch and
+        plan.taskBatch.id==state.taskBatch.id and state.taskBatch.baselines
     local seen={}
     if action and action.questId and not currentGroup then seen[action.questId]=true end
     local function add(id,source)
@@ -414,7 +416,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
         local status=UI.QuestStatus(state,id,plan)
         if status=="已交付" then return end
         local candidate=choices[id]
-        if candidate and candidate.lowValue then return end
+        if candidate and candidate.lowValue and not (q and batchMembers and batchMembers[id]) then return end
         local step=source or (candidate and candidate.actions[1]) or {}
         local deferred=(state.skipped or {})[id] or (state.chainDeferred or {})[id]
         local pickup=candidate and candidate.actions[1] or step
@@ -522,8 +524,10 @@ function UI.TrackerModel(state,plan,action,paused,along)
         local candidate=row.candidate or {}
         local eligible=not row.deferred and not candidate.lowValue and not candidate.revisitLevel and not candidate.acceptBlocked and
             not candidate.entryBlocked and not candidate.requireCheck
-        if row.questId==model.questId or row.atStop or row.along or
-            eligible and (row.planOrder or not action and row.accepted) and row.questId~=model.nextId then
+        local member=batchMembers and batchMembers[row.questId] and not row.deferred and
+            (row.accepted or candidate.acceptBlocked and not candidate.requireCheck and not candidate.entryBlocked)
+        if row.questId==model.questId or row.atStop or row.along or row.questId~=model.nextId and
+            (member or eligible and (row.planOrder or not action and not batchMembers and row.accepted)) then
             visible[#visible+1]=row
         end
     end

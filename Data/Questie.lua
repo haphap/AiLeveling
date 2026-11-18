@@ -210,6 +210,11 @@ function D:GetQuest(id,state)
     end
     local q = { id = id }
     for i, key in ipairs(fields) do q[key] = values and values[i] end
+    local catalog=A.DungeonCatalog
+    local parent=catalog and catalog.version==A.clientVersion and catalog.prerequisites and catalog.prerequisites[id]
+    if parent and not next(q.preQuestGroup or {}) and not next(q.preQuestSingle or {}) then
+        q.preQuestGroup={parent}
+    end
     q.repeatable = math.floor((q.specialFlags or 0) / 1) % 2 == 1
     q.title = q.name or ("任务 #" .. id)
     local xp = self.xp[id]
@@ -454,6 +459,12 @@ function D:CacheQuest(q,state)
         (not facts.sourceItemId or facts.sourceItemId==q.sourceItemId) then return facts end
 end
 
+local function dungeonAreas(q,state)
+    local catalog=A.DungeonCatalog
+    return catalog and (state.clientVersion or A.clientVersion)==catalog.version and
+        catalog.objectiveAreas and catalog.objectiveAreas[q.id]
+end
+
 function D:DeliveryOnly(q,state)
     local active=state.quests[q.id]
     if active and #(active.objectives or {})>0 or math.floor((q.specialFlags or 0)/2)%2==1 or
@@ -467,8 +478,10 @@ function D:DeliveryOnly(q,state)
     end
     local facts=cache or q.taskFacts
     local recipients=self.db.Quest.Get(q.id,"finishedBy") or {}
+    local areas=dungeonAreas(q,state)
     return facts~=nil and (facts.level==q.questLevel or q.questLevel==-1 and cache~=nil) and facts.complex==false and
-        facts.objectives~=nil and #facts.objectives==0 and #(recipients[1] or {})+#(recipients[2] or {})>0
+        facts.objectives~=nil and #facts.objectives==0 and (#(recipients[1] or {})+#(recipients[2] or {})>0 or
+        areas~=nil and areas.turnin~=nil)
 end
 
 function D:ItemUseRules(q,state)
@@ -707,11 +720,16 @@ function D:ObjectiveTargets(q,state)
         if id then consider(self.db.Npc,id,"任务事件地点",index,"npc",{},"event") end
     end
     local result={}
+    local areas=dungeonAreas(q,state)
+    local inside=areas and areas.objective and A.Dungeon and A.Dungeon.TaskInstance and
+        A.Dungeon.TaskInstance(nil,state,self,areas.objective)
     for index,o in ipairs(active.objectives or {}) do
         if not o.finished then
             local identity=identities[index]
             local point=chosen[index]
             if not point or point.approximate then point=self:ObservedObjectiveTarget(q,state,identity,o) or point end
+            -- Some instance mobs are also plotted on the outdoor entrance map by the provider.
+            if point and inside and A.Dungeon.TaskInstance(point,state,self)~=inside then point=nil end
             local unmapped=not point and self:UnmappedTargetArea(q,state,index)
             if not point and not unmapped then point=self:QuestAreaTarget(q,state) end
             if point then
@@ -740,9 +758,7 @@ end
 
 -- Preserve a destination's known area when no UI-map coordinate can be produced.
 function D:UnmappedTargetArea(q,state,objectiveIndex)
-    local catalog=A.DungeonCatalog
-    local objectiveAreas=catalog and (state.clientVersion or A.clientVersion)==catalog.version and
-        catalog.objectiveAreas and catalog.objectiveAreas[q.id]
+    local objectiveAreas=dungeonAreas(q,state)
     local function areaOf(lists)
         local found
         for _,spawns in ipairs(lists) do
@@ -776,6 +792,12 @@ function D:UnmappedTargetArea(q,state,objectiveIndex)
             end
         end
         return areaOf(lists) or #lists==0 and objectiveAreas and objectiveAreas[active and "turnin" or "accept"] or nil
+    end
+    if objectiveAreas and objectiveAreas.objective then
+        for index,o in ipairs(active.objectives or {}) do
+            if not o.finished and (not objectiveIndex or objectiveIndex==index) then return objectiveAreas.objective,index end
+        end
+        if #(active.objectives or {})==0 and not objectiveIndex then return objectiveAreas.objective end
     end
     local trigger=self.db.Quest.Get(q.id,"triggerEnd")
     local eventIndex,eventCount=nil,0

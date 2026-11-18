@@ -123,8 +123,8 @@ A.DungeonCatalog={version="1.60.1",build="70862",entries={
         Horde={[544]="preparation",[92456]="category",[92457]="category",[92458]="category",[92489]="category",[93680]="preparation",[96984]="category",[96986]="category",[96987]="category",[96988]="category"},
     }},
     ["reference:2998"]={id="reference:2998",reference=true,minLevel=24,maxLevel=29,instanceId=2998,title="挖掘场：湿地",areas={16732},entrances={{11,47.79,56.16}},quests={
-        Alliance={[95646]="category",[95647]="category",[95663]="category",[95664]="category",[95682]="category",[95697]="category",[95737]="category",[95772]="category",[95795]="category",[95809]="category",[95810]="category",[98815]="category",[98823]="category",[98824]="category"},
-        Horde={[95646]="category",[95647]="category",[95663]="category",[95664]="category",[95682]="category",[95697]="category",[95737]="category",[95772]="category",[95795]="category",[95809]="category",[95810]="category",[98815]="category",[98823]="category",[98824]="category"},
+        Alliance={[95646]="inside",[95647]="inside",[95663]="category",[95664]="category",[95682]="inside",[95697]="inside",[95737]="category",[95772]="inside",[95795]="inside",[95809]="inside",[95810]="category",[98815]="inside",[98823]="category",[98824]="category"},
+        Horde={[95646]="inside",[95647]="inside",[95663]="category",[95664]="category",[95682]="inside",[95697]="inside",[95737]="category",[95772]="inside",[95795]="inside",[95809]="inside",[95810]="category",[98815]="inside",[98823]="category",[98824]="category"},
     }},
     ["reference:2999"]={id="reference:2999",reference=true,minLevel=15,maxLevel=20,instanceId=2999,title="洛丹伦废墟",areas={16611},entrances={{1497,72.41,11.37}},quests={
         Alliance={[92401]="category",[92415]="category",[92421]="category",[92422]="inside",[95189]="inside",[95195]="inside",[95204]="inside",[95216]="inside",[95250]="inside",[97288]="inside",[97289]="category",[97291]="category",[97292]="category"},
@@ -192,6 +192,14 @@ A.DungeonCatalog.recommendedLevels={
 }
 -- Destinations explicitly located inside by server quest text or checked task facts.
 A.DungeonCatalog.objectiveAreas={
+    [95646]={["objective"]=16732},
+    [95647]={["objective"]=16732,["turnin"]=16732},
+    [95682]={["objective"]=16732},
+    [95697]={["objective"]=16732},
+    [95772]={["objective"]=16732,["turnin"]=16732},
+    [95795]={["accept"]=16732},
+    [95809]={["accept"]=16732},
+    [98815]={["objective"]=16732},
     [96395]={["accept"]=16919,["npc:261306"]=16919,["turnin"]=16919},
     [95775]={["item:270308"]=16550,["item:270309"]=16550,["item:270310"]=16550,["item:270311"]=16550},
     [95776]={["npc:258924"]=16550},
@@ -209,6 +217,10 @@ A.DungeonCatalog.objectiveAreas={
     [96772]={["item:276890"]=16620},
     [97173]={["item:276893"]=16554},
     [95928]={["item:271894"]=16667,["item:271898"]=16667,["item:271902"]=16667,["item:271912"]=16667},
+}
+A.DungeonCatalog.prerequisites={
+    [95795]=95772,
+    [95809]=95647,
 }
 -- Client entrance minimums; distinct from recommended quest levels.
 A.DungeonCatalog.entryLevels={

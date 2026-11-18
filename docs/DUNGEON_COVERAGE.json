@@ -4230,7 +4230,39 @@
           29
         ],
         "location": "Wetlands",
-        "mapId": 2998
+        "mapId": 2998,
+        "objectiveAreas": {
+          "95646": {
+            "objective": 16732
+          },
+          "95647": {
+            "objective": 16732,
+            "turnin": 16732
+          },
+          "95682": {
+            "objective": 16732
+          },
+          "95697": {
+            "objective": 16732
+          },
+          "95772": {
+            "objective": 16732,
+            "turnin": 16732
+          },
+          "95795": {
+            "accept": 16732
+          },
+          "95809": {
+            "accept": 16732
+          },
+          "98815": {
+            "objective": 16732
+          }
+        },
+        "prerequisites": {
+          "95795": 95772,
+          "95809": 95647
+        }
       },
       {
         "name": "City of Dalaran",

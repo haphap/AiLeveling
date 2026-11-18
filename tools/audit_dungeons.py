@@ -22,7 +22,14 @@ ANNOUNCED = [
      # QuestieDB foreverQuestTraces[96395]: giver, target and return are in the Hall of Thanes.
      'objectiveAreas':{'96395':{'accept':16919,'npc:261306':16919,'turnin':16919}}},
     {'name':'Ruins of Lordaeron','levels':[15,20],'location':'Tirisfal Glades','mapId':2999},
-    {'name':'Excavation Site','levels':[24,29],'location':'Wetlands','mapId':2998},
+    {'name':'Excavation Site','levels':[24,29],'location':'Wetlands','mapId':2998,
+     # Forever quest objectives and Dungeon Journal 1.7.4's two in-instance handoffs.
+     # Each objective below takes place entirely inside. Pickups and returns are separate.
+     'objectiveAreas':{'95646':{'objective':16732}, '95647':{'objective':16732,'turnin':16732},
+                       '95682':{'objective':16732}, '95697':{'objective':16732},
+                       '95772':{'objective':16732,'turnin':16732}, '95795':{'accept':16732},
+                       '95809':{'accept':16732}, '98815':{'objective':16732}},
+     'prerequisites':{'95795':95772,'95809':95647}},
     {'name':'City of Dalaran','levels':[28,33],'location':'Alterac Mountains','mapId':2959,
      'preparationQuests':{'Alliance':[92432],'Horde':[93680,544]}},
     {'name':'The Drowned City','levels':[35,40],'location':'Stranglethorn Vale, west of Grom\'gol','mapId':2970,
