@@ -590,11 +590,64 @@ function B:Detail()
     self.infoChild:SetHeight(math.max(1,height))
 end
 
+-- Only the expanded source asks the client for item links.
+function B:DungeonLoot(view,groups,y)
+    local db=A.Data.db
+    local upgrades={}
+    for _,benefit in ipairs(A.Gear.DungeonBenefits(self.selected.dungeon,A.state,A.Data)) do
+        upgrades[benefit.item.id]=true
+    end
+    view.pending={}
+    for i,group in ipairs(groups) do
+        local button=view.bosses[i]
+        if not button then
+            button=A.UI:ListButton(view,"",326,function()
+                view.boss=view.boss==i and 0 or i
+                self:DungeonDetail(self.selected)
+            end,"body")
+            button.text:ClearAllPoints();button.text:SetPoint("LEFT",6,0)
+            view.bosses[i]=button
+        end
+        local expanded=view.boss==i
+        local name=group.npc and db and db.Npc.Get(group.npc,"name") or group.name
+        button.text:SetText((expanded and "−  " or "+  ")..name..
+            (group.wing and " · "..group.wing or "")..color(muted,"  "..#group.items.." 件"))
+        button:ClearAllPoints();button:SetPoint("TOPLEFT",0,-y);button:Show()
+        y=y+button:GetHeight()+metrics.gap
+        if expanded then
+            local lines={}
+            for _,id in ipairs(group.items) do
+                local itemName,link
+                if C_Item and C_Item.GetItemInfo then itemName,link=C_Item.GetItemInfo(id) end
+                local icon=C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(id)
+                if not link then
+                    view.pending[id]=true
+                    itemName=itemName or db and db.Item.Get(id,"name")
+                end
+                local source=group.observed and group.observed[id] and "实录" or
+                    group.beta and group.beta[id] and "测试服" or "图鉴"
+                local image=icon and ("|T"..icon..":15:15|t ") or ""
+                lines[#lines+1]=image..itemLink({id=id,name=itemName,link=link})..
+                    color(muted,"  "..source)..(upgrades[id] and color(green,"  提升") or "")
+            end
+            self.detail:SetText(table.concat(lines,"\n"));self.detail:ClearAllPoints()
+            self.detail:SetPoint("TOPLEFT",view,"TOPLEFT",10,-y);self.detail:SetWidth(316);self.detail:Show()
+            y=y+self.detail:GetStringHeight()+metrics.gap
+        end
+    end
+    if #groups==0 then
+        self.detail:SetText("暂无收录的装备掉落");self.detail:ClearAllPoints()
+        self.detail:SetPoint("TOPLEFT",view,"TOPLEFT",0,-y);self.detail:Show()
+        y=y+self.detail:GetStringHeight()
+    end
+    return y
+end
+
 function B:DungeonDetail(e)
     local view=self.dungeonDetail
     if not view then
         view=CreateFrame("Frame",nil,self.infoChild);view:SetWidth(326)
-        self.dungeonDetail=view;view.rows={}
+        self.dungeonDetail=view;view.rows={};view.bosses={}
         view.levels=A.UI:Text(view,"caption",colors.muted);view.levels:SetPoint("TOPLEFT");view.levels:SetWidth(326)
         view.tasks=A.UI:Text(view,"title");view.tasks:SetWidth(154)
         view.xp=A.UI:Text(view,"title",colors.gold);view.xp:SetWidth(162)
@@ -608,9 +661,22 @@ function B:DungeonDetail(e)
             GameTooltip:Show()
         end)
         view.note:SetScript("OnLeave",function() GameTooltip:Hide() end)
-        view.heading=A.UI:Text(view,"body",colors.gold);view.heading:SetWidth(326)
-        view.loot=A.UI:Button(view,"",326,function() A.UI:SelectTab(3) end,"body")
-        view.loot.baseColor=colors.panel;view.loot:SetBackdropColor(0,0,0,0)
+        view.questTab=A.UI:ListButton(view,"关联任务",158,function()
+            view.showLoot=false;self:DungeonDetail(self.selected)
+        end)
+        view.loot=A.UI:ListButton(view,"装备掉落",158,function()
+            view.showLoot=true;self:DungeonDetail(self.selected)
+        end)
+        view:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+        view:SetScript("OnEvent",function(f,_,id,success)
+            if success and f.pending and f.pending[id] and f:IsVisible() then
+                f.pending[id]=nil
+                f:SetScript("OnUpdate",function()
+                    f:SetScript("OnUpdate",nil)
+                    if f.showLoot and self.selected and self.selected.dungeon then self:DungeonDetail(self.selected) end
+                end)
+            end
+        end)
     end
     self.detail:Hide();view:Show();view:ClearAllPoints()
     local top=self.title:GetStringHeight()+10
@@ -649,12 +715,29 @@ function B:DungeonDetail(e)
     view.hint:ClearAllPoints();view.hint:SetPoint("TOPLEFT",0,-y)
     view.hint:SetText(A.UI:Icon("entry",14).." "..(self.message or hint))
     y=self:PlaceActions(top+y+view.hint:GetStringHeight()+metrics.gap)-top+metrics.gap
-    view.heading:ClearAllPoints();view.heading:SetPoint("TOPLEFT",0,-y)
-    view.heading:SetText("关联任务");y=y+view.heading:GetStringHeight()+6
+    if view.instance~=e.dungeon.instanceId then
+        view.instance=e.dungeon.instanceId;view.boss=1
+    end
+    view.pending=nil
+    for _,button in ipairs(view.bosses) do button:Hide() end
+    view.questTab:ClearAllPoints();view.questTab:SetPoint("TOPLEFT",0,-y)
+    view.loot:ClearAllPoints();view.loot:SetPoint("TOPLEFT",164,-y)
+    for _,tab in ipairs({view.questTab,view.loot}) do
+        local active=(tab==view.loot)==(view.showLoot==true)
+        tab.baseColor=active and colors.selected or colors.panel;tab:SetBackdropColor(unpack(tab.baseColor))
+        tab.text:SetTextColor(unpack(active and colors.gold or colors.white))
+    end
+    y=y+view.loot:GetHeight()+metrics.gap
     local _,group=A.Dungeon.GroupStatus(e.dungeon,A.state)
     view.tip={self.message or hint,group}
     for _,line in pairs({A.Dungeon.EncounterProgress(e.dungeon,A.state),A.Dungeon:TaskActivityText(e.key)}) do
         view.tip[#view.tip+1]=line
+    end
+    if view.showLoot then
+        for _,row in ipairs(view.rows) do row:Hide() end
+        y=self:DungeonLoot(view,A.DungeonCatalog.dropsByInstance[view.instance] or {},y)
+        view:SetHeight(y);self.infoChild:SetHeight(top+y+8)
+        return
     end
     local tones={colors.turnin,colors.objective,colors.accept,colors.muted,colors.muted}
     local tasks,prep,inside,other={},{},{},{}
@@ -751,12 +834,6 @@ function B:DungeonDetail(e)
         row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y);row:SetSize(326,h);row:Show();y=y+h
     end
     for i=#e.tasks+1,#view.rows do view.rows[i]:Hide() end
-    local drops=A.Gear.DungeonBenefits and A.Gear.DungeonBenefits(e.dungeon,A.state,A.Data) or {}
-    view.loot:SetShown(#drops>0)
-    if #drops>0 then
-        view.loot.text:SetText(A.UI:Icon("turnin",14).." "..#drops.." 件副本装备可提升  ›")
-        view.loot:ClearAllPoints();view.loot:SetPoint("TOPLEFT",0,-y);y=y+34
-    end
     view:SetHeight(y);self.infoChild:SetHeight(top+y+8)
 
 end

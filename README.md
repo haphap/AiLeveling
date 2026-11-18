@@ -21,7 +21,7 @@
     </td>
     <td width="65%" valign="top" align="center">
       <a href="https://github.com/haphap/AiLeveling/blob/main/docs/images/plan.png"><img src="https://raw.githubusercontent.com/haphap/AiLeveling/main/docs/images/plan.png" width="640" alt="主界面：分类导航、任务列表与所选任务详情"></a>
-      <br><b>看清整趟安排。</b><br>浏览任务、职业、专业、坐骑和地下城，点击查看详情。
+      <br><b>看清整趟安排。</b><br>浏览任务、职业、专业、坐骑和地下城。在地下城详情切换「装备掉落」，按首领查看装备和物品提示。
     </td>
   </tr>
 </table>

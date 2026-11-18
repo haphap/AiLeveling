@@ -251,7 +251,7 @@ if dungeonPreview then
             return {map=active and not active.ready and 9999 or 1453,x=0.6,y=0.5,entityKind="npc",entityId=q.id,
                 entityName=active and (active.ready and "示例交付人" or "副本目标") or "示例接取人"}
         end}
-    for _,file in ipairs({"State.lua","Data/Dungeons.lua","Planner/Eligibility.lua","Planner/Travel.lua","Planner/Dungeon.lua","Planner/DungeonTasks.lua","Planner/Gear.lua","Planner/TaskGuide.lua","UI/Dungeon.lua"}) do
+    for _,file in ipairs({"State.lua","Data/Dungeons.lua","Data/DungeonLoot.lua","Planner/Eligibility.lua","Planner/Travel.lua","Planner/Dungeon.lua","Planner/DungeonTasks.lua","Planner/Gear.lua","Planner/TaskGuide.lua","UI/Dungeon.lua"}) do
         assert(loadfile(file))("AiLeveling",A)
     end
     if arg[2]=="journey" then
@@ -275,8 +275,12 @@ if dungeonPreview then
     end
     local selected="reference:36"
     if arg[2]=="loot" then
-        selected="reference:389"
-        A.state.items[272998]={id=272998,name="示例首领装备",usable=true,equipLoc="INVTYPE_HEAD",stats={ITEM_MOD_STRENGTH_SHORT=8}}
+        A.previewLootNames={[872]="切石者",[5187]="拉克佐之锤",[273289]="食人魔腰布"}
+        C_Item=C_Item or {}
+        C_Item.GetItemInfo=function(id)
+            local name=A.previewLootNames[id]
+            if name then return name,(id==5187 and "|cffffffff" or "|cff1eff00").."|Hitem:"..id.."|h["..name.."]|h|r" end
+        end
     end
     A.previewTab=4;A.previewSelected=selected
 elseif planPreview then
@@ -447,7 +451,31 @@ if A.previewTab then
             assert(row.status:GetText()~="")
         end
         assert(view.tasks:GetText():find(tostring(browser.selected.rewards.count),1,true))
-        if arg[2]~="loot" then
+        if arg[2]=="loot" then
+            view.loot:Click()
+            assert(browser.detail:GetText():find("|Hitem:5187",1,true))
+            assert(browser.detail:GetText():find("实录",1,true))
+            assert(not view.rows[1]:IsShown())
+            view.bosses[2]:Click()
+            assert(browser.detail:GetText():find("|Hitem:5443",1,true))
+            assert(not browser.detail:GetText():find("|Hitem:5187",1,true))
+            A.previewLootNames[5443]="镀金圆盾"
+            view.IsVisible=view.IsShown
+            view.scripts.OnEvent(view,"GET_ITEM_INFO_RECEIVED",5443,true)
+            view.scripts.OnUpdate()
+            assert(browser.detail:GetText():find("镀金圆盾",1,true))
+            local mine=browser.selected
+            for _,entry in ipairs(browser.entries) do
+                if entry.dungeon and not A.DungeonCatalog.dropsByInstance[entry.dungeon.instanceId] then
+                    browser.selected=entry;browser:Detail()
+                    assert(browser.detail:GetText()=="暂无收录的装备掉落" and not view.bosses[1]:IsShown())
+                    break
+                end
+            end
+            browser.selected=mine;browser:Detail();view.questTab:Click()
+            assert(view.rows[1]:IsShown() and not view.bosses[1]:IsShown())
+            view.loot:Click()
+        else
             local pickup
             for _,row in ipairs(view.rows) do if row.questId==168 then pickup=row end end
             assert(view.rows[1]==pickup)

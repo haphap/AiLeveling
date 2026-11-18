@@ -624,6 +624,15 @@
   },
   "data_references": [
     {
+      "id": "Forever-dungeon-equipment-browser",
+      "atlas": "https://github.com/Pirson-s-Addons/DungeonQuestAtlas/tree/f3ec8b7e59d9980f0db40b711f46f03760ac7555/Data",
+      "atlasVersion": "1.04, MIT, copyright 2025-2026 Pirson. Bundled notice: docs/LICENSE.DungeonQuestAtlas.txt. Later releases are excluded.",
+      "observations": "https://github.com/JIVESCORP/eg-link-output-wowf/tree/06b4cc7b814c1cb16ff56b746181c2c62944fbc9/data/wowf",
+      "credit": "Data from Efficient Games (https://efficient.games), CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Extracted equipment rolls from live builds 70790, 70862, 70888 and 70938, and separately labelled beta rolls from wow_classic_beta builds 70338 and 70374.",
+      "items": "https://wago.tools/db2/Item/csv?build=1.60.1.70938&locale=zhCN",
+      "transformation": "tools/import_dungeon_loot.py joins atlas dungeon and boss identities with observed encounter rolls and client equippable weapon/armor IDs. Atlas assignments include Classic and beta references. Only a live roll is shown as observed. No drop-rate estimate or quest rewards. This browse index is independent of route scoring."
+    },
+    {
       "name": "LibQuestDB walking graph",
       "version": "v0.1.0 Forever",
       "url": "https://www.curseforge.com/wow/addons/questdb/files/9014639",

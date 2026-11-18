@@ -29,6 +29,7 @@ def main():
     entries.append(ROOT / 'docs' / 'TASK_FACTS_AUDIT.json')
     entries.append(ROOT / 'docs' / 'TASK_XP_AUDIT.json')
     entries.append(ROOT / 'docs' / 'LICENSE.EfficientGames.txt')
+    entries.append(ROOT / 'docs' / 'LICENSE.DungeonQuestAtlas.txt')
     entries.append(ROOT / 'docs' / 'EXPERIENCE_DATA_AUDIT.json')
     entries.append(ROOT / 'docs' / 'ITEM_SET_AUDIT.json')
     entries.append(ROOT / 'docs' / 'ITEM_LIMIT_AUDIT.json')
