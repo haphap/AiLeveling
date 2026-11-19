@@ -238,19 +238,20 @@ test("飞行保留手动目的地且不混入步行校准",function()
     B.Navigation.manual=position(0.2);B.char.paused=true;B.Navigation:ClearManual();B.Navigation:ClearManual()
     eq(B.Navigation.manual,nil);eq(B.char.paused,true);eq(B.replans,replans+2);eq(B.Navigation.index,index)
     local nav,created,cleared=nil,0,0
+    B.UI.SetNavigation=function(_,distance,angle,unverified,action) B.distance,B.angle,B.guide=distance,angle,action end
     WaypointUIAPI={Navigation={GetUserNavigation=function() return nav end,
         IsUserNavigationTracked=function() return nav~=nil end,IsPathStepWaypointTracked=function() return false end,
         NewUserNavigation=function(options)
             created=created+1;nav=options;nav.x,nav.y=nav.x/100,nav.y/100;return nav
         end,ClearUserNavigation=function() nav=nil;cleared=cleared+1 end}}
     B.char.paused=false;B.Navigation:RefreshPins();eq(nav.flags,"AiLeveling");eq(nav.x,1)
-    B.Navigation:Update();eq(created,1);eq(B.distance,nil)
+    B.Navigation:Update();eq(created,1);eq(B.distance,nil);eq(B.guide,B.Navigation.actions[index])
     local external={mapID=1,x=0.3,y=0,name="手动点"};nav=external
-    B.Navigation:Update();eq(nav,external);eq(B.distance,nil)
+    B.Navigation:Update();eq(nav,external);eq(B.distance,nil);eq(B.guide,B.Navigation.actions[index])
     B.state.position=position(1);B.Navigation:Update();eq(B.Navigation.index,index+1);eq(nav,external)
     local boat={kind="transit",publicTransit=true,departure=position(1),position=position(0.2,2)}
     B.Navigation:SetPlan({travelActions={boat}})
-    B.Navigation:Update();eq(boat.atDeparture,true)
+    B.Navigation:Update();eq(boat.atDeparture,true);eq(B.guide,boat)
     B.state.position=position(0.2,2);B.Navigation:Update();eq(B.Navigation.index,2);eq(nav,external)
     B.state.position=position(0.7)
     B.Navigation:SetPlan({best={actions={{kind="objective",questId=42,title="继续任务",position=position(0.9)}}}})
@@ -284,7 +285,6 @@ test("飞行保留手动目的地且不混入步行校准",function()
     -- WaypointUI can report a tracked pin while its dungeon HUD is hidden.
     B.Navigation:Update();eq(nav.flags,"AiLeveling")
     local action=B.Navigation:Current()
-    B.UI.SetNavigation=function(_,distance,angle,unverified,guide) B.distance,B.angle,B.guide=distance,angle,guide end
     B.state.inInstance,B.state.instanceId,B.state.position=true,1,nil
     B.Navigation:Update();eq(B.distance,nil);eq(B.guide,nil)
     B.Navigation:SetPlan({fallback=action,revision=B.state.revision})
@@ -295,7 +295,7 @@ test("飞行保留手动目的地且不混入步行校准",function()
     B.Navigation:Update();eq(nav,external);eq(B.distance,nil);eq(B.angle,nil);eq(B.guide,action)
     B.char.paused=true;B.Navigation:Update();eq(B.guide,nil)
     B.char.paused=false;B.state.inInstance=false;B.state.position=position(0.8);action.position=position(0.9)
-    B.Navigation:Update();eq(nav,external);eq(B.guide,nil)
+    B.Navigation:Update();eq(nav,external);eq(B.guide,action)
     nav=nil;B.Navigation:Update();eq(nav.flags,"AiLeveling");eq(B.distance,nil)
     WaypointUIAPI=nil
 end)

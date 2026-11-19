@@ -67,7 +67,7 @@ function UI.TrackerJourney(state,action)
     local flying=action.kind=="flight" and flight and flight.action==current
     local returning=action.kind=="hearthCast" and hearth and hearth.action==current
     if not current or current~=action and not flying and not returning then return end
-    local result={steps={},seconds=0,distance=0}
+    local result={steps={},seconds=0,distance=0,action=action,atDeparture=action.atDeparture}
     local position,transport=state.position,false
     local function add(kind,title,seconds,detail)
         seconds=seconds and math.max(0,math.ceil(seconds))
@@ -1833,7 +1833,6 @@ function UI:LayoutTracker()
     if A.QuestAssist then A.QuestAssist:LayoutTarget() end
 end
 
-local guideLabels={accept="接取任务",objective="任务目标",turnin="交付任务",dungeonLeave="离开副本"}
 -- Keep the catalog lookup off ordinary progress updates. Counts come from the live quest log.
 local function dungeonGuideSteps(d,state)
     local inside,other={},{}
@@ -1879,9 +1878,9 @@ local function dungeonGuideSteps(d,state)
     return inside,other
 end
 
-local function dungeonStepHint(action)
+local function questStepHint(action)
     local point=action.position
-    if not action.stageLabel and point and point.entityName and not point.travelHint then
+    if not action.stageLabel and point and point.entityName and not point.travelHint and not point.startItemId then
         if action.kind=="accept" then return "向「"..point.entityName.."」接取任务。" end
         if action.kind=="turnin" then return "到「"..point.entityName.."」交付任务。" end
     end
@@ -1975,7 +1974,7 @@ function UI:DungeonTrackerModel(state,action)
         local active=state.quests[id]
         local kind=active and (active.ready and "turnin" or "objective") or step.kind
         local status=({accept="未接取",objective="进行中",turnin="可交付"})[kind]
-        local hint=dungeonStepHint(step) or fallbackHint
+        local hint=questStepHint(step) or fallbackHint
         if step.stageLabel=="本外接取" or step.stageLabel=="本外目标" or step.stageLabel=="本外交付" then
             hint=step.stageLabel..(hint and (" · "..hint) or "")
         end
@@ -2021,26 +2020,79 @@ function UI:DungeonTrackerModel(state,action)
     return model
 end
 
-function UI:SetTrackerNavigation(distance,angle,unverified,guide)
-    if not self.navFrame then return end
-    local textOnly=guide and not distance and not (A.state.instanceType=="party" or A.state.instanceType=="raid" or self.tracker.instanceRoster)
-    local show=A.settings.arrow and (distance~=nil or textOnly) and not A.char.paused
-    self.navFrame:SetShown(show==true)
-    if not show then return end
-    local action=guide or A.Navigation:Current()
-    local meters=A.settings.distanceUnits=="meters"
-    self.nav:SetText(distance and string.format("%.0f %s",meters and distance*0.9144 or distance,meters and "米" or "码") or guideLabels[guide.kind])
-    local target=A.Navigation.Target(action)
+local questVerbs={accept="接取",objective="完成",turnin="交付"}
+local stepLabels={accept="接取任务",objective="任务目标",turnin="交付任务",move="步行",approach="步行",
+    dungeonEnter="进入副本",dungeonLeave="离开副本",flight="飞行",hearthCast="使用炉石"}
+local vehicles={boat="船",tram="地铁",zeppelin="飞艇"}
+local transitLabels={boat="乘船",tram="乘地铁",zeppelin="乘飞艇",hearth="使用炉石",portal="穿过传送门",flight="搭乘航班"}
+
+local function navigationInstruction(action,journey)
+    local nav=A.Navigation
+    if journey and journey.action==action and action.kind~="flight" and action.kind~="hearthCast" and journey.atDeparture==action.atDeparture and
+        nav.atTransitDestination~=action and A.settings.transportHints~=false then
+        -- The tracker already expands transport legs into walks and connections.
+        local first,second=journey.steps[1],journey.steps[2]
+        return "当前步骤",first.title..(second and "\n接下来 · "..second.title or "")
+    end
+    local heading=transitLabels[action.mode] or stepLabels[action.kind] or "当前步骤"
+    local sequence=nav.Sequence and nav:Sequence() or nav
+    local index=sequence.index
+    local nextStep
+    local leg=action.kind=="flight" and A.Transport and A.Transport.flight or
+        action.kind=="hearthCast" and A.Hearth and (A.Hearth.cast or A.Hearth.pending)
+    if sequence.actions and #sequence.actions>1 and sequence.actions[index]==(leg and leg.action or action) then
+        heading=string.format("第 %d/%d 步 · %s",index,#sequence.actions,heading)
+        nextStep=sequence.actions[index+1]
+    end
+    local target=nav.Target(action)
     local hint=target and target.approximate and (target.sourceKind=="patrol" and " · 巡逻路线" or " · 区域参考点") or ""
-    local title=(action and action.title or "目的地")..hint
-    if textOnly and guide.text and guide.text~=title then title=title.."\n"..guide.text end
-    self.tracker.navTitle:SetText(guide and card and card:IsShown() and "" or title)
-    self.navFrame:SetHeight(math.max(90,70+self.tracker.navTitle:GetStringHeight()))
+    local title=action.title or ""
+    local detail=questStepHint(action)
+    if action.kind=="objective" and target and target.sourceKind=="vendor" then
+        detail=UI.ActionText(action,A.settings)
+    elseif action.kind=="objective" and action.objectiveIndex and not (target and target.travelHint) then
+        local quest=(A.state.quests or {})[action.questId]
+        local goal=quest and (quest.objectives or {})[action.objectiveIndex]
+        detail=goal and goal.text or detail
+    elseif action.kind=="transit" then
+        if nav.atTransitDestination==action then detail="已抵达本段终点"
+        elseif A.settings.transportHints==false then detail=nil
+        elseif action.atDeparture and vehicles[action.mode] and action.toName then
+            detail="搭乘开往"..action.toName.."的"..vehicles[action.mode].."，到站后继续行程。"
+        end
+        if detail then title=detail end
+    end
+    if detail and detail~=title then title=title.."\n"..detail end
+    title=title..hint
+    if nextStep and nextStep.title and not (nav.StaleAction and nav.StaleAction(nextStep,A.state,sequence.plan)) then
+        local verb=questVerbs[nextStep.kind]
+        title=title.."\n接下来 · "..(verb and verb.."「"..nextStep.title.."」" or nextStep.title)
+    end
+    return heading,title
+end
+
+function UI:SetTrackerNavigation(distance,angle,unverified,action)
+    if not self.navFrame then return end
+    action=action or distance and A.Navigation:Current()
+    self.navFrame:SetShown(action~=nil and not A.char.paused)
+    if not action or A.char.paused then return end
+    local heading,title=navigationInstruction(action,self.tracker.model and self.tracker.model.journey)
+    if A.settings.arrow and distance then
+        local meters=A.settings.distanceUnits=="meters"
+        heading=heading..string.format(" · %.0f %s",meters and distance*0.9144 or distance,meters and "米" or "码")
+    end
+    self.nav:SetText(heading)
+    if self.tracker.navTitle:GetText()~=title then
+        self.tracker.navTitle:SetText(title)
+        self.navFrame:SetHeight(math.max(90,70+self.tracker.navTitle:GetStringHeight()))
+    end
+    angle=A.settings.arrow and angle or nil
+    for _,line in ipairs(self.tracker.arrowLines) do line:SetShown(angle~=nil) end
+    if not angle then return end
     local points={{-10,-6,0,7},{0,7,10,-6}}
-    local cos,sin=math.cos(-(angle or 0)),math.sin(-(angle or 0))
+    local cos,sin=math.cos(-angle),math.sin(-angle)
     for i,line in ipairs(self.tracker.arrowLines) do
         local p=points[(i-1)%2+1]
-        line:SetShown(angle~=nil)
         line:SetStartPoint("TOP",self.navFrame,p[1]*cos-p[2]*sin,-16+p[1]*sin+p[2]*cos)
         line:SetEndPoint("TOP",self.navFrame,p[3]*cos-p[4]*sin,-16+p[3]*sin+p[4]*cos)
         if i<=2 then line:SetColorTexture(0.01,0.02,0.02,0.85) else line:SetColorTexture(self:Accent()) end

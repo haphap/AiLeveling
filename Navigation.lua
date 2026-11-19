@@ -506,13 +506,12 @@ function N:Update()
         self:DrawPins()
     end
     updateEdge(self.edgePin,self.hbdPins)
-    if display then A.UI:SetNavigation(nil) end
-    if A.Transport and A.Transport:InFlight() then A.UI:SetNavigation(nil);return end
-    if A.Hearth and A.Hearth:InTransit() then A.UI:SetNavigation(nil);return end
     local action, pos = self:Current(), A.state.position
-    local guide=A.state.inInstance and not A.state.dead and action and
-        (action.kind=="accept" or action.kind=="objective" or action.kind=="turnin" or action.kind=="dungeonLeave") and action or nil
-    if action and action.publicTransit and not A.char.paused and pos then
+    if A.char.paused or not action then A.UI:SetNavigation(nil);return end
+    if action.kind=="flight" or action.kind=="hearthCast" then A.UI:SetNavigation(nil,nil,nil,action);return end
+    local instanceGuide=A.state.inInstance and not A.state.dead and
+        (action.kind=="accept" or action.kind=="objective" or action.kind=="turnin" or action.kind=="dungeonLeave")
+    if action.publicTransit and pos then
         local arrival=self:Distance(pos,action.position)
         -- Players emerge beside the portal. Crossing onto its destination land
         -- also handles a load screen ending after the player has moved away.
@@ -522,21 +521,19 @@ function N:Update()
             action.atDeparture=true;self:RefreshPins();A.dirty=true
         end
     end
-    local publicTravel=action and action.publicTransit and action.atDeparture
-    if action and action.kind=="service" and not A.char.paused and A.Supplies and A.Supplies.Done(action,A.state) then
+    if action.kind=="service" and A.Supplies and A.Supplies.Done(action,A.state) then
         self:Advance();return
     end
-    if A.char.paused or not action then A.UI:SetNavigation(nil);return end
     local target=N.Target(action)
-    if not self.hbd or not target or not pos and not guide then
-        A.UI:SetNavigation(nil,nil,nil,guide)
+    if not self.hbd or not target or not pos and not instanceGuide or action.publicTransit and action.atDeparture then
+        A.UI:SetNavigation(nil,nil,nil,action)
         return
     end
-    if publicTravel then A.UI:SetNavigation(nil);return end
     local flight=action.kind=="transit" and action.mode=="flight"
     if (flight or action.kind=="transit" and action.mode=="hearth") and self:Near(pos,action.position,action.arrival) then
         if not self.atTransitDestination and not (A.jobs and A.jobs.plan) then A:Replan() end
-        self.atTransitDestination=true
+        self.atTransitDestination=action
+        A.UI:SetNavigation(nil,nil,nil,action)
         return
     end
     self.atTransitDestination=nil
@@ -557,16 +554,17 @@ function N:Update()
             return
         end
     end
-    if display then return end
+    -- WaypointUI supplies the bearing. The itinerary still supplies the instruction.
+    if display or A.settings.arrow==false then A.UI:SetNavigation(nil,nil,nil,action);return end
     local x,y,instance
-    if guide and self.hbd.GetPlayerWorldPosition then x,y,instance=self.hbd:GetPlayerWorldPosition() end
+    if instanceGuide and self.hbd.GetPlayerWorldPosition then x,y,instance=self.hbd:GetPlayerWorldPosition() end
     if not x and pos then x,y,instance=self.hbd:GetWorldCoordinatesFromZone(pos.x,pos.y,pos.map) end
     local tx, ty, targetInstance = self.hbd:GetWorldCoordinatesFromZone(target.x, target.y, target.map)
     local angle
-    if x and tx and instance==targetInstance and (not guide or instance==A.state.instanceId) then
+    if x and tx and instance==targetInstance and (not instanceGuide or instance==A.state.instanceId) then
         local bearing,yards=self.hbd:GetWorldVector(instance,x,y,tx,ty)
         angle,distance=bearing,yards or distance
-    elseif guide then distance=nil end
+    elseif instanceGuide then distance=nil end
     local facing=angle and GetPlayerFacing()
-    A.UI:SetNavigation(distance,angle and facing and (angle-facing),A.plan and A.plan.unverified,guide)
+    A.UI:SetNavigation(distance,angle and facing and (angle-facing),A.plan and A.plan.unverified,action)
 end

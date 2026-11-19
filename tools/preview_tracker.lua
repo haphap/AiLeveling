@@ -406,6 +406,10 @@ if arg[1]=="purchase" then
 end
 if arg[1]=="journey" then
     local T=A.UI.tracker
+    -- WaypointUI draws the bearing for this leg. Render the companion instructions.
+    A.UI:SetTrackerNavigation(nil,nil,nil,action)
+    assert(A.UI.navFrame:IsShown() and A.UI.nav:GetText()=="当前步骤")
+    assert(T.navTitle:GetText()=="走到 暴风城地铁入口\n接下来 · 乘地铁前往铁炉堡地铁入口")
     assert(T.journey:IsShown() and T.alongLabel:IsShown() and T.thenText:IsShown() and T.queuePanel:IsShown())
     assert(T.model.rows[1].questId==64 and T.model.rows[1].along and T.model.rows[1].status=="未接取")
     assert(T.model.rows[2].questId==65 and T.model.rows[2].status=="已接取")
