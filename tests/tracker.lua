@@ -757,6 +757,30 @@ test("分散交付点明确现在就近交和等同NPC任务一起交并跟随�
     eq(T.model.deliverySummary,"同组还差 1 项，做完一起交")
     B.action={kind="service",title="维修"};B.UI:RenderTracker();eq(T.model.deliverySummary,nil)
     B.action=ta;B.char.paused=true;B.UI:RenderTracker();eq(T.model.deliverySummary,nil)
+    -- Two journal hand-ins at a manually chosen landing must survive a plan that only visits Wetlands.
+    B.char.paused=false
+    local village={map=1437,x=.45,y=.45,entityName="麦琳·石纹"}
+    local city={map=1455,x=.7,y=.2,entityName="勘察员塔伯斯·雷矛"}
+    B.state={revision=3,position=village,quests={[1]={title="寻找挖掘队",ready=true},
+        [2]={title="向铁炉堡报告",ready=true},[3]={title="森内尔的报告",ready=true}}}
+    B.plan={revision=2,origin=village,taskChoices={a},taskOrder={a}}
+    B.Data.GetQuest=function(_,id) return {id=id} end
+    B.Data.Target=function(_,q) return q.id==1 and village or city end
+    B.Transport.flight={toTaxi=6}
+    B.FlightData={nodes={[6]={}}}
+    B.Navigation.hbd={};B.Navigation.Distance=function(_,from,to) return from.map==to.map and 1 or nil end
+    B.Flights={Position=function(_,map) return map==1455 and city end}
+    local flight={kind="flight",title="飞行中 · 铁炉堡"}
+    local model=B.UI.TrackerModel(B.state,B.plan,flight,false)
+    eq(model.nextId,2);eq(model.rows[1].questId,3)
+    assert(model.rows[1].delivery:find("抵达后交付",1,true));eq(model.rows[1].turnInAction.position,city)
+    B.Transport.flight=nil;B.Transport.FlightGate=function() end
+    assert(loadfile("Navigation.lua"))("AiLeveling",B)
+    B.Navigation.Distance=function(_,from,to) return from.map==to.map and 1 or nil end
+    B.Navigation.actions={ta};B.jobs.plan=true;B.state.position=city
+    eq(B.Navigation:Current().questId,2)
+    B.state={revision=4,position=city,quests={[3]=B.state.quests[3]}}
+    eq(B.Navigation:Current().questId,3)
     B.finish()
 end)
 

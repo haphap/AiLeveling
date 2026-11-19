@@ -52,7 +52,7 @@ function Q.PrepareItems(order,state,reassign)
         local requirements=last and last.itemRequirements or {}
         local choice=original
         if not source.itemsPrepared and not original.stageIndex and #requirements>0 then
-            available=available or copy(state.bags or {})
+            available=available or setmetatable({}, {__index=state.bags})
             choice=copy(original);choice.stages={};choice.itemsPrepared=true
             choice.itemOriginal=source;choice.itemShortage=nil;choice.stagesComplete=source.stagesComplete
             local gains,collects,consume,grants,allocation={},{},{},{},{}
@@ -105,7 +105,9 @@ function Q.Evaluate(order,state,navigation,data,cache)
     -- Whole-task permutations may spend the stock on a different recipient first.
     -- Split stages retain their allocation so interleaving cannot create extra items.
     order=Q.PrepareItems(order,state,true)
-    local bags=state.bags or {}
+    -- Prefixes keep only item counts changed by this route. Other stacks come from the snapshot.
+    local inventory={__index=state.bags}
+    local bags=setmetatable({},inventory)
     local context=copy(state)
     if A.Supplies then
         local log=A.Supplies.QuestLog(state)
@@ -136,7 +138,7 @@ function Q.Evaluate(order,state,navigation,data,cache)
                 local stage=original
                 if A.TaskGuide.ItemGainBlocked(stage,state,bags) then return end
                 if not changedBags and (next(stage.gainItems or {}) or (stage.itemGain or 0)>0 or next(stage.consumeItems or {})) then
-                    bags=copy(bags);changedBags=true
+                    bags=setmetatable(copy(bags),inventory);changedBags=true
                 end
                 for id,count in pairs(stage.gainItems or {}) do bags[id]=(bags[id] or 0)+count end
                 if stage.itemGain and stage.itemGain>0 then
@@ -178,16 +180,17 @@ function Q.Evaluate(order,state,navigation,data,cache)
                     end
                     if xp==nil then forecast=copy(path.forecast);forecast.uncertain=true end
                     for _,route in ipairs(timing.travelRoutes) do
-                        local stepTiming=copy(timing)
-                        stepTiming.travelPlan,stepTiming.travel=route,route.seconds
-                        stepTiming.coarse=route.coarse
-                        stepTiming.travelLow,stepTiming.travelHigh=route.low,route.high
-                        stepTiming.flightCount=route.flights
-                        stepTiming.hearthReady,stepTiming.hearthCount=route.hearthReady,route.hearths
-                        stepTiming.seconds=route.seconds
-                        stepTiming.low=route.low
-                        stepTiming.high=route.high
-                        stepTiming.initial=route.initial
+                        local stepTiming=timing
+                        if route~=timing.travelPlan then
+                            stepTiming=copy(timing)
+                            stepTiming.travelPlan,stepTiming.travel=route,route.seconds
+                            stepTiming.coarse=route.coarse
+                            stepTiming.travelLow,stepTiming.travelHigh=route.low,route.high
+                            stepTiming.flightCount=route.flights
+                            stepTiming.hearthReady,stepTiming.hearthCount=route.hearthReady,route.hearths
+                            stepTiming.seconds,stepTiming.low,stepTiming.high=route.seconds,route.low,route.high
+                            stepTiming.initial=route.initial
+                        end
                         if not state.maxSeconds or path.seconds+stepTiming.seconds<=state.maxSeconds then
                             nextPaths[#nextPaths+1]={position=last.position,
                                 seconds=path.seconds+stepTiming.seconds,low=path.low+stepTiming.low,high=path.high+stepTiming.high,
@@ -209,7 +212,8 @@ function Q.Evaluate(order,state,navigation,data,cache)
     end
     if not paths[1] then return end
     -- Materialize the chosen steps once, rather than copying the prefix at every stage.
-    local result=copy(paths[1]);result.steps={};result.bags=copy(bags)
+    local result=copy(paths[1]);result.steps={};result.bags=copy(state.bags or {})
+    for id,count in pairs(bags) do result.bags[id]=count end
     local node=paths[1]
     while node.step do result.steps[node.index]=node.step;node=node.previous end
     result.previous,result.index,result.step=nil,nil,nil

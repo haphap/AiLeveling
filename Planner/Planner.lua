@@ -436,7 +436,7 @@ function P.TaskRegions(state,plan,data)
     if not automatic then return regions end
     local best,nextRegion
     for _,r in ipairs(regions) do
-        if r.work>0 and r.seconds~=nil then
+        if r.first and (r.work>0 or not r.current) and r.seconds~=nil then
             best=best or r
             if not r.current then nextRegion=nextRegion or r end
         end

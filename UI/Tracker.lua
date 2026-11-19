@@ -352,6 +352,12 @@ function UI.TrackerModel(state,plan,action,paused,along)
     state,plan=state or {},plan or {}
     local quests=state.quests or {}
     local journey=not paused and not A.error and UI.TrackerJourney(state,action) or nil
+    local flight=action and action.kind=="flight" and A.Transport and A.Transport.flight
+    local node=flight and A.FlightData and A.FlightData.nodes[flight.toTaxi]
+    local flightName=flight and (flight.name or (state.taxiNames or {})[flight.toTaxi] or flight.action and flight.action.toName)
+    local town=flightName and (flightName:gsub("，",",")..","):match("^%s*(.-)%s*,")
+    local arrival=action and action.kind=="hearthCast" and state.hearthPoint or action and action.kind=="transit" and action.position or
+        (journey and journey.goal or action or {}).position
     action=journey and journey.goal or action
     if A.Navigation and A.Navigation.StaleAction and A.Navigation.StaleAction(action,state,plan) or
         action and action.questId and UI.QuestStatus(state,action.questId,plan)=="已交付" then action=nil end
@@ -466,6 +472,8 @@ function UI.TrackerModel(state,plan,action,paused,along)
         if status=="已交付" then return end
         local candidate=choices[id]
         if candidate and candidate.lowValue and not (q and batchMembers and batchMembers[id]) then return end
+        if q then model.acceptedCount=model.acceptedCount+1 else model.unacceptedCount=model.unacceptedCount+1 end
+        if not q and not (planned[id] or along and along[id] or batchMembers and batchMembers[id]) then return end
         local step=source or (candidate and candidate.actions[1]) or {}
         local deferred=(state.skipped or {})[id] or (state.chainDeferred or {})[id]
         local pickup=candidate and candidate.actions[1] or step
@@ -499,7 +507,6 @@ function UI.TrackerModel(state,plan,action,paused,along)
             local prefix=batchPhases[id]=="inside" and "副本内接取" or "入本前接取"
             model.rows[#model.rows].progress=prefix.." · "..(pickupPlace or pickup.text or "任务发布者")
         end
-        if q then model.acceptedCount=model.acceptedCount+1 else model.unacceptedCount=model.unacceptedCount+1 end
     end
     if plan.best then
         for i=A.Navigation and A.Navigation.index or 1,#(plan.best.actions or {}) do
@@ -551,8 +558,31 @@ function UI.TrackerModel(state,plan,action,paused,along)
     if model.kind=="flight" or model.kind=="hearthCast" then model.hint=nil end
     local deliveries,summary=deliveryAdvice(state,plan,action,choices,byQuest)
     model.deliverySummary=summary
+    local handins=not (paused or A.error or state.inInstance or state.taskBatch) and A.TaskGuide and
+        A.TaskGuide.ReadyTurnIns and A.Data and A.Data.Target and A.TaskGuide.ReadyTurnIns(state,A.Data) or {}
+    local arrivalRow
     for _,row in ipairs(model.rows) do
         row.delivery=deliveries[row.questId]
+        local handin=handins[row.questId]
+        if handin and not row.deferred and not (row.candidate and (row.candidate.itemShortage or row.candidate.entryBlocked)) then
+            local point=handin.position
+            local zone=town and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
+            local landing=node and A.Navigation.hbd and A.Flights.Position(node,point.map,A.Navigation.hbd)
+            local distance=landing and A.Navigation.Distance and A.Navigation:Distance(landing,point,true)
+            -- Adjacent zones overlap on the world map. A city name or the landing's immediate vicinity identifies a stop.
+            local flyingHere=zone and zone.name==town or distance and distance<=180
+            local here=not flight and state.position and point.map==state.position.map
+            local arriving=flyingHere or not node and arrival and arrival.map==point.map and not here
+            row.turnInAction=handin
+            row.deliveryPriority=arriving and 1 or here and 2 or 3
+            if arriving or not planned[row.questId] and not byQuest[row.questId] then
+                row.delivery=(arriving and "抵达后交付" or "可交付").." · "..(destination(handin) or row.title)
+            end
+            if arriving and flight and not state.locked and (not arrivalRow or
+                (distance or math.huge)<arrivalRow.distance or (distance or math.huge)==arrivalRow.distance and row.questId<arrivalRow.questId) then
+                arrivalRow={questId=row.questId,action=handin,title=row.title,distance=distance or math.huge}
+            end
+        end
         row.atStop=not paused and not A.error and not state.locked and not row.deferred and
             model.kind=="turnin" and row.kind=="turnin" and currentGroup~=nil and byQuest[row.questId]==currentGroup and
             not (row.candidate and row.candidate.itemShortage)
@@ -565,7 +595,10 @@ function UI.TrackerModel(state,plan,action,paused,along)
         row.planOrder=planned[row.questId]
     end
     if action and not paused and not A.error then
-        model.nextStep,model.nextId,model.nextTitle=nextAction(action,plan,state,model.rows,batchSteps)
+        if arrivalRow then
+            model.nextOnArrival=true
+            model.nextStep,model.nextId,model.nextTitle=arrivalRow.action,arrivalRow.questId,arrivalRow.title
+        else model.nextStep,model.nextId,model.nextTitle=nextAction(action,plan,state,model.rows,batchSteps) end
         model.nextChoice=choices[model.nextId]
     end
     local visible={}
@@ -576,7 +609,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
         local member=batchMembers and batchMembers[row.questId] and not row.deferred and
             (row.accepted or candidate.acceptBlocked and not candidate.requireCheck and not candidate.entryBlocked)
         if row.questId==model.questId or row.atStop or row.along or row.questId~=model.nextId and
-            (member or eligible and (row.planOrder or not action and not batchMembers and row.accepted)) then
+            (member or eligible and (row.planOrder or row.turnInAction or not action and not batchMembers and row.accepted)) then
             visible[#visible+1]=row
         end
     end
@@ -593,6 +626,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
         end
         local ar,br=order(a),order(b)
         if ar~=br then return ar<br end
+        if ar==3 and a.deliveryPriority~=b.deliveryPriority then return (a.deliveryPriority or 4)<(b.deliveryPriority or 4) end
         if ar==2 and a.alongDistance~=b.alongDistance then return (a.alongDistance or 0)<(b.alongDistance or 0) end
         if a.planOrder~=b.planOrder then return (a.planOrder or math.huge)<(b.planOrder or math.huge) end
         return (a.questId or -a.serviceStop.taxiId)<(b.questId or -b.serviceStop.taxiId)
@@ -758,7 +792,8 @@ function UI:TrackerMenu(owner)
             menu:CreateButton("忽略维修",function() A.Supplies:IgnoreRepair() end)
         elseif id then
             menu:CreateButton("导航到此任务",function()
-                if owner.dungeonAction and A.Navigation:Navigate(owner.dungeonAction) then return end
+                local step=owner.dungeonAction or owner.turnInAction
+                if step and A.Navigation:Navigate(step) then return end
                 if not A.Navigation:NavigateQuest(id) then self:QuestClick(id,"RightButton") end
             end):SetEnabled(not owner.deferred)
             menu:CreateButton("查看任务详情",function() self:QuestClick(id,"RightButton") end)
@@ -1471,6 +1506,7 @@ function UI:RenderTracker(along)
     local sameQuest=taskStep and nextId==model.questId
     local tone=not taskStep and "white" or nextQuest and (nextQuest.ready and "green" or "gold") or "blue"
     nextRow.questId,nextRow.candidate,nextRow.revision=nextId,model.nextChoice,plan.revision
+    nextRow.turnInAction=model.nextOnArrival and nextStep or nil
     nextRow.status=taskStep and nextId and self.QuestStatus(state,nextId,plan)
     local following,title,instruction="","",""
     if nextStep then
@@ -1483,7 +1519,7 @@ function UI:RenderTracker(along)
         if nextStep.kind=="accept" and model.batchPhases[nextId] then
             instruction=(model.batchPhases[nextId]=="inside" and "副本内接取" or "入本前接取")..(target and " · "..target or "")
         end
-        following="接下来"..(nextRow.status and (" · |cff"..self.hex[tone]..nextRow.status.."|r") or "")
+        following=(model.nextOnArrival and "落地后" or "接下来")..(nextRow.status and (" · |cff"..self.hex[tone]..nextRow.status.."|r") or "")
         if sameQuest then
             following="接下来"
             if nextStep.kind=="objective" then
@@ -1611,6 +1647,7 @@ function UI:RenderTracker(along)
         row.deferred,row.dungeonId,row.serviceStop=item.deferred,item.dungeonId,item.serviceStop
         row.atStop,row.along=item.atStop,item.along
         row.dungeonAction=item.dungeonAction
+        row.turnInAction=item.turnInAction
         row.pickupAction=item.kind=="accept" and (item.dungeonAction or item.along and item.sideAction) or nil
         row:SetParent(item.atStop and T.currentChild or item.along and T.alongChild or T.queueChild)
         local native=(state.quests or {})[item.questId]

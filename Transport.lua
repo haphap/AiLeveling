@@ -267,7 +267,8 @@ function T:Update()
             action=A.Navigation:BeginFlight(self.groundPosition)
             if action and request and (action.fromTaxi~=request.from or action.toTaxi~=request.to) then action=nil end
         end
-        self.flight={action=action,started=now,valid=action~=nil,observedStart=observed,name=request and request.name,displaySecond=0}
+        self.flight={action=action,started=now,valid=action~=nil,observedStart=observed,name=request and request.name,
+            toTaxi=request and request.to or action and action.toTaxi,displaySecond=0}
         if request and A.Flights then
             local context={};for key,value in pairs(A.state) do context[key]=value end
             context.taxiSpeed,context.samples=self.taxiSpeed,A.char.samples

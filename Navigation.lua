@@ -164,7 +164,38 @@ function N:Current()
     end
     if A.state.inInstance and self.planInstance~=A.state.instanceId then return end
     local action=self.actions and self.actions[self.index]
-    if not N.StaleAction(action) then return action end
+    if N.StaleAction(action) then action=nil end
+    local state=A.state
+    local position=state.position
+    local plan=A.plan
+    if A.indexReady and not (A.jobs and A.jobs.plan) then return action end
+    local changedZone=position and plan and plan.origin and plan.origin.map~=position.map
+    local previousQuest=action and (action.kind=="turnin" or action.kind=="objective" or action.kind=="accept")
+    if action and action.kind~="taskReview" and not (changedZone and previousQuest) then return action end
+    local selected=state.locked or state.preparingQuest or state.taskBatch or state.gearTarget or state.serviceStop
+    if position and not (selected or state.dead or state.onTaxi or state.inInstance or (state.level or 0)>=60 or A.error or A.char.paused)
+        and A.TaskGuide and A.Data and A.Data.Target then
+        local nearest,best
+        for id,step in pairs(A.TaskGuide.ReadyTurnIns(state,A.Data)) do
+            if step.position.map==position.map then
+                local distance=self:Distance(position,step.position,true)
+                if distance and (not best or distance<best or distance==best and id<nearest.questId) then
+                    nearest,best=step,distance
+                end
+            end
+        end
+        if nearest then return nearest end
+        -- The previous itinerary can still contain a valid local objective after its first task is handed in.
+        for _,choice in ipairs(plan and plan.taskOrder or {}) do
+            local quest=state.quests[choice.questId]
+            local step=choice.executionAction or (choice.actions or {})[1]
+            if quest and not quest.ready and step and step.kind=="objective" and step.position and
+                step.position.map==position.map and not (step.expected or step.position.areaOnly or choice.itemShortage or
+                choice.entryBlocked or choice.lowValue or choice.revisitLevel) and
+                not N.StaleAction(step,state,plan) then return step end
+        end
+    end
+    return action
 end
 
 function N:Near(position,target,radius)

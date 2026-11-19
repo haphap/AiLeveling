@@ -165,6 +165,18 @@ local function routeWithoutHearth(origin,target,state,navigation)
             end
         end
         table.sort(flights,function(a,b) return a.key<b.key end)
+        flights.departures={}
+        local byDeparture={}
+        for _,leg in ipairs(flights) do
+            local key=pointKey(leg.from)
+            local departure=byDeparture[key]
+            if not departure then
+                departure={position=leg.from,legs={}}
+                byDeparture[key]=departure
+                flights.departures[#flights.departures+1]=departure
+            end
+            departure.legs[#departure.legs+1]={flight=leg,landing=pointKey(leg.to)}
+        end
         if cache then cache.flights[mapKey]=flights end
     end
     local direct=walk(origin,target)
@@ -194,9 +206,23 @@ local function routeWithoutHearth(origin,target,state,navigation)
             local result=flights.connections[key]
             if not result then
                 result={}
-                for _,flight in ipairs(flights) do
-                    local approach=walk(position,flight.from)
-                    if approach then result[#result+1]={approach=approach,flight=flight,key=pointKey(flight.to)} end
+                local byLanding={}
+                for _,departure in ipairs(flights.departures) do
+                    local approach=walk(position,departure.position)
+                    if approach then
+                        for _,leg in ipairs(departure.legs) do
+                            local previous=byLanding[leg.landing]
+                            local seconds=approach.seconds+leg.flight.seconds
+                            if not previous then
+                                previous={key=leg.landing}
+                                result[#result+1]=previous
+                                byLanding[leg.landing]=previous
+                            end
+                            if not previous.seconds or seconds<previous.seconds or seconds==previous.seconds and leg.flight.key<previous.flight.key then
+                                previous.seconds,previous.flight,previous.approach=seconds,leg.flight,approach
+                            end
+                        end
+                    end
                 end
                 flights.connections[key]=result
             end
@@ -205,7 +231,7 @@ local function routeWithoutHearth(origin,target,state,navigation)
         -- If even the first ride arrives after the direct walk, no transport chain can win.
         local canImprove=false
         for _,connection in ipairs(connections(origin)) do
-            if not best or connection.approach.seconds+connection.flight.seconds<best.seconds then canImprove=true;break end
+            if not best or connection.seconds<best.seconds then canImprove=true;break end
         end
         if not canImprove then
             if cache then cache.routes[routeKey]=best or false end
@@ -225,7 +251,7 @@ local function routeWithoutHearth(origin,target,state,navigation)
                 reached[#reached+1]=current
                 for _,connection in ipairs(connections(current.position)) do
                     local flight,approach,key=connection.flight,connection.approach,connection.key
-                    local seconds=current.seconds+approach.seconds+flight.seconds
+                    local seconds=current.seconds+connection.seconds
                     local previous=labels[key]
                     if not previous or seconds<previous.seconds then
                         if previous then previous.discarded=true end
