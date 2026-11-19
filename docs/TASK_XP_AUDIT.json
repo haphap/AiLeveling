@@ -1,14 +1,16 @@
 {
-  "source": "EG Link server quest cache + Forever QuestXP client table",
+  "source": "EG Link server quest cache + Forever QuestXP client table + Wowhead Forever quest facts",
   "build": "1.60.1.70862",
   "commit": "156f29c9af78b1586883e8eb94a13467eb89638c",
   "license": "CC BY 4.0",
+  "licenseScope": "EG Link observations",
   "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
   "url": "https://github.com/JIVESCORP/eg-link-output-wowf/tree/156f29c9af78b1586883e8eb94a13467eb89638c/data/wowf/1.60.1.70862",
   "questURL": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/30c3bb9c8e792208feab362357471603dc51e12e/data/wowf/1.60.1.70862/quests.enUS.json",
   "sortURL": "https://wago.tools/db2/QuestSort?build=1.60.1.70862",
   "tierURL": "https://wago.tools/db2/QuestXP/csv?build=1.60.1.70862",
   "inputs": {
+    "tools/wowhead_forever_quests.csv": "ffa4919829da84dae68ae0a808fa74940e98890e2050cd673942f86ac4c552ce",
     ".dependencies/eg-link-30c3bb9c/1.60.1.70938/quests.enUS.json": "cc038ecb07f37a74b4bde7e6663950288205487b26d11fdd30687e2811b870f7",
     ".dependencies/QuestXP-1.60.1.70938.csv": "1513f3f2646ae0b33b79de6219614792f0dbc050bb5bd76c1c4f0fce668a86fd",
     ".dependencies/QuestSort-1.60.1.70862.csv": "9cc9cbe418ab27ecc218e4699180520471eb3521514fe0b6b25e591e86a94a3f",
@@ -22,7 +24,7 @@
   "supplementOnly": 1434,
   "sourceQuests": 5378,
   "supplementURL": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/30c3bb9c8e792208feab362357471603dc51e12e/data/wowf/1.60.1.70938/quests.enUS.json",
-  "xpRows": 5350,
+  "xpRows": 5764,
   "excluded": {
     "259": "outside_fixed_level_1_60",
     "946": "outside_fixed_level_1_60",
@@ -300,6 +302,14 @@
       "captureBuild": null
     }
   ],
+  "directory": {
+    "url": "https://www.wowhead.com/forever/quests",
+    "events": "https://www.wowhead.com/forever/quests/world-events",
+    "successor": "https://www.wowhead.com/forever/quest=93128/khan-jehn",
+    "checked": "2026-11-19",
+    "input": "tools/wowhead_forever_quests.csv",
+    "scope": "Numeric quest facts and availability by ID. Blank XP stays unknown. Event flags also retain Forever quest categories."
+  },
   "observationChecks": [
     {
       "id": 2,

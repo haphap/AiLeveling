@@ -21,7 +21,11 @@ def main():
             'assert(A.TaskGuide.XP(q,level,s)==xp,q.id..":"..level) end end']
     checks = 0
     for id, q in data['quests'].items():
-        curve, index = q['xp'], 0
+        curve, index = q.get('xp'), 0
+        if not curve:
+            code.append(f'assert(A.TaskGuide.XP({{id={id},questLevel={q.get("level", "nil")},'
+                        f'sourceItemId={q.get("sourceItemId", 0)}}},30,s)==nil)')
+            continue
         source_item = q.get('sourceItemId', 0)
         expected = []
         for level in range(1, 60):
@@ -37,8 +41,9 @@ def main():
     for row in old_gaps:
         id = str(row['id'])
         q = data['quests'].get(id)
-        status = 'filled' if q and effective[id]['level'] == q['level'] else 'level_mismatch' if q else 'no_current_cache'
-        gaps.append(dict(id=int(id), status=status, cacheLevel=q and q['level'], effectiveLevel=effective[id]['level']))
+        level = q['level'] if q and 'requiredLevel' in q else effective[id]['level']
+        status = 'filled' if q and q.get('xp') and level == q['level'] else 'no_matching_xp'
+        gaps.append(dict(id=int(id), status=status, cacheLevel=q and q.get('level'), effectiveLevel=level))
     report = dict(build='1.60.1.70862', clientVerified=False, runtimeChecks=checks,
                   observedTurnIns=len(audit['observationChecks']), previousGaps=gaps,
                   filled=sum(r['status'] == 'filled' for r in gaps),

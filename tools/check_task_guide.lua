@@ -32,6 +32,22 @@ s.maxXP=A.Experience.xpToLevel[1]
 s.level=1;s.faction=faction;s.classMask=db.Enum.classKeys.WARRIOR;s.raceMask=db.Enum.raceMaskById[faction=="Alliance" and 1 or 2]
 s.position={map=faction=="Alliance" and 1429 or 1411,x=0.5,y=0.5};s.completionKnown=true
 local options={minutes=60,gearPreference="xp",dungeons=false,role="DAMAGER"}
+do
+    local fall=A.Data:GetQuest(472)
+    assert(fall.requiredLevel==25 and fall.questLevel==30 and A.TaskGuide.XP(fall,25,s)==1200)
+    local horn=A.Data:GetQuest(78307)
+    assert(A.TaskGuide.XP(horn,23,s)==2300 and horn.preQuestSingle[1]==78261)
+    assert(A.TaskGuide.XP(A.Data:GetQuest(421),16,s)==875)
+    local autograph=A.Data:GetQuest(558)
+    assert(autograph.taskFacts.hidden=="event" and A.TaskGuide.XP(autograph,20,s)==660)
+    assert(A.TaskGuide.XP(A.Data:GetQuest(349),35,s)==nil)
+    for _,id in ipairs({1374,6804}) do
+        local allowed,reason=A.Eligibility.Check(A.Data:GetQuest(id),s,A.Data)
+        assert(not allowed and reason=="无限版已停用")
+    end
+    local successor=A.Data:GetQuest(93128)
+    assert(successor.requiredLevel==35 and successor.preQuestGroup[1]==93122)
+end
 local plan=run(function() return A.Planner.Build(s,A.Data,options) end)
 assert(plan.fallback and #plan.taskChoices>0)
 for _,c in ipairs(plan.taskChoices) do

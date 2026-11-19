@@ -42,6 +42,7 @@ function E.Check(q, s, data, ignorePrerequisites)
     if s.skipped and s.skipped[q.id] then return false, "已暂缓" end
     if s.chainDeferred and s.chainDeferred[q.id] then return false,"整链已暂缓（起点 #"..s.chainDeferred[q.id].."）" end
     if s.quests[q.id] then return true end
+    if q.taskFacts and q.taskFacts.hidden=="retired" then return false,"无限版已停用" end
     if s.completionKnown == false then return false, "已交付任务记录加载中" end
     if s.completed[q.id] and not q.repeatable then return false, "已交付" end
     if s.level < (q.requiredLevel or 0) then return false, "等级不足" end

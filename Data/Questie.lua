@@ -244,14 +244,18 @@ function D:GetQuest(id,state)
     end
     local q = { id = id }
     for i, key in ipairs(fields) do q[key] = values and values[i] end
+    q.taskFacts=self:CacheQuest(q,A)
     local catalog=A.DungeonCatalog
-    local parent=catalog and catalog.version==A.clientVersion and catalog.prerequisites and catalog.prerequisites[id]
+    local parent=q.taskFacts and q.taskFacts.prerequisite or
+        catalog and catalog.version==A.clientVersion and catalog.prerequisites and catalog.prerequisites[id]
     if parent and not next(q.preQuestGroup or {}) and not next(q.preQuestSingle or {}) then
         q.preQuestGroup={parent}
     end
     q.repeatable = math.floor((q.specialFlags or 0) / 1) % 2 == 1
     q.title = q.name or ("任务 #" .. id)
-    q.taskFacts=self:CacheQuest(q,A)
+    if q.taskFacts and q.taskFacts.requiredLevel~=nil then
+        q.questLevel,q.requiredLevel=q.taskFacts.level,q.taskFacts.requiredLevel
+    end
     local sorts=A.TaskFacts and A.TaskFacts.cacheXP and A.TaskFacts.cacheXP.eventSorts
     if not q.taskFacts and sorts and sorts[-(q.zoneOrSort or 0)] then q.taskFacts={hidden="event"} end
     self.cache[id] = q
@@ -581,8 +585,8 @@ function D:CacheQuest(q,state)
     if not cache or (state.clientVersion or A.clientVersion)~=cache.version or
         (state.interface or A.interface)~=cache.interface then return end
     local facts=cache.quests[q.id]
-    -- Scaling quests retain their objective requirements; their XP still needs a matching level in TaskGuide.XP.
-    if facts and (facts.level==q.questLevel or q.questLevel==-1) and
+    -- The audited Forever directory supplies both level fields by quest ID.
+    if facts and (facts.requiredLevel~=nil or facts.hidden=="retired" or facts.level==q.questLevel or q.questLevel==-1) and
         (not facts.sourceItemId or facts.sourceItemId==(q.sourceItemId or 0)) then return facts end
 end
 

@@ -16,6 +16,7 @@ QUEST_FILE = f".dependencies/eg-link-{QUEST_REV[:8]}/{BUILD}/quests.enUS.json"
 SUPPLEMENT_BUILD = "1.60.1.70938"
 SUPPLEMENT_FILE = f".dependencies/eg-link-{QUEST_REV[:8]}/{SUPPLEMENT_BUILD}/quests.enUS.json"
 PINS = {
+    'tools/wowhead_forever_quests.csv': 'ffa4919829da84dae68ae0a808fa74940e98890e2050cd673942f86ac4c552ce',
     SUPPLEMENT_FILE: "cc038ecb07f37a74b4bde7e6663950288205487b26d11fdd30687e2811b870f7",
     f".dependencies/QuestXP-{SUPPLEMENT_BUILD}.csv": "1513f3f2646ae0b33b79de6219614792f0dbc050bb5bd76c1c4f0fce668a86fd",
     f'.dependencies/QuestSort-{BUILD}.csv': '9cc9cbe418ab27ecc218e4699180520471eb3521514fe0b6b25e591e86a94a3f',
@@ -33,6 +34,40 @@ def reward(tier, multiplier, quest_level, player_level):
     raw = int(tier * Fraction(str(multiplier)) * factor / 10)
     unit = 50 if raw > 1000 else 25 if raw > 500 else 10 if raw > 100 else 5
     return (raw + unit // 2) // unit * unit
+
+
+def xp_curve(level, tier, multiplier, listed_base=None):
+    curve = []
+    for player_level in range(1, 60):
+        xp = reward(tier, multiplier, level, player_level)
+        if listed_base is not None and player_level <= level + 5:
+            xp = listed_base
+        if not curve or curve[-1][1] != xp:
+            curve.append([player_level, xp])
+    return curve
+
+
+def apply_directory(quests):
+    with (ROOT / 'tools/wowhead_forever_quests.csv').open() as stream:
+        for entry in csv.DictReader(stream):
+            ident = entry['id']
+            fact = quests.setdefault(ident, {})
+            if entry['availability']:
+                fact['hidden'] = entry['availability']
+            if entry['availability'] == 'retired':
+                continue
+            level = int(entry['level'])
+            assert fact.get('level', level) == level, ident
+            fact.update(level=level, requiredLevel=int(entry['requiredLevel']))
+            if not entry['xp']:
+                assert not fact.get('xp') or fact['xp'] == [[1, 0]], ident
+                fact.pop('xp', None)
+                continue
+            base = int(entry['xp'])
+            cached = fact.get('xp')
+            # Keep the client curve when its base agrees after in-game rounding.
+            if not cached or cached[0][1] not in (base, reward(base, 1, level, level)):
+                fact['xp'] = xp_curve(level, base, 1, listed_base=base)
 
 
 def load():
@@ -73,11 +108,7 @@ def load():
         assert type(difficulty) is int and 0 <= difficulty < 10, id
         assert type(multiplier) in (int, float) and 0 <= multiplier <= 100, id
         assert q.get('sources', 0) > 0, id
-        curve = []
-        for player_level in range(1, 60):
-            xp = reward(tiers[level][difficulty], multiplier, level, player_level)
-            if not curve or curve[-1][1] != xp:
-                curve.append([player_level, xp])
+        curve = xp_curve(level, tiers[level][difficulty], multiplier)
         objectives, complex_objectives = [], False
         for objective in q.get('objectives', []):
             kind = {'monster': 'npc', 'gameObject': 'object', 'item': 'item',
@@ -207,23 +238,27 @@ def load():
                     targets.append(dict(kind=parts[0], id=int(parts[1])))
             curves[id].setdefault('itemUses', {})[item] = dict(spellId=spell, targets=targets)
             used_items.append(dict(id=int(id), item=int(item), spell=spell))
+    apply_directory(curves)
+    # The Forever successor to retired #1374 follows Checking Things Out.
+    assert quests['93122']['nextQuestId'] == 93128
+    curves['93128'].update(prerequisite=93122, requiredLevel=quests['93128']['minLevel'])
     matched, skipped = [], []
     for id, records in observations['quests'].items():
         for observed in records:
             level = observed.get('level')
-            if id not in curves or type(level) is not int or not 1 <= level < 60 or observed.get('xpDisabled') or 'xp' not in observed:
+            if not curves.get(id, {}).get('xp') or type(level) is not int or not 1 <= level < 60 or observed.get('xpDisabled') or 'xp' not in observed:
                 skipped.append(dict(id=int(id), observation=observed))
                 continue
             q = quests[id]
             r = q['rewards']
-            xp = reward(tiers[q['level']][r['xpDifficulty']], r['xpMultiplier'], q['level'], level)
+            xp = next(xp for start, xp in reversed(curves[id]['xp']) if start <= level)
             assert xp == observed['xp'], (id, level, xp, observed['xp'])
             matched.append(dict(id=int(id), questLevel=q['level'], playerLevel=level, xp=xp,
                                 multiplier=r['xpMultiplier'], sources=observed['sources']))
     assert matched, 'No independent turn-in observations checked'
     data = dict(version='1.60.1', build='70862', interface=16001, quests=curves, eventSorts=event_sorts)
-    report = dict(source='EG Link server quest cache + Forever QuestXP client table', build=BUILD,
-                  commit=COMMIT, license='CC BY 4.0', attribution=cache['meta']['attribution'],
+    report = dict(source='EG Link server quest cache + Forever QuestXP client table + Wowhead Forever quest facts', build=BUILD,
+                  commit=COMMIT, license='CC BY 4.0', licenseScope='EG Link observations', attribution=cache['meta']['attribution'],
                   url=f'https://github.com/JIVESCORP/eg-link-output-wowf/tree/{COMMIT}/data/wowf/{BUILD}',
                   questURL=f'https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/{QUEST_REV}/data/wowf/{BUILD}/quests.enUS.json',
                   sortURL=f'https://wago.tools/db2/QuestSort?build={BUILD}',
@@ -232,6 +267,12 @@ def load():
                   supplementURL=f'https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/{QUEST_REV}/data/wowf/{SUPPLEMENT_BUILD}/quests.enUS.json',
                   xpRows=sum('xp' in q for q in curves.values()), excluded=excluded,
                   objectiveSupplements=supplements,
+                  directory=dict(url='https://www.wowhead.com/forever/quests',
+                                 events='https://www.wowhead.com/forever/quests/world-events',
+                                 successor='https://www.wowhead.com/forever/quest=93128/khan-jehn',
+                                 checked='2026-11-19', input='tools/wowhead_forever_quests.csv',
+                                 scope='Numeric quest facts and availability by ID. Blank XP stays unknown. '
+                                       'Event flags also retain Forever quest categories.'),
                   observationChecks=matched, skippedObservations=skipped, clientVerified=False,
                   objectiveLocations=dict(quests=len({o['id'] for o in located}), objectives=len(located),
                                           points=sum(o['points'] for o in located), accepted=located, rejected=rejected,

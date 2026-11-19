@@ -72,13 +72,14 @@ def main():
     cache, cache_report = load_cache_xp()
     quests = cache['quests']
     reward_unlocks(quests)
-    generated = ('local _,A=...\n-- Forever server observations from Efficient Games (CC BY 4.0); '
-                 'derived objectives, XP and rewards. See docs/TASK_XP_AUDIT.json.\n'
+    generated = ('local _,A=...\n-- Forever server observations from Efficient Games (CC BY 4.0) '
+                 'and numeric quest facts from Wowhead Forever. See docs/TASK_XP_AUDIT.json.\n'
                  'A.TaskFacts={cacheXP=' + lua(cache) + '}\n')
     report = {'source': cache_report['source'], 'url': cache_report['questURL'], 'license': 'CC BY 4.0',
+              'licenseScope': 'EG Link observations',
               'build': cache_report['build'], 'questAudit': 'TASK_XP_AUDIT.json', 'effectTables': EFFECT_PINS,
               'quests': len(quests), 'rewardRows': sum('rewards' in row for row in quests.values()),
-              'xpRows': cache_report['xpRows'], 'objectives': sum(len(row['objectives']) for row in quests.values()),
+              'xpRows': cache_report['xpRows'], 'objectives': sum(len(row.get('objectives', [])) for row in quests.values()),
               'mountRewards': sum('mountReward' in row for row in quests.values()),
               'skillRewards': sum('learnedSpells' in row for row in quests.values())}
     outputs = {ROOT / 'Data/TaskFacts.lua': generated,

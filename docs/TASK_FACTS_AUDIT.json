@@ -1,7 +1,8 @@
 {
-  "source": "EG Link server quest cache + Forever QuestXP client table",
+  "source": "EG Link server quest cache + Forever QuestXP client table + Wowhead Forever quest facts",
   "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/30c3bb9c8e792208feab362357471603dc51e12e/data/wowf/1.60.1.70862/quests.enUS.json",
   "license": "CC BY 4.0",
+  "licenseScope": "EG Link observations",
   "build": "1.60.1.70862",
   "questAudit": "TASK_XP_AUDIT.json",
   "effectTables": {
@@ -9,9 +10,9 @@
     "ItemXItemEffect": "15dc36eec90ca5768e00469cb8065aedf82efcf205ca03281daf6aac69ca1885",
     "SpellEffect": "cc8f167fe246b495294b560196f6c59439f703e8f937ddb6acd81157bd5f8b9c"
   },
-  "quests": 5350,
+  "quests": 6074,
   "rewardRows": 5350,
-  "xpRows": 5350,
+  "xpRows": 5764,
   "objectives": 5485,
   "mountRewards": 28,
   "skillRewards": 234
