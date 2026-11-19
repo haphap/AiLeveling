@@ -4,6 +4,11 @@ local palette=UI.colors
 local spacing=UI.metrics
 local media="Interface\\AddOns\\AiLeveling\\Media\\"
 
+local function setHUDIcon(texture,icon,tint)
+    texture:SetTexture(media..(icon=="compass" and icon or "hud-"..icon)..".tga")
+    texture:SetVertexColor(unpack(tint))
+end
+
 local function nearbyDistance(yards)
     local meters=A.settings.distanceUnits=="meters"
     return string.format("%d %s",math.floor(yards*(meters and 0.9144 or 1)/5+0.5)*5,meters and "米" or "码")
@@ -103,7 +108,7 @@ function UI.TrackerJourney(state,action)
             walk(step.position,nil,step.arrival)
             local verb=({accept="接取",objective="完成",turnin="交付"})[step.kind]
             if verb then
-                result.steps[#result.steps+1]={kind=step.kind,title=verb.." "..(step.title or "任务"),task=true}
+                result.steps[#result.steps+1]={kind=step.kind,title=verb.." "..(step.title or "任务"),task=true,action=step}
             end
             break
         end
@@ -313,7 +318,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
     if active then
         model.title=active.title or model.title
         for _,objective in ipairs(active.objectives or {}) do
-            model.objectives[#model.objectives+1]={text=objective.text or "任务目标",done=objective.finished==true,type=objective.type,
+            model.objectives[#model.objectives+1]={text=objective.text or "任务目标",done=objective.finished==true,type=objective.type,targetKind=objective.targetKind,areaTriggerId=objective.areaTriggerId,
                 have=objective.numFulfilled,need=objective.numRequired}
         end
     end
@@ -1103,9 +1108,12 @@ local function renderObjectives(owner,parent,pool,objectives,sharedIndex)
         local need,have=objective.need or objective.numRequired,objective.have or objective.numFulfilled or 0
         row.known=type(need)=="number" and need>0
         row.ratio=done and 1 or row.known and math.max(0,math.min(1,have/need)) or 0
+        local icon=UI.ObjectiveIcon(objective)
         local purchase=objective.purchase
         for _,stage in ipairs(owner.candidate and owner.candidate.stages or {}) do
-            if stage.kind=="objective" and stage.objectiveIndex==(sharedIndex or i) then purchase=purchase or stage.purchase;break end
+            if stage.kind=="objective" and stage.objectiveIndex==(sharedIndex or i) then
+                icon=icon or UI.ObjectiveIcon(stage);purchase=purchase or stage.purchase;break
+            end
         end
         row.purchase=not done and (not row.known or have<need) and UI.PurchaseText(purchase) or nil
         local label=objective.text or "任务目标"
@@ -1113,9 +1121,8 @@ local function renderObjectives(owner,parent,pool,objectives,sharedIndex)
         row.text:SetText(label)
         row.purchaseText:SetText(row.purchase and ("可购买 · "..(purchase.name or ("商人 #"..purchase.npcId))) or "")
         row.purchaseText:SetShown(row.purchase~=nil)
-        row.text:SetTextColor(unpack(done and palette.muted or UI.daylight and palette.white or objective.type=="item" and palette.purple or palette.blue))
-        row.icon:SetTexture(media.."hud-"..(done and "turnin" or objective.type=="item" and "collect" or "objective")..".tga")
-        row.icon:SetVertexColor(unpack(done and palette.green or objective.type=="item" and palette.purple or palette.gold))
+        row.text:SetTextColor(unpack(done and palette.muted or UI.daylight and palette.white or icon=="collect" and palette.purple or palette.blue))
+        setHUDIcon(row.icon,done and "turnin" or icon or "target",done and palette.green or icon=="collect" and palette.collect or palette.gold)
         row.count:SetText(row.known and string.format("%d/%d",have,need) or "")
         row.count:SetTextColor(unpack(done and palette.green or palette.white))
         row.check:SetText(done and "✓" or "□");row.check:SetTextColor(unpack(done and palette.green or palette.muted))
@@ -1235,7 +1242,7 @@ function UI:UpdateNearby(along)
     if type(need)=="number" and need>0 then title=string.format("%s，还差 %d",title,math.max(0,need-have)) end
     notice.key,notice.action,notice.title=bestKey,best.action,title
     notice.body:SetText(title.."  ·  "..nearbyDistance(best.distance))
-    notice.icon:SetTexture(media.."hud-"..(goal.type=="item" and "collect" or "objective")..".tga")
+    setHUDIcon(notice.icon,UI.ObjectiveIcon(goal) or UI.ObjectiveIcon(step) or "target",palette.gold)
     local scale=A.settings.fontScale or 1
     notice.mark:ClearAllPoints();notice.mark:SetPoint("TOPLEFT",1,-1);notice.mark:SetPoint("BOTTOMLEFT",1,1);notice.mark:SetWidth(2*scale)
     notice.icon:ClearAllPoints();notice.icon:SetPoint("LEFT",14*scale,0);notice.icon:SetSize(16*scale,16*scale)
@@ -1266,8 +1273,11 @@ function UI:RenderJourney(journey,dynamic)
         end
         if not dynamic then
             row.number:SetText(i)
-            row.icon:SetTexture(media.."hud-"..(({walk="location",zeppelin="boat",flight="flight",boat="boat",tram="tram",hearth="hearth",accept="accept",objective="objective",turnin="turnin"})[step.kind] or "location")..".tga")
-            row.icon:SetVertexColor(unpack(i==1 and palette.gold or palette.blue))
+            local task=step.action
+            local quest=task and (A.state.quests or {})[task.questId]
+            local icon=task and UI.QuestIcon(step.kind,task,quest and quest.objectives) or
+                ({walk="location",zeppelin="boat",flight="flight",boat="boat",tram="tram",hearth="hearth"})[step.kind] or "location"
+            setHUDIcon(row.icon,icon,icon=="collect" and palette.collect or i==1 and palette.gold or palette.blue)
             row.title:SetText(step.title);row.title:SetTextColor(unpack(i==1 and palette.gold or palette.white))
             row.detail:SetText(step.detail or "")
             row:SetShown(i==1 or not T.journeyClosed)
@@ -1387,14 +1397,14 @@ function UI:RenderTracker(along)
     T.experience:SetText(A.char.paused and "已暂停" or model.dungeonName and (#model.rows.." 项") or "已接 "..count.." 项")
     T.currentMark:SetColorTexture(self:Accent())
     T.currentMark:SetShown(model.questId~=nil)
-    T.actionIcon:SetTexture(media..(model.dungeonName and "hud-entry" or ({accept="hud-accept",objective="hud-objective",turnin="hud-turnin"})[model.kind] or "compass")..".tga")
+    local currentIcon=model.dungeonName and "entry" or UI.QuestIcon(model.kind,action,model.objectives)
     self.title:SetText(questTitle(model.questId,model.title))
     self.title:SetTextColor(unpack(model.kind=="turnin" and palette.green or self.daylight and palette.white or model.kind=="accept" and palette.blue or palette.gold))
     local place,name,area
     if model.kind and not A.error then place,name,area=destination(action) end
     name=model.dungeonName or name
     T.location:SetText(name and (self:Icon("hud-location",18).." "..name) or "当前行程")
-    T.actionIcon:SetVertexColor(unpack(model.kind=="turnin" and palette.green or model.kind=="accept" and palette.blue or palette.gold))
+    setHUDIcon(T.actionIcon,currentIcon,currentIcon=="collect" and palette.collect or palette[model.kind] or palette.gold)
     T.area:SetText(area or "")
     local nextStep,nextId,nextTitle=model.nextStep,model.nextId,model.nextTitle
     T.primaryLabel:SetText(model.questId and (model.kind=="objective" and current and not current.ready and "进行中" or self.QuestStatus(state,model.questId,plan)) or "")
@@ -1430,9 +1440,8 @@ function UI:RenderTracker(along)
     end
     T.thenText:SetText(following)
     nextRow.title:SetText(title);nextRow.title:SetTextColor(unpack(self.daylight and tone~="green" and palette.white or palette[tone]))
-    nextRow.icon:SetTexture(media..(nextStep and nextStep.kind=="objective" and nextStep.targetKind=="item" and "hud-collect" or
-        ({accept="hud-accept",objective="hud-objective",turnin="hud-turnin"})[nextStep and nextStep.kind] or "compass")..".tga")
-    nextRow.icon:SetVertexColor(unpack(palette[tone]));nextRow.progress:SetText(instruction)
+    local nextIcon=UI.QuestIcon(nextStep and nextStep.kind,nextStep,nextQuest and nextQuest.objectives)
+    setHUDIcon(nextRow.icon,nextIcon,nextIcon=="collect" and palette.collect or palette[tone]);nextRow.progress:SetText(instruction)
     nextRow.detail=(nextRow.status or "").."\n"..instruction
     renderObjectives(nextRow,nextRow.objectiveFrame,nextRow.objectives,taskStep and not sameQuest and nextQuest and not nextQuest.ready and nextQuest.objectives or {})
     local visit=not model.dungeonName and plan.regionPlan
@@ -1516,12 +1525,10 @@ function UI:RenderTracker(along)
     for i,item in ipairs(model.rows) do
         local row=self:TrackerRow(i)
         local isCurrent=item.questId and item.questId==model.questId
-        row.icon:SetTexture(media.."hud-"..(item.serviceStop and "flight" or item.dungeonId and "entry" or item.kind)..".tga")
         local title=questTitle(item.questId,item.title,item.candidate)
         row.title:SetText(model.dungeonName and (title.."  |cff"..self.hex[item.kind=="accept" and "blue" or item.kind=="turnin" and "green" or "muted"]..item.status.."|r") or title)
         local color=(item.deferred or item.candidate and item.candidate.lowValue) and palette.muted or item.kind=="turnin" and palette.green or item.accepted and palette.gold or palette.blue
         row.title:SetTextColor(unpack(self.daylight and not item.deferred and item.kind~="turnin" and palette.white or color))
-        row.icon:SetVertexColor(unpack(color))
         row.status=item.deferred and (item.accepted and "已接·暂缓" or "未接·暂缓") or item.status
         local progress=item.delivery or item.progress
         if item.along and not item.serviceStop then
@@ -1554,6 +1561,9 @@ function UI:RenderTracker(along)
         local objectives=item.objectives or item.accepted and item.kind~="turnin" and not item.deferred and
             not (item.candidate and (item.candidate.lowValue or item.candidate.entryBlocked)) and native and native.objectives or {}
         if item.sharedObjective then objectives={objectives[item.sharedObjective]} end
+        local step=item.sideAction or item.dungeonAction or item.candidate and item.candidate.executionAction
+        local icon=item.serviceStop and "flight" or item.dungeonId and "entry" or UI.QuestIcon(item.kind,step,objectives)
+        setHUDIcon(row.icon,icon,icon=="collect" and color~=palette.muted and palette.collect or color)
         renderObjectives(row,row.objectiveFrame,row.objectives,objectives,item.sharedObjective)
         if #objectives>0 and not item.objectives and not item.delivery and not (item.candidate and item.candidate.itemShortage) then row.progress:SetText("") end
         row.detail=table.concat({row.status,item.groupTitle or "",item.delivery or item.progress},"\n")

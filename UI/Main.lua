@@ -15,6 +15,7 @@ local colors=UI.colors
 UI.daylight=DaylightUI and DaylightUI.API and DaylightUI.API.major==1 and DaylightUI.API
 colors.accent={unpack(colors.gold)}
 colors.accept=colors.blue;colors.objective=colors.gold;colors.turnin=colors.green
+colors.collect={unpack(colors.purple)}
 UI.hex={}
 function UI:RefreshPalette()
     local api=self.daylight
@@ -80,6 +81,31 @@ function UI:RegisterFont(text,size,role,flags)
     size=type(size)=="string" and self.fontSizes[size] or size
     self.fonts[#self.fonts+1]={text=text,size=size,role=role,flags=flags,daylightRole=daylightRole}
     self:StyleFont(self.fonts[#self.fonts])
+end
+
+local objectiveIcons={item="collect",monster="objective",npc="objective",areaTrigger="location",areaTriggerEnter="location",
+    object="target",event="target",killcredit="target",spell="target",reputation="target"}
+function UI.ObjectiveIcon(goal)
+    if not goal then return end
+    if goal.areaTriggerId and goal.areaTriggerId>0 then return "location" end
+    return objectiveIcons[goal.type or goal.objectiveType] or objectiveIcons[goal.targetKind]
+end
+
+function UI.QuestIcon(kind,step,goals)
+    if kind=="accept" or kind=="turnin" then return kind end
+    if kind~="objective" then return "compass" end
+    if step and step.kind=="objective" then
+        local quest=(A.state.quests or {})[step.questId]
+        local selected=quest and (quest.objectives or {})[step.objectiveIndex]
+        if not (selected and selected.finished) then
+            local icon=step.areaTriggerId and UI.ObjectiveIcon(step) or UI.ObjectiveIcon(selected) or UI.ObjectiveIcon(step) or UI.ObjectiveIcon(step.position)
+            if icon then return icon end
+        end
+    end
+    for _,goal in ipairs(goals or {}) do
+        if not (goal.finished or goal.done) then return UI.ObjectiveIcon(goal) or "target" end
+    end
+    return "target"
 end
 
 function UI:Icon(name,size)

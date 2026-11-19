@@ -158,7 +158,8 @@ function B:TaskRows(mode)
             meta[#meta+1]=skillName(q.requiredSkill[1]).." "..(state.skills[q.requiredSkill[1]] or 0).."/"..q.requiredSkill[2]
         end
         rows[#rows+1]={key="q:"..id,title=choice.title or q and q.title or "任务 #"..id,sub=table.concat(meta," · "),
-            icon=status=="可交付" and "turnin" or state.quests[id] and "objective" or "accept",tone=c,
+            icon=A.UI.QuestIcon(status=="可交付" and "turnin" or state.quests[id] and "objective" or "accept",
+                id==currentId and action or choice.executionAction,state.quests[id] and state.quests[id].objectives),tone=c,
             choice=choice,q=q,allowed=allowed,reason=why,prerequisite=pre,questId=id,current=id==currentId}
     end
     local choices={}
@@ -478,7 +479,7 @@ function B:Detail()
             local where=stage.recipient or stage.position
             if stage.kind~="objective" and where and where.entityName then
                 lines[#lines+1]=A.UI:Icon(stage.kind,16).." "..(stage.kind=="turnin" and "交付给 " or "接取于 ")..color(blue,where.entityName)
-            elseif not active and stage.kind=="objective" and stage.text then lines[#lines+1]=A.UI:Icon("objective",14).." "..stage.text end
+            elseif not active and stage.kind=="objective" and stage.text then lines[#lines+1]=A.UI:Icon(A.UI.QuestIcon(stage.kind,stage),14).." "..stage.text end
         end
         if e.choice.lowValue then lines[#lines+1]=color(gold,e.choice.lowValue.suggestion).." · "..e.choice.lowValue.reason end
         if e.choice.entryBlocked then lines[#lines+1]=e.choice.entryBlocked end
@@ -807,7 +808,9 @@ function B:DungeonDetail(e)
         row.deferred=(A.state.skipped or {})[task.id] or (A.state.chainDeferred or {})[task.id]
         row.revision=A.plan and A.plan.revision
         row.text:SetWidth(292-64*(A.settings.fontScale or 1));row.text:SetText(task.title);row.text:SetTextColor(unpack(colors.blue))
-        row.icon:SetText(A.UI:Icon(task.group==1 and "turnin" or task.group==2 and "objective" or "accept",14))
+        local active=(A.state.quests or {})[task.id]
+        local icon=A.UI.QuestIcon(task.group==1 and "turnin" or task.group==2 and "objective" or "accept",nil,active and active.objectives)
+        row.icon:SetText(A.UI:Icon(icon,14))
         row.status:SetWidth(64*(A.settings.fontScale or 1));row.status:SetText(i>=insideFirst and i<insideFirst+#inside and "副本内接" or task.group==4 and (task.preparation and "需前置" or "未解锁") or task.status)
         row.status:SetTextColor(unpack(tones[task.group]))
         local direction,seconds=d:TaskDirection(task)

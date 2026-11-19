@@ -535,8 +535,9 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
                 {id=6,title="已交付",group=5},{id=7,title="已暂缓",group=4}}
         end}
     B.indexReady=true;B.state.locked=1
-    B.state.quests[1].objectives={{text="零件",numRequired=6,numFulfilled=2},{text="图纸",numRequired=1,numFulfilled=0}}
+    B.state.quests[1].objectives={{text="零件",targetKind="item",numRequired=6,numFulfilled=2},{text="调查图纸",type="object",numRequired=1,numFulfilled=0}}
     U:RenderTracker();eq(T.rows[2].objectives[1].count.value,"2/6");eq(T.rows[2].objectives[2].count.value,"0/1")
+    assert(T.rows[2].icon.texture:find("hud-collect.tga",1,true));eq(T.rows[2].objectives[1].icon.texture,T.rows[2].icon.texture)
     eq(T.rows[3].status,"未接取");eq(T.rows[4].questId,5);eq(T.rows[3].parent,T.queueChild)
     eq(T.rows[3].progress.value,"向「机器人」接取任务。")
     eq(#T.model.rows,4);eq(T.queueLabel.value,"进行中 1 · 未接取 2 · 可交付 1")
@@ -546,9 +547,10 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     C_Timer={After=function(_,fn) timers[#timers+1]=fn end}
     eq(T.model.feedback,nil)
     local savedQuests=B.state.quests
-    B.state.quests={[1]={objectives={{text="零件",finished=true,numRequired=6,numFulfilled=6},{text="图纸",numRequired=1}}}}
+    B.state.quests={[1]={objectives={{text="零件",finished=true,numRequired=6,numFulfilled=6},{text="调查图纸",type="object",numRequired=1}}}}
     U:RenderTracker();eq(T.model.feedback,"目标完成 · 零件")
-    eq(T.rows[2].objectives[1].check.value,"✓");U:RenderTracker();eq(#timers,1)
+    eq(T.rows[2].objectives[1].check.value,"✓");assert(T.rows[2].icon.texture:find("hud-target.tga",1,true))
+    assert(T.rows[2].objectives[1].icon.texture:find("hud-turnin.tga",1,true));U:RenderTracker();eq(#timers,1)
     B.Dungeon.Tasks=function() return {{id=1,title="收集零件",allowed=true,group=1,position={entityName="技师"}}} end
     B.state.quests={[1]={ready=true,title="收集零件"}};B.state.revision=(B.state.revision or 0)+1
     U:RenderTracker();eq(T.model.feedback,"任务完成 · 收集零件（本内可交）")

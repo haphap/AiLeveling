@@ -145,7 +145,7 @@ end
 
 local A={settings={fontScale=1,density="normal",arrow=true,distanceUnits="meters"},char={},indexReady=true,
     state={class="PALADIN",level=8,xp=3200,maxXP=5040,runSpeed=7,position={map=1429,x=0.46,y=0.42},quests={
-        [7]={title="狗头人的威胁",level=8,objectives={{text="消灭狗头人歹徒",numFulfilled=6,numRequired=10},{text="消灭狗头人苦力",numFulfilled=4,numRequired=4,finished=true}}},
+        [7]={title="狗头人的威胁",level=8,objectives={{text="消灭狗头人歹徒",type="monster",numFulfilled=6,numRequired=10},{text="消灭狗头人苦力",type="monster",numFulfilled=4,numRequired=4,finished=true}}},
         [33]={title="林中的群狼",level=9,objectives={{type="item",text="收集狼肉",numFulfilled=3,numRequired=8}}},
         [18]={title="矿工归来",level=10,ready=true,objectives={}},
         [47]={title="把收集的金砂交给治安官",level=10,objectives={{type="item",text="收集金砂",numFulfilled=5,numRequired=10}}},
@@ -420,7 +420,7 @@ if dungeonHUD then
     local d=A.DungeonCatalog.entries["reference:90"]
     A.state.quests[4601]={title=action.title,ready=false}
     A.state.quests[2924]={objectives={{text="基础模组",type="item",numFulfilled=2,numRequired=12}}}
-    A.state.quests[2929]={objectives={{text="麦克尼尔·瑟玛普拉格",numFulfilled=0,numRequired=1}}}
+    A.state.quests[2929]={objectives={{text="麦克尼尔·瑟玛普拉格",type="monster",numFulfilled=0,numRequired=1}}}
     local rows={
         {id=4601,title=action.title,group=1,allowed=true},
         {id=2924,title="基础模组",allowed=true,group=2},
@@ -464,7 +464,7 @@ if arg[1]=="assist" then
     table.insert(A.plan.taskChoices[1].stages,1,action)
     local shared=A.plan.taskChoices[3]
     A.state.quests[33].title="矿洞守卫"
-    A.state.quests[33].objectives={{text="消灭狗头人歹徒",numFulfilled=3,numRequired=8}}
+    A.state.quests[33].objectives={{text="消灭狗头人歹徒",type="monster",numFulfilled=3,numRequired=8}}
     local stage=shared.actions[1];stage.objectiveIndex=1;stage.targetKind="npc";stage.targetId=10;stage.position=action.position
     table.insert(shared.stages,1,stage)
     local names={[10]="狗头人歹徒",[20]="狗头人劳工"}
