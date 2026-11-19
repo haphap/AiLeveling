@@ -184,14 +184,11 @@ function UI:DaylightShell(frame,alpha)
     local refresh=paint
     if frame==self.navFrame then
         refresh=function()
-            local own=api.GetSetting("Quests","boxAlphaOwn") and api.GetSetting("Quests","boxAlpha")
-            opts.bgAlpha=own or math.min(alpha,api.GetSetting("general","windowAlpha") or 1)
             opts.noBorder=api.GetSetting("Quests","boxBorder")==false
             paint()
         end
         api.On("SettingChanged",function(scope,key)
-            if scope=="Quests" and (key=="boxAlphaOwn" or key=="boxAlpha" or key=="boxBorder") or
-                scope=="general" and key=="windowAlpha" then refresh() end
+            if scope=="Quests" and key=="boxBorder" then refresh() end
         end,"AiLeveling")
     end
     self.shells[#self.shells+1]=refresh

@@ -71,10 +71,10 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     assert(B.UI.frame.daylightOpts and B.UI.details.daylightOpts)
     eq(B.UI.frame.daylightOpts.bgAlpha,0.4);eq(B.UI.title.fontFace,face);eq(B.UI.tracker.header.shown,false)
     eq(B.UI.navFrame.daylightOpts.panel,true);eq(B.UI.navFrame.daylightOpts.bgAlpha,0.70)
-    windowAlpha=0.35;listeners.SettingChanged("general","windowAlpha");eq(B.UI.navFrame.daylightOpts.bgAlpha,0.35)
+    windowAlpha=0.35;listeners.SettingChanged("general","windowAlpha");eq(B.UI.navFrame.daylightOpts.bgAlpha,0.70)
     questBox.boxAlphaOwn,questBox.boxAlpha,questBox.boxBorder=true,0.45,false
-    listeners.SettingChanged("Quests","boxAlpha");eq(B.UI.navFrame.daylightOpts.bgAlpha,0.45)
-    eq(B.UI.navFrame.daylightOpts.noBorder,true)
+    listeners.SettingChanged("Quests","boxBorder")
+    eq(B.UI.navFrame.daylightOpts.noBorder,true);eq(B.UI.navFrame.daylightOpts.bgAlpha,0.70)
     B.settings.alpha=0.5;B.UI:ApplyStyle()
     eq(B.UI.tracker.navBearing.alpha,0.5);eq(B.UI.nav.alpha,0.5);eq(B.UI.navFrame.alpha or 1,1)
     eq(B.UI.tracker.headerLine.shown,false);eq(B.UI.title.fontSize,13);eq(B.UI.tracker.location.fontSize,15)
