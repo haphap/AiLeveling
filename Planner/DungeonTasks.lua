@@ -245,11 +245,11 @@ function D.Tasks(d,state,data,targets)
             local allowed,reason=A.Eligibility.Check(q,state,data)
             local group=status=="ready" and 1 or status=="active" and 2 or
                 status=="turnedIn" and not q.repeatable and 5 or allowed and 3 or 4
-            local point,unavailable,pickupItem,areaId
+            local point,unavailable,pickupItem,areaId,objectiveIndex
             if allowed then point,unavailable,pickupItem=data:Target(q,state) end
             if allowed and not point and not unavailable and data.UnmappedTargetArea then
-                local area=data:UnmappedTargetArea(q,state)
-                if D.TaskInstance(nil,state,data,area) then areaId=area end
+                local area,index=data:UnmappedTargetArea(q,state)
+                if D.TaskInstance(nil,state,data,area) then areaId,objectiveIndex=area,index end
             end
             local preparation=not allowed and group~=5 and A.Chains and A.Chains.Preparation and A.Chains.Preparation(id,data,state)
             local recipient
@@ -261,6 +261,7 @@ function D.Tasks(d,state,data,targets)
             local rewards={}
             if group~=5 and A.Gear and A.Gear.TaskBenefits then A.Gear.TaskBenefits(rewards,q,state,data) end
             rows[#rows+1]={id=id,title=q.title,group=group,allowed=allowed,reason=reason,position=point,areaId=areaId,pickupItem=pickupItem,
+                objectiveIndex=point and point.objectiveIndex or objectiveIndex,
                 xp=group~=5 and A.TaskGuide and A.TaskGuide.XP(q,state.level,state) or nil,
                 gear=rewards.gear,gearSources=rewards.gearSources,
                 requireCheck=not active and (unavailable or q.taskFacts and q.taskFacts.hidden) or nil,

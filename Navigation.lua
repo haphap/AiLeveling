@@ -51,6 +51,7 @@ end
 
 function N:SetPlan(plan)
     self.plan=plan
+    self.planInstance=A.state.inInstance and A.state.instanceId
     local current=self.actions and self.actions[self.index]
     local goal=self.actions and self.actions[#self.actions]
     local nextActions=plan.best and plan.best.actions or plan.travelActions or (plan.fallback and {plan.fallback}) or {}
@@ -161,6 +162,7 @@ function N:Current()
             self:ClearManual(false)
         end
     end
+    if A.state.inInstance and self.planInstance~=A.state.instanceId then return end
     local action=self.actions and self.actions[self.index]
     if not N.StaleAction(action) then return action end
 end

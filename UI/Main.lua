@@ -590,6 +590,7 @@ function UI:TaskLines(compact)
 end
 
 function UI:Render()
+    self:RenderDungeonGuide()
     self:RenderTracker()
     self:RefreshDetails()
 end

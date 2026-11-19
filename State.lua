@@ -249,7 +249,7 @@ function State:Refresh(force, manual)
     s.now, s.freeSlots = GetTime(), 0
     s.groupSize = math.max(1, s.groupSize)
     fingerprint[#fingerprint+1]=State.Group(s)
-    s.inInstance = IsInInstance()
+    s.inInstance,s.instanceType = IsInInstance()
     if GetInstanceInfo then
         local info={GetInstanceInfo()}
         s.instanceName,s.instanceId=info[1],info[8]

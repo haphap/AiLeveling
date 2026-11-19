@@ -286,6 +286,8 @@ test("飞行保留手动目的地且不混入步行校准",function()
     local action=B.Navigation:Current()
     B.UI.SetNavigation=function(_,distance,angle,unverified,guide) B.distance,B.angle,B.guide=distance,angle,guide end
     B.state.inInstance,B.state.instanceId,B.state.position=true,1,nil
+    B.Navigation:Update();eq(B.distance,nil);eq(B.guide,nil)
+    B.Navigation:SetPlan({fallback=action,revision=B.state.revision})
     B.Navigation.hbd.GetPlayerWorldPosition=function() return 0.8,0,1 end
     B.Navigation.hbd.GetWorldVector=function() return 0.5,100 end
     B.Navigation:Update();eq(nav,nil);eq(B.distance,100);eq(B.angle,0.5);eq(B.guide,action)

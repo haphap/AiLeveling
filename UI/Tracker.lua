@@ -1049,6 +1049,31 @@ function UI:CreateTracker()
     p=A.settings.navigationPosition
     if p then nav:ClearAllPoints();nav:SetPoint(p[1],UIParent,p[2],p[3],p[4]) end
     self:Movable(nav,"navigationPosition")
+    nav:SetClampedToScreen(true)
+    -- Anchor to the movable navigation HUD, but keep the card independent of arrow visibility.
+    local guide=CreateFrame("Button","AiLevelingDungeonGuide",UIParent,"BackdropTemplate")
+    T.dungeonGuide=guide
+    guide:SetSize(328,82);guide:SetPoint("TOP",nav,"CENTER",0,-16)
+    guide:SetClampedToScreen(true);guide:SetFrameStrata("HIGH")
+    if self.daylight then self:DaylightShell(guide,palette.hud[4])
+    else self:Rounded(guide,spacing.radius,palette.border);guide:SetBackdropColor(unpack(palette.hud));guide.material:Hide() end
+    guide.icon=guide:CreateTexture(nil,"ARTWORK");guide.icon:SetTexture(media.."hud-entry.tga")
+    guide.icon:SetSize(16,16);guide.icon:SetPoint("TOPLEFT",12,-10)
+    guide.place=text(guide,"caption",palette.gold);guide.place:SetPoint("TOPLEFT",34,-10);guide.place:SetWidth(192)
+    guide.link=text(guide,"caption",palette.blue);guide.link:SetPoint("TOPRIGHT",-12,-10)
+    guide.title=text(guide,"task",palette.white);guide.title:SetWidth(304)
+    guide.title:SetPoint("TOPLEFT",12,-32)
+    guide.body=text(guide,"body",palette.muted);guide.body:SetWidth(304)
+    guide.body:SetPoint("TOPLEFT",guide.title,"BOTTOMLEFT",0,-4)
+    guide:SetScript("OnClick",function()
+        if guide.dungeon then
+            self.Dungeon.selected=guide.dungeon.id
+            self.Browser:ClearSearch()
+            if self.Browser.dungeonDetail then self.Browser.dungeonDetail.showLoot=false end
+        end
+        self.details:Show();self:SelectTab(guide.dungeon and 4 or 1)
+    end)
+    guide:Hide()
     self.nav=text(nav,"brand","accent");self.nav:SetPoint("TOP",0,-37);self.nav:SetJustifyH("CENTER")
     T.navTitle=text(nav,"caption");T.navTitle:SetPoint("TOP",0,-62);T.navTitle:SetWidth(420);T.navTitle:SetJustifyH("CENTER")
     T.arrowLines={}
@@ -1804,9 +1829,75 @@ function UI:LayoutTracker()
 end
 
 local guideLabels={accept="接取任务",objective="任务目标",turnin="交付任务",dungeonLeave="离开副本"}
+-- Until a route for this instance is ready, use the same local quest rows as the dungeon book.
+local function localDungeonGuide(d,state)
+    if state.gearTarget or state.taskBatch and state.taskBatch.id~=d.id then return end
+    for _,row in ipairs(A.Dungeon.Tasks(d,state,A.Data)) do
+        if row.allowed and not row.requireCheck and (not row.lowValue or row.id==state.locked) and
+            (not state.taskBatch or state.taskBatch.baselines[row.id]~=nil) and
+            (not state.locked or state.locked==row.id) and (row.group~=3 or not A.Supplies.AcceptIssue(state)) and
+            A.Dungeon.TaskInstance(row.position,state,A.Data,row.areaId)==d then
+            local active=state.quests[row.id]
+            local kind=not active and "accept" or active.ready and "turnin" or "objective"
+            local index=row.objectiveIndex
+            local objective=active and active.objectives and active.objectives[index]
+            return A.Dungeon.TaskApproach({kind=kind,questId=row.id,title=row.title,position=row.position,
+                areaId=row.areaId,objectiveIndex=index,text=objective and objective.text},state,A.Data)
+        end
+    end
+end
+
+function UI:RenderDungeonGuide()
+    local card=self.tracker and self.tracker.dungeonGuide
+    if not card then return end
+    local s=A.state
+    local d=s.inInstance and A.DungeonCatalog and A.DungeonCatalog.entries["reference:"..tostring(s.instanceId)]
+    if not s.inInstance or not (d or s.instanceType=="party" or s.instanceType=="raid") or A.char.paused or s.dead then
+        card:Hide();card.dungeon,card.localDungeon,card.localStep,card.revision=nil,nil,nil,nil;return
+    end
+    local nav=A.Navigation
+    local action=(nav.manual or nav.planInstance==s.instanceId and s.instanceId) and nav:Current()
+    local phase=action and (guideLabels[action.kind] or action.kind=="dungeonRun" and "首领目标" or
+        action.kind=="selectionBlocked" and "任务条件")
+    if not phase then
+        if card.localDungeon~=d or card.revision~=s.revision or card.indexReady~=A.indexReady then
+            card.localStep=d and A.indexReady and localDungeonGuide(d,s)
+            card.localDungeon,card.revision,card.indexReady=d,s.revision,A.indexReady
+        end
+        action=card.localStep
+        phase=action and guideLabels[action.kind]
+    end
+    card.dungeon=d
+    local title=action and action.title
+    local body=action and action.text
+    if action then
+        local point=action.position
+        local name=point and point.entityName
+        local active=s.quests[action.questId]
+        local objective=active and active.objectives and active.objectives[action.objectiveIndex]
+        if point and point.travelHint then body=point.travelHint
+        elseif action.kind=="objective" and objective and objective.text then
+            body=objective.text
+            if (objective.numRequired or 0)>0 and not body:match("%d+%s*/%s*%d+") then
+                body=body..string.format(" · %d/%d",objective.numFulfilled or 0,objective.numRequired)
+            end
+        elseif name and action.kind=="accept" then body="向「"..name.."」接取任务。"
+        elseif name and action.kind=="turnin" then body="到「"..name.."」交付任务。" end
+    end
+    card.place:SetText(s.instanceName or d and d.title or "副本指引")
+    card.link:SetText(d and "任务详情  ›" or "任务行程  ›")
+    card.title:SetText(title and ((phase and phase.." · " or "")..title) or (d and "查看副本任务" or "查看当前任务"))
+    card.body:SetText(body or (d and "打开任务详情，查看接取地点、任务目标和交付人。" or "打开任务行程，查看已接任务及目标。"))
+    card:SetHeight(48+card.title:GetStringHeight()+card.body:GetStringHeight())
+    card:SetScale(A.settings.scale);card:SetAlpha(A.settings.alpha)
+    card:Show()
+end
+
 function UI:SetTrackerNavigation(distance,angle,unverified,guide)
     if not self.navFrame then return end
-    local show=A.settings.arrow and (distance~=nil or guide~=nil) and not A.char.paused
+    local card=self.tracker.dungeonGuide
+    local textOnly=guide and not distance and not (A.state.instanceType=="party" or A.state.instanceType=="raid" or card and card:IsShown())
+    local show=A.settings.arrow and (distance~=nil or textOnly) and not A.char.paused
     self.navFrame:SetShown(show==true)
     if not show then return end
     local action=guide or A.Navigation:Current()
@@ -1815,8 +1906,8 @@ function UI:SetTrackerNavigation(distance,angle,unverified,guide)
     local target=A.Navigation.Target(action)
     local hint=target and target.approximate and (target.sourceKind=="patrol" and " · 巡逻路线" or " · 区域参考点") or ""
     local title=(action and action.title or "目的地")..hint
-    if guide and not distance and guide.text and guide.text~=title then title=title.."\n"..guide.text end
-    self.tracker.navTitle:SetText(title)
+    if textOnly and guide.text and guide.text~=title then title=title.."\n"..guide.text end
+    self.tracker.navTitle:SetText(guide and card and card:IsShown() and "" or title)
     self.navFrame:SetHeight(math.max(90,70+self.tracker.navTitle:GetStringHeight()))
     local points={{-10,-6,0,7},{0,7,10,-6}}
     local cos,sin=math.cos(-(angle or 0)),math.sin(-(angle or 0))

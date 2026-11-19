@@ -514,9 +514,23 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     B.settings.arrow=false;U:SetNavigation(100,0.7,true);eq(U.navFrame.shown,false)
     B.settings.arrow=true;U:SetNavigation(nil);eq(U.navFrame.shown,false)
     local guide={kind="turnin",title="超级清洁器5200型！",text="在清洁区使用清洁器交付任务。"}
-    U:SetNavigation(nil,nil,nil,guide);eq(U.navFrame.shown,true);eq(U.nav.value,"交付任务")
-    eq(U.tracker.navTitle.value,guide.title.."\n"..guide.text);eq(U.tracker.arrowLines[1].shown,false)
-    B.settings.arrow=false;U:SetNavigation(nil,nil,nil,guide);eq(U.navFrame.shown,false);B.settings.arrow=true
+    local card=U.tracker.dungeonGuide
+    B.state.inInstance,B.state.instanceType,B.state.instanceId,B.state.instanceName=true,"party",90,"诺莫瑞根"
+    B.settings.arrow=false
+    B.DungeonCatalog={entries={["reference:90"]={id="reference:90"}}}
+    local indexReady=B.indexReady;B.indexReady=false
+    U:RenderDungeonGuide();eq(card.shown,true);eq(card.place.value,"诺莫瑞根");eq(card.title.value,"查看副本任务")
+    B.action=guide;B.Navigation.planInstance=90;U:RenderDungeonGuide()
+    U:SetNavigation(nil,nil,nil,guide);eq(U.navFrame.shown,false)
+    eq(card.title.value,"交付任务 · "..guide.title);eq(card.body.value,guide.text)
+    local browser,dungeon,selectTab=U.Browser,U.Dungeon,U.SelectTab
+    U.Browser={ClearSearch=function(b) b.cleared=true end,dungeonDetail={showLoot=true}};U.Dungeon={}
+    U.SelectTab=function(_,i) eq(i,4) end
+    card:Click();eq(U.Dungeon.selected,"reference:90");eq(U.Browser.cleared,true);eq(U.Browser.dungeonDetail.showLoot,false)
+    U.Browser,U.Dungeon,U.SelectTab=browser,dungeon,selectTab;U.details:Hide()
+    B.state.inInstance=false;U:RenderDungeonGuide();eq(card.shown,false)
+    B.indexReady=indexReady
+    B.settings.arrow=true
     U.navFrame.scripts.OnDragStop();eq(B.settings.navigationPosition[3],25)
     B:NormalizeSettings(B.settings);eq(B.settings.navigationPosition[3],25)
     B:RestoreSettings();eq(B.settings.navigationPosition,nil)

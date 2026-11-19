@@ -93,8 +93,10 @@ end
 local dungeonPreview=arg[1]=="dungeon"
 local planPreview=arg[1]=="plan"
 local regionDetail=arg[1]=="region-detail"
+local dungeonHUD=arg[1]=="dungeon-hud"
 local canvasWidth=(dungeonPreview or planPreview or regionDetail or arg[1]=="nearby") and 1080 or 560
 local canvasHeight=(dungeonPreview or planPreview or regionDetail) and 700 or 1100
+if dungeonHUD then canvasWidth,canvasHeight=420,220 end
 if not dungeonPreview and not planPreview and not regionDetail and arg[2]=="large" then canvasHeight=1450 end
 UIParent=widget("Root");UIParent:SetSize(canvasWidth,canvasHeight)
 CreateFrame=function(kind,_,parent) return widget(kind,parent) end
@@ -409,6 +411,17 @@ if arg[1]=="journey" then
     assert(T.model.rows[3].questId==66 and T.model.rows[3].status=="可交付")
 end
 if not regionDetail then A.UI.navFrame:ClearAllPoints();A.UI.navFrame:SetPoint("TOP",A.UI.frame,"BOTTOM",0,-54) end
+if dungeonHUD then
+    MinimapCluster:Hide();A.UI.frame:Hide()
+    A.state.inInstance,A.state.instanceType,A.state.instanceId,A.state.instanceName=true,"party",90,"诺莫瑞根"
+    A.Navigation.planInstance=90
+    action={kind="turnin",questId=4601,title="超级清洁器5200型！",text="在诺莫瑞根清洁区，使用「超级清洁器5200型」交付任务。从齿轮大厅上层走西南通道，岔路向北下楼。"}
+    A.DungeonCatalog={entries={["reference:90"]={id="reference:90",title="诺莫瑞根"}}}
+    A.settings.arrow=false
+    A.UI.navFrame:ClearAllPoints();A.UI.navFrame:SetPoint("CENTER",UIParent,"CENTER",0,56)
+    A.UI:SetTrackerNavigation(nil);A.UI:RenderDungeonGuide()
+    assert(A.UI.tracker.dungeonGuide:IsShown() and not A.UI.navFrame:IsShown())
+end
 if arg[1]=="assist" then
     A.UI.navFrame:Hide()
     InCombatLockdown=function() return false end
