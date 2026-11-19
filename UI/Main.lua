@@ -1,12 +1,13 @@
 local _, A = ...
 A.UI = {fonts={},daylightFonts={},shells={}}
 local UI = A.UI
+local backgroundAlpha=0.40 -- 60% transparent
 UI.colors={
-    bg={0.07,0.085,0.14,0.96}, sidebar={0.05,0.065,0.11,0.94},
-    panel={0,0,0,0}, button={0.13,0.15,0.21,0.90},
-    hover={0.20,0.24,0.32,0.96}, selected={0.17,0.20,0.28,0.90},
-    rowHover={0.50,0.60,0.85,0.14}, hud={0.07,0.085,0.14,0.40},
-    navigation={0.095,0.115,0.178,0.70},
+    bg={0.07,0.085,0.14,backgroundAlpha}, sidebar={0.05,0.065,0.11,backgroundAlpha},
+    panel={0,0,0,0}, button={0.13,0.15,0.21,backgroundAlpha},
+    hover={0.20,0.24,0.32,backgroundAlpha}, selected={0.17,0.20,0.28,backgroundAlpha},
+    rowHover={0.50,0.60,0.85,backgroundAlpha}, hud={0.07,0.085,0.14,backgroundAlpha},
+    navigation={0.095,0.115,0.178,backgroundAlpha},
     white={0.96,0.97,0.99}, muted={0.70,0.73,0.80},
     gold={0.90,0.73,0.40}, green={0.42,0.85,0.60}, blue={0.58,0.79,1}, purple={0.78,0.68,1},
     red={0.95,0.61,0.61}, line={0.65,0.70,0.82,0.18}, border={0.50,0.55,0.65,0.25},
@@ -226,9 +227,19 @@ local function daylightControlFill(frame)
     return fill
 end
 
-function UI:DaylightInput(parent,opts,color)
-    local input=self.daylight.Input(parent,opts)
-    daylightControlFill(input):SetColorTexture(unpack(color or colors.button))
+function UI:Input(parent,opts,color)
+    color=color or colors.button
+    if self.daylight then
+        local input=self.daylight.Input(parent,opts)
+        daylightControlFill(input):SetColorTexture(unpack(color))
+        return input
+    end
+    local input=CreateFrame("EditBox",nil,parent,"BackdropTemplate")
+    self:Rounded(input,metrics.controlRadius,colors.border)
+    input:SetBackdropColor(unpack(color))
+    local inset=opts.search and 10 or 6
+    input:SetTextInsets(inset,inset,0,0)
+    if opts.numeric then input:SetNumeric(true) end
     return input
 end
 
@@ -414,7 +425,7 @@ function UI:ApplyStyle()
     self.frame:SetScale(A.settings.scale)
     self.frame:SetAlpha(1)
     self.details:SetScale(A.settings.scale)
-    self.details:SetAlpha(A.settings.alpha)
+    self.details:SetAlpha(1)
     for _,entry in ipairs(self.fonts) do
         self:StyleFont(entry)
         if entry.role=="accent" then entry.text:SetTextColor(self:Accent())

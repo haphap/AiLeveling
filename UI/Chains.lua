@@ -35,13 +35,8 @@ function UI:Create(parent)
     self.frame=CreateFrame("Frame",nil,parent)
     self.frame:SetPoint("TOPLEFT",18,-94);self.frame:SetPoint("BOTTOMRIGHT",-18,18)
     self.history,self.cards,self.lines={},{},{}
-    if A.UI.daylight then
-        self.input=A.UI:DaylightInput(self.frame,{numeric=true},A.UI.colors.bg);self.input:SetSize(64,26);self.input:SetPoint("TOPLEFT")
-    else
-        local box=A.UI:Panel(nil,self.frame,64,26);box:SetPoint("TOPLEFT")
-        self.input=CreateFrame("EditBox",nil,box)
-        self.input:SetPoint("TOPLEFT",4,-4);self.input:SetPoint("BOTTOMRIGHT",-4,4)
-    end
+    self.input=A.UI:Input(self.frame,{numeric=true},A.UI.colors.bg)
+    self.input:SetSize(64,26);self.input:SetPoint("TOPLEFT")
     self.input:SetAutoFocus(false);self.input:SetFontObject(GameFontHighlight);self.input:SetMaxLetters(10)
     if A.UI.RegisterFont then A.UI:RegisterFont(self.input,"caption") end
     self.input:SetScript("OnEnterPressed",function() self:Focus(tonumber(self.input:GetText())) end)

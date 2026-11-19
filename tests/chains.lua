@@ -103,7 +103,7 @@ end
 local function uiFixture(quests)
     local B=fixture(quests or linked(5))
     assert(loadfile("UI/Main.lua"))("AiLeveling",B);B.UI.RegisterFont=nil
-    B.UI.Text=function() return widget() end;B.UI.Panel=function() return widget() end
+    B.UI.Text=function() return widget() end;B.UI.Input=function() return widget() end
     B.UI.Button=function(_,parent,label,width,callback)
         local b=widget();b.text=widget();b.text:SetText(label);b.callback=callback;return b
     end
