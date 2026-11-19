@@ -1150,7 +1150,7 @@ function UI:CreateTracker()
     self:Movable(nav,"navigationPosition")
     nav:SetClampedToScreen(true)
     nav:SetSize(268,48)
-    if self.daylight then self:DaylightShell(nav)
+    if self.daylight then self:DaylightShell(nav,palette.navigation[4])
     else self:Rounded(nav,spacing.radius);nav:SetBackdropColor(unpack(palette.navigation));nav.material:Hide() end
     T.navIcon=nav:CreateTexture(nil,"ARTWORK")
     T.navTitle=text(nav,"task",palette.white)

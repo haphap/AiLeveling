@@ -6,7 +6,7 @@ UI.colors={
     panel={0,0,0,0}, button={0.13,0.15,0.21,0.90},
     hover={0.20,0.24,0.32,0.96}, selected={0.17,0.20,0.28,0.90},
     rowHover={0.50,0.60,0.85,0.14}, hud={0.07,0.085,0.14,0.40},
-    navigation={0.095,0.115,0.178,0.94},
+    navigation={0.095,0.115,0.178,0.60},
     white={0.96,0.97,0.99}, muted={0.70,0.73,0.80},
     gold={0.90,0.73,0.40}, green={0.42,0.85,0.60}, blue={0.58,0.79,1}, purple={0.78,0.68,1},
     red={0.95,0.61,0.61}, line={0.65,0.70,0.82,0.18}, border={0.50,0.55,0.65,0.25},
@@ -179,10 +179,24 @@ end
 function UI:DaylightShell(frame,alpha)
     local api=self.daylight
     if not api then return end
-    local opts={window=true,bgAlpha=alpha}
-    self.shells[#self.shells+1]={frame=frame,opts=opts}
-    api.Skin(frame,opts)
-    frame:HookScript("OnSizeChanged",function() api.Skin(frame,opts) end)
+    local opts=alpha and {panel=true,bgAlpha=alpha} or {window=true}
+    local function paint() api.Skin(frame,opts) end
+    local refresh=paint
+    if frame==self.navFrame then
+        refresh=function()
+            local own=api.GetSetting("Quests","boxAlphaOwn") and api.GetSetting("Quests","boxAlpha")
+            opts.bgAlpha=own or math.min(alpha,api.GetSetting("general","windowAlpha") or 1)
+            opts.noBorder=api.GetSetting("Quests","boxBorder")==false
+            paint()
+        end
+        api.On("SettingChanged",function(scope,key)
+            if scope=="Quests" and (key=="boxAlphaOwn" or key=="boxAlpha" or key=="boxBorder") or
+                scope=="general" and key=="windowAlpha" then refresh() end
+        end,"AiLeveling")
+    end
+    self.shells[#self.shells+1]=refresh
+    refresh()
+    frame:HookScript("OnSizeChanged",paint)
 end
 
 function UI:Panel(name, parent, width, height)
@@ -376,7 +390,7 @@ function UI:ApplyStyle()
     if not self.frame then return end
     self:RefreshPalette()
     if self.daylight then
-        for _,shell in ipairs(self.shells) do self.daylight.Skin(shell.frame,shell.opts) end
+        for _,refresh in ipairs(self.shells) do refresh() end
     end
     self.frame:SetScale(A.settings.scale)
     self.frame:SetAlpha(1)

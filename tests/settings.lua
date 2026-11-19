@@ -44,10 +44,15 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     B.finish()
     -- The optional skin uses the public controls and reacts to style changes without rebuilding tasks.
     local listeners,face,scale,texts,menuItems={},"DaylightFont",1,{},{}
+    local questBox,windowAlpha={}
     local sizes={small=12,body=13,head=15,title=18}
     local api={major=1,Colors=function() return {TEXT={1,1,1},VALUE={1,1,1},LABEL={0.8,0.7,0.6},WARN={1,0.8,0.3},GOOD={0.5,0.9,0.5},BAD={1,0.3,0.3}} end,
         Accent=function() return 0.8,0.4,0.6 end,Font=function() return face end,
-        GetSetting=function(_,key) return key=="fontScale" and scale or nil end,
+        GetSetting=function(scope,key)
+            if scope=="Quests" then return questBox[key] end
+            if key=="windowAlpha" then return windowAlpha end
+            if key=="fontScale" then return scale end
+        end,
         On=function(event,fn) listeners[event]=fn end,
         Menu=function(owner,keys,labels,current,pick)
             for _,key in ipairs(keys) do menuItems[labels[key]]=function() pick(key) end end
@@ -65,7 +70,11 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     B=setup(true,api);B.UI:Render();local choice=B.action
     assert(B.UI.frame.daylightOpts and B.UI.details.daylightOpts)
     eq(B.UI.frame.daylightOpts.bgAlpha,0.4);eq(B.UI.title.fontFace,face);eq(B.UI.tracker.header.shown,false)
-    eq(B.UI.navFrame.daylightOpts.window,true);eq(B.UI.navFrame.daylightOpts.bgAlpha,nil)
+    eq(B.UI.navFrame.daylightOpts.panel,true);eq(B.UI.navFrame.daylightOpts.bgAlpha,0.60)
+    windowAlpha=0.35;listeners.SettingChanged("general","windowAlpha");eq(B.UI.navFrame.daylightOpts.bgAlpha,0.35)
+    questBox.boxAlphaOwn,questBox.boxAlpha,questBox.boxBorder=true,0.45,false
+    listeners.SettingChanged("Quests","boxAlpha");eq(B.UI.navFrame.daylightOpts.bgAlpha,0.45)
+    eq(B.UI.navFrame.daylightOpts.noBorder,true)
     B.settings.alpha=0.5;B.UI:ApplyStyle()
     eq(B.UI.tracker.navBearing.alpha,0.5);eq(B.UI.nav.alpha,0.5);eq(B.UI.navFrame.alpha or 1,1)
     eq(B.UI.tracker.headerLine.shown,false);eq(B.UI.title.fontSize,13);eq(B.UI.tracker.location.fontSize,15)
