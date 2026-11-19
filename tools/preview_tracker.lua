@@ -65,6 +65,9 @@ local function widget(kind,parent)
     function w:SetVertTile(value) self.tileY=value end
     function w:SetHighlightTexture(texture) texture:Hide() end
     function w:SetTexCoord(...) self.uv={...} end
+    function w:DisableDrawLayer(layer)
+        if layer=="BACKGROUND" then self.background=nil end
+    end
     function w:SetBackdropColor(...) self.background={...} end
     function w:SetBackdropBorderColor(...) self.border={...} end
     function w:SetJustifyH(value) self.justify=value end

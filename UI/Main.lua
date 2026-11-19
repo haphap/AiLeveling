@@ -23,15 +23,21 @@ function UI:RefreshPalette()
     local api=self.daylight
     if api then
         local ink=api.Colors()
-        local function set(key,value,alpha)
+        -- Theme updates supply RGB; opacity belongs to each AILeveling surface.
+        local function set(key,value)
             for i=1,3 do colors[key][i]=value[i] end
-            colors[key][4]=alpha
         end
         for key,role in pairs({white="TEXT",muted="LABEL",gold="WARN",green="GOOD",red="BAD",gearText="TEXT",blue="VALUE",purple="TEXT"}) do set(key,ink[role]) end
         set("accent",{api.Accent()})
-        set("sidebar",{0,0,0},0.12);set("button",{0,0,0},0.18)
-        set("hover",colors.accent,0.12);set("rowHover",colors.accent,0.12);set("selected",colors.accent,0.20)
-        set("line",ink.VALUE,0.08);set("border",ink.LABEL,0.25)
+        set("sidebar",{0.06,0.06,0.07});set("button",{0.13,0.13,0.15})
+        -- Mix the accent into the dark control color to keep labels legible.
+        for i=1,3 do
+            local base=colors.button[i]
+            local tint=colors.accent[i]-base
+            colors.hover[i]=base+tint*0.12
+            colors.selected[i]=base+tint*0.20
+        end
+        set("rowHover",colors.accent);set("line",ink.VALUE);set("border",ink.LABEL)
     end
     for name,color in pairs(colors) do
         self.hex[name]=string.format("%02x%02x%02x",math.floor(color[1]*255+0.5),math.floor(color[2]*255+0.5),math.floor(color[3]*255+0.5))
@@ -117,10 +123,10 @@ end
 
 function UI:Rounded(frame,radius,border)
     if self.daylight then
-        if border then self:DaylightShell(frame) end
+        if border then self:DaylightShell(frame,0) end
         local fill=frame:CreateTexture(nil,"BACKGROUND",nil,-6);fill:SetAllPoints()
         frame.SetBackdropColor=function(_,r,g,b,alpha)
-            fill:SetColorTexture(r,g,b,border and math.min(alpha or 1,0.12) or alpha or 1)
+            fill:SetColorTexture(r,g,b,alpha or 1)
         end
         return
     end
@@ -165,7 +171,6 @@ function UI:Rounded(frame,radius,border)
             t:SetTexture("Interface\\FrameGeneral\\UIFrameSimpleMetalVertical");t:SetTexCoord(4/128,9/128,0,1)
         end
     end
-    if self.daylight then material:Hide() end
     frame.SetBackdropColor=function(self,...)
         for _,t in ipairs(self.surface) do t:SetVertexColor(...) end
         local _,_,_,alpha=...
@@ -179,7 +184,7 @@ end
 function UI:DaylightShell(frame,alpha)
     local api=self.daylight
     if not api then return end
-    local opts=alpha and {panel=true,bgAlpha=alpha} or {window=true}
+    local opts=alpha and {panel=true,bgAlpha=alpha} or {window=true,bgAlpha=colors.bg[4]}
     local function paint() api.Skin(frame,opts) end
     local refresh=paint
     if frame==self.navFrame then
@@ -214,15 +219,32 @@ function UI:Text(parent, size, color, flags)
     return text
 end
 
+-- Keep the native label, focus ring and input handlers above a single local fill.
+local function daylightControlFill(frame)
+    frame:DisableDrawLayer("BACKGROUND")
+    local fill=frame:CreateTexture(nil,"BORDER",nil,-8);fill:SetAllPoints()
+    return fill
+end
+
+function UI:DaylightInput(parent,opts,color)
+    local input=self.daylight.Input(parent,opts)
+    daylightControlFill(input):SetColorTexture(unpack(color or colors.button))
+    return input
+end
+
 function UI:Button(parent, label, width, callback, fontSize)
     if self.daylight then
         local b=self.daylight.Button(parent,label,metrics.button)
         b:SetWidth(width);b:SetScript("OnClick",callback)
         self:RegisterFont(b.text,fontSize or "caption")
-        local selection=b:CreateTexture(nil,"BACKGROUND",nil,-2);selection:SetAllPoints()
-        b.SetBackdropColor=function(_,r,g,blue,alpha)
-            selection:SetColorTexture(r,g,blue,alpha and alpha<=0.20 and alpha or 0)
-        end
+        local fill=daylightControlFill(b)
+        b.SetBackdropColor=function(_,...) fill:SetColorTexture(...) end
+        b:SetBackdropColor(unpack(colors.button))
+        b:HookScript("OnEnter",function()
+            local base=b.baseColor or colors.button
+            b:SetBackdropColor(unpack(base[4]==0 and colors.rowHover or colors.hover))
+        end)
+        b:HookScript("OnLeave",function() b:SetBackdropColor(unpack(b.baseColor or colors.button)) end)
         return b
     end
     local b = CreateFrame("Button", nil, parent, "BackdropTemplate")

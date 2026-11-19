@@ -45,6 +45,17 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     -- The optional skin uses the public controls and reacts to style changes without rebuilding tasks.
     local listeners,face,scale,texts,menuItems={},"DaylightFont",1,{},{}
     local questBox,windowAlpha={}
+    local function nativeControl(kind,parent)
+        local f=CreateFrame(kind,nil,parent)
+        f.DisableDrawLayer=function(self,layer) self.hiddenLayer=layer end
+        local texture=f.CreateTexture
+        f.CreateTexture=function(self,name,layer,...)
+            local fill=texture(self,name,layer,...)
+            if layer=="BORDER" then self.fill=fill end
+            return fill
+        end
+        return f
+    end
     local sizes={small=12,body=13,head=15,title=18}
     local api={major=1,Colors=function() return {TEXT={1,1,1},VALUE={1,1,1},LABEL={0.8,0.7,0.6},WARN={1,0.8,0.3},GOOD={0.5,0.9,0.5},BAD={1,0.3,0.3}} end,
         Accent=function() return 0.8,0.4,0.6 end,Font=function() return face end,
@@ -62,11 +73,11 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
             local fs=parent:CreateFontString();fs:SetFont(face,sizes[role]*scale,"")
             fs:SetShadowColor(0,0,0,0.6);fs:SetShadowOffset(1,-1);texts[fs]=role;return fs
         end,
-        Button=function(parent,label) local b=CreateFrame("Button",nil,parent);b.text=b:CreateFontString();b.text:SetText(label);return b end,
+        Button=function(parent,label) local b=nativeControl("Button",parent);b.text=b:CreateFontString();b.text:SetText(label);return b end,
         Close=function(parent,click) local b=CreateFrame("Button",nil,parent);b:SetScript("OnClick",click);return b end,
         Bar=function(parent) return CreateFrame("StatusBar",nil,parent) end,
         Switch=function(parent) local b=CreateFrame("Button",nil,parent);b.SetOn=function(on) b.checked=on end;return b end,
-        Input=function(parent) return CreateFrame("EditBox",nil,parent) end}
+        Input=function(parent) return nativeControl("EditBox",parent) end}
     B=setup(true,api);B.UI:Render();local choice=B.action
     assert(B.UI.frame.daylightOpts and B.UI.details.daylightOpts)
     eq(B.UI.frame.daylightOpts.bgAlpha,0.4);eq(B.UI.title.fontFace,face);eq(B.UI.tracker.header.shown,false)
@@ -76,7 +87,7 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     listeners.SettingChanged("Quests","boxBorder")
     eq(B.UI.navFrame.daylightOpts.noBorder,true);eq(B.UI.navFrame.daylightOpts.bgAlpha,0.70)
     B.settings.alpha=0.5;B.UI:ApplyStyle()
-    eq(B.UI.tracker.navBearing.alpha,0.5);eq(B.UI.nav.alpha,0.5);eq(B.UI.navFrame.alpha or 1,1)
+    eq(B.UI.details.alpha,0.5);eq(B.UI.tracker.navBearing.alpha,0.5);eq(B.UI.nav.alpha,0.5);eq(B.UI.navFrame.alpha or 1,1)
     eq(B.UI.tracker.headerLine.shown,false);eq(B.UI.title.fontSize,13);eq(B.UI.tracker.location.fontSize,15)
     eq(B.UI.title.fontFlags,"");eq(B.UI.title.shadowColor[4],0.6)
     local before=B.UI.frame.skinCalls;B.UI.frame.scripts.OnSizeChanged();eq(B.UI.frame.skinCalls,before+1)
@@ -85,6 +96,15 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     listeners.StyleChanged();eq(B.UI.title.fontFace,face);eq(B.action,choice)
     eq(B.UI.title.fontSize,13*1.2);eq(B.UI.title.shadowColor[4],0)
     B.settings.fontScale=1.1;listeners.Login();eq(B.UI.title.fontSize,13*1.2*1.1)
+    B.UI.details.scripts.OnSizeChanged()
+    eq(B.UI.details.daylightOpts.window,true);eq(B.UI.details.daylightOpts.bgAlpha,0.96)
+    eq(B.UI.frame.daylightOpts.bgAlpha,0.4);eq(B.UI.tracker.nearby.daylightOpts.bgAlpha,0.4)
+    local link=B.UI.tracker.career.view
+    eq(link.hiddenLayer,"BACKGROUND");eq(link.fill.color[4],0)
+    link.scripts.OnEnter(link);eq(link.fill.color[4],0.14)
+    link.scripts.OnLeave(link);eq(link.fill.color[4],0)
+    eq(B.UI.Browser.search.hiddenLayer,"BACKGROUND");eq(B.UI.Browser.search.fill.color[4],0.90)
+    eq(B.UI.colors.sidebar[4],0.94);eq(B.UI.colors.selected[4],0.90)
     B.UI:TrackerMenu(B.UI.frame);assert(menuItems["详细面板"]);menuItems["详细面板"]()
     assert(B.UI.Browser.frame:IsShown());assert(B.UI.details:IsShown())
     local toggle=control(B,"quantity").button;toggle.scripts.OnClick();eq(B.settings.quantity,false);eq(toggle.checked,false)

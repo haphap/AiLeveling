@@ -36,7 +36,7 @@ function UI:Create(parent)
     self.frame:SetPoint("TOPLEFT",18,-94);self.frame:SetPoint("BOTTOMRIGHT",-18,18)
     self.history,self.cards,self.lines={},{},{}
     if A.UI.daylight then
-        self.input=A.UI.daylight.Input(self.frame,{numeric=true});self.input:SetSize(64,26);self.input:SetPoint("TOPLEFT")
+        self.input=A.UI:DaylightInput(self.frame,{numeric=true},A.UI.colors.bg);self.input:SetSize(64,26);self.input:SetPoint("TOPLEFT")
     else
         local box=A.UI:Panel(nil,self.frame,64,26);box:SetPoint("TOPLEFT")
         self.input=CreateFrame("EditBox",nil,box)

@@ -48,7 +48,7 @@ function B:Create(parent)
     divider:SetPoint("TOPLEFT",410,0);divider:SetPoint("BOTTOMLEFT",410,0);divider:SetWidth(1)
     divider:SetColorTexture(unpack(colors.line));self.divider=divider
     self.summary=A.UI:Text(self.frame,"body",colors.muted);self.summary:SetPoint("TOPLEFT");self.summary:SetWidth(392)
-    self.search=A.UI.daylight and A.UI.daylight.Input(self.frame,{search=true}) or CreateFrame("EditBox",nil,self.frame,"BackdropTemplate")
+    self.search=A.UI.daylight and A.UI:DaylightInput(self.frame,{search=true}) or CreateFrame("EditBox",nil,self.frame,"BackdropTemplate")
     self.search:SetPoint("TOPLEFT",0,-32);self.search:SetSize(392,28);self.search:SetAutoFocus(false)
     if not A.UI.daylight then
         self.search:SetTextInsets(10,10,0,0)
