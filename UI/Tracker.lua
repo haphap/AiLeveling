@@ -648,6 +648,10 @@ end
 
 local function questTooltip(owner)
     GameTooltip:SetOwner(owner,"ANCHOR_RIGHT")
+    if owner==UI.tracker.questTitle and UI.tracker.instanceRoster then
+        GameTooltip:SetText(UI.tracker.model.dungeonName)
+        GameTooltip:AddLine("点击查看任务详情",1,1,1,true);GameTooltip:Show();return
+    end
     if owner.serviceStop then
         GameTooltip:SetText("开通飞行点 · "..owner.serviceStop.title)
         GameTooltip:AddLine("左键：导航到飞行管理员\n右键：导航或暂不提示",1,1,1,true)
@@ -685,7 +689,7 @@ end
 function UI:TrackerMenu(owner)
     local id,candidate,revision=owner.questId,owner.candidate,owner.revision
     local serviceStop=owner.serviceStop
-    local action=owner==self.tracker.questTitle and self.tracker.action
+    local action=owner==self.tracker.questTitle and not self.tracker.instanceRoster and self.tracker.action
     GameTooltip:Hide()
     self:Menu(owner,function(_,menu)
         if serviceStop then
@@ -706,6 +710,7 @@ function UI:TrackerMenu(owner)
             menu:CreateButton("忽略维修",function() A.Supplies:IgnoreRepair() end)
         elseif id then
             menu:CreateButton("导航到此任务",function()
+                if owner.dungeonAction and A.Navigation:Navigate(owner.dungeonAction) then return end
                 if not A.Navigation:NavigateQuest(id) then self:QuestClick(id,"RightButton") end
             end):SetEnabled(not owner.deferred)
             menu:CreateButton("查看任务详情",function() self:QuestClick(id,"RightButton") end)
@@ -935,6 +940,12 @@ function UI:CreateTracker()
     T.questTitle:RegisterForClicks("LeftButtonUp","RightButtonUp")
     T.questTitle:SetScript("OnClick",function(_,mouse)
         if mouse=="RightButton" then self:TrackerMenu(T.questTitle)
+        elseif T.model and T.model.dungeonName then
+            if T.model.dungeonId then
+                self.Dungeon.selected=T.model.dungeonId;self.Browser:ClearSearch()
+                if self.Browser.dungeonDetail then self.Browser.dungeonDetail.showLoot=false end
+            end
+            self.details:Show();self:SelectTab(T.model.dungeonId and 4 or 1)
         else self:QuestClick(T.questTitle.questId,mouse) end
     end)
     T.questTitle:SetScript("OnEnter",questTooltip)
@@ -1050,47 +1061,6 @@ function UI:CreateTracker()
     if p then nav:ClearAllPoints();nav:SetPoint(p[1],UIParent,p[2],p[3],p[4]) end
     self:Movable(nav,"navigationPosition")
     nav:SetClampedToScreen(true)
-    -- Anchor to the movable navigation HUD, but keep the card independent of arrow visibility.
-    local guide=CreateFrame("Button","AiLevelingDungeonGuide",UIParent,"BackdropTemplate")
-    T.dungeonGuide=guide
-    guide:SetSize(328,82);guide:SetPoint("TOP",nav,"CENTER",0,-16)
-    guide:SetClampedToScreen(true);guide:SetFrameStrata("HIGH")
-    if self.daylight then self:DaylightShell(guide,palette.hud[4])
-    else self:Rounded(guide,spacing.radius,palette.border);guide:SetBackdropColor(unpack(palette.hud));guide.material:Hide() end
-    guide.icon=guide:CreateTexture(nil,"ARTWORK");guide.icon:SetTexture(media.."hud-entry.tga")
-    guide.icon:SetSize(16,16);guide.icon:SetPoint("TOPLEFT",12,-10)
-    guide.place=text(guide,"caption",palette.gold);guide.place:SetPoint("TOPLEFT",34,-10);guide.place:SetWidth(192)
-    guide.link=text(guide,"caption",palette.blue);guide.link:SetPoint("TOPRIGHT",-12,-10)
-    guide.summary=text(guide,"caption",palette.muted);guide.summary:SetWidth(304);guide.summary:SetPoint("TOPLEFT",12,-30)
-    guide.feedback=text(guide,"body",palette.green);guide.feedback:SetWidth(304)
-    guide.feedback:SetPoint("TOPLEFT",12,-32);guide.feedback:SetMaxLines(2);guide.feedback:Hide()
-    guide:SetScript("OnEnter",function(f)
-        if f.feedbackDetails then
-            GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText("完成提示")
-            for _,line in ipairs(f.feedbackDetails) do GameTooltip:AddLine(line,1,1,1,true) end
-            GameTooltip:Show()
-        end
-    end)
-    guide:SetScript("OnLeave",function(f) if GameTooltip:IsOwned(f) then GameTooltip:Hide() end end)
-    guide.scroll=CreateFrame("ScrollFrame",nil,guide)
-    guide.scroll:SetPoint("TOPLEFT",12,-32);guide.scroll:SetWidth(304)
-    guide.child=CreateFrame("Frame",nil,guide.scroll);guide.child:SetWidth(304)
-    guide.scroll:SetScrollChild(guide.child);guide.rows={}
-    guide:EnableMouseWheel(true)
-    guide:SetScript("OnMouseWheel",function(f,delta)
-        local y=f.scroll:GetVerticalScroll()-delta*48
-        f.scroll:SetVerticalScroll(math.max(0,math.min(y,f.scrollRange)))
-    end)
-    guide.footer=text(guide,"caption",palette.muted);guide.footer:SetPoint("BOTTOMRIGHT",-12,6)
-    guide:SetScript("OnClick",function()
-        if guide.dungeon then
-            self.Dungeon.selected=guide.dungeon.id
-            self.Browser:ClearSearch()
-            if self.Browser.dungeonDetail then self.Browser.dungeonDetail.showLoot=false end
-        end
-        self.details:Show();self:SelectTab(guide.dungeon and 4 or 1)
-    end)
-    guide:Hide()
     self.nav=text(nav,"brand","accent");self.nav:SetPoint("TOP",0,-37);self.nav:SetJustifyH("CENTER")
     T.navTitle=text(nav,"caption");T.navTitle:SetPoint("TOP",0,-62);T.navTitle:SetWidth(420);T.navTitle:SetJustifyH("CENTER")
     T.arrowLines={}
@@ -1215,6 +1185,7 @@ end
 function UI:UpdateNearby(along)
     local notice=self.tracker and self.tracker.nearby
     if not notice then return end
+    if self.tracker.instanceRoster then notice:Hide();return end
     local state,plan,navigation=A.state,A.plan or {},A.Navigation
     local position=state.position
     local map=position and position.map
@@ -1323,7 +1294,7 @@ end
 
 function UI:UpdateTrackerDynamic()
     local T=self.tracker
-    if not T or not T.model then return end
+    if not T or not T.model or T.model.dungeonName then return end
     local state,plan=A.state,A.plan or {}
     local action=A.Navigation:Current()
     if navigationStep(action)~=T.lastStep then self:RenderTracker();return end
@@ -1368,11 +1339,11 @@ function UI:RenderTracker(along)
     if not T then return end
     local state,plan=A.state or {},A.plan or {}
     local action=A.Navigation:Current()
-    local model=UI.TrackerModel(state,plan,action,A.char.paused,along)
+    local model=self:DungeonTrackerModel(state,action) or UI.TrackerModel(state,plan,action,A.char.paused,along)
     trackerMoved(T,state.position)
     T.model,T.action,T.lastStep=model,action,navigationStep(action)
     self:UpdateNearby(model.along)
-    local spells=state.trainableSpells or {}
+    local spells=not model.dungeonName and state.trainableSpells or {}
     local links={}
     if #spells>0 and A.char.classReminderLevel~=state.level then
         T.career.heading:SetText(self:Icon("class",12).." "..state.level.."级 · 可学技能")
@@ -1383,7 +1354,7 @@ function UI:RenderTracker(along)
     T.career.train:SetShown(#spells>0)
     T.career.train.text:SetText(training and "已安排" or "去训练")
     T.career.train:SetEnabled(not training and not state.inInstance and not state.dead and not state.onTaxi)
-    local dungeons=self.DungeonReminders(state,plan)
+    local dungeons=not model.dungeonName and self.DungeonReminders(state,plan) or {}
     local suggested=dungeons[1]
     T.dungeons.candidate=suggested
     local batch=A.char.taskBatch
@@ -1413,14 +1384,15 @@ function UI:RenderTracker(along)
     T.questTitle.deferred=model.questId and ((state.skipped or {})[model.questId] or (state.chainDeferred or {})[model.questId])
     local current=(state.quests or {})[model.questId]
     local count=0;for _ in pairs(state.quests or {}) do count=count+1 end
-    T.experience:SetText(A.char.paused and "已暂停" or "已接 "..count.." 项")
+    T.experience:SetText(A.char.paused and "已暂停" or model.dungeonName and (#model.rows.." 项") or "已接 "..count.." 项")
     T.currentMark:SetColorTexture(self:Accent())
     T.currentMark:SetShown(model.questId~=nil)
-    T.actionIcon:SetTexture(media..(({accept="hud-accept",objective="hud-objective",turnin="hud-turnin"})[model.kind] or "compass")..".tga")
+    T.actionIcon:SetTexture(media..(model.dungeonName and "hud-entry" or ({accept="hud-accept",objective="hud-objective",turnin="hud-turnin"})[model.kind] or "compass")..".tga")
     self.title:SetText(questTitle(model.questId,model.title))
     self.title:SetTextColor(unpack(model.kind=="turnin" and palette.green or self.daylight and palette.white or model.kind=="accept" and palette.blue or palette.gold))
     local place,name,area
     if model.kind and not A.error then place,name,area=destination(action) end
+    name=model.dungeonName or name
     T.location:SetText(name and (self:Icon("hud-location",18).." "..name) or "当前行程")
     T.actionIcon:SetVertexColor(unpack(model.kind=="turnin" and palette.green or model.kind=="accept" and palette.blue or palette.gold))
     T.area:SetText(area or "")
@@ -1463,7 +1435,7 @@ function UI:RenderTracker(along)
     nextRow.icon:SetVertexColor(unpack(palette[tone]));nextRow.progress:SetText(instruction)
     nextRow.detail=(nextRow.status or "").."\n"..instruction
     renderObjectives(nextRow,nextRow.objectiveFrame,nextRow.objectives,taskStep and not sameQuest and nextQuest and not nextQuest.ready and nextQuest.objectives or {})
-    local visit=not paused and plan.regionPlan
+    local visit=not model.dungeonName and plan.regionPlan
     local region=visit and (visit.destination or visit.current)
     local rows=T.region.rows
     local handins=visit and visit.handins or {}
@@ -1525,9 +1497,13 @@ function UI:RenderTracker(along)
         guidance=model.deliverySummary or model.hint or ""
     end
     if model.unlock then guidance=A.TaskGuide.UnlockText(model.unlock)..(guidance~="" and (" · "..guidance) or "") end
+    if model.dungeonName then
+        guidance=model.instruction or ""
+        if model.feedback then guidance=model.feedback..(guidance~="" and ("\n"..guidance) or "") end
+    end
     self.body:SetText(guidance)
-    self.body:SetTextColor(unpack(model.kind=="turnin" and palette.green or palette.muted))
-    T.questTitle.detail=(place and (place.."\n") or "")..table.concat(lines,"\n")
+    self.body:SetTextColor(unpack((model.feedback or model.kind=="turnin") and palette.green or palette.muted))
+    T.questTitle.detail=model.dungeonName and "点击查看副本任务详情" or (place and (place.."\n") or "")..table.concat(lines,"\n")
     renderObjectives(T.questTitle,T.objectiveFrame,T.objectives,
         (model.kind=="objective" or current and not current.ready) and model.objectives or {})
     local progress,goals=0,0
@@ -1541,7 +1517,8 @@ function UI:RenderTracker(along)
         local row=self:TrackerRow(i)
         local isCurrent=item.questId and item.questId==model.questId
         row.icon:SetTexture(media.."hud-"..(item.serviceStop and "flight" or item.dungeonId and "entry" or item.kind)..".tga")
-        row.title:SetText(questTitle(item.questId,item.title,item.candidate))
+        local title=questTitle(item.questId,item.title,item.candidate)
+        row.title:SetText(model.dungeonName and (title.."  |cff"..self.hex[item.kind=="accept" and "blue" or item.kind=="turnin" and "green" or "muted"]..item.status.."|r") or title)
         local color=(item.deferred or item.candidate and item.candidate.lowValue) and palette.muted or item.kind=="turnin" and palette.green or item.accepted and palette.gold or palette.blue
         row.title:SetTextColor(unpack(self.daylight and not item.deferred and item.kind~="turnin" and palette.white or color))
         row.icon:SetVertexColor(unpack(color))
@@ -1570,14 +1547,15 @@ function UI:RenderTracker(along)
         row.candidate,row.revision,row.questId=item.candidate,plan.revision,item.questId
         row.deferred,row.dungeonId,row.serviceStop=item.deferred,item.dungeonId,item.serviceStop
         row.atStop,row.along=item.atStop,item.along
-        row.pickupAction=item.along and item.kind=="accept" and item.sideAction or nil
+        row.dungeonAction=item.dungeonAction
+        row.pickupAction=item.kind=="accept" and (item.dungeonAction or item.along and item.sideAction) or nil
         row:SetParent(item.atStop and T.currentChild or item.along and T.alongChild or T.queueChild)
         local native=(state.quests or {})[item.questId]
-        local objectives=item.accepted and item.kind~="turnin" and not item.deferred and
+        local objectives=item.objectives or item.accepted and item.kind~="turnin" and not item.deferred and
             not (item.candidate and (item.candidate.lowValue or item.candidate.entryBlocked)) and native and native.objectives or {}
         if item.sharedObjective then objectives={objectives[item.sharedObjective]} end
         renderObjectives(row,row.objectiveFrame,row.objectives,objectives,item.sharedObjective)
-        if #objectives>0 and not item.delivery and not (item.candidate and item.candidate.itemShortage) then row.progress:SetText("") end
+        if #objectives>0 and not item.objectives and not item.delivery and not (item.candidate and item.candidate.itemShortage) then row.progress:SetText("") end
         row.detail=table.concat({row.status,item.groupTitle or "",item.delivery or item.progress},"\n")
         if isCurrent then T.questTitle.candidate=item.candidate;T.questTitle.revision=plan.revision end
         row:SetEnabled(true);row:Show()
@@ -1676,7 +1654,7 @@ function UI:LayoutTracker()
     local dungeonTop=T.dungeons.heading:GetStringHeight()+spacing.tight*scale
     T.dungeons.text:ClearAllPoints();T.dungeons.text:SetPoint("TOPLEFT",0,-dungeonTop);T.dungeons.text:SetWidth(inner)
     T.dungeons:SetHeight(dungeonTop+T.dungeons.text:GetStringHeight())
-    T.dungeons:SetShown(not collapsed and (A.char.taskBatch~=nil or T.dungeons.dismissedLevel~=A.state.level) and (T.dungeons.text:GetText() or "")~="")
+    T.dungeons:SetShown(not collapsed and not (T.model and T.model.dungeonName) and (A.char.taskBatch~=nil or T.dungeons.dismissedLevel~=A.state.level) and (T.dungeons.text:GetText() or "")~="")
     if batch and T.dungeons:IsShown() then
         T.dungeons:ClearAllPoints();T.dungeons:SetPoint("TOPLEFT",0,-cardTop)
         cardTop=cardTop+T.dungeons:GetHeight()+gap
@@ -1767,7 +1745,7 @@ function UI:LayoutTracker()
         bottom=bottom+layoutRow(T.thenButton,bottom)+spacing.gap*scale
     end
     T.queueLabel:ClearAllPoints();T.queueLabel:SetPoint("TOPLEFT",0,-bottom);T.queueLabel:SetWidth(inner)
-    T.queueLabel:SetText(T.model and T.model.action and "后续行程" or "已接任务")
+    T.queueLabel:SetText(T.model and T.model.queueLabel or T.model and T.model.action and "后续行程" or "已接任务")
     T.queueLabel:SetShown(not collapsed and queueHeight>0)
     if T.queueLabel:IsShown() then bottom=bottom+24*scale end
     T.queuePanel:ClearAllPoints();T.queuePanel:SetPoint("TOPLEFT",0,-bottom)
@@ -1834,7 +1812,7 @@ function UI:LayoutTracker()
     available=math.max(fixed+1,math.floor(available))
     local minHeight=math.min(available,math.max(200,fixed+40*scale))
     self.frame:SetResizeBounds(260,collapsed and fixed or minHeight,800,math.max(1200,minHeight))
-    local total=collapsed and fixed or requestedHeight>0 and math.max(minHeight,requestedHeight) or fixed+bottom-clipped
+    local total=collapsed and fixed or requestedHeight>0 and math.max(minHeight,requestedHeight) or fixed+bottom-(T.model and T.model.dungeonName and 0 or clipped)
     total=math.min(total,available)
     T.currentScroll:ClearAllPoints();T.currentScroll:SetPoint("TOPLEFT",0,-top)
     T.currentScroll:SetHeight(math.max(1,total-fixed));T.currentScroll:SetShown(not collapsed)
@@ -1891,68 +1869,42 @@ local function dungeonGuideSteps(d,state)
     return inside,other
 end
 
-local function dungeonGuideBody(action,state,indices)
+local function dungeonStepHint(action)
     local point=action.position
-    local body=point and point.travelHint or action.text
-    if action.kind=="objective" then
-        local objectives={}
-        local active=state.quests[action.questId]
-        for i,o in ipairs(active and active.objectives or {}) do
-            if (o.finished or not indices or indices[i]) and o.text and o.text~="" then
-                local line=o.text
-                if (o.numRequired or 0)>0 and (not o.finished or (o.numFulfilled or 0)>=o.numRequired)
-                    and not line:match("%d+%s*/%s*%d+") then
-                    line=line..string.format(" · %d/%d",o.numFulfilled or 0,o.numRequired)
-                end
-                objectives[#objectives+1]=o.finished and ("|cff"..UI.hex.green.."✓ 已完成 · "..line.."|r") or line
-            end
-        end
-        if #objectives>0 then
-            if point and point.travelHint then objectives[#objectives+1]=point.travelHint end
-            return table.concat(objectives,"\n")
-        end
-    end
     if not action.stageLabel and point and point.entityName and not point.travelHint then
         if action.kind=="accept" then return "向「"..point.entityName.."」接取任务。" end
         if action.kind=="turnin" then return "到「"..point.entityName.."」交付任务。" end
     end
-    return body
+    return point and point.travelHint or action.text
 end
 
 function UI:DungeonTurnedIn(id)
-    local card=self.tracker and self.tracker.dungeonGuide
+    local roster=self.tracker and self.tracker.instanceRoster
     local s=A.state
-    if not card or not card:IsShown() or not s.inInstance or card.visit~=s.instanceId or A.char.paused or s.dead then return end
-    local quest=s.quests[id] or card.lastLog and card.lastLog[id]
-    local title=quest and quest.title or card.displayed and card.displayed[id]
-    if not title and C_QuestLog and C_QuestLog.GetTitleForQuestID then title=C_QuestLog.GetTitleForQuestID(id) end
-    if not title and A.indexReady then
-        local record=A.Data:GetQuest(id,s)
-        title=record and record.title
-    end
-    card.receipts=card.receipts or {}
-    card.receipts[id]="已交付 · "..(title or ("任务 #"..id))
+    if not roster or not s.inInstance or roster.visit~=(s.instanceId or s.instanceName) or A.char.paused or s.dead then return end
+    local title=roster.displayed and roster.displayed[id]
+    if not title then return end
+    roster.receipts=roster.receipts or {}
+    roster.receipts[id]="已交付 · "..title
     A.dirty=true
 end
 
-local function dungeonFeedback(card,state,first)
-    local changes=card.receipts or {}
-    local compact
-    card.receipts=nil
-    if card.lastLog and card.lastLog~=state.quests then
-        for id,title in pairs(card.displayed or {}) do
-            local old,now=card.lastLog[id],state.quests[id]
+local function dungeonFeedback(roster,state)
+    local changes=roster.receipts or {}
+    roster.receipts=nil
+    if roster.lastLog and roster.lastLog~=state.quests then
+        for id,title in pairs(roster.displayed or {}) do
+            local old,now=roster.lastLog[id],state.quests[id]
             if old and now and not changes[id] then
                 if now.ready and not old.ready then
                     local where="可交付"
-                    for _,step in ipairs(card.inside) do
+                    for _,step in ipairs(roster.inside) do
                         if step.questId==id and step.kind=="turnin" then where="本内可交";break end
                     end
-                    for _,step in ipairs(card.other) do
+                    for _,step in ipairs(roster.other) do
                         if step.questId==id and step.stageLabel=="本外交付" then where="出本后交";break end
                     end
                     changes[id]="任务完成 · "..title.."（"..where.."）"
-                    if id==first and card.scroll:GetVerticalScroll()==0 then compact="✓ "..where end
                 elseif not now.ready then
                     local done={}
                     for i,o in ipairs(now.objectives or {}) do
@@ -1965,164 +1917,103 @@ local function dungeonFeedback(card,state,first)
         end
     end
     if next(changes) then
-        for id,line in pairs(card.recent or {}) do changes[id]=changes[id] or line end
-        card.recent=changes
+        for id,line in pairs(roster.recent or {}) do changes[id]=changes[id] or line end
+        roster.recent=changes
         local lines={}
         for _,line in pairs(changes) do lines[#lines+1]=line end
         table.sort(lines)
-        card.feedbackDetails=lines
-        card.feedback:SetText(#lines==1 and (compact or lines[1]) or
-            (#lines.." 项完成提示 · 移入查看"));card.feedback:Show()
+        roster.feedback=table.concat(lines,"\n")
         C_Timer.After(7,function()
-            if card.recent==changes then
-                card.recent,card.feedbackDetails=nil,nil;card.feedback:Hide()
-                if GameTooltip and GameTooltip.IsOwned and GameTooltip:IsOwned(card) then GameTooltip:Hide() end
+            if UI.tracker.instanceRoster==roster and roster.recent==changes then
+                roster.recent,roster.feedback=nil,nil
                 A.dirty=true
             end
         end)
     end
-    card.lastLog=state.quests
+    roster.lastLog=state.quests
 end
 
-function UI:RenderDungeonGuide()
-    local card=self.tracker and self.tracker.dungeonGuide
-    if not card then return end
-    local s=A.state
-    local d=s.inInstance and A.DungeonCatalog and A.DungeonCatalog.entries["reference:"..tostring(s.instanceId)]
-    local visible=s.inInstance and (d or s.instanceType=="party" or s.instanceType=="raid") and not A.char.paused and not s.dead
-    if not visible or card.visit~=s.instanceId then
-        card.lastLog,card.displayed,card.recent,card.receipts,card.feedbackDetails=nil,nil,nil,nil,nil
-        card.visit=s.instanceId;card.feedback:Hide()
-        card.dungeon,card.inside,card.other=nil,nil,nil
-        if not visible then card:Hide();return end
+function UI:DungeonTrackerModel(state,action)
+    local tracker=self.tracker
+    local dungeon=state.inInstance and A.DungeonCatalog and A.DungeonCatalog.entries["reference:"..tostring(state.instanceId)]
+    if not state.inInstance or not (dungeon or state.instanceType=="party" or state.instanceType=="raid") then
+        if tracker.instanceRoster then
+            tracker.currentScroll:SetVerticalScroll(tracker.instanceRoster.outdoorScroll)
+            tracker.instanceRoster=nil
+        end
+        return
     end
-    if card.dungeon~=d or not card.inside or card.revision~=s.revision or card.indexReady~=A.indexReady then
-        if card.dungeon~=d or not card.inside then card.scroll:SetVerticalScroll(0) end
-        if d and A.indexReady then card.inside,card.other=dungeonGuideSteps(d,s)
-        else card.inside,card.other={},{} end
-        card.dungeon,card.revision,card.indexReady=d,s.revision,A.indexReady
+    local visit=state.instanceId or state.instanceName
+    local roster=tracker.instanceRoster
+    if not roster or roster.visit~=visit then
+        roster={visit=visit,outdoorScroll=roster and roster.outdoorScroll or tracker.currentScroll:GetVerticalScroll()}
+        tracker.instanceRoster=roster
+        tracker.currentScroll:SetVerticalScroll(0)
     end
-    local nav=A.Navigation
-    local focus=(nav.manual or nav.planInstance==s.instanceId and s.instanceId) and nav:Current()
-    local phase=focus and (guideLabels[focus.kind] or focus.kind=="dungeonRun" and "首领目标" or
-        focus.kind=="selectionBlocked" and "任务条件")
-    local used,y,total=0,0,0
-    local first
-    local seen,counts={},{accept=0,objective=0,turnin=0}
-    local function add(action,label,indices)
-        local id=action and (action.kind=="accept" or action.kind=="objective" or action.kind=="turnin") and action.questId
-        if id and seen[id] then return end
-        local part=action and dungeonGuideBody(action,s,indices)
-        local title=action and action.title or (d and "查看副本任务" or "查看当前任务")
-        local active=id and s.quests[id]
-        if id then
-            seen[id]=title;total=total+1
-            local status=active and (active.ready and "turnin" or "objective") or action.kind
-            if counts[status] then counts[status]=counts[status]+1 end
-        end
-        if action and (action.kind=="accept" or action.kind=="objective") then
-            if label=="本外接取" or label=="本外目标" then part=label..(part and part~="" and (" · "..part) or "") end
-            label=action.kind=="accept" and "未接取" or "进行中"
-        end
-        if active and active.ready and action.kind=="turnin" then
-            if label=="本外交付" then part=label..(part and part~="" and (" · "..part) or "")
-            elseif not part or part=="" then part="可交付" end
-            label="已完成"
-        end
-        if label then title=label.." · "..title end
-        if not action then part=d and "打开任务详情，查看接取地点、任务目标和交付人。" or "打开任务行程，查看已接任务及目标。" end
-        if action and action.kind=="accept" and s.questLimit and s.questCount and s.questCount>=s.questLimit then
-            part=(part and part.." · " or "").."任务日志已满"
-        end
-        used=used+1
-        if used==1 then first=action and action.questId end
-        local row=card.rows[used]
-        if not row then
-            row=CreateFrame("Button",nil,card.child);row:SetWidth(304)
-            row.title=text(row,"task");row.body=text(row,"body",palette.muted);row.title:SetPoint("TOPLEFT")
-            row.title:SetWidth(304);row.body:SetWidth(294)
-            row.body:SetPoint("TOPLEFT",row.title,"BOTTOMLEFT",10,-2)
-            row:SetScript("OnClick",function() card:Click() end)
-            row:SetScript("OnEnter",function(f)
-                if f.compact and f.body:IsShown() then
-                    GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(f.title:GetText())
-                    GameTooltip:AddLine(f.body:GetText(),1,1,1,true);GameTooltip:Show()
-                end
-            end)
-            row:SetScript("OnLeave",function(f) if GameTooltip:IsOwned(f) then GameTooltip:Hide() end end)
-            card.rows[used]=row
-        end
-        row.questId=id;row:Show();row.body:SetMaxLines(0)
-        row.title:SetText(title);row.title:SetTextColor(unpack(action and palette[action.kind] or palette.white));row.title:Show()
-        row.body:SetText(part or "");row.body:SetShown(part~=nil and part~="")
+    if not roster.inside or roster.dungeon~=dungeon or roster.revision~=state.revision or roster.indexReady~=A.indexReady then
+        if dungeon and A.indexReady then roster.inside,roster.other=dungeonGuideSteps(dungeon,state)
+        else roster.inside,roster.other={},{} end
+        roster.dungeon,roster.revision,roster.indexReady=dungeon,state.revision,A.indexReady
     end
-    local function group(steps)
-        for _,step in ipairs(steps) do
-            add(step,step.stageLabel or guideLabels[step.kind],step.insideObjectives)
+    local model={dungeonName=state.instanceName or dungeon and dungeon.title or "地下城",dungeonId=dungeon and dungeon.id,
+        title="副本任务",rows={},objectives={},along={}}
+    local counts,seen={accept=0,objective=0,turnin=0},{}
+    local focus=not A.char.paused and not state.dead and (A.Navigation.manual or A.Navigation.planInstance==state.instanceId and state.instanceId) and action
+    local function add(step,fallbackHint)
+        local id=step.questId
+        if not id or seen[id] or counts[step.kind]==nil then return end
+        local active=state.quests[id]
+        local kind=active and (active.ready and "turnin" or "objective") or step.kind
+        local status=({accept="未接取",objective="进行中",turnin="可交付"})[kind]
+        local hint=dungeonStepHint(step) or fallbackHint
+        if step.stageLabel=="本外接取" or step.stageLabel=="本外目标" or step.stageLabel=="本外交付" then
+            hint=step.stageLabel..(hint and (" · "..hint) or "")
         end
+        if kind=="accept" and state.questLimit and state.questCount and state.questCount>=state.questLimit then
+            hint=(hint and hint.." · " or "").."任务日志已满"
+        end
+        local goals={}
+        for i,o in ipairs(kind=="objective" and active and active.objectives or {}) do
+            if o.finished or not step.insideObjectives or step.insideObjectives[i] then goals[#goals+1]=o end
+        end
+        if #goals>0 and not step.stageLabel and not (step.position and step.position.travelHint) then hint=nil end
+        seen[id]=step.title or ("任务 #"..id)
+        counts[kind]=counts[kind]+1
+        model.rows[#model.rows+1]={questId=id,title=seen[id],kind=kind,status=status,accepted=active~=nil,
+            progress=hint or "",objectives=goals,dungeonAction=(step.position or step.areaId or not step.stageLabel and step.text) and step or nil}
     end
-    if phase and focus.kind~="dungeonLeave" then
-        local step
-        if focus.questId and guideLabels[focus.kind] then
-            for _,list in ipairs({card.inside,card.other}) do
-                for _,candidate in ipairs(list) do
-                    if candidate.questId==focus.questId then step=candidate;break end
-                end
-                if step then break end
+    if focus and counts[focus.kind]~=nil then
+        local focusStep
+        for _,list in ipairs({roster.inside,roster.other}) do
+            for _,step in ipairs(list) do
+                if step.questId==focus.questId then focusStep=step;break end
             end
+            if focusStep then break end
         end
-        if step and (step.kind~=focus.kind or step.stageLabel or not (focus.text or focus.position)) then
-            add(step,step.stageLabel or guideLabels[step.kind],step.insideObjectives)
-        else
-            add(focus,phase,step and step.insideObjectives)
-        end
+        if focusStep then
+            add(focusStep,focusStep.kind==focus.kind and focus.text)
+        elseif not A.indexReady or not dungeon then add(focus) end
+    elseif focus and (focus.kind=="dungeonLeave" or focus.kind=="dungeonRun" or focus.kind=="selectionBlocked") then
+        model.instruction=focus.text or focus.title
     end
-    group(card.inside)
-    if phase and focus.kind=="dungeonLeave" then add(focus,phase) end
-    group(card.other)
-    if used==0 then add() end
-    for i=used+1,#card.rows do card.rows[i]:Hide() end
-    dungeonFeedback(card,s,first)
-    card.displayed=seen
+    for _,step in ipairs(roster.inside) do add(step) end
+    for _,step in ipairs(roster.other) do add(step) end
+    dungeonFeedback(roster,state);roster.displayed=seen
     local summary={}
     if counts.objective>0 then summary[#summary+1]="进行中 "..counts.objective end
     if counts.accept>0 then summary[#summary+1]="未接取 "..counts.accept end
     if counts.turnin>0 then summary[#summary+1]="可交付 "..counts.turnin end
-    card.summary:SetText(table.concat(summary,"   ·   "));card.summary:SetShown(#summary>0)
-    local summaryHeight=#summary>0 and card.summary:GetStringHeight()+5 or 0
-    local feedbackHeight=card.feedback:IsShown() and card.feedback:GetStringHeight()+6 or 0
-    card.feedback:ClearAllPoints();card.feedback:SetPoint("TOPLEFT",12,-32-summaryHeight)
-    card.scroll:ClearAllPoints();card.scroll:SetPoint("TOPLEFT",12,-32-summaryHeight-feedbackHeight)
-    local budget=math.max(80,math.min(320*UI:FontScale(),UIParent:GetHeight()/(A.settings.scale or 1)-64)-summaryHeight-feedbackHeight)
-    local function layout(compact)
-        y=0
-        for i=1,used do
-            local row=card.rows[i]
-            row.compact=compact
-            if compact then row.body:SetMaxLines(1) end
-            row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y)
-            local h=row.title:GetStringHeight()+(row.body:IsShown() and 2+row.body:GetStringHeight() or 0)
-            row:SetHeight(h);y=y+h+(compact and 4 or 7)
-        end
+    model.queueLabel=table.concat(summary," · ")
+    if #model.rows==0 and not model.instruction then
+        model.instruction=A.indexReady and "当前没有可显示的副本任务。" or "正在读取副本任务。"
     end
-    layout(false)
-    if used>1 and y>budget then layout(true) end
-    local height=math.min(budget,y)
-    card.scrollRange=y-height
-    card.child:SetHeight(y);card.scroll:SetHeight(height)
-    card.scroll:SetVerticalScroll(math.min(card.scroll:GetVerticalScroll(),card.scrollRange))
-    card.footer:SetText("滚轮查看更多");card.footer:SetShown(card.scrollRange>0)
-    local name=s.instanceName or d and d.title or "副本指引"
-    card.place:SetText(name..(total>0 and (" · "..total.." 项") or ""))
-    card.link:SetText(d and "任务详情  ›" or "任务行程  ›")
-    card:SetHeight(36+summaryHeight+feedbackHeight+height+(card.scrollRange>0 and card.footer:GetStringHeight()+4 or 0))
-    card:SetScale(A.settings.scale);card:SetAlpha(A.settings.alpha);card:Show()
+    model.feedback=roster.feedback
+    return model
 end
 
 function UI:SetTrackerNavigation(distance,angle,unverified,guide)
     if not self.navFrame then return end
-    local card=self.tracker.dungeonGuide
-    local textOnly=guide and not distance and not (A.state.instanceType=="party" or A.state.instanceType=="raid" or card and card:IsShown())
+    local textOnly=guide and not distance and not (A.state.instanceType=="party" or A.state.instanceType=="raid" or self.tracker.instanceRoster)
     local show=A.settings.arrow and (distance~=nil or textOnly) and not A.char.paused
     self.navFrame:SetShown(show==true)
     if not show then return end

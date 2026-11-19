@@ -97,7 +97,7 @@ local dungeonHUD=arg[1]=="dungeon-hud"
 local sevenQuests=dungeonHUD and arg[2]=="seven"
 local canvasWidth=(dungeonPreview or planPreview or regionDetail or arg[1]=="nearby") and 1080 or 560
 local canvasHeight=(dungeonPreview or planPreview or regionDetail) and 700 or 1100
-if dungeonHUD then canvasWidth,canvasHeight=420,sevenQuests and 460 or 365 end
+if dungeonHUD then canvasWidth,canvasHeight=490,sevenQuests and 850 or 735 end
 if not dungeonPreview and not planPreview and not regionDetail and arg[2]=="large" then canvasHeight=1450 end
 UIParent=widget("Root");UIParent:SetSize(canvasWidth,canvasHeight)
 CreateFrame=function(kind,_,parent) return widget(kind,parent) end
@@ -413,14 +413,13 @@ if arg[1]=="journey" then
 end
 if not regionDetail then A.UI.navFrame:ClearAllPoints();A.UI.navFrame:SetPoint("TOP",A.UI.frame,"BOTTOM",0,-54) end
 if dungeonHUD then
-    MinimapCluster:Hide();A.UI.frame:Hide()
     A.state.inInstance,A.state.instanceType,A.state.instanceId,A.state.instanceName=true,"party",90,"诺莫瑞根"
     A.Navigation.planInstance=90
     action={kind="turnin",questId=4601,title="超级清洁器5200型！",text="在诺莫瑞根清洁区，使用「超级清洁器5200型」交付任务。从齿轮大厅上层走西南通道，岔路向北下楼。"}
     A.DungeonCatalog={entries={["reference:90"]={id="reference:90",title="诺莫瑞根"}}}
     local d=A.DungeonCatalog.entries["reference:90"]
     A.state.quests[4601]={title=action.title,ready=false}
-    A.state.quests[2924]={objectives={{text="基础模组",numFulfilled=2,numRequired=12}}}
+    A.state.quests[2924]={objectives={{text="基础模组",type="item",numFulfilled=2,numRequired=12}}}
     A.state.quests[2929]={objectives={{text="麦克尼尔·瑟玛普拉格",numFulfilled=0,numRequired=1}}}
     local rows={
         {id=4601,title=action.title,group=1,allowed=true},
@@ -430,30 +429,30 @@ if dungeonHUD then
     }
     if sevenQuests then
         rows[1].group=2
-        A.state.quests[4601].objectives={{text="脏兮兮的东西",numFulfilled=0,numRequired=1}}
+        A.state.quests[4601].objectives={{text="脏兮兮的东西",type="item",numFulfilled=0,numRequired=1}}
         for _,q in ipairs({{2922,"拯救尖端机器人！","尖端机器人的存储器核心",0,1},
             {2928,"陀螺式挖掘机","机械内胆",7,24},{2930,"抢救数据","彩色穿孔卡片",0,1}}) do
             table.insert(rows,#rows,{id=q[1],title=q[2],group=2,allowed=true})
-            A.state.quests[q[1]]={title=q[2],objectives={{text=q[3],numFulfilled=q[4],numRequired=q[5]}}}
+            A.state.quests[q[1]]={title=q[2],objectives={{text=q[3],type="item",numFulfilled=q[4],numRequired=q[5]}}}
         end
         action={kind="objective",questId=2924,title="基础模组"}
     end
     A.Dungeon={Tasks=function() return rows end,TaskInstance=function() return d end,TaskApproach=function(a) return a end}
     A.settings.arrow=false
-    A.UI.navFrame:ClearAllPoints();A.UI.navFrame:SetPoint("CENTER",UIParent,"CENTER",0,canvasHeight/2-62)
-    A.UI:SetTrackerNavigation(nil);A.UI:RenderDungeonGuide()
-    local card=A.UI.tracker.dungeonGuide
+    A.UI:SetTrackerNavigation(nil);A.UI:RenderTracker()
+    local T=A.UI.tracker
     if sevenQuests then
-        assert(card.place:GetText()=="诺莫瑞根 · 7 项" and card.summary:GetText()=="进行中 6   ·   未接取 1")
-        assert(card.scrollRange==0 and card.rows[7].body:GetText():find("克努比",1,true))
+        assert(T.location:GetText():find("诺莫瑞根",1,true) and T.queueLabel:GetText()=="进行中 6 · 未接取 1")
+        assert(#T.model.rows==7 and T.rows[7].progress:GetText():find("克努比",1,true))
+        assert(T.rows[7]:IsShown() and T.rows[7].parent==T.queueChild)
     else
         local log={}
         for id,q in pairs(A.state.quests) do log[id]=q end
         log[4601]={title=action.title,ready=true};A.state.quests=log
         C_Timer={After=function() end}
-        A.UI:RenderDungeonGuide()
+        A.UI:RenderTracker()
     end
-    assert(card:IsShown() and not A.UI.navFrame:IsShown())
+    assert(A.UI.frame:IsShown() and not A.UI.navFrame:IsShown())
 end
 if arg[1]=="assist" then
     A.UI.navFrame:Hide()

@@ -514,15 +514,15 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     B.settings.arrow=false;U:SetNavigation(100,0.7,true);eq(U.navFrame.shown,false)
     B.settings.arrow=true;U:SetNavigation(nil);eq(U.navFrame.shown,false)
     local guide={kind="turnin",questId=4601,title="超级清洁器5200型！",text="在清洁区使用清洁器交付任务。"}
-    local card=U.tracker.dungeonGuide
+    local T=U.tracker;local originalFrame=U.frame
     B.state.inInstance,B.state.instanceType,B.state.instanceId,B.state.instanceName=true,"party",90,"诺莫瑞根"
     B.settings.arrow=false
     B.DungeonCatalog={entries={["reference:90"]={id="reference:90"}}}
     local indexReady=B.indexReady;B.indexReady=false
-    U:RenderDungeonGuide();eq(card.shown,true);eq(card.place.value,"诺莫瑞根");eq(card.rows[1].title.value,"查看副本任务")
-    B.action=guide;B.Navigation.planInstance=90;U:RenderDungeonGuide()
+    U:RenderTracker();eq(U.frame,originalFrame);eq(T.model.dungeonName,"诺莫瑞根");eq(U.title.value,"副本任务");eq(#T.model.rows,0)
+    B.action=guide;B.Navigation.planInstance=90;U:RenderTracker()
     U:SetNavigation(nil,nil,nil,guide);eq(U.navFrame.shown,false)
-    eq(card.rows[1].title.value,"交付任务 · "..guide.title);eq(card.rows[1].body.value,guide.text)
+    eq(T.rows[1].questId,4601);eq(T.rows[1].progress.value,guide.text)
     local previous=B.Dungeon
     local d=B.DungeonCatalog.entries["reference:90"]
     local reads=0
@@ -536,35 +536,34 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
         end}
     B.indexReady=true;B.state.locked=1
     B.state.quests[1].objectives={{text="零件",numRequired=6,numFulfilled=2},{text="图纸",numRequired=1,numFulfilled=0}}
-    U:RenderDungeonGuide();eq(card.rows[2].body.value,"零件 · 2/6\n图纸 · 0/1")
-    eq(card.rows[3].title.value,"未接取 · 护送机器人");eq(card.rows[4].title.value,"未接取 · 一团混乱")
-    eq(card.place.value,"诺莫瑞根 · 4 项")
-    eq(card.summary.value,"进行中 1   ·   未接取 2   ·   可交付 1")
-    card.scripts.OnMouseWheel(card,-1);eq(card.scroll:GetVerticalScroll(),math.min(48,card.scrollRange))
-    B.state.quests[1].objectives[1].numFulfilled=4;U:RenderDungeonGuide()
-    eq(card.rows[2].body.value,"零件 · 4/6\n图纸 · 0/1");eq(reads,1)
+    U:RenderTracker();eq(T.rows[2].objectives[1].count.value,"2/6");eq(T.rows[2].objectives[2].count.value,"0/1")
+    eq(T.rows[3].status,"未接取");eq(T.rows[4].questId,5);eq(T.rows[3].parent,T.queueChild)
+    eq(T.rows[3].progress.value,"向「机器人」接取任务。")
+    eq(#T.model.rows,4);eq(T.queueLabel.value,"进行中 1 · 未接取 2 · 可交付 1")
+    B.state.quests[1].objectives[1].numFulfilled=4;U:RenderTracker()
+    eq(T.rows[2].objectives[1].count.value,"4/6");eq(reads,1)
     local timers,oldTimer={},C_Timer
     C_Timer={After=function(_,fn) timers[#timers+1]=fn end}
-    eq(card.feedback.shown,false)
+    eq(T.model.feedback,nil)
     local savedQuests=B.state.quests
     B.state.quests={[1]={objectives={{text="零件",finished=true,numRequired=6,numFulfilled=6},{text="图纸",numRequired=1}}}}
-    U:RenderDungeonGuide();eq(card.feedback.value,"目标完成 · 零件")
-    assert(card.rows[2].body.value:find("✓ 已完成 · 零件 · 6/6",1,true));U:RenderDungeonGuide();eq(#timers,1)
+    U:RenderTracker();eq(T.model.feedback,"目标完成 · 零件")
+    eq(T.rows[2].objectives[1].check.value,"✓");U:RenderTracker();eq(#timers,1)
     B.Dungeon.Tasks=function() return {{id=1,title="收集零件",allowed=true,group=1,position={entityName="技师"}}} end
     B.state.quests={[1]={ready=true,title="收集零件"}};B.state.revision=(B.state.revision or 0)+1
-    U:RenderDungeonGuide();eq(card.feedback.value,"任务完成 · 收集零件（本内可交）")
-    eq(card.rows[2].title.value,"已完成 · 收集零件");assert(card.rows[2].body.value:find("技师",1,true))
-    timers[1]();eq(card.feedback.shown,true)
-    U:DungeonTurnedIn(1);B.state.quests={};U:RenderDungeonGuide();eq(card.feedback.value,"已交付 · 收集零件")
-    timers[#timers]();U:RenderDungeonGuide();eq(card.feedback.shown,false)
+    U:RenderTracker();eq(T.model.feedback,"任务完成 · 收集零件（本内可交）")
+    eq(T.rows[1].status,"可交付");assert(T.rows[1].progress.value:find("技师",1,true))
+    timers[1]();assert(T.model.feedback)
+    U:DungeonTurnedIn(1);B.state.quests={};U:RenderTracker();eq(T.model.feedback,"已交付 · 收集零件")
+    timers[#timers]();U:RenderTracker();eq(T.model.feedback,nil)
     B.state.quests=savedQuests;C_Timer=oldTimer
     B.Dungeon=previous;B.state.locked=nil
     local browser,dungeon,selectTab=U.Browser,U.Dungeon,U.SelectTab
     U.Browser={ClearSearch=function(b) b.cleared=true end,dungeonDetail={showLoot=true}};U.Dungeon={}
     U.SelectTab=function(_,i) eq(i,4) end
-    card:Click();eq(U.Dungeon.selected,"reference:90");eq(U.Browser.cleared,true);eq(U.Browser.dungeonDetail.showLoot,false)
+    T.questTitle:Click();eq(U.Dungeon.selected,"reference:90");eq(U.Browser.cleared,true);eq(U.Browser.dungeonDetail.showLoot,false)
     U.Browser,U.Dungeon,U.SelectTab=browser,dungeon,selectTab;U.details:Hide()
-    B.state.inInstance=false;U:RenderDungeonGuide();eq(card.shown,false)
+    B.state.inInstance=false;U:RenderTracker();eq(U.frame,originalFrame);eq(T.instanceRoster,nil);eq(T.model.dungeonName,nil);assert(#T.model.rows>0)
     B.indexReady=indexReady
     B.settings.arrow=true
     U.navFrame.scripts.OnDragStop();eq(B.settings.navigationPosition[3],25)
