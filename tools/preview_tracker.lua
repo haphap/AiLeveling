@@ -124,7 +124,7 @@ if os.getenv("AILEVELING_PREVIEW_DAYLIGHT")=="1" then
         local fs=parent:CreateFontString(nil,"OVERLAY");fs:SetFont("preview",sizes[role],"");return fs
     end
     api.Skin=function(frame,opts)
-        frame:SetBackdropColor(.078,.078,.09,opts.bgAlpha or .94);frame:SetBackdropBorderColor(.024,.024,.027,1)
+        frame:SetBackdropColor(.078,.078,.09,opts.bgAlpha or .85);frame:SetBackdropBorderColor(.024,.024,.027,1)
     end
     api.Button=function(parent,label,height)
         local b=CreateFrame("Button",nil,parent);b:SetHeight(height);b:SetBackdropColor(.133,.133,.153,.94)

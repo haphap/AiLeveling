@@ -65,6 +65,9 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     B=setup(true,api);B.UI:Render();local choice=B.action
     assert(B.UI.frame.daylightOpts and B.UI.details.daylightOpts)
     eq(B.UI.frame.daylightOpts.bgAlpha,0.4);eq(B.UI.title.fontFace,face);eq(B.UI.tracker.header.shown,false)
+    eq(B.UI.navFrame.daylightOpts.window,true);eq(B.UI.navFrame.daylightOpts.bgAlpha,nil)
+    B.settings.alpha=0.5;B.UI:ApplyStyle()
+    eq(B.UI.tracker.navBearing.alpha,0.5);eq(B.UI.nav.alpha,0.5);eq(B.UI.navFrame.alpha or 1,1)
     eq(B.UI.tracker.headerLine.shown,false);eq(B.UI.title.fontSize,13);eq(B.UI.tracker.location.fontSize,15)
     eq(B.UI.title.fontFlags,"");eq(B.UI.title.shadowColor[4],0.6)
     local before=B.UI.frame.skinCalls;B.UI.frame.scripts.OnSizeChanged();eq(B.UI.frame.skinCalls,before+1)
