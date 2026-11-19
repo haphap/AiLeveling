@@ -1061,18 +1061,23 @@ function UI:CreateTracker()
     T.progressLabel=text(T.progress,"caption",palette.muted);T.progressLabel:SetPoint("LEFT");T.progressLabel:SetText("当前任务进度")
     T.progressText=text(T.progress,"caption",palette.muted);T.progressText:SetPoint("RIGHT");T.progressText:SetWidth(40);T.progressText:SetJustifyH("RIGHT")
     local nav=CreateFrame("Frame","AiLevelingNavigation",UIParent)
-    self.navFrame=nav;nav:SetSize(420,90);nav:SetPoint("CENTER",UIParent,"CENTER",0,-110)
+    self.navFrame=nav;nav:SetPoint("CENTER",UIParent,"CENTER",0,-110)
     p=A.settings.navigationPosition
     if p then nav:ClearAllPoints();nav:SetPoint(p[1],UIParent,p[2],p[3],p[4]) end
     self:Movable(nav,"navigationPosition")
     nav:SetClampedToScreen(true)
-    self.nav=text(nav,"brand","accent");self.nav:SetPoint("TOP",0,-37);self.nav:SetJustifyH("CENTER")
-    T.navTitle=text(nav,"caption");T.navTitle:SetPoint("TOP",0,-62);T.navTitle:SetWidth(420);T.navTitle:SetJustifyH("CENTER")
-    T.arrowLines={}
-    for i=1,4 do
-        local line=nav:CreateLine(nil,i<=2 and "BACKGROUND" or "OVERLAY")
-        line:SetThickness(i<=2 and 6 or 3);T.arrowLines[i]=line
-    end
+    nav:SetSize(268,48)
+    if self.daylight then self:DaylightShell(nav,palette.hud[4])
+    else self:Rounded(nav,spacing.radius);nav:SetBackdropColor(unpack(palette.hud));nav.material:Hide() end
+    T.navIcon=nav:CreateTexture(nil,"ARTWORK")
+    T.navTitle=text(nav,"task",palette.white)
+    T.navDetail=text(nav,"caption",palette.muted)
+    T.navRule=nav:CreateTexture(nil,"ARTWORK")
+    T.navNextIcon=nav:CreateTexture(nil,"ARTWORK")
+    T.navNext=text(nav,"caption",palette.muted)
+    self.nav=text(nav,"caption","accent");self.nav:SetJustifyH("RIGHT")
+    T.navBearing=nav:CreateTexture(nil,"ARTWORK")
+    T.navBearing:SetTexture(media.."hud-chevron-up.tga")
     nav:Hide()
 end
 
@@ -1252,6 +1257,17 @@ function UI:UpdateNearby(along)
     notice:Show()
 end
 
+local travelIcons={walk="location",move="location",approach="location",zeppelin="boat",flight="flight",boat="boat",tram="tram",
+    hearth="hearth",hearthCast="hearth",portal="entry",dungeonEnter="entry",dungeonLeave="entry",manual="location"}
+local function stepIcon(step)
+    local task=step.action or step
+    if task.kind=="accept" or task.kind=="objective" or task.kind=="turnin" then
+        local quest=(A.state.quests or {})[task.questId]
+        return UI.QuestIcon(task.kind,task,quest and quest.objectives)
+    end
+    return travelIcons[step.mode or step.kind] or "location"
+end
+
 function UI:RenderJourney(journey,dynamic)
     local T=self.tracker
     T.journeyTime=journey and clockText(journey.seconds) or ""
@@ -1273,10 +1289,7 @@ function UI:RenderJourney(journey,dynamic)
         end
         if not dynamic then
             row.number:SetText(i)
-            local task=step.action
-            local quest=task and (A.state.quests or {})[task.questId]
-            local icon=task and UI.QuestIcon(step.kind,task,quest and quest.objectives) or
-                ({walk="location",zeppelin="boat",flight="flight",boat="boat",tram="tram",hearth="hearth"})[step.kind] or "location"
+            local icon=stepIcon(step)
             setHUDIcon(row.icon,icon,icon=="collect" and palette.collect or i==1 and palette.gold or palette.blue)
             row.title:SetText(step.title);row.title:SetTextColor(unpack(i==1 and palette.gold or palette.white))
             row.detail:SetText(step.detail or "")
@@ -2032,21 +2045,22 @@ local function navigationInstruction(action,journey)
         nav.atTransitDestination~=action and A.settings.transportHints~=false then
         -- The tracker already expands transport legs into walks and connections.
         local first,second=journey.steps[1],journey.steps[2]
-        return "当前步骤",first.title..(second and "\n接下来 · "..second.title or "")
+        return first.title,nil,second and second.title,stepIcon(first),second and stepIcon(second)
     end
     local heading=transitLabels[action.mode] or stepLabels[action.kind] or "当前步骤"
     local sequence=nav.Sequence and nav:Sequence() or nav
     local index=sequence.index
-    local nextStep
+    local nextStep,counter
     local leg=action.kind=="flight" and A.Transport and A.Transport.flight or
         action.kind=="hearthCast" and A.Hearth and (A.Hearth.cast or A.Hearth.pending)
     if sequence.actions and #sequence.actions>1 and sequence.actions[index]==(leg and leg.action or action) then
-        heading=string.format("第 %d/%d 步 · %s",index,#sequence.actions,heading)
+        counter=string.format("%d/%d",index,#sequence.actions)
         nextStep=sequence.actions[index+1]
     end
     local target=nav.Target(action)
     local hint=target and target.approximate and (target.sourceKind=="patrol" and " · 巡逻路线" or " · 区域参考点") or ""
-    local title=action.title or ""
+    local title=action.title or heading
+    if action.title and (action.kind=="accept" or action.kind=="turnin") then title=questVerbs[action.kind].."「"..title.."」" end
     local detail=questStepHint(action)
     if action.kind=="objective" and target and target.sourceKind=="vendor" then
         detail=UI.ActionText(action,A.settings)
@@ -2055,20 +2069,19 @@ local function navigationInstruction(action,journey)
         local goal=quest and (quest.objectives or {})[action.objectiveIndex]
         detail=goal and goal.text or detail
     elseif action.kind=="transit" then
-        if nav.atTransitDestination==action then detail="已抵达本段终点"
+        if nav.atTransitDestination==action then title,detail="已抵达本段终点",nil
         elseif A.settings.transportHints==false then detail=nil
         elseif action.atDeparture and vehicles[action.mode] and action.toName then
-            detail="搭乘开往"..action.toName.."的"..vehicles[action.mode].."，到站后继续行程。"
+            title,detail="搭乘开往"..action.toName.."的"..vehicles[action.mode],nil
         end
-        if detail then title=detail end
     end
-    if detail and detail~=title then title=title.."\n"..detail end
-    title=title..hint
+    if detail==title then detail=nil end
+    local following
     if nextStep and nextStep.title and not (nav.StaleAction and nav.StaleAction(nextStep,A.state,sequence.plan)) then
         local verb=questVerbs[nextStep.kind]
-        title=title.."\n接下来 · "..(verb and verb.."「"..nextStep.title.."」" or nextStep.title)
+        following=verb and verb.."「"..nextStep.title.."」" or nextStep.title
     end
-    return heading,title
+    return title..hint,detail,following,stepIcon(action),following and stepIcon(nextStep),counter
 end
 
 function UI:SetTrackerNavigation(distance,angle,unverified,action)
@@ -2076,25 +2089,57 @@ function UI:SetTrackerNavigation(distance,angle,unverified,action)
     action=action or distance and A.Navigation:Current()
     self.navFrame:SetShown(action~=nil and not A.char.paused)
     if not action or A.char.paused then return end
-    local heading,title=navigationInstruction(action,self.tracker.model and self.tracker.model.journey)
+    local T=self.tracker
+    local title,detail,following,icon,nextIcon,meta=navigationInstruction(action,T.model and T.model.journey)
     if A.settings.arrow and distance then
         local meters=A.settings.distanceUnits=="meters"
-        heading=heading..string.format(" · %.0f %s",meters and distance*0.9144 or distance,meters and "米" or "码")
-    end
-    self.nav:SetText(heading)
-    if self.tracker.navTitle:GetText()~=title then
-        self.tracker.navTitle:SetText(title)
-        self.navFrame:SetHeight(math.max(90,70+self.tracker.navTitle:GetStringHeight()))
+        local value=string.format("%.0f %s",meters and distance*0.9144 or distance,meters and "米" or "码")
+        meta=meta and meta.." · "..value or value
     end
     angle=A.settings.arrow and angle or nil
-    for _,line in ipairs(self.tracker.arrowLines) do line:SetShown(angle~=nil) end
-    if not angle then return end
-    local points={{-10,-6,0,7},{0,7,10,-6}}
-    local cos,sin=math.cos(-angle),math.sin(-angle)
-    for i,line in ipairs(self.tracker.arrowLines) do
-        local p=points[(i-1)%2+1]
-        line:SetStartPoint("TOP",self.navFrame,p[1]*cos-p[2]*sin,-16+p[1]*sin+p[2]*cos)
-        line:SetEndPoint("TOP",self.navFrame,p[3]*cos-p[4]*sin,-16+p[3]*sin+p[4]*cos)
-        if i<=2 then line:SetColorTexture(0.01,0.02,0.02,0.85) else line:SetColorTexture(self:Accent()) end
+    local scale=self:FontScale()
+    if T.navScale~=scale or (self.nav:GetText() or "")~=(meta or "") then
+        self.nav:SetText(meta or "")
+        T.navMetaWidth=meta and math.ceil(self.nav:GetStringWidth())+spacing.gap*scale or 0
     end
+    local nextText=following and ("下一步  "..following) or ""
+    local inset=spacing.padding*scale
+    local metaRight=angle and inset+20*scale or inset
+    local reserved=T.navMetaWidth+metaRight
+    if T.navScale~=scale or T.navReserved~=reserved or T.navTitle:GetText()~=title or
+        (T.navDetail:GetText() or "")~=(detail or "") or (T.navNext:GetText() or "")~=nextText or T.navKind~=icon or T.navNextKind~=nextIcon then
+        T.navScale,T.navReserved,T.navKind,T.navNextKind=scale,reserved,icon,nextIcon
+        local width=268*scale
+        local left=inset+spacing.indent*scale
+        local textWidth=width-left-inset
+        local function place(widget,x,y)
+            widget:ClearAllPoints();widget:SetPoint("TOPLEFT",self.navFrame,"TOPLEFT",x,-y)
+        end
+        setHUDIcon(T.navIcon,icon,palette[icon] or palette.accent)
+        T.navIcon:SetSize(spacing.icon*scale,spacing.icon*scale);place(T.navIcon,inset,inset)
+        T.navTitle:SetWidth(width-left-reserved);T.navTitle:SetText(title);place(T.navTitle,left,inset)
+        self.nav:ClearAllPoints();self.nav:SetPoint("TOPRIGHT",self.navFrame,"TOPRIGHT",-metaRight,-inset)
+        T.navBearing:SetSize(spacing.icon*scale,spacing.icon*scale)
+        T.navBearing:ClearAllPoints();T.navBearing:SetPoint("TOPRIGHT",self.navFrame,"TOPRIGHT",-inset,-inset)
+        T.navBearing:SetVertexColor(self:Accent())
+        local y=inset+math.max(spacing.icon*scale,T.navTitle:GetStringHeight())
+        T.navDetail:SetText(detail or "");T.navDetail:SetShown(detail~=nil and detail~="")
+        if T.navDetail:IsShown() then
+            y=y+spacing.tight*scale
+            T.navDetail:SetWidth(textWidth);place(T.navDetail,left,y);y=y+T.navDetail:GetStringHeight()
+        end
+        T.navNext:SetText(nextText);T.navNext:SetShown(following~=nil)
+        T.navRule:SetShown(following~=nil);T.navNextIcon:SetShown(following~=nil)
+        if following then
+            y=y+spacing.gap*scale
+            T.navRule:SetColorTexture(unpack(palette.line));T.navRule:SetSize(width-2*inset,1);place(T.navRule,inset,y)
+            y=y+1+spacing.gap*scale
+            setHUDIcon(T.navNextIcon,nextIcon,palette.muted);T.navNextIcon:SetSize(spacing.smallIcon*scale,spacing.smallIcon*scale)
+            place(T.navNextIcon,inset+2*scale,y+scale)
+            T.navNext:SetWidth(textWidth);place(T.navNext,left,y);y=y+math.max(spacing.smallIcon*scale,T.navNext:GetStringHeight())
+        end
+        if self.navFrame:GetWidth()~=width or self.navFrame:GetHeight()~=y+inset then self.navFrame:SetSize(width,y+inset) end
+    end
+    T.navBearing:SetShown(angle~=nil)
+    if angle then T.navBearing:SetRotation(-angle) end
 end

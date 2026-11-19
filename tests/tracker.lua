@@ -509,10 +509,11 @@ end)
 test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     local B=ready();local U=B.UI
     U:SetNavigation(100,0.7,true);eq(U.navFrame.shown,true);eq(U.tracker.navTitle.value,"当前任务")
+    eq(U.tracker.navBearing.rotation,-0.7)
     B.action={title="当前任务",kind="objective",position={approximate=true}}
     U:SetNavigation(100,0.7,true);eq(U.tracker.navTitle.value,"当前任务 · 区域参考点")
     B.settings.arrow=false;U:SetNavigation(100,0.7,true);eq(U.navFrame.shown,true)
-    eq(U.nav.value,"任务目标");eq(U.tracker.arrowLines[1].shown,false)
+    eq(U.nav.value,"");eq(U.tracker.navBearing.shown,false);eq(U.tracker.navNext.shown,false)
     B.settings.arrow=true;U:SetNavigation(nil);eq(U.navFrame.shown,false)
     local guide={kind="turnin",questId=4601,title="超级清洁器5200型！",text="在清洁区使用清洁器交付任务。"}
     local T=U.tracker;local originalFrame=U.frame
@@ -524,11 +525,11 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     B.action=guide;B.Navigation.planInstance=90;U:RenderTracker()
     local transit={kind="transit",mode="tram",title="乘地铁前往铁炉堡",fromName="暴风城",toName="铁炉堡",atDeparture=true}
     B.Navigation.actions={transit,guide};B.Navigation.index=1
-    U:SetNavigation(nil,nil,nil,transit);eq(U.nav.value,"第 1/2 步 · 乘地铁")
-    assert(T.navTitle.value:find("搭乘开往铁炉堡的地铁",1,true) and T.navTitle.value:find("接下来 · 交付「"..guide.title.."」",1,true))
+    U:SetNavigation(nil,nil,nil,transit);eq(U.nav.value,"1/2")
+    eq(T.navTitle.value,"搭乘开往铁炉堡的地铁");eq(T.navNext.value,"下一步  交付「"..guide.title.."」")
     B.Navigation.index=2
-    U:SetNavigation(nil,nil,nil,guide);eq(U.navFrame.shown,true);eq(U.nav.value,"第 2/2 步 · 交付任务")
-    eq(T.navTitle.value,guide.title.."\n"..guide.text)
+    U:SetNavigation(nil,nil,nil,guide);eq(U.navFrame.shown,true);eq(U.nav.value,"2/2")
+    eq(T.navTitle.value,"交付「"..guide.title.."」");eq(T.navDetail.value,guide.text);eq(T.navNext.shown,false)
     B.Navigation.actions=nil
     eq(T.rows[1].questId,4601);eq(T.rows[1].progress.value,guide.text)
     local previous=B.Dungeon
@@ -592,7 +593,8 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     eq(#journey.steps,4);eq(journey.seconds,140);eq(journey.distance,280)
     eq(journey.steps[1].title,"走到 暴风城地铁入口");eq(journey.steps[2].detail,"平均等候 0:40 · 乘坐 1:00")
     U:SetNavigation(nil,nil,nil,transit)
-    eq(T.navTitle.value,"走到 暴风城地铁入口\n接下来 · 乘地铁前往铁炉堡")
+    eq(T.navTitle.value,"走到 暴风城地铁入口");eq(T.navNext.value,"下一步  乘地铁前往铁炉堡")
+    assert(T.navIcon.texture:find("hud-location.tga",1,true) and T.navNextIcon.texture:find("hud-tram.tga",1,true))
     eq(journey.steps[4].title,"接取 新的任务");eq(T.journey.shown,true)
     local model,models,layout,layouts=U.TrackerModel,0,U.LayoutTracker,0
     U.TrackerModel=function(...) models=models+1;return model(...) end
@@ -611,13 +613,13 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     transit.atDeparture=true;B.state.position={map=1,x=0.2,y=0};U:RenderTracker()
     eq(#T.model.journey.steps,3);eq(T.model.journey.steps[1].kind,"tram")
     U:SetNavigation(nil,nil,nil,transit)
-    eq(T.navTitle.value,"乘地铁前往铁炉堡\n接下来 · 走到 接取人")
+    eq(T.navTitle.value,"乘地铁前往铁炉堡");eq(T.navNext.value,"下一步  走到 接取人")
     B.char.paused=true;U:RenderTracker();eq(T.journey.shown,false);B.char.paused=false
     transit.mode="flight";B.Transport.flight={action=transit,observedStart=true,duration=100,started=5}
     B.action={kind="flight",title="正在飞行"};U:RenderTracker()
     eq(T.model.journey.seconds,125);eq(T.model.journey.steps[1].detail,"飞行中")
     B.Navigation.index=2;B.action=goal;U:RenderTracker();eq(T.journey.shown,false);eq(T.model.questId,4)
-    U:SetNavigation(nil,nil,nil,goal);eq(T.navTitle.value,"新的任务\n向「接取人」接取任务。")
+    U:SetNavigation(nil,nil,nil,goal);eq(T.navTitle.value,"接取「新的任务」");eq(T.navDetail.value,"向「接取人」接取任务。")
     eq(B.state.quests[4],nil);eq(B.state.completed[4],nil)
     B.finish()
 end)

@@ -390,6 +390,7 @@ function UI:ApplyStyle()
     if self.tracker and self.tracker.headerLine then self.tracker.headerLine:SetColorTexture(unpack(colors.accent)) end
     if A.settings.lockWindow then self.frame:StopMovingOrSizing();self.details:StopMovingOrSizing() end
     if self.navFrame then
+        self.tracker.navScale=nil
         self.navFrame:SetScale(A.settings.scale);self.navFrame:SetAlpha(A.settings.alpha)
         if A.settings.lockWindow then self.navFrame:StopMovingOrSizing() end
     end

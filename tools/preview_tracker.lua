@@ -60,6 +60,7 @@ local function widget(kind,parent)
     function w:SetTextColor(...) self.color={...} end;w.SetColorTexture=w.SetTextColor
     w.SetVertexColor=w.SetTextColor
     function w:SetTexture(path) self.texture=path end
+    function w:SetRotation(radians) self.rotation=radians end
     function w:SetHorizTile(value) self.tileX=value end
     function w:SetVertTile(value) self.tileY=value end
     function w:SetHighlightTexture(texture) texture:Hide() end
@@ -408,8 +409,8 @@ if arg[1]=="journey" then
     local T=A.UI.tracker
     -- WaypointUI draws the bearing for this leg. Render the companion instructions.
     A.UI:SetTrackerNavigation(nil,nil,nil,action)
-    assert(A.UI.navFrame:IsShown() and A.UI.nav:GetText()=="当前步骤")
-    assert(T.navTitle:GetText()=="走到 暴风城地铁入口\n接下来 · 乘地铁前往铁炉堡地铁入口")
+    assert(A.UI.navFrame:IsShown() and T.navTitle:GetText()=="走到 暴风城地铁入口")
+    assert(T.navNext:GetText()=="下一步  乘地铁前往铁炉堡地铁入口")
     assert(T.journey:IsShown() and T.alongLabel:IsShown() and T.thenText:IsShown() and T.queuePanel:IsShown())
     assert(T.model.rows[1].questId==64 and T.model.rows[1].along and T.model.rows[1].status=="未接取")
     assert(T.model.rows[2].questId==65 and T.model.rows[2].status=="已接取")
@@ -553,6 +554,7 @@ local function visit(w,visible,clip)
     if not visible then return end
     local rect=box(w)
     local record={kind=w.kind,rect=rect,text=w.value,size=w.size,spacing=w.spacing,color=w.color,background=w.background,border=w.border,justify=w.justify,maxLines=w.maxLines,nonSpaceWrap=w.nonSpaceWrap,clip=clip,layer=w.layer,texture=w.texture,uv=w.uv,tileX=w.tileX,tileY=w.tileY}
+    record.rotation=w.rotation
     if w.kind=="Line" then
         local function point(p)
             local r=box(p.relative);local a=anchors[p.point]

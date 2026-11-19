@@ -2,6 +2,7 @@
 """Render the actual tracker widget layout with example state, outside the WoW client."""
 import os
 import json
+import math
 import sys
 import re
 import subprocess
@@ -83,6 +84,8 @@ def main():
             path = row.get('texture', '').replace('\\', '/')
             if path.startswith('Interface/AddOns/AiLeveling/Media/') or path.removeprefix('Interface/') in NATIVE_TEXTURES:
                 asset = texture(row['texture'], w, h, row.get('color'), row.get('uv'), row.get('tileX'), row.get('tileY'))
+                if row.get('rotation'):
+                    asset = asset.rotate(math.degrees(row['rotation']), resample=Image.Resampling.BICUBIC)
                 overlay.alpha_composite(asset, (round(x), round(y)))
             else:
                 d.rectangle((x, y, x + w, y + h), fill=color(row.get('color')))
