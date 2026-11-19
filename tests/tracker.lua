@@ -542,6 +542,21 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     assert(card.scrollRange>0);card.scripts.OnMouseWheel(card,-1);assert(card.scroll:GetVerticalScroll()>0)
     B.state.quests[1].objectives[1].numFulfilled=4;U:RenderDungeonGuide()
     eq(card.rows[2].body.value,"零件 · 4/6\n图纸 · 0/1");eq(reads,1)
+    local timers,oldTimer={},C_Timer
+    C_Timer={After=function(_,fn) timers[#timers+1]=fn end}
+    eq(card.feedback.shown,false)
+    local savedQuests=B.state.quests
+    B.state.quests={[1]={objectives={{text="零件",finished=true,numRequired=6,numFulfilled=6},{text="图纸",numRequired=1}}}}
+    U:RenderDungeonGuide();eq(card.feedback.value,"目标完成 · 零件")
+    assert(card.rows[2].body.value:find("✓ 已完成 · 零件 · 6/6",1,true));U:RenderDungeonGuide();eq(#timers,1)
+    B.Dungeon.Tasks=function() return {{id=1,title="收集零件",allowed=true,group=1,position={entityName="技师"}}} end
+    B.state.quests={[1]={ready=true,title="收集零件"}};B.state.revision=(B.state.revision or 0)+1
+    U:RenderDungeonGuide();eq(card.feedback.value,"任务完成 · 收集零件（本内可交）")
+    eq(card.rows[2].title.value,"已完成 · 收集零件");assert(card.rows[2].body.value:find("技师",1,true))
+    timers[1]();eq(card.feedback.shown,true)
+    U:DungeonTurnedIn(1);B.state.quests={};U:RenderDungeonGuide();eq(card.feedback.value,"已交付 · 收集零件")
+    timers[#timers]();U:RenderDungeonGuide();eq(card.feedback.shown,false)
+    B.state.quests=savedQuests;C_Timer=oldTimer
     B.Dungeon=previous;B.state.locked=nil
     local browser,dungeon,selectTab=U.Browser,U.Dungeon,U.SelectTab
     U.Browser={ClearSearch=function(b) b.cleared=true end,dungeonDetail={showLoot=true}};U.Dungeon={}

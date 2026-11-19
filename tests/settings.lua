@@ -705,7 +705,9 @@ test("练级统计按原生经验跨级结算，暂停AFK离线不计时并保�
     B.State.TurnedIn=stateModule.State.TurnedIn
     -- The module closure needs this addon's actual state and character tables.
     stateModule.state=B.state;stateModule.char=B.char
-    event(nil,"QUEST_TURNED_IN",1,100,0);event(nil,"QUEST_TURNED_IN",1,100,0)
+    local receipts=0
+    B.UI.DungeonTurnedIn=function(_,id) eq(id,1);receipts=receipts+1 end
+    event(nil,"QUEST_TURNED_IN",1,100,0);event(nil,"QUEST_TURNED_IN",1,100,0);eq(receipts,1)
     eq(B.char.leveling.levels[21].quests,1)
     B.time(180);B:SetOption("levelingStats",false)
     local before=B.char.leveling.levels[21].seconds

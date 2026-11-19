@@ -1061,6 +1061,16 @@ function UI:CreateTracker()
     guide.icon:SetSize(16,16);guide.icon:SetPoint("TOPLEFT",12,-10)
     guide.place=text(guide,"caption",palette.gold);guide.place:SetPoint("TOPLEFT",34,-10);guide.place:SetWidth(192)
     guide.link=text(guide,"caption",palette.blue);guide.link:SetPoint("TOPRIGHT",-12,-10)
+    guide.feedback=text(guide,"body",palette.green);guide.feedback:SetWidth(304)
+    guide.feedback:SetPoint("TOPLEFT",12,-32);guide.feedback:SetMaxLines(2);guide.feedback:Hide()
+    guide:SetScript("OnEnter",function(f)
+        if f.feedbackDetails then
+            GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText("完成提示")
+            for _,line in ipairs(f.feedbackDetails) do GameTooltip:AddLine(line,1,1,1,true) end
+            GameTooltip:Show()
+        end
+    end)
+    guide:SetScript("OnLeave",function(f) if GameTooltip:IsOwned(f) then GameTooltip:Hide() end end)
     guide.scroll=CreateFrame("ScrollFrame",nil,guide)
     guide.scroll:SetPoint("TOPLEFT",12,-32);guide.scroll:SetWidth(304)
     guide.child=CreateFrame("Frame",nil,guide.scroll);guide.child:SetWidth(304)
@@ -1879,12 +1889,13 @@ local function dungeonGuideBody(action,state,indices)
         local objectives={}
         local active=state.quests[action.questId]
         for i,o in ipairs(active and active.objectives or {}) do
-            if (not indices or indices[i]) and not o.finished and o.text and o.text~="" then
+            if (o.finished or not indices or indices[i]) and o.text and o.text~="" then
                 local line=o.text
-                if (o.numRequired or 0)>0 and not line:match("%d+%s*/%s*%d+") then
+                if (o.numRequired or 0)>0 and (not o.finished or (o.numFulfilled or 0)>=o.numRequired)
+                    and not line:match("%d+%s*/%s*%d+") then
                     line=line..string.format(" · %d/%d",o.numFulfilled or 0,o.numRequired)
                 end
-                objectives[#objectives+1]=line
+                objectives[#objectives+1]=o.finished and ("|cff"..UI.hex.green.."✓ 已完成 · "..line.."|r") or line
             end
         end
         if #objectives>0 then
@@ -1899,13 +1910,82 @@ local function dungeonGuideBody(action,state,indices)
     return body
 end
 
+function UI:DungeonTurnedIn(id)
+    local card=self.tracker and self.tracker.dungeonGuide
+    local s=A.state
+    if not card or not card:IsShown() or not s.inInstance or card.visit~=s.instanceId or A.char.paused or s.dead then return end
+    local quest=s.quests[id] or card.lastLog and card.lastLog[id]
+    local title=quest and quest.title or card.displayed and card.displayed[id]
+    if not title and C_QuestLog and C_QuestLog.GetTitleForQuestID then title=C_QuestLog.GetTitleForQuestID(id) end
+    if not title and A.indexReady then
+        local record=A.Data:GetQuest(id,s)
+        title=record and record.title
+    end
+    card.receipts=card.receipts or {}
+    card.receipts[id]="已交付 · "..(title or ("任务 #"..id))
+    A.dirty=true
+end
+
+local function dungeonFeedback(card,state,first)
+    local changes=card.receipts or {}
+    local compact
+    card.receipts=nil
+    if card.lastLog and card.lastLog~=state.quests then
+        for id,title in pairs(card.displayed or {}) do
+            local old,now=card.lastLog[id],state.quests[id]
+            if old and now and not changes[id] then
+                if now.ready and not old.ready then
+                    local where="可交付"
+                    for _,step in ipairs(card.inside) do
+                        if step.questId==id and step.kind=="turnin" then where="本内可交";break end
+                    end
+                    for _,step in ipairs(card.other) do
+                        if step.questId==id and step.stageLabel=="本外交付" then where="出本后交";break end
+                    end
+                    changes[id]="任务完成 · "..title.."（"..where.."）"
+                    if id==first and card.scroll:GetVerticalScroll()==0 then compact="✓ "..where end
+                elseif not now.ready then
+                    local done={}
+                    for i,o in ipairs(now.objectives or {}) do
+                        local before=(old.objectives or {})[i]
+                        if o.finished and before and not before.finished then done[#done+1]=o.text or title end
+                    end
+                    if #done>0 then changes[id]="目标完成 · "..table.concat(done,"、") end
+                end
+            end
+        end
+    end
+    if next(changes) then
+        for id,line in pairs(card.recent or {}) do changes[id]=changes[id] or line end
+        card.recent=changes
+        local lines={}
+        for _,line in pairs(changes) do lines[#lines+1]=line end
+        table.sort(lines)
+        card.feedbackDetails=lines
+        card.feedback:SetText(#lines==1 and (compact or lines[1]) or
+            (#lines.." 项完成提示 · 移入查看"));card.feedback:Show()
+        C_Timer.After(7,function()
+            if card.recent==changes then
+                card.recent,card.feedbackDetails=nil,nil;card.feedback:Hide()
+                if GameTooltip and GameTooltip.IsOwned and GameTooltip:IsOwned(card) then GameTooltip:Hide() end
+                A.dirty=true
+            end
+        end)
+    end
+    card.lastLog=state.quests
+end
+
 function UI:RenderDungeonGuide()
     local card=self.tracker and self.tracker.dungeonGuide
     if not card then return end
     local s=A.state
     local d=s.inInstance and A.DungeonCatalog and A.DungeonCatalog.entries["reference:"..tostring(s.instanceId)]
-    if not s.inInstance or not (d or s.instanceType=="party" or s.instanceType=="raid") or A.char.paused or s.dead then
-        card:Hide();card.dungeon,card.inside,card.other=nil,nil,nil;return
+    local visible=s.inInstance and (d or s.instanceType=="party" or s.instanceType=="raid") and not A.char.paused and not s.dead
+    if not visible or card.visit~=s.instanceId then
+        card.lastLog,card.displayed,card.recent,card.receipts,card.feedbackDetails=nil,nil,nil,nil,nil
+        card.visit=s.instanceId;card.feedback:Hide()
+        card.dungeon,card.inside,card.other=nil,nil,nil
+        if not visible then card:Hide();return end
     end
     if card.dungeon~=d or not card.inside or card.revision~=s.revision or card.indexReady~=A.indexReady then
         if card.dungeon~=d or not card.inside then card.scroll:SetVerticalScroll(0) end
@@ -1918,6 +1998,7 @@ function UI:RenderDungeonGuide()
     local phase=focus and (guideLabels[focus.kind] or focus.kind=="dungeonRun" and "首领目标" or
         focus.kind=="selectionBlocked" and "任务条件")
     local used,y,total=0,0,0
+    local first
     local pickups,seen={},{}
     local focusIndices
     if phase and focus.kind=="objective" then
@@ -1926,9 +2007,15 @@ function UI:RenderDungeonGuide()
     local function add(action,label,indices)
         local part=action and dungeonGuideBody(action,s,indices)
         local title=action and action.title or (d and "查看副本任务" or "查看当前任务")
+        local active=action and s.quests[action.questId]
+        if active and active.ready and (action.kind=="turnin" or action.kind=="dungeonLeave") then
+            if label=="本外交付" then part=label..(part and part~="" and (" · "..part) or "")
+            elseif not part or part=="" then part="可交付" end
+            label="已完成"
+        end
         if label then title=label.." · "..title end
         if not action then part=d and "打开任务详情，查看接取地点、任务目标和交付人。" or "打开任务行程，查看已接任务及目标。" end
-        if action and action.questId and not seen[action.questId] then seen[action.questId]=true;total=total+1 end
+        if action and action.questId and not seen[action.questId] then seen[action.questId]=action.title or title;total=total+1 end
         -- Identical machine offers can have several Forever quest IDs. Show their shared instruction once.
         if action and action.kind=="accept" and part and part~="" and not action.stageLabel and
             (action.position or part:find("「",1,true)) then
@@ -1946,6 +2033,7 @@ function UI:RenderDungeonGuide()
             part=(part and part.." · " or "").."任务日志已满"
         end
         used=used+1
+        if used==1 then first=action and action.questId end
         local row=card.rows[used]
         if not row then
             row={title=text(card.child,"task"),body=text(card.child,"body",palette.muted)}
@@ -1974,7 +2062,11 @@ function UI:RenderDungeonGuide()
         y=y+row.title:GetStringHeight()+(row.body:IsShown() and 2+row.body:GetStringHeight() or 0)+9
     end
     for i=used+1,#card.rows do card.rows[i].title:Hide();card.rows[i].body:Hide() end
-    local height=math.min(220,y)
+    dungeonFeedback(card,s,first)
+    card.displayed=seen
+    local feedbackHeight=card.feedback:IsShown() and card.feedback:GetStringHeight()+6 or 0
+    card.scroll:ClearAllPoints();card.scroll:SetPoint("TOPLEFT",12,-32-feedbackHeight)
+    local height=math.min(math.max(80,220-feedbackHeight),y)
     card.scrollRange=y-height
     card.child:SetHeight(y);card.scroll:SetHeight(height)
     card.scroll:SetVerticalScroll(math.min(card.scroll:GetVerticalScroll(),card.scrollRange))
@@ -1982,7 +2074,7 @@ function UI:RenderDungeonGuide()
     local name=s.instanceName or d and d.title or "副本指引"
     card.place:SetText(name..(total>0 and (" · "..total.." 项") or ""))
     card.link:SetText(d and "任务详情  ›" or "任务行程  ›")
-    card:SetHeight(36+height+(card.scrollRange>0 and card.footer:GetStringHeight()+4 or 0))
+    card:SetHeight(36+feedbackHeight+height+(card.scrollRange>0 and card.footer:GetStringHeight()+4 or 0))
     card:SetScale(A.settings.scale);card:SetAlpha(A.settings.alpha);card:Show()
 end
 

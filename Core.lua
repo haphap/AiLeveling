@@ -440,9 +440,13 @@ frame:SetScript("OnEvent", function(_, event, ...)
         local id,success=...
         if success and A.state.quests and A.state.quests[id] then A:RequestRefresh() end
     elseif event == "QUEST_TURNED_IN" then
-        local before=A.char.turnIns[(...)] or 0
-        A.State:TurnedIn(...)
-        if A.LevelingTracker and (A.char.turnIns[(...)] or 0)>before then A.LevelingTracker:QuestTurnedIn() end
+        local id=...
+        local before=A.char.turnIns[id] or 0
+        A.State:TurnedIn(id)
+        if (A.char.turnIns[id] or 0)>before then
+            if A.LevelingTracker then A.LevelingTracker:QuestTurnedIn() end
+            if A.UI and A.UI.DungeonTurnedIn then A.UI:DungeonTurnedIn(id) end
+        end
         A:RequestRefresh()
     elseif event=="UNIT_SPEED" then
         if (...)=="player" then A.State.Movement(A.state) end

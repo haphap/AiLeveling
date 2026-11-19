@@ -418,9 +418,11 @@ if dungeonHUD then
     action={kind="turnin",questId=4601,title="超级清洁器5200型！",text="在诺莫瑞根清洁区，使用「超级清洁器5200型」交付任务。从齿轮大厅上层走西南通道，岔路向北下楼。"}
     A.DungeonCatalog={entries={["reference:90"]={id="reference:90",title="诺莫瑞根"}}}
     local d=A.DungeonCatalog.entries["reference:90"]
+    A.state.quests[4601]={title=action.title,ready=false}
     A.state.quests[2924]={objectives={{text="基础模组",numFulfilled=2,numRequired=12}}}
     A.state.quests[2929]={objectives={{text="麦克尼尔·瑟玛普拉格",numFulfilled=0,numRequired=1}}}
     A.Dungeon={Tasks=function() return {
+        {id=4601,title=action.title,group=1,allowed=true},
         {id=2924,title="基础模组",allowed=true,group=2},
         {id=2929,title="大叛徒",group=2,allowed=true},
         {id=2904,title="一团混乱",group=3,allowed=true,position={entityName="克努比"}},
@@ -428,6 +430,11 @@ if dungeonHUD then
     A.settings.arrow=false
     A.UI.navFrame:ClearAllPoints();A.UI.navFrame:SetPoint("CENTER",UIParent,"CENTER",0,119)
     A.UI:SetTrackerNavigation(nil);A.UI:RenderDungeonGuide()
+    local log={}
+    for id,q in pairs(A.state.quests) do log[id]=q end
+    log[4601]={title=action.title,ready=true};A.state.quests=log
+    C_Timer={After=function() end}
+    A.UI:RenderDungeonGuide()
     assert(A.UI.tracker.dungeonGuide:IsShown() and not A.UI.navFrame:IsShown())
 end
 if arg[1]=="assist" then
