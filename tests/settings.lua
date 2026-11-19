@@ -70,7 +70,7 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     B=setup(true,api);B.UI:Render();local choice=B.action
     assert(B.UI.frame.daylightOpts and B.UI.details.daylightOpts)
     eq(B.UI.frame.daylightOpts.bgAlpha,0.4);eq(B.UI.title.fontFace,face);eq(B.UI.tracker.header.shown,false)
-    eq(B.UI.navFrame.daylightOpts.panel,true);eq(B.UI.navFrame.daylightOpts.bgAlpha,0.60)
+    eq(B.UI.navFrame.daylightOpts.panel,true);eq(B.UI.navFrame.daylightOpts.bgAlpha,0.70)
     windowAlpha=0.35;listeners.SettingChanged("general","windowAlpha");eq(B.UI.navFrame.daylightOpts.bgAlpha,0.35)
     questBox.boxAlphaOwn,questBox.boxAlpha,questBox.boxBorder=true,0.45,false
     listeners.SettingChanged("Quests","boxAlpha");eq(B.UI.navFrame.daylightOpts.bgAlpha,0.45)
