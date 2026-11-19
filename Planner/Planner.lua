@@ -516,7 +516,7 @@ function P.Build(state, data, options)
     result.taskPool=result.regionPlan and choices or nil
     if batch and batch.returning then
         result.unverified=true
-        result.fallback={kind="dungeonLeave",title="离开"..batch.title,text="任务已交齐，离开副本后继续练级。"}
+        result.fallback={kind="dungeonLeave",title="离开"..batch.title,siteName=batch.title,text="任务已交齐，离开副本后继续练级。"}
         return result
     end
     if gearSource and gearSource.reference and gearSource.kind=="dungeon" then

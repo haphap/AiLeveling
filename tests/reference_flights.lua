@@ -270,6 +270,7 @@ test("暴风城换区无需先开飞行地图即引导飞往湖畔镇并等待�
     assert(loadfile("UI/Tracker.lua"))("AiLeveling",B)
     local journey=B.UI.TrackerJourney(s,flight)
     eq(journey.steps[1].title,"走到 暴风城飞行管理员");eq(journey.steps[2].title,"飞往 湖畔镇")
+    eq(journey.steps[1].place,"暴风城");eq(journey.steps[2].place,"湖畔镇")
     eq(journey.steps[#journey.steps].kind,"turnin")
     B.Transport.availability["2:5"]=false;B.Transport:Snapshot(s)
     eq(s.taxiAvailability["2:5"],false);eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)

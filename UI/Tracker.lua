@@ -29,19 +29,31 @@ local function metrics(choice,xpOnly)
     return reward.."  ·  路程 "..time
 end
 
-local function destination(action)
+local function placeLabel(name)
+    return "|cff"..UI.hex.place..name.."|r"
+end
+
+local function destination(action,styled)
     local point=action and action.position
     if A.Navigation and A.Navigation.Target then point=A.Navigation.Target(action) end
     point=point or action and action.recipient
     if not point then
         local instance=action and action.areaId and A.Data and A.Dungeon and A.Dungeon.TaskInstance and
             A.Dungeon.TaskInstance(nil,A.state,A.Data,action.areaId)
-        return instance and instance.title,instance and instance.title
+        local name=instance and instance.title
+        if styled and name then name=placeLabel(name) end
+        return name,name
     end
     local map=point.map and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
     local name=point.siteName or point.entityName or action.kind=="turnin" and action.recipient and action.recipient.entityName
     local zone=map and map.name
-    return name and (name..(zone and zone~=name and " · "..zone or "")) or zone,name or zone,name and zone~=name and zone
+    local area=name and zone~=name and zone
+    if styled then
+        if point.siteName then name=placeLabel(point.siteName) end
+        if zone then zone=placeLabel(zone) end
+        if area then area=zone end
+    end
+    return name and (name..(area and " · "..area or "")) or zone,name or zone,area
 end
 
 local function clockText(seconds)
@@ -52,7 +64,29 @@ end
 
 local function placeName(point,fallback)
     local map=point and point.map and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
-    return point and point.entityName or fallback or map and map.name or "任务地点"
+    if point and point.entityName then return point.entityName,point.siteName end
+    if point and point.siteName then return point.siteName,point.siteName end
+    local name=fallback or map and map.name
+    return name or "任务地点",map and map.name
+end
+
+-- Match only the named endpoints of this step. Prefer the longer name when stops overlap.
+local function placeText(text,origin,destination)
+    if not text or not (origin or destination) or text:find("|",1,true) then return text end
+    local start,parts=1
+    while true do
+        local first,last
+        if origin and origin~="" then first,last=text:find(origin,start,true) end
+        if destination and destination~="" then
+            local left,right=text:find(destination,start,true)
+            if left and (not first or left<first or left==first and right>last) then first,last=left,right end
+        end
+        if not first then break end
+        parts=parts or {}
+        parts[#parts+1]=text:sub(start,first-1)..placeLabel(text:sub(first,last))
+        start=last+1
+    end
+    return parts and table.concat(parts)..text:sub(start) or text
 end
 
 function UI.TrackerJourney(state,action)
@@ -69,15 +103,16 @@ function UI.TrackerJourney(state,action)
     if not current or current~=action and not flying and not returning then return end
     local result={steps={},seconds=0,distance=0,action=action,atDeparture=action.atDeparture}
     local position,transport=state.position,false
-    local function add(kind,title,seconds,detail)
+    local function add(kind,title,seconds,detail,place)
         seconds=seconds and math.max(0,math.ceil(seconds))
-        result.steps[#result.steps+1]={kind=kind,title=title,seconds=seconds,detail=detail}
+        result.steps[#result.steps+1]={kind=kind,title=title,seconds=seconds,detail=detail,place=place}
         result.seconds=result.seconds and seconds and result.seconds+seconds or nil
     end
-    local function walk(point,name,radius)
+    local function walk(point,name,radius,place)
         local seconds,distance=A.Travel.Walk(position,point,state,nav)
         if seconds~=0 and (not distance or distance>(radius or 12)) then
-            add("walk","走到 "..placeName(point,name),seconds)
+            local label,site=placeName(point,name)
+            add("walk","走到 "..label,seconds,nil,place or site)
             result.distance=result.distance and distance and result.distance+distance or nil
         end
         position=point
@@ -90,7 +125,10 @@ function UI.TrackerJourney(state,action)
             local boarded=i==index and (flying or returning or step.atDeparture)
             local from=step.fromTaxi and ((state.taxiNames or {})[step.fromTaxi] or
                 A.FlightData and A.FlightData.nodes[step.fromTaxi] and A.FlightData.nodes[step.fromTaxi].name)
-            if not boarded and step.mode~="hearth" then walk(step.departure,step.fromName or from,step.departureRadius) end
+            if not boarded and step.mode~="hearth" then
+                from=step.fromName or from
+                walk(step.departure,from,step.departureRadius,step.fromPlace or from)
+            end
             local seconds,detail=step.travelSeconds,nil
             if flying and i==index and flight.duration and flight.observedStart then
                 seconds=math.max(0,flight.duration-(GetTime()-flight.started));detail="飞行中"
@@ -99,7 +137,12 @@ function UI.TrackerJourney(state,action)
             elseif step.publicTransit and step.travelWait and step.travelRide then
                 detail="平均等候 "..clockText(step.travelWait).." · 乘坐 "..clockText(step.travelRide)
             end
-            add(step.mode,step.title or "前往 "..placeName(step.position,step.toName),seconds,detail)
+            local title,place=step.title,step.toName
+            if not title then
+                local label,site=placeName(step.position,place)
+                title,place="前往 "..label,place or site
+            end
+            add(step.mode,title,seconds,detail,place)
             position=step.position
         elseif step.kind=="move" or step.kind=="approach" then
             walk(step.position,step.title~="前往下一目的地" and step.title or nil,step.arrival)
@@ -1291,7 +1334,7 @@ function UI:RenderJourney(journey,dynamic)
             row.number:SetText(i)
             local icon=stepIcon(step)
             setHUDIcon(row.icon,icon,icon=="collect" and palette.collect or i==1 and palette.gold or palette.blue)
-            row.title:SetText(step.title);row.title:SetTextColor(unpack(i==1 and palette.gold or palette.white))
+            row.title:SetText(placeText(step.title,step.place));row.title:SetTextColor(unpack(i==1 and palette.gold or palette.white))
             row.detail:SetText(step.detail or "")
             row:SetShown(i==1 or not T.journeyClosed)
         end
@@ -1350,7 +1393,7 @@ function UI:UpdateTrackerDynamic()
     end
     for i,step in ipairs(journey and journey.steps or {}) do
         local before=old and old.steps[i]
-        if not before or before.title~=step.title or before.detail~=step.detail then layout=true end
+        if not before or before.title~=step.title or before.detail~=step.detail or before.place~=step.place then layout=true end
     end
     T.model.journey=journey
     self:RenderJourney(journey,not layout)
@@ -1414,8 +1457,8 @@ function UI:RenderTracker(along)
     self.title:SetText(questTitle(model.questId,model.title))
     self.title:SetTextColor(unpack(model.kind=="turnin" and palette.green or self.daylight and palette.white or model.kind=="accept" and palette.blue or palette.gold))
     local place,name,area
-    if model.kind and not A.error then place,name,area=destination(action) end
-    name=model.dungeonName or name
+    if model.kind and not A.error then place,name,area=destination(action,true) end
+    name=model.dungeonName and placeLabel(model.dungeonName) or name
     T.location:SetText(name and (self:Icon("hud-location",18).." "..name) or "当前行程")
     setHUDIcon(T.actionIcon,currentIcon,currentIcon=="collect" and palette.collect or palette[model.kind] or palette.gold)
     T.area:SetText(area or "")
@@ -1435,7 +1478,7 @@ function UI:RenderTracker(along)
             or self.ActionText(nextStep,A.settings)
         local verb=({accept="接取",objective="前往",turnin="交付"})[nextStep.kind] or "前往"
         if nextStep.kind=="turnin" and not (nextQuest and nextQuest.ready) then verb="完成后交付" end
-        local target=destination(nextStep)
+        local target=destination(nextStep,true)
         instruction=target and (verb.." · "..target) or nextStep.kind=="turnin" and verb or ""
         if nextStep.kind=="accept" and model.batchPhases[nextId] then
             instruction=(model.batchPhases[nextId]=="inside" and "副本内接取" or "入本前接取")..(target and " · "..target or "")
@@ -1446,7 +1489,7 @@ function UI:RenderTracker(along)
             if nextStep.kind=="objective" then
                 title=nextStep.text or "完成任务目标"
                 local instance=A.Dungeon and A.Dungeon.TaskInstance and A.Dungeon.TaskInstance(nextStep.position,state,A.Data,nextStep.areaId)
-                instruction=instance and ("副本 · "..instance.title) or instruction
+                instruction=instance and ("副本 · "..placeLabel(instance.title)) or instruction
                 if model.kind=="accept" then following="接取后" end
             else title=instruction;instruction="" end
         end
@@ -1552,7 +1595,7 @@ function UI:RenderTracker(along)
                     string.format(" · %d/%d",objective.numFulfilled or 0,objective.numRequired) or "")
             elseif item.kind=="objective" then progress=item.candidate and item.candidate.itemShortage and item.sideAction.text or item.progress
             else
-                local _,name=destination(item.sideAction)
+                local _,name=destination(item.sideAction,true)
                 progress=verb.." · "..(name or item.progress)
                 if item.kind=="accept" and item.candidate and item.candidate.revisitLevel then
                     progress=progress.." · "..item.candidate.revisitLevel.."级再做"
@@ -2045,7 +2088,7 @@ local function navigationInstruction(action,journey)
         nav.atTransitDestination~=action and A.settings.transportHints~=false then
         -- The tracker already expands transport legs into walks and connections.
         local first,second=journey.steps[1],journey.steps[2]
-        return first.title,nil,second and second.title,stepIcon(first),second and stepIcon(second)
+        return placeText(first.title,first.place),nil,second and placeText(second.title,second.place),stepIcon(first),second and stepIcon(second)
     end
     local heading=transitLabels[action.mode] or stepLabels[action.kind] or "当前步骤"
     local sequence=nav.Sequence and nav:Sequence() or nav
@@ -2079,8 +2122,13 @@ local function navigationInstruction(action,journey)
     local following
     if nextStep and nextStep.title and not (nav.StaleAction and nav.StaleAction(nextStep,A.state,sequence.plan)) then
         local verb=questVerbs[nextStep.kind]
-        following=verb and verb.."「"..nextStep.title.."」" or nextStep.title
+        following=verb and verb.."「"..nextStep.title.."」" or placeText(nextStep.title,nextStep.toName,nextStep.position and nextStep.position.siteName)
     end
+    local place=action.toName or action.siteName or target and target.siteName
+    if not questVerbs[action.kind] and not (action.questAction and action.title==action.questAction.title) then
+        title=placeText(title,place,action.fromName)
+    end
+    detail=placeText(detail,place,action.fromPlace or action.fromName or action.roomName)
     return title..hint,detail,following,stepIcon(action),following and stepIcon(nextStep),counter
 end
 

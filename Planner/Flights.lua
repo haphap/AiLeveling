@@ -324,11 +324,11 @@ function F.Actions(route,action,navigation)
         if leg.kind=="hearth" then
             actions[#actions+1]={kind="transit",mode="hearth",questId=action.questId,title="炉石返回 "..(leg.name or "绑定地点"),
                 text=(leg.wait>0 and string.format("等待炉石冷却约 %.1f 分钟后，",leg.wait/60) or "").."手动使用炉石返回实际绑定地点，落地后继续任务。",
-                position=leg.to,arrival=12,departure=leg.from,hearthBindingKey=leg.bindingKey,travelSeconds=leg.seconds,travelWait=leg.wait,travelRide=leg.seconds-leg.wait,referenceHearth=true}
+                position=leg.to,toName=leg.name,arrival=12,departure=leg.from,hearthBindingKey=leg.bindingKey,travelSeconds=leg.seconds,travelWait=leg.wait,travelRide=leg.seconds-leg.wait,referenceHearth=true}
         elseif leg.kind=="portal" then
             actions[#actions+1]={kind="transit",mode="portal",questId=action.questId,title="穿过传送门前往"..leg.toName,
                 text="进入"..leg.fromName.."的紫色传送门，前往"..leg.toName.."。",departure=leg.from,position=leg.to,
-                fromName=leg.fromName.."传送门",toName=leg.toName,publicTransit=true,transitKey=leg.key,travelSeconds=leg.seconds}
+                fromName=leg.fromName.."传送门",fromPlace=leg.fromName,toName=leg.toName,publicTransit=true,transitKey=leg.key,travelSeconds=leg.seconds}
         elseif leg.kind=="boat" or leg.kind=="zeppelin" or leg.kind=="tram" then
             local vehicle=leg.kind=="boat" and "船" or leg.kind=="tram" and "地铁" or "飞艇"
             actions[#actions+1]={kind="transit",mode=leg.kind,questId=action.questId,title="乘"..vehicle.."前往"..leg.toName,
@@ -340,7 +340,7 @@ function F.Actions(route,action,navigation)
             local name=names[leg.toTaxi] or A.FlightData.nodes[leg.toTaxi].name
             local from=names[leg.fromTaxi] or A.FlightData.nodes[leg.fromTaxi].name
             actions[#actions+1]={kind="transit",mode="flight",questId=action.questId,title="飞往 "..name,
-                fromName=from.."飞行管理员",text=string.format("前往%s的飞行管理员，飞往「%s」，落地后继续任务。",from,name),
+                fromName=from.."飞行管理员",fromPlace=from,toName=name,text=string.format("前往%s的飞行管理员，飞往「%s」，落地后继续任务。",from,name),
                 departure=leg.from,departureRadius=12,position=leg.to,arrival=leg.arrival or 12,fromTaxi=leg.fromTaxi,toTaxi=leg.toTaxi,
                 travelSeconds=leg.seconds,timeSampleKey=F.TimeKey(leg.fromTaxi,leg.toTaxi,leg.faction,leg.hops,leg.taxiSpeed),referenceFlight=true}
         end
@@ -397,7 +397,7 @@ function F.Guide(action,state,navigation)
     local name=(state.taxiNames or {})[best.id] or best.node.name
     local text="与当前飞行管理员交谈，飞往「"..name.."」，落地后继续任务。"
     local transit={kind="transit",mode="flight",questAction=action.questAction or action,questId=action.questId,title="飞往 "..name,text=text,
-        departure=anchor.position,departureRadius=12,position=best.landing,arrival=25,
+        departure=anchor.position,departureRadius=12,position=best.landing,toName=name,arrival=25,
         fromTaxi=anchor.id,toTaxi=best.id,travelSeconds=seconds,
         timeSampleKey=F.TimeKey(anchor.id,best.id,state.faction,(state.taxiHops or {})[anchor.id..":"..best.id],state.taxiSpeed),referenceFlight=true}
     return {actions={transit,action},from=anchor.id,to=best.id,flightSeconds=seconds,

@@ -12,6 +12,7 @@ UI.colors={
     gearText={0.765,0.793,0.868},
 }
 local colors=UI.colors
+colors.place={unpack(colors.blue)} -- Daylight's VALUE can be the same white as body text.
 UI.daylight=DaylightUI and DaylightUI.API and DaylightUI.API.major==1 and DaylightUI.API
 colors.accent={unpack(colors.gold)}
 colors.accept=colors.blue;colors.objective=colors.gold;colors.turnin=colors.green

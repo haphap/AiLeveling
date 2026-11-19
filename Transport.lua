@@ -28,7 +28,8 @@ function T:FlightGate()
         end
         message=timer.."\n"..message
     end
-    return {kind="flight",title=flying and (flight and flight.name and ("飞行中 · "..flight.name) or "飞行中") or "已落地",text=message}
+    return {kind="flight",title=flying and (flight and flight.name and ("飞行中 · "..flight.name) or "飞行中") or "已落地",
+        toName=flight and flight.name,text=message}
 end
 
 function T:InvalidateSample()

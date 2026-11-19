@@ -132,13 +132,14 @@ function D.TaskApproach(action,state,data)
     local instance=D.TaskInstance(action.position,state,data,action.areaId)
     if not instance and state.inInstance and knownOutdoor and info and (info.mapType==2 or info.mapType==3) then
         local destination=point.entityName or info.name or "任务目的地"
-        return {kind="dungeonLeave",questAction=questAction,questId=action.questId,title=action.title,
+        return {kind="dungeonLeave",questAction=questAction,questId=action.questId,title=action.title,siteName=info.name,
             text="离开当前副本后，前往"..destination..(action.kind=="turnin" and "交付任务。" or "继续任务。")}
     end
     if not instance then return action end
     if state.inInstance and state.instanceId==instance.instanceId then
         if action.position then return action end
         local inside={};for k,v in pairs(action) do inside[k]=v end
+        inside.siteName=instance.title
         inside.text="在"..instance.title.."内，"..(action.text or "按任务日志继续任务。")
         if action.questId and data.QuestContact and (action.kind=="accept" or action.kind=="turnin") then
             local group=action.kind=="accept" and "startedBy" or "finishedBy"
@@ -149,6 +150,7 @@ function D.TaskApproach(action,state,data)
                 inside.text="在"..instance.title..room.."，"..(object and "使用" or "找到").."「"..contact.entityName.."」"..
                     (action.kind=="accept" and "接取任务。" or "交付任务。")
                 if room=="清洁区" then
+                    inside.roomName=room
                     if action.sameMachine then inside.text="继续使用清洁区的同一台「"..contact.entityName.."」接取后续任务。"
                     else inside.text=inside.text.."从齿轮大厅上层走西南通道，岔路向北下楼。" end
                 end
@@ -157,7 +159,7 @@ function D.TaskApproach(action,state,data)
         return inside
     end
     if state.inInstance then
-        return {kind="dungeonLeave",questAction=questAction,questId=action.questId,title=action.title,
+        return {kind="dungeonLeave",questAction=questAction,questId=action.questId,title=action.title,siteName=instance.title,
             text="目标位于"..instance.title.."，先离开当前副本，再前往入口。"}
     end
     if state.instanceEntryError then
@@ -179,7 +181,7 @@ function D.TaskApproach(action,state,data)
         end
     end
     nearest=fastest or nearest
-    return {kind="dungeonEnter",questAction=questAction,questId=action.questId,title=action.title,position=nearest,
+    return {kind="dungeonEnter",questAction=questAction,questId=action.questId,title=action.title,position=nearest,siteName=instance.title,
         text=instance.entryHint or "前往"..instance.title.."入口，进入副本后继续任务。"}
 end
 

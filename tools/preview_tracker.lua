@@ -409,8 +409,9 @@ if arg[1]=="journey" then
     local T=A.UI.tracker
     -- WaypointUI draws the bearing for this leg. Render the companion instructions.
     A.UI:SetTrackerNavigation(nil,nil,nil,action)
-    assert(A.UI.navFrame:IsShown() and T.navTitle:GetText()=="走到 暴风城地铁入口")
-    assert(T.navNext:GetText()=="下一步  乘地铁前往铁炉堡地铁入口")
+    local place="|cff"..A.UI.hex.place
+    assert(A.UI.navFrame:IsShown() and T.navTitle:GetText()=="走到 "..place.."暴风城地铁入口|r")
+    assert(T.navNext:GetText()=="下一步  乘地铁前往"..place.."铁炉堡地铁入口|r")
     assert(T.journey:IsShown() and T.alongLabel:IsShown() and T.thenText:IsShown() and T.queuePanel:IsShown())
     assert(T.model.rows[1].questId==64 and T.model.rows[1].along and T.model.rows[1].status=="未接取")
     assert(T.model.rows[2].questId==65 and T.model.rows[2].status=="已接取")
