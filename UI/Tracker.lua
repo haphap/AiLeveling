@@ -350,13 +350,15 @@ end
 
 function UI.TrackerModel(state,plan,action,paused,along)
     state,plan=state or {},plan or {}
+    local tram=action and action.kind=="tram" and action
+    if tram then plan,along={},{} end
     local quests=state.quests or {}
     local journey=not paused and not A.error and UI.TrackerJourney(state,action) or nil
     local flight=action and action.kind=="flight" and A.Transport and A.Transport.flight
     local node=flight and A.FlightData and A.FlightData.nodes[flight.toTaxi]
     local flightName=flight and (flight.name or (state.taxiNames or {})[flight.toTaxi] or flight.action and flight.action.toName)
     local town=flightName and (flightName:gsub("，",",")..","):match("^%s*(.-)%s*,")
-    local arrival=action and action.kind=="hearthCast" and state.hearthPoint or action and action.kind=="transit" and action.position or
+    local arrival=tram and tram.arrivalPoint or action and action.kind=="hearthCast" and state.hearthPoint or action and action.kind=="transit" and action.position or
         (journey and journey.goal or action or {}).position
     action=journey and journey.goal or action
     if A.Navigation and A.Navigation.StaleAction and A.Navigation.StaleAction(action,state,plan) or
@@ -558,8 +560,8 @@ function UI.TrackerModel(state,plan,action,paused,along)
     if model.kind=="flight" or model.kind=="hearthCast" then model.hint=nil end
     local deliveries,summary=deliveryAdvice(state,plan,action,choices,byQuest)
     model.deliverySummary=summary
-    local handins=not (paused or A.error or state.inInstance or state.taskBatch) and A.TaskGuide and
-        A.TaskGuide.ReadyTurnIns and A.Data and A.Data.Target and A.TaskGuide.ReadyTurnIns(state,A.Data) or {}
+    local handins=not (paused or A.error) and (tram or not (state.inInstance or state.taskBatch)) and A.TaskGuide and
+        A.TaskGuide.ReadyTurnIns and A.Data and A.Data.Target and A.TaskGuide.ReadyTurnIns(state,A.Data,tram and arrival) or {}
     local arrivalRow
     for _,row in ipairs(model.rows) do
         row.delivery=deliveries[row.questId]
@@ -571,14 +573,15 @@ function UI.TrackerModel(state,plan,action,paused,along)
             local distance=landing and A.Navigation.Distance and A.Navigation:Distance(landing,point,true)
             -- Adjacent zones overlap on the world map. A city name or the landing's immediate vicinity identifies a stop.
             local flyingHere=zone and zone.name==town or distance and distance<=180
-            local here=not flight and state.position and point.map==state.position.map
+            local here=not flight and not tram and state.position and point.map==state.position.map
             local arriving=flyingHere or not node and arrival and arrival.map==point.map and not here
+            if tram and arriving then distance=A.Navigation:Distance(arrival,point,true) end
             row.turnInAction=handin
             row.deliveryPriority=arriving and 1 or here and 2 or 3
             if arriving or not planned[row.questId] and not byQuest[row.questId] then
                 row.delivery=(arriving and "抵达后交付" or "可交付").." · "..(destination(handin) or row.title)
             end
-            if arriving and flight and not state.locked and (not arrivalRow or
+            if arriving and (flight or tram) and not state.locked and (not arrivalRow or
                 (distance or math.huge)<arrivalRow.distance or (distance or math.huge)==arrivalRow.distance and row.questId<arrivalRow.questId) then
                 arrivalRow={questId=row.questId,action=handin,title=row.title,distance=distance or math.huge}
             end
@@ -596,7 +599,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
     end
     if action and not paused and not A.error then
         if arrivalRow then
-            model.nextOnArrival=true
+            model.nextOnArrival=tram and "下车后" or "落地后"
             model.nextStep,model.nextId,model.nextTitle=arrivalRow.action,arrivalRow.questId,arrivalRow.title
         else model.nextStep,model.nextId,model.nextTitle=nextAction(action,plan,state,model.rows,batchSteps) end
         model.nextChoice=choices[model.nextId]
@@ -608,8 +611,10 @@ function UI.TrackerModel(state,plan,action,paused,along)
             not candidate.entryBlocked and not candidate.requireCheck
         local member=batchMembers and batchMembers[row.questId] and not row.deferred and
             (row.accepted or candidate.acceptBlocked and not candidate.requireCheck and not candidate.entryBlocked)
-        if row.questId==model.questId or row.atStop or row.along or row.questId~=model.nextId and
-            (member or eligible and (row.planOrder or row.turnInAction or not action and not batchMembers and row.accepted)) then
+        local point=row.turnInAction and row.turnInAction.position
+        local station=not tram or point and (arrival and point.map==arrival.map or not arrival and A.Transport.IsTramStation(point.map))
+        if station and (row.questId==model.questId or row.atStop or row.along or row.questId~=model.nextId and
+            (member or eligible and (row.planOrder or row.turnInAction or not action and not batchMembers and row.accepted))) then
             visible[#visible+1]=row
         end
     end
@@ -1399,6 +1404,7 @@ function UI:UpdateTrackerDynamic()
     local state,plan=A.state,A.plan or {}
     local action=A.Navigation:Current()
     if navigationStep(action)~=T.lastStep then self:RenderTracker();return end
+    if action and action.kind=="tram" then return end
     if not trackerMoved(T,state.position) then
         if T.model.journey and action and (action.kind=="flight" or action.kind=="hearthCast") then
             T.model.journey=self.TrackerJourney(state,action)
@@ -1440,6 +1446,7 @@ function UI:RenderTracker(along)
     if not T then return end
     local state,plan=A.state or {},A.plan or {}
     local action=A.Navigation:Current()
+    if action and action.kind=="tram" then plan={} end
     local model=self:DungeonTrackerModel(state,action) or UI.TrackerModel(state,plan,action,A.char.paused,along)
     trackerMoved(T,state.position)
     T.model,T.action,T.lastStep=model,action,navigationStep(action)
@@ -1488,7 +1495,7 @@ function UI:RenderTracker(along)
     T.experience:SetText(A.char.paused and "已暂停" or model.dungeonName and (#model.rows.." 项") or "已接 "..count.." 项")
     T.currentMark:SetColorTexture(self:Accent())
     T.currentMark:SetShown(model.questId~=nil)
-    local currentIcon=model.dungeonName and "entry" or UI.QuestIcon(model.kind,action,model.objectives)
+    local currentIcon=model.dungeonName and "entry" or model.kind=="tram" and "tram" or UI.QuestIcon(model.kind,action,model.objectives)
     self.title:SetText(questTitle(model.questId,model.title))
     self.title:SetTextColor(unpack(model.kind=="turnin" and palette.green or self.daylight and palette.white or model.kind=="accept" and palette.blue or palette.gold))
     local place,name,area
@@ -1519,7 +1526,7 @@ function UI:RenderTracker(along)
         if nextStep.kind=="accept" and model.batchPhases[nextId] then
             instruction=(model.batchPhases[nextId]=="inside" and "副本内接取" or "入本前接取")..(target and " · "..target or "")
         end
-        following=(model.nextOnArrival and "落地后" or "接下来")..(nextRow.status and (" · |cff"..self.hex[tone]..nextRow.status.."|r") or "")
+        following=(model.nextOnArrival or "接下来")..(nextRow.status and (" · |cff"..self.hex[tone]..nextRow.status.."|r") or "")
         if sameQuest then
             following="接下来"
             if nextStep.kind=="objective" then

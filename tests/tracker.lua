@@ -781,6 +781,35 @@ test("分散交付点明确现在就近交和等同NPC任务一起交并跟随�
     eq(B.Navigation:Current().questId,2)
     B.state={revision=4,position=city,quests={[3]=B.state.quests[3]}}
     eq(B.Navigation:Current().questId,3)
+    -- Manual tram travel has no selected taxi node or outdoor player position.
+    assert(loadfile("Data/PublicTransit.lua"))("AiLeveling",B)
+    assert(loadfile("Planner/Flights.lua"))("AiLeveling",B)
+    assert(loadfile("Transport.lua"))("AiLeveling",B)
+    local sw={map=1453,x=.5,y=.5,entityName="格瑞曼德·艾尔默"}
+    B.state.quests[1]={title="湿地交付",ready=true}
+    B.state.quests[2]={title="暴风城交付",ready=true}
+    B.Data.Target=function(_,q) return ({village,sw,city})[q.id] end
+    B.Transport:ObserveTram(0,1453)
+    B.state.position=nil
+    B.Transport:ObserveTram(369,nil)
+    local function riding()
+        return B.UI.TrackerModel(B.state,B.plan,B.Navigation:Current(),false)
+    end
+    model=riding();eq(model.nextOnArrival,"下车后");eq(model.nextId,3);eq(#model.rows,0)
+    B.UI:RenderTracker();assert(T.thenText.value:find("下车后",1,true));assert(T.thenButton.progress.value:find("雷矛",1,true))
+    assert(loadfile("Transport.lua"))("AiLeveling",B)
+    B.Transport:ObserveTram(369,nil);eq(riding().nextId,3)
+    B.state.position=city;B.Transport:ObserveTram(0,city.map)
+    B.Navigation.actions={{kind="move",position=village}}
+    eq(B.Navigation:Current().questId,3)
+    B.state.position=nil;B.Transport:ObserveTram(369,nil);eq(riding().nextId,2)
+    B.Transport:ObserveTram(0,village.map);B.Transport:ObserveTram(369,nil)
+    model=riding();eq(model.nextId,nil);eq(#model.rows,2)
+    local saved=UnitPosition
+    local y=1500
+    UnitPosition=function() return 0,y,0,369 end
+    B.Transport:Update();y=1350;B.Transport:Update();eq(riding().nextId,3)
+    UnitPosition=saved
     B.finish()
 end)
 

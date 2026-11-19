@@ -255,6 +255,7 @@ function State:Refresh(force, manual)
         s.instanceName,s.instanceId=info[1],info[8]
         if s.inInstance then s.instanceDifficultyId=info[3] end
     end
+    if s.instanceId==nil and UnitPosition then s.instanceId=select(4,UnitPosition("player")) end
     s.dead = UnitIsDeadOrGhost and UnitIsDeadOrGhost("player") or false
     self:Qualifications(s, A.Data and A.Data.requirements)
     local qualifications=qualificationKey(s)

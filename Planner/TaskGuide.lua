@@ -434,15 +434,17 @@ function G.UnlockText(unlock)
 end
 
 -- Only the live journal can establish that these recipients are actionable.
-function G.ReadyTurnIns(state,data)
-    local map=state.position and state.position.map
+function G.ReadyTurnIns(state,data,arrival)
+    local position=arrival or state.position
+    local map=position and position.map
     if state.readyTurnIns and state.readyTurnInMap==map then return state.readyTurnIns end
     local actions={}
+    local lookup=arrival and setmetatable({position=arrival},{__index=state}) or state
     for id,active in pairs(state.quests or {}) do
         if active.ready and not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] then
             local q=data:GetQuest(id,state)
             local point
-            if q then point=data:Target(q,state) else point=active.mapPin end
+            if q then point=data:Target(q,lookup) else point=active.mapPin end
             if point and point.map and not point.areaOnly and (not point.approximate or point.travelHint) then
                 actions[id]={kind="turnin",questId=id,title=active.title or q and q.title,position=point,
                     text=point.travelHint or "前往任务交付者。"}

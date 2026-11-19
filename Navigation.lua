@@ -141,6 +141,7 @@ function N:ClearManual(replan)
 end
 
 function N:Current()
+    if A.Transport and A.Transport.tram and not A.state.dead then return A.Transport.tram end
     local flight=A.Transport and A.Transport:FlightGate()
     if flight then return flight end
     local hearth=A.Hearth and A.Hearth:Gate()
@@ -171,7 +172,10 @@ function N:Current()
     if A.indexReady and not (A.jobs and A.jobs.plan) then return action end
     local changedZone=position and plan and plan.origin and plan.origin.map~=position.map
     local previousQuest=action and (action.kind=="turnin" or action.kind=="objective" or action.kind=="accept")
-    if action and action.kind~="taskReview" and not (changedZone and previousQuest) then return action end
+    local previousStop=changedZone and N.Target(action)
+    local reachedStop=changedZone and action and action.publicTransit and action.position and action.position.map==position.map
+    if action and action.kind~="taskReview" and not (changedZone and previousQuest or
+        previousStop and previousStop.map~=position.map or reachedStop) then return action end
     local selected=state.locked or state.preparingQuest or state.taskBatch or state.gearTarget or state.serviceStop
     if position and not (selected or state.dead or state.onTaxi or state.inInstance or (state.level or 0)>=60 or A.error or A.char.paused)
         and A.TaskGuide and A.Data and A.Data.Target then
@@ -539,7 +543,7 @@ function N:Update()
     updateEdge(self.edgePin,self.hbdPins)
     local action, pos = self:Current(), A.state.position
     if A.char.paused or not action then A.UI:SetNavigation(nil);return end
-    if action.kind=="flight" or action.kind=="hearthCast" then A.UI:SetNavigation(nil,nil,nil,action);return end
+    if action.kind=="flight" or action.kind=="hearthCast" or action.kind=="tram" then A.UI:SetNavigation(nil,nil,nil,action);return end
     local instanceGuide=A.state.inInstance and not A.state.dead and
         (action.kind=="accept" or action.kind=="objective" or action.kind=="turnin" or action.kind=="dungeonLeave")
     if action.publicTransit and pos then

@@ -314,6 +314,13 @@ test("空中规划门控并丢弃起飞前尚未发布的计算",function()
     B.jobs.plan=coroutine.create(function() error("空中不应恢复地面搜索") end)
     debugprofilestop=function() return 0 end
     scripts.OnUpdate(nil,0);eq(B.jobs.plan,nil)
+    flying=false
+    assert(loadfile("Data/PublicTransit.lua"))("AiLeveling",B)
+    B.Transport:ObserveTram(0,1453);B.Transport:ObserveTram(369,nil)
+    B:Replan(true);eq(queued,nil)
+    B.jobs.plan=coroutine.create(function() error("地铁内不应恢复地面搜索") end)
+    scripts.OnUpdate(nil,0);eq(B.jobs.plan,nil)
+    B.Transport:ObserveTram(0,1455);B:Replan();assert(queued)
 end)
 
 for _,key in ipairs(globals) do _G[key]=saved[key] end

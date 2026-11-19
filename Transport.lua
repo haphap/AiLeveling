@@ -15,6 +15,54 @@ function T:InFlight()
     return self:IsFlying() or self.flight ~= nil
 end
 
+local stormwind,ironforge=1453,1455
+
+function T.IsTramStation(map)
+    return map==stormwind or map==ironforge
+end
+
+local function tramAction(origin)
+    for _,leg in ipairs(A.PublicTransitData.legs) do
+        if leg.kind=="tram" and leg.from.map==origin then
+            local city=leg.toName:gsub("地铁入口$","")
+            return {kind="tram",title="矿道地铁 · 往"..city,toName=city,arrivalPoint=leg.to,text="到站后从出口进入"..city.."。"}
+        end
+    end
+    return {kind="tram",title="矿道地铁",text="沿途可查看两端车站的交付任务。"}
+end
+
+function T:ObserveTram(instance,map)
+    if instance==369 then
+        if not self.tram then
+            local origin=self.tramCity or A.char.tramOrigin
+            self.tram=tramAction(origin)
+            A.char.tramOrigin=origin
+        end
+    elseif instance~=nil then
+        if map or self.tram then self.tramCity=self.IsTramStation(map) and map or nil end
+        self.tram,self.tramY,A.char.tramOrigin=nil,nil,nil
+    end
+end
+
+local function updateTramDirection(self)
+    if not UnitPosition then return end
+    local _,y,_,instance=UnitPosition("player")
+    if instance~=369 or canaccessvalue and not canaccessvalue(y) or type(y)~="number" then return end
+    -- Forever map 369 runs along world Y, from the Ironforge exit (10) to Stormwind (2491).
+    -- Only measure in the tunnel, away from players walking around the platforms.
+    if y<120 or y>2380 then self.tramY=nil;return end
+    if not self.tramY then self.tramY=y;return end
+    local delta=y-self.tramY
+    if math.abs(delta)<75 then return end
+    self.tramY=y
+    local origin=delta<0 and stormwind or ironforge
+    if origin~=A.char.tramOrigin then
+        A.char.tramOrigin=origin
+        self.tram=tramAction(origin)
+        A.dirty=true
+    end
+end
+
 function T:FlightGate()
     if not self:InFlight() then return end
     local flight,flying,now=self.flight,self:IsFlying(),GetTime()
@@ -197,6 +245,7 @@ function T:Snapshot(state)
     state.hearthReady=nil
     self.readyAt=nil
     local map=C_Map.GetBestMapForUnit("player")
+    self:ObserveTram(state.instanceId,map)
     if self.dirty or self.map~=map then self:RefreshKnown(map,state.faction);self.dirty=false;self.map=map end
     state.transportKnown,state.unlocked,state.taxiAvailability=true,{},{}
     for key,value in pairs(self.known) do state.unlocked[key]=value end
@@ -253,6 +302,7 @@ function T.Key(state)
 end
 
 function T:Update()
+    if self.tram then updateTramDirection(self) end
     if self:SyncFlightSpeed(A.state) then A:RequestRefresh() end
     if self.taxiExpiry and GetTime()>self.taxiExpiry then self.taxiOrigin,self.taxiExpiry=nil,nil;A:RequestRefresh() end
     if self.readyAt and GetTime()>=self.readyAt then self.readyAt=nil;A:RequestRefresh() end

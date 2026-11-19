@@ -170,9 +170,13 @@ function A:RequestRefresh(redraw)
     end
 end
 
+local function inTransit()
+    return A.Transport and (A.Transport.tram and not A.state.dead or A.Transport:InFlight()) or A.Hearth and A.Hearth:InTransit()
+end
+
 function A:Replan(force, manual)
     if not self.ready then return end
-    if self.Transport and self.Transport:InFlight() or self.Hearth and self.Hearth:InTransit() then self.jobs.plan=nil;return end
+    if inTransit() then self.jobs.plan=nil;return end
     local map=self.state.position and self.state.position.map
     -- Progress updates share the running calculation; explicit choices and zone changes replace it.
     if self.jobs.plan and coroutine.status(self.jobs.plan)~="dead" and not force and self.planningMap==map then return end
@@ -197,7 +201,7 @@ function A:Replan(force, manual)
         end
         snapshot.runSpeed,snapshot.swimSpeed=self.state.runSpeed,self.state.swimSpeed
         local result = self.Planner.Build(snapshot, self.Data, options)
-        if self.Transport and self.Transport:InFlight() or self.Hearth and self.Hearth:InTransit() then return end
+        if inTransit() then return end
         if snapshot.position and self.state.position and snapshot.position.map~=self.state.position.map then
             self:Replan(true);return
         end
@@ -513,7 +517,7 @@ end)
 local tick = 0
 frame:SetScript("OnUpdate", function(_, elapsed)
     if not A.ready then return end
-    if A.Transport:InFlight() or A.Hearth and A.Hearth:InTransit() then A.jobs.plan=nil end
+    if inTransit() then A.jobs.plan=nil end
     if A.refreshAt and GetTime() >= A.refreshAt then
         A.refreshAt = nil
         A.State:Refresh()
