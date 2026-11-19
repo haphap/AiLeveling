@@ -96,7 +96,7 @@ local regionDetail=arg[1]=="region-detail"
 local dungeonHUD=arg[1]=="dungeon-hud"
 local canvasWidth=(dungeonPreview or planPreview or regionDetail or arg[1]=="nearby") and 1080 or 560
 local canvasHeight=(dungeonPreview or planPreview or regionDetail) and 700 or 1100
-if dungeonHUD then canvasWidth,canvasHeight=420,220 end
+if dungeonHUD then canvasWidth,canvasHeight=420,365 end
 if not dungeonPreview and not planPreview and not regionDetail and arg[2]=="large" then canvasHeight=1450 end
 UIParent=widget("Root");UIParent:SetSize(canvasWidth,canvasHeight)
 CreateFrame=function(kind,_,parent) return widget(kind,parent) end
@@ -417,8 +417,16 @@ if dungeonHUD then
     A.Navigation.planInstance=90
     action={kind="turnin",questId=4601,title="超级清洁器5200型！",text="在诺莫瑞根清洁区，使用「超级清洁器5200型」交付任务。从齿轮大厅上层走西南通道，岔路向北下楼。"}
     A.DungeonCatalog={entries={["reference:90"]={id="reference:90",title="诺莫瑞根"}}}
+    local d=A.DungeonCatalog.entries["reference:90"]
+    A.state.quests[2924]={objectives={{text="基础模组",numFulfilled=2,numRequired=12}}}
+    A.state.quests[2929]={objectives={{text="麦克尼尔·瑟玛普拉格",numFulfilled=0,numRequired=1}}}
+    A.Dungeon={Tasks=function() return {
+        {id=2924,title="基础模组",allowed=true,group=2},
+        {id=2929,title="大叛徒",group=2,allowed=true},
+        {id=2904,title="一团混乱",group=3,allowed=true,position={entityName="克努比"}},
+    } end,TaskInstance=function() return d end,TaskApproach=function(a) return a end}
     A.settings.arrow=false
-    A.UI.navFrame:ClearAllPoints();A.UI.navFrame:SetPoint("CENTER",UIParent,"CENTER",0,56)
+    A.UI.navFrame:ClearAllPoints();A.UI.navFrame:SetPoint("CENTER",UIParent,"CENTER",0,119)
     A.UI:SetTrackerNavigation(nil);A.UI:RenderDungeonGuide()
     assert(A.UI.tracker.dungeonGuide:IsShown() and not A.UI.navFrame:IsShown())
 end

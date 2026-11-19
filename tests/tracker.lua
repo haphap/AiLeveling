@@ -513,16 +513,36 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     U:SetNavigation(100,0.7,true);eq(U.tracker.navTitle.value,"当前任务 · 区域参考点")
     B.settings.arrow=false;U:SetNavigation(100,0.7,true);eq(U.navFrame.shown,false)
     B.settings.arrow=true;U:SetNavigation(nil);eq(U.navFrame.shown,false)
-    local guide={kind="turnin",title="超级清洁器5200型！",text="在清洁区使用清洁器交付任务。"}
+    local guide={kind="turnin",questId=4601,title="超级清洁器5200型！",text="在清洁区使用清洁器交付任务。"}
     local card=U.tracker.dungeonGuide
     B.state.inInstance,B.state.instanceType,B.state.instanceId,B.state.instanceName=true,"party",90,"诺莫瑞根"
     B.settings.arrow=false
     B.DungeonCatalog={entries={["reference:90"]={id="reference:90"}}}
     local indexReady=B.indexReady;B.indexReady=false
-    U:RenderDungeonGuide();eq(card.shown,true);eq(card.place.value,"诺莫瑞根");eq(card.title.value,"查看副本任务")
+    U:RenderDungeonGuide();eq(card.shown,true);eq(card.place.value,"诺莫瑞根");eq(card.rows[1].title.value,"查看副本任务")
     B.action=guide;B.Navigation.planInstance=90;U:RenderDungeonGuide()
     U:SetNavigation(nil,nil,nil,guide);eq(U.navFrame.shown,false)
-    eq(card.title.value,"交付任务 · "..guide.title);eq(card.body.value,guide.text)
+    eq(card.rows[1].title.value,"交付任务 · "..guide.title);eq(card.rows[1].body.value,guide.text)
+    local previous=B.Dungeon
+    local d=B.DungeonCatalog.entries["reference:90"]
+    local reads=0
+    B.Dungeon={TaskApproach=function(a) return a end,TaskInstance=function() return d end,
+        Tasks=function()
+            reads=reads+1
+            return {{id=4601,title=guide.title,allowed=true,group=1},{id=1,title="收集零件",allowed=true,group=2,lowValue=true},
+                {id=4,title="护送机器人",allowed=true,group=3,position={entityName="机器人"}},
+                {id=5,title="一团混乱",allowed=true,group=3},
+                {id=6,title="已交付",group=5},{id=7,title="已暂缓",group=4}}
+        end}
+    B.indexReady=true;B.state.locked=1
+    B.state.quests[1].objectives={{text="零件",numRequired=6,numFulfilled=2},{text="图纸",numRequired=1,numFulfilled=0}}
+    U:RenderDungeonGuide();eq(card.rows[2].body.value,"零件 · 2/6\n图纸 · 0/1")
+    eq(card.rows[3].title.value,"接取任务 · 护送机器人");eq(card.rows[4].title.value,"接取任务 · 一团混乱")
+    eq(card.place.value,"诺莫瑞根 · 4 项")
+    assert(card.scrollRange>0);card.scripts.OnMouseWheel(card,-1);assert(card.scroll:GetVerticalScroll()>0)
+    B.state.quests[1].objectives[1].numFulfilled=4;U:RenderDungeonGuide()
+    eq(card.rows[2].body.value,"零件 · 4/6\n图纸 · 0/1");eq(reads,1)
+    B.Dungeon=previous;B.state.locked=nil
     local browser,dungeon,selectTab=U.Browser,U.Dungeon,U.SelectTab
     U.Browser={ClearSearch=function(b) b.cleared=true end,dungeonDetail={showLoot=true}};U.Dungeon={}
     U.SelectTab=function(_,i) eq(i,4) end

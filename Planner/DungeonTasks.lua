@@ -222,7 +222,29 @@ function D.Tasks(d,state,data,targets)
     if state.taskBatch and state.taskBatch.id==d.id then
         for id in pairs(state.taskBatch.baselines) do refs[id]=refs[id] or "selected" end
     end
+    local localObjectives={}
     for id,active in pairs(state.quests) do
+        -- One quest can span several maps; its nearest objective alone cannot establish dungeon membership.
+        if state.inInstance and state.instanceId==d.instanceId and not active.ready and
+            #(active.objectives or {})>1 and data.ObjectiveTargets then
+            local q=data:GetQuest(id,state) or {id=id,title=active.title}
+            local points={}
+            for _,point in ipairs(data:ObjectiveTargets(q,state)) do
+                if point.objectiveIndex then points[point.objectiveIndex]=point end
+            end
+            for index,objective in ipairs(active.objectives) do
+                if not objective.finished then
+                    local point=points[index]
+                    local area=not point and data.UnmappedTargetArea and data:UnmappedTargetArea(q,state,index)
+                    if D.TaskInstance(point,state,data,area)==d then
+                        local hits=localObjectives[id] or {}
+                        hits[index]=true
+                        if not hits.first then hits.first,hits.point,hits.area=index,point,area end
+                        localObjectives[id]=hits;refs[id]=refs[id] or "inside"
+                    end
+                end
+            end
+        end
         if not refs[id] then
             local instance=targets[id]
             if instance==nil then
@@ -261,7 +283,7 @@ function D.Tasks(d,state,data,targets)
             local rewards={}
             if group~=5 and A.Gear and A.Gear.TaskBenefits then A.Gear.TaskBenefits(rewards,q,state,data) end
             rows[#rows+1]={id=id,title=q.title,group=group,allowed=allowed,reason=reason,position=point,areaId=areaId,pickupItem=pickupItem,
-                objectiveIndex=point and point.objectiveIndex or objectiveIndex,
+                objectiveIndex=point and point.objectiveIndex or objectiveIndex,insideObjectives=localObjectives[id],
                 xp=group~=5 and A.TaskGuide and A.TaskGuide.XP(q,state.level,state) or nil,
                 gear=rewards.gear,gearSources=rewards.gearSources,
                 requireCheck=not active and (unavailable or q.taskFacts and q.taskFacts.hidden) or nil,

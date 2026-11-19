@@ -725,6 +725,12 @@ run("混合目标按实际副本区分，保留目标身份顺序和未关联的
     local waypoint={kind="objective",position={map=1,x=0.2,y=0.2,label="客户端任务目标"}}
     stages={waypoint,a,b,finish};eq(B.Dungeon.OrderTaskObjectives(stages,s,data),nil);eq(stages[1],waypoint)
     stages={finish,a};eq(B.Dungeon.OrderTaskObjectives(stages,s,data),nil)
+    s.instanceId=42
+    s.quests[4]={objectives={{text="本外"},{text="本内"}}}
+    data.ObjectiveTargets=function() return {{map=1,objectiveIndex=1},{map=2,objectiveIndex=2}} end
+    local mixed
+    for _,row in ipairs(B.Dungeon.Tasks(B.DungeonCatalog.entries.ref,s,data)) do if row.id==4 then mixed=row end end
+    assert(mixed and mixed.insideObjectives[2] and not mixed.insideObjectives[1])
 end)
 
 run("副本接取点可临时导航，乘船接取后恢复原行程",function()
