@@ -26,7 +26,9 @@ def main():
     journey = mode == 'dungeon' and 'journey' in sys.argv[2:]
     loot = mode == 'dungeon' and 'loot' in sys.argv[2:]
     large = 'large' in sys.argv[1:]
-    records = json.loads(subprocess.check_output(['lua5.1', 'tools/preview_tracker.lua', mode] + (['entry-blocked'] if blocked else ['journey'] if journey else ['loot'] if loot else ['large'] if large else []), cwd=ROOT))
+    seven = mode == 'dungeon-hud' and 'seven' in sys.argv[2:]
+    variant = 'entry-blocked' if blocked else 'journey' if journey else 'loot' if loot else 'seven' if seven else 'large' if large else ''
+    records = json.loads(subprocess.check_output(['lua5.1', 'tools/preview_tracker.lua', mode] + ([variant] if variant else []), cwd=ROOT))
     canvas = Image.new('RGBA', (round(records[0]['rect']['w'] * SCALE), round(records[0]['rect']['h'] * SCALE)))
     draw = ImageDraw.Draw(canvas)
     for y in range(canvas.height):
@@ -135,7 +137,7 @@ def main():
     d = ImageDraw.Draw(canvas)
     font = ImageFont.truetype(FONT, 12 * SCALE)
     d.text((100 * SCALE, 38 * SCALE), '布局预览 · 示例数据', font=font, fill=(145, 165, 176), anchor='lt')
-    output = ROOT / f'dist/{"daylight-" if os.getenv("AILEVELING_PREVIEW_DAYLIGHT")=="1" else ""}{mode}{"-entry-blocked" if blocked else "-journey" if journey else "-loot" if loot else "-large" if large else ""}-preview.png'
+    output = ROOT / f'dist/{"daylight-" if os.getenv("AILEVELING_PREVIEW_DAYLIGHT")=="1" else ""}{mode}{"-" + variant if variant else ""}-preview.png'
     canvas.convert('RGB').save(output)
     print(output)
 

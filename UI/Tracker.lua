@@ -1061,6 +1061,7 @@ function UI:CreateTracker()
     guide.icon:SetSize(16,16);guide.icon:SetPoint("TOPLEFT",12,-10)
     guide.place=text(guide,"caption",palette.gold);guide.place:SetPoint("TOPLEFT",34,-10);guide.place:SetWidth(192)
     guide.link=text(guide,"caption",palette.blue);guide.link:SetPoint("TOPRIGHT",-12,-10)
+    guide.summary=text(guide,"caption",palette.muted);guide.summary:SetWidth(304);guide.summary:SetPoint("TOPLEFT",12,-30)
     guide.feedback=text(guide,"body",palette.green);guide.feedback:SetWidth(304)
     guide.feedback:SetPoint("TOPLEFT",12,-32);guide.feedback:SetMaxLines(2);guide.feedback:Hide()
     guide:SetScript("OnEnter",function(f)
@@ -1849,7 +1850,15 @@ local guideLabels={accept="接取任务",objective="任务目标",turnin="交付
 local function dungeonGuideSteps(d,state)
     local inside,other={},{}
     for _,row in ipairs(A.Dungeon.Tasks(d,state,A.Data)) do
-        if row.allowed and row.group<=3 and not row.requireCheck then
+        if row.group==4 and row.preparation and not row.requireCheck then
+            local names={}
+            for _,id in ipairs(row.preparation) do
+                local q=A.Data:GetQuest(id,state)
+                names[#names+1]=q and q.title or ("#"..id)
+            end
+            other[#other+1]={kind="accept",questId=row.id,title=row.title,stageLabel="未接取",
+                text="前置任务 · "..table.concat(names,"、")}
+        elseif row.allowed and row.group<=3 and not row.requireCheck then
             local point,item=row.position,row.pickupItem
             local area,index=row.areaId,row.objectiveIndex
             local hits=row.insideObjectives
@@ -1999,36 +2008,29 @@ function UI:RenderDungeonGuide()
         focus.kind=="selectionBlocked" and "任务条件")
     local used,y,total=0,0,0
     local first
-    local pickups,seen={},{}
-    local focusIndices
-    if phase and focus.kind=="objective" then
-        for _,step in ipairs(card.inside) do if step.questId==focus.questId then focusIndices=step.insideObjectives;break end end
-    end
+    local seen,counts={},{accept=0,objective=0,turnin=0}
     local function add(action,label,indices)
+        local id=action and (action.kind=="accept" or action.kind=="objective" or action.kind=="turnin") and action.questId
+        if id and seen[id] then return end
         local part=action and dungeonGuideBody(action,s,indices)
         local title=action and action.title or (d and "查看副本任务" or "查看当前任务")
-        local active=action and s.quests[action.questId]
-        if active and active.ready and (action.kind=="turnin" or action.kind=="dungeonLeave") then
+        local active=id and s.quests[id]
+        if id then
+            seen[id]=title;total=total+1
+            local status=active and (active.ready and "turnin" or "objective") or action.kind
+            if counts[status] then counts[status]=counts[status]+1 end
+        end
+        if action and (action.kind=="accept" or action.kind=="objective") then
+            if label=="本外接取" or label=="本外目标" then part=label..(part and part~="" and (" · "..part) or "") end
+            label=action.kind=="accept" and "未接取" or "进行中"
+        end
+        if active and active.ready and action.kind=="turnin" then
             if label=="本外交付" then part=label..(part and part~="" and (" · "..part) or "")
             elseif not part or part=="" then part="可交付" end
             label="已完成"
         end
         if label then title=label.." · "..title end
         if not action then part=d and "打开任务详情，查看接取地点、任务目标和交付人。" or "打开任务行程，查看已接任务及目标。" end
-        if action and action.questId and not seen[action.questId] then seen[action.questId]=action.title or title;total=total+1 end
-        -- Identical machine offers can have several Forever quest IDs. Show their shared instruction once.
-        if action and action.kind=="accept" and part and part~="" and not action.stageLabel and
-            (action.position or part:find("「",1,true)) then
-            local point=action.position
-            local key=table.concat({title,part,point and point.map or "",point and point.x or "",point and point.y or ""},"|")
-            local prior=pickups[key]
-            if prior then
-                prior.count=prior.count+1
-                card.rows[prior.index].title:SetText(title.."（"..prior.count.."项）")
-                return
-            end
-            pickups[key]={index=used+1,count=1}
-        end
         if action and action.kind=="accept" and s.questLimit and s.questCount and s.questCount>=s.questLimit then
             part=(part and part.." · " or "").."任务日志已满"
         end
@@ -2036,37 +2038,76 @@ function UI:RenderDungeonGuide()
         if used==1 then first=action and action.questId end
         local row=card.rows[used]
         if not row then
-            row={title=text(card.child,"task"),body=text(card.child,"body",palette.muted)}
+            row=CreateFrame("Button",nil,card.child);row:SetWidth(304)
+            row.title=text(row,"task");row.body=text(row,"body",palette.muted);row.title:SetPoint("TOPLEFT")
             row.title:SetWidth(304);row.body:SetWidth(294)
             row.body:SetPoint("TOPLEFT",row.title,"BOTTOMLEFT",10,-2)
+            row:SetScript("OnClick",function() card:Click() end)
+            row:SetScript("OnEnter",function(f)
+                if f.compact and f.body:IsShown() then
+                    GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(f.title:GetText())
+                    GameTooltip:AddLine(f.body:GetText(),1,1,1,true);GameTooltip:Show()
+                end
+            end)
+            row:SetScript("OnLeave",function(f) if GameTooltip:IsOwned(f) then GameTooltip:Hide() end end)
             card.rows[used]=row
         end
+        row.questId=id;row:Show();row.body:SetMaxLines(0)
         row.title:SetText(title);row.title:SetTextColor(unpack(action and palette[action.kind] or palette.white));row.title:Show()
         row.body:SetText(part or "");row.body:SetShown(part~=nil and part~="")
     end
     local function group(steps)
         for _,step in ipairs(steps) do
-            if not (phase and focus.questId==step.questId and (focus.kind==step.kind or focus.kind=="dungeonLeave" and steps==card.other)) then
-                add(step,step.stageLabel or guideLabels[step.kind],step.insideObjectives)
-            end
+            add(step,step.stageLabel or guideLabels[step.kind],step.insideObjectives)
         end
     end
-    if phase and focus.kind~="dungeonLeave" then add(focus,phase,focusIndices) end
+    if phase and focus.kind~="dungeonLeave" then
+        local step
+        if focus.questId and guideLabels[focus.kind] then
+            for _,list in ipairs({card.inside,card.other}) do
+                for _,candidate in ipairs(list) do
+                    if candidate.questId==focus.questId then step=candidate;break end
+                end
+                if step then break end
+            end
+        end
+        if step and (step.kind~=focus.kind or step.stageLabel or not (focus.text or focus.position)) then
+            add(step,step.stageLabel or guideLabels[step.kind],step.insideObjectives)
+        else
+            add(focus,phase,step and step.insideObjectives)
+        end
+    end
     group(card.inside)
     if phase and focus.kind=="dungeonLeave" then add(focus,phase) end
     group(card.other)
     if used==0 then add() end
-    for i=1,used do
-        local row=card.rows[i]
-        row.title:ClearAllPoints();row.title:SetPoint("TOPLEFT",0,-y)
-        y=y+row.title:GetStringHeight()+(row.body:IsShown() and 2+row.body:GetStringHeight() or 0)+9
-    end
-    for i=used+1,#card.rows do card.rows[i].title:Hide();card.rows[i].body:Hide() end
+    for i=used+1,#card.rows do card.rows[i]:Hide() end
     dungeonFeedback(card,s,first)
     card.displayed=seen
+    local summary={}
+    if counts.objective>0 then summary[#summary+1]="进行中 "..counts.objective end
+    if counts.accept>0 then summary[#summary+1]="未接取 "..counts.accept end
+    if counts.turnin>0 then summary[#summary+1]="可交付 "..counts.turnin end
+    card.summary:SetText(table.concat(summary,"   ·   "));card.summary:SetShown(#summary>0)
+    local summaryHeight=#summary>0 and card.summary:GetStringHeight()+5 or 0
     local feedbackHeight=card.feedback:IsShown() and card.feedback:GetStringHeight()+6 or 0
-    card.scroll:ClearAllPoints();card.scroll:SetPoint("TOPLEFT",12,-32-feedbackHeight)
-    local height=math.min(math.max(80,220-feedbackHeight),y)
+    card.feedback:ClearAllPoints();card.feedback:SetPoint("TOPLEFT",12,-32-summaryHeight)
+    card.scroll:ClearAllPoints();card.scroll:SetPoint("TOPLEFT",12,-32-summaryHeight-feedbackHeight)
+    local budget=math.max(80,math.min(320*UI:FontScale(),UIParent:GetHeight()/(A.settings.scale or 1)-64)-summaryHeight-feedbackHeight)
+    local function layout(compact)
+        y=0
+        for i=1,used do
+            local row=card.rows[i]
+            row.compact=compact
+            if compact then row.body:SetMaxLines(1) end
+            row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y)
+            local h=row.title:GetStringHeight()+(row.body:IsShown() and 2+row.body:GetStringHeight() or 0)
+            row:SetHeight(h);y=y+h+(compact and 4 or 7)
+        end
+    end
+    layout(false)
+    if used>1 and y>budget then layout(true) end
+    local height=math.min(budget,y)
     card.scrollRange=y-height
     card.child:SetHeight(y);card.scroll:SetHeight(height)
     card.scroll:SetVerticalScroll(math.min(card.scroll:GetVerticalScroll(),card.scrollRange))
@@ -2074,7 +2115,7 @@ function UI:RenderDungeonGuide()
     local name=s.instanceName or d and d.title or "副本指引"
     card.place:SetText(name..(total>0 and (" · "..total.." 项") or ""))
     card.link:SetText(d and "任务详情  ›" or "任务行程  ›")
-    card:SetHeight(36+feedbackHeight+height+(card.scrollRange>0 and card.footer:GetStringHeight()+4 or 0))
+    card:SetHeight(36+summaryHeight+feedbackHeight+height+(card.scrollRange>0 and card.footer:GetStringHeight()+4 or 0))
     card:SetScale(A.settings.scale);card:SetAlpha(A.settings.alpha);card:Show()
 end
 

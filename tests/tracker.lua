@@ -537,9 +537,10 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     B.indexReady=true;B.state.locked=1
     B.state.quests[1].objectives={{text="零件",numRequired=6,numFulfilled=2},{text="图纸",numRequired=1,numFulfilled=0}}
     U:RenderDungeonGuide();eq(card.rows[2].body.value,"零件 · 2/6\n图纸 · 0/1")
-    eq(card.rows[3].title.value,"接取任务 · 护送机器人");eq(card.rows[4].title.value,"接取任务 · 一团混乱")
+    eq(card.rows[3].title.value,"未接取 · 护送机器人");eq(card.rows[4].title.value,"未接取 · 一团混乱")
     eq(card.place.value,"诺莫瑞根 · 4 项")
-    assert(card.scrollRange>0);card.scripts.OnMouseWheel(card,-1);assert(card.scroll:GetVerticalScroll()>0)
+    eq(card.summary.value,"进行中 1   ·   未接取 2   ·   可交付 1")
+    card.scripts.OnMouseWheel(card,-1);eq(card.scroll:GetVerticalScroll(),math.min(48,card.scrollRange))
     B.state.quests[1].objectives[1].numFulfilled=4;U:RenderDungeonGuide()
     eq(card.rows[2].body.value,"零件 · 4/6\n图纸 · 0/1");eq(reads,1)
     local timers,oldTimer={},C_Timer
