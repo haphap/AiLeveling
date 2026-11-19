@@ -217,7 +217,9 @@ function P.TaskOrder(state,choices,data)
     local pending,order,optional={},{},{}
     for _,choice in ipairs(choices) do
         choice.executionTiming=nil;choice.executionAction=nil
-        if not choice.lowValue and not choice.revisitLevel and (state.quests[choice.questId] or choice.questId==state.locked) then
+        local pickupHere=choice.currentInstance and choice.status=="accept" and not
+            (choice.acceptBlocked or choice.requireCheck or choice.entryBlocked)
+        if not choice.lowValue and not choice.revisitLevel and (state.quests[choice.questId] or choice.questId==state.locked or pickupHere) then
             if choice.entryBlocked and choice.questId~=state.locked then optional[#optional+1]=choice
             else pending[#pending+1]=choice end
         end

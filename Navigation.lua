@@ -377,7 +377,8 @@ end
 function N:SyncWaypointUI(force)
     local api=WaypointUIAPI and WaypointUIAPI.Navigation
     if not (api and api.GetUserNavigation and api.NewUserNavigation and api.ClearUserNavigation and api.IsUserNavigationTracked) then return end
-    local enabled=A.settings.waypointUI~=false
+    -- WaypointUI tracks the pin but hides its world HUD inside dungeons.
+    local enabled=A.settings.waypointUI~=false and not A.state.inInstance
     local action=enabled and self:Current()
     local nav=api.GetUserNavigation()
     local owned=nav and nav.flags=="AiLeveling"
@@ -504,10 +505,11 @@ function N:Update()
     end
     updateEdge(self.edgePin,self.hbdPins)
     if display then A.UI:SetNavigation(nil) end
-    if not self.hbd then return end
     if A.Transport and A.Transport:InFlight() then A.UI:SetNavigation(nil);return end
     if A.Hearth and A.Hearth:InTransit() then A.UI:SetNavigation(nil);return end
     local action, pos = self:Current(), A.state.position
+    local guide=A.state.inInstance and not A.state.dead and action and
+        (action.kind=="accept" or action.kind=="objective" or action.kind=="turnin" or action.kind=="dungeonLeave") and action or nil
     if action and action.publicTransit and not A.char.paused and pos then
         local arrival=self:Distance(pos,action.position)
         -- Players emerge beside the portal. Crossing onto its destination land
@@ -522,8 +524,10 @@ function N:Update()
     if action and action.kind=="service" and not A.char.paused and A.Supplies and A.Supplies.Done(action,A.state) then
         self:Advance();return
     end
-    if not action or not action.position or not pos or A.char.paused then
-        A.UI:SetNavigation(nil)
+    if A.char.paused or not action then A.UI:SetNavigation(nil);return end
+    local target=N.Target(action)
+    if not self.hbd or not target or not pos and not guide then
+        A.UI:SetNavigation(nil,nil,nil,guide)
         return
     end
     if publicTravel then A.UI:SetNavigation(nil);return end
@@ -534,8 +538,6 @@ function N:Update()
         return
     end
     self.atTransitDestination=nil
-    local target = N.Target(action)
-    if not target then A.UI:SetNavigation(nil);return end
     local distance = self:Distance(pos, target)
     if action.kind=="manual" and not A.state.dead and pos.map==target.map and distance and distance<=(action.arrival or 12) then
         self:ClearManual()
@@ -554,10 +556,15 @@ function N:Update()
         end
     end
     if display then return end
-    local x, y, instance = self.hbd:GetWorldCoordinatesFromZone(pos.x, pos.y, pos.map)
+    local x,y,instance
+    if guide and self.hbd.GetPlayerWorldPosition then x,y,instance=self.hbd:GetPlayerWorldPosition() end
+    if not x and pos then x,y,instance=self.hbd:GetWorldCoordinatesFromZone(pos.x,pos.y,pos.map) end
     local tx, ty, targetInstance = self.hbd:GetWorldCoordinatesFromZone(target.x, target.y, target.map)
     local angle
-    if x and tx and instance == targetInstance then angle = self.hbd:GetWorldVector(instance, x, y, tx, ty) end
-    local facing = GetPlayerFacing()
-    A.UI:SetNavigation(distance, angle and facing and (angle - facing), A.plan and A.plan.unverified)
+    if x and tx and instance==targetInstance and (not guide or instance==A.state.instanceId) then
+        local bearing,yards=self.hbd:GetWorldVector(instance,x,y,tx,ty)
+        angle,distance=bearing,yards or distance
+    elseif guide then distance=nil end
+    local facing=angle and GetPlayerFacing()
+    A.UI:SetNavigation(distance,angle and facing and (angle-facing),A.plan and A.plan.unverified,guide)
 end

@@ -701,6 +701,11 @@ run("副本任务批次先处理野外目标再进本，普通与手选任务也
     assert(B.Selection:LockQuest(1));p=plan(s,data,B.settings,B);eq(p.fallback.kind,"objective")
     s.quests[1]=nil;s.inInstance=false;s.position={map=1,x=0,y=0}
     p=plan(s,data,B.settings,B);eq(p.fallback.kind,"accept")
+    B.Selection:Automatic();s.inInstance,s.instanceId,s.position=true,42,nil
+    s.quests[4]={ready=true,objectives={}}
+    data.Target=function(_,quest) return {map=quest.id==1 and 2 or 1,x=0.1,y=0.2} end
+    p=plan(s,data,B.settings,B);eq(p.fallback.questId,1);eq(p.fallback.kind,"accept")
+    assert(B.Selection:LockQuest(4));p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonLeave")
 end)
 
 run("混合目标按实际副本区分，保留目标身份顺序和未关联的原生引导",function()

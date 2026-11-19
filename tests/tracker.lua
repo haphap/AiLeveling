@@ -513,6 +513,10 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     U:SetNavigation(100,0.7,true);eq(U.tracker.navTitle.value,"当前任务 · 区域参考点")
     B.settings.arrow=false;U:SetNavigation(100,0.7,true);eq(U.navFrame.shown,false)
     B.settings.arrow=true;U:SetNavigation(nil);eq(U.navFrame.shown,false)
+    local guide={kind="turnin",title="超级清洁器5200型！",text="在清洁区使用清洁器交付任务。"}
+    U:SetNavigation(nil,nil,nil,guide);eq(U.navFrame.shown,true);eq(U.nav.value,"交付任务")
+    eq(U.tracker.navTitle.value,guide.title.."\n"..guide.text);eq(U.tracker.arrowLines[1].shown,false)
+    B.settings.arrow=false;U:SetNavigation(nil,nil,nil,guide);eq(U.navFrame.shown,false);B.settings.arrow=true
     U.navFrame.scripts.OnDragStop();eq(B.settings.navigationPosition[3],25)
     B:NormalizeSettings(B.settings);eq(B.settings.navigationPosition[3],25)
     B:RestoreSettings();eq(B.settings.navigationPosition,nil)

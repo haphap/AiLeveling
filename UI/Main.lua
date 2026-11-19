@@ -594,6 +594,6 @@ function UI:Render()
     self:RefreshDetails()
 end
 
-function UI:SetNavigation(distance, angle, unverified)
-    self:SetTrackerNavigation(distance,angle,unverified)
+function UI:SetNavigation(distance, angle, unverified, guide)
+    self:SetTrackerNavigation(distance,angle,unverified,guide)
 end

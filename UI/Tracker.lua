@@ -1803,17 +1803,20 @@ function UI:LayoutTracker()
     if A.QuestAssist then A.QuestAssist:LayoutTarget() end
 end
 
-function UI:SetTrackerNavigation(distance,angle,unverified)
+local guideLabels={accept="接取任务",objective="任务目标",turnin="交付任务",dungeonLeave="离开副本"}
+function UI:SetTrackerNavigation(distance,angle,unverified,guide)
     if not self.navFrame then return end
-    local show=A.settings.arrow and distance~=nil and not A.char.paused
+    local show=A.settings.arrow and (distance~=nil or guide~=nil) and not A.char.paused
     self.navFrame:SetShown(show==true)
     if not show then return end
-    local action=A.Navigation:Current()
+    local action=guide or A.Navigation:Current()
     local meters=A.settings.distanceUnits=="meters"
-    self.nav:SetText(string.format("%.0f %s",meters and distance*0.9144 or distance,meters and "米" or "码"))
+    self.nav:SetText(distance and string.format("%.0f %s",meters and distance*0.9144 or distance,meters and "米" or "码") or guideLabels[guide.kind])
     local target=A.Navigation.Target(action)
     local hint=target and target.approximate and (target.sourceKind=="patrol" and " · 巡逻路线" or " · 区域参考点") or ""
-    self.tracker.navTitle:SetText((action and action.title or "目的地")..hint)
+    local title=(action and action.title or "目的地")..hint
+    if guide and not distance and guide.text and guide.text~=title then title=title.."\n"..guide.text end
+    self.tracker.navTitle:SetText(title)
     self.navFrame:SetHeight(math.max(90,70+self.tracker.navTitle:GetStringHeight()))
     local points={{-10,-6,0,7},{0,7,10,-6}}
     local cos,sin=math.cos(-(angle or 0)),math.sin(-(angle or 0))

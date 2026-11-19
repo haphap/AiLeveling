@@ -281,6 +281,20 @@ test("飞行保留手动目的地且不混入步行校准",function()
     local before=created
     B.Navigation:Update();B.Navigation:Update();eq(nav,nil);eq(created,before);eq(math.floor(B.distance+0.5),100)
     C_Map=previousMap
+    -- WaypointUI can report a tracked pin while its dungeon HUD is hidden.
+    B.Navigation:Update();eq(nav.flags,"AiLeveling")
+    local action=B.Navigation:Current()
+    B.UI.SetNavigation=function(_,distance,angle,unverified,guide) B.distance,B.angle,B.guide=distance,angle,guide end
+    B.state.inInstance,B.state.instanceId,B.state.position=true,1,nil
+    B.Navigation.hbd.GetPlayerWorldPosition=function() return 0.8,0,1 end
+    B.Navigation.hbd.GetWorldVector=function() return 0.5,100 end
+    B.Navigation:Update();eq(nav,nil);eq(B.distance,100);eq(B.angle,0.5);eq(B.guide,action)
+    nav=external;action.position=nil;action.text="在清洁区使用清洁器。"
+    B.Navigation:Update();eq(nav,external);eq(B.distance,nil);eq(B.angle,nil);eq(B.guide,action)
+    B.char.paused=true;B.Navigation:Update();eq(B.guide,nil)
+    B.char.paused=false;B.state.inInstance=false;B.state.position=position(0.8);action.position=position(0.9)
+    B.Navigation:Update();eq(nav,external);eq(B.guide,nil)
+    nav=nil;B.Navigation:Update();eq(nav.flags,"AiLeveling");eq(B.distance,nil)
     WaypointUIAPI=nil
 end)
 test("空中规划门控并丢弃起飞前尚未发布的计算",function()
