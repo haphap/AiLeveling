@@ -283,8 +283,9 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     B.combat(false);B.time(10.1);update();eq(builds,0)
     B.time(10.4);update();eq(builds,1);eq(built.revision,B.state.revision);eq(built.position.x,0.5)
     eq(B.planningResumeAt,nil);eq(B.jobs.plan,nil);update();eq(builds,1)
+    B.plan.origin={map=2};B.plan.unverified=true
     speed=7;B:Replan(true);update();eq(builds,1)
-    B:Replan(true,true);update();eq(builds,2);eq(B.planningResumeAt,nil)
+    B:Replan(true,true);update();eq(builds,2);eq(built.currentTask,nil);eq(B.planningResumeAt,nil)
     speed=0;hold=true;debugprofilestop=function() return planningTime end
     B:Replan(true);update();eq(builds,3);local interrupted=B.jobs.plan
     speed=7;update();eq(builds,3);eq(B.jobs.plan,interrupted)

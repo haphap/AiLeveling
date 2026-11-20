@@ -169,16 +169,21 @@ function N:Current()
     local state=A.state
     local position=state.position
     local plan=A.plan
-    if A.indexReady and not (A.jobs and A.jobs.plan) then return action end
     local changedZone=position and plan and plan.origin and plan.origin.map~=position.map
-    local previousQuest=action and (action.kind=="turnin" or action.kind=="objective" or action.kind=="accept")
-    local previousStop=changedZone and N.Target(action)
-    local reachedStop=changedZone and action and action.publicTransit and action.position and action.position.map==position.map
-    if action and action.kind~="taskReview" and not (changedZone and previousQuest or
-        previousStop and previousStop.map~=position.map or reachedStop) then return action end
+    if not changedZone and A.indexReady and not (A.jobs and A.jobs.plan) then return action end
     local selected=state.locked or state.preparingQuest or state.taskBatch or state.gearTarget or state.serviceStop
-    if position and not (selected or state.dead or state.onTaxi or state.inInstance or (state.level or 0)>=60 or A.error or A.char.paused)
-        and A.TaskGuide and A.Data and A.Data.Target then
+    local automatic=not (selected or state.dead or state.onTaxi or state.inInstance or (state.level or 0)>=60 or A.error or A.char.paused)
+    local arrivedQuest
+    -- Drop the old itinerary while the new plan waits for the player to stop.
+    if changedZone and automatic and action and not (action.publicTransit and action.atDeparture) then
+        local stop=N.Target(action)
+        if stop and stop.map==position.map and (action.kind=="accept" or action.kind=="objective" or action.kind=="turnin") then
+            arrivedQuest=action
+        end
+        action=nil
+    end
+    if action and action.kind~="taskReview" then return action end
+    if position and automatic and A.TaskGuide and A.Data and A.Data.Target then
         local nearest,best
         for id,step in pairs(A.TaskGuide.ReadyTurnIns(state,A.Data)) do
             if step.position.map==position.map then
@@ -189,17 +194,25 @@ function N:Current()
             end
         end
         if nearest then return nearest end
-        -- The previous itinerary can still contain a valid local objective after its first task is handed in.
-        for _,choice in ipairs(plan and plan.taskOrder or {}) do
+        local choices=plan and plan.taskOrder
+        if changedZone then
+            for _,region in ipairs(plan.regions or {}) do
+                if region.map==position.map then choices=region.choices;break end
+            end
+        end
+        for _,choice in ipairs(choices or {}) do
             local quest=state.quests[choice.questId]
             local step=choice.executionAction or (choice.actions or {})[1]
-            if quest and not quest.ready and step and step.kind=="objective" and step.position and
-                step.position.map==position.map and not (step.expected or step.position.areaOnly or choice.itemShortage or
-                choice.entryBlocked or choice.lowValue or choice.revisitLevel) and
-                not N.StaleAction(step,state,plan) then return step end
+            if step and step.position and step.position.map==position.map and
+                not (step.expected or step.position.areaOnly or choice.itemShortage or choice.entryBlocked or
+                choice.lowValue or choice.revisitLevel or N.StaleAction(step,state,plan)) then
+                if quest and not quest.ready and step.kind=="objective" then return step end
+                if changedZone and not quest and step.kind=="accept" and not (choice.requireCheck or choice.acceptBlocked or
+                    A.Supplies and A.Supplies.AcceptIssue(state)) then return step end
+            end
         end
     end
-    return action
+    return action or arrivedQuest
 end
 
 function N:Near(position,target,radius)

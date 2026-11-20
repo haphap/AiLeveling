@@ -794,6 +794,17 @@ test("分散交付点明确现在就近交和等同NPC任务一起交并跟随�
     eq(B.Navigation:Current().questId,2)
     B.state={revision=4,position=city,quests={[3]=B.state.quests[3]}}
     eq(B.Navigation:Current().questId,3)
+    -- Crossing into a new zone can precede the planning job or leave it waiting while moving.
+    local arrivalState=B.state
+    local key={kind="objective",questId=97329,position=village}
+    local localWork={kind="objective",questId=58,position=city}
+    B.state={revision=5,position=city,quests={[97329]={},[58]={}}}
+    B.Navigation.actions={key};B.plan.regions={{map=city.map,choices={{questId=58,actions={localWork}}}}}
+    B.jobs.plan=nil;eq(B.Navigation:Current(),localWork)
+    B.jobs.plan=true;eq(B.Navigation:Current(),localWork)
+    B.state.quests[58]=nil;eq(B.Navigation:Current(),nil)
+    B.state.locked=97329;eq(B.Navigation:Current(),key)
+    B.state=arrivalState;B.plan.regions=nil;B.Navigation.actions={ta}
     -- Manual tram travel has no selected taxi node or outdoor player position.
     assert(loadfile("Data/PublicTransit.lua"))("AiLeveling",B)
     assert(loadfile("Planner/Flights.lua"))("AiLeveling",B)

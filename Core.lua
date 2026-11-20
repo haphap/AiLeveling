@@ -184,7 +184,9 @@ function A:Replan(force, manual)
     if manual then self.planningResumeAt=nil end
     local snapshot,revision={},self.state.revision
     for key,value in pairs(self.state) do snapshot[key]=value end
-    snapshot.currentTask=self.plan and self.plan.unverified and self.plan.fallback and self.plan.fallback.questId or nil
+    local previous=self.plan
+    snapshot.currentTask=previous and previous.unverified and previous.origin and previous.origin.map==map and
+        previous.fallback and previous.fallback.questId or nil
     snapshot.completed={}
     for id,value in pairs(self.state.completed or {}) do snapshot.completed[id]=value end
     self.planningMap,self.planningRevision=map,revision
