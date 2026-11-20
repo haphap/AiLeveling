@@ -70,10 +70,10 @@ function H:Snapshot(state)
         local p=snapshot.position
         if p and number(p.map) and p.map>0 and number(p.x) and p.x<=1 and number(p.y) and p.y<=1 and
             state.bindName==pending.name and pending.epoch==self.epoch and usable() then
-            self.arrived={action=pending.action,position=copy(p)}
+            self.arrived={action=pending.action,position=copy(p),bindingKey=tostring(pending.epoch)..":"..pending.name}
+            self.landing={position=copy(p),name=pending.name,epoch=pending.epoch,build=state.clientBuild,version=state.clientVersion}
+            A.char.hearthBinding=self.landing
             if pending.learn and A.settings.learn then
-                self.landing={position=copy(p),name=pending.name,epoch=pending.epoch,build=state.clientBuild,version=state.clientVersion}
-                A.char.hearthBinding=self.landing
                 local elapsed=state.now-pending.started
                 if elapsed>=1 and elapsed<=120 then
                     local key=H.Key(state);local samples=A.char.samples
@@ -86,12 +86,12 @@ function H:Snapshot(state)
                     A.State.Observe(samples,key,elapsed)
                     if samples[key] then samples[key].unit="seconds" end
                 end
-                self.cooldown=nil
-                if C_Container and C_Container.GetItemCooldown then
-                    local start,duration,enabled=C_Container.GetItemCooldown(6948)
-                    if number(start) and number(duration) and duration>0 and start>=pending.started-1 and start<=state.now and
-                        (enabled==1 or enabled==true) then self.cooldown=duration end
-                end
+            end
+            self.cooldown=nil
+            if C_Container and C_Container.GetItemCooldown then
+                local start,duration,enabled=C_Container.GetItemCooldown(6948)
+                if number(start) and number(duration) and duration>0 and start>=pending.started-1 and start<=state.now and
+                    (enabled==1 or enabled==true) then self.cooldown=duration end
             end
             self.cast,self.pending=nil,nil
         end
@@ -100,13 +100,19 @@ function H:Snapshot(state)
         self.landing=A.char.hearthBinding;self.epoch=self.landing.epoch
     end
     local landing=self.landing
-    if landing and (landing.name~=state.bindName or landing.epoch~=self.epoch or landing.build~=state.clientBuild or
-        landing.version~=state.clientVersion) then self.landing=nil;A.char.hearthBinding=nil;landing=nil end
     state.hearthPoint,state.hearthBindingKey,state.hearthCooldown=nil,nil,nil
-    if landing and (state.bags[6948] or 0)>0 and number(state.hearthReady) then
-        state.hearthPoint=copy(landing.position)
-        state.hearthBindingKey=tostring(landing.epoch)..":"..landing.name
-        state.hearthCooldown=self.cooldown
+    local name=text(state.bindName)
+    if not name then return end
+    if landing and (landing.name~=name or landing.epoch~=self.epoch or landing.version~=state.clientVersion) then
+        self.landing=nil;A.char.hearthBinding=nil;landing=nil
+    end
+    if (state.bags[6948] or 0)>0 and number(state.hearthReady) then
+        local point=landing and landing.position or A.Data and A.Data.BindPoint and A.Data:BindPoint(name,state.faction)
+        if point then
+            state.hearthPoint=copy(point)
+            state.hearthBindingKey=tostring(self.epoch)..":"..name
+            state.hearthCooldown=self.cooldown
+        end
     end
 end
 
@@ -125,7 +131,7 @@ function H:Update()
     local sequence=A.Navigation.Sequence and A.Navigation:Sequence() or A.Navigation
     if arrived and arrived.action and usable() and sequence.actions and
         sequence.actions[sequence.index]==arrived.action and
-        A.Navigation:Near(arrived.position,arrived.action.position,arrived.action.arrival or 12) then
+        (arrived.bindingKey==arrived.action.hearthBindingKey or A.Navigation:Near(arrived.position,arrived.action.position,arrived.action.arrival or 12)) then
         A.Navigation:Advance()
     end
 end

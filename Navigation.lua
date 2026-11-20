@@ -246,6 +246,16 @@ function N:LandFlight(flight,position)
     return false
 end
 
+function N:SetUpcomingQuest(action)
+    local old=self.upcomingQuest
+    self.upcomingQuest=action
+    if old==action then return end
+    local before,after=N.Target(old),N.Target(action)
+    if before and after and before.map==after.map and before.x==after.x and before.y==after.y and
+        old.kind==action.kind and old.questId==action.questId and old.objectiveIndex==action.objectiveIndex then return end
+    self:DrawPins()
+end
+
 function N:MapPoints()
     if A.settings.mapTaskScope=="off" then return {} end
     local points,seen,routeCount={},{},0
@@ -267,6 +277,7 @@ function N:MapPoints()
             point.order,point.action=routeCount,action
         end
         if action==current then point.current=true end
+        if action==self.upcomingQuest then point.upcoming=true end
         local identity=table.concat({action.kind or "",action.questId or "",action.objectiveIndex or action.targetId or ""},":")
         if not point.seen[identity] then
             point.actions[#point.actions+1]=action;point.seen[identity]=#point.actions
@@ -298,6 +309,8 @@ function N:MapPoints()
             end
         end
     end
+    -- The next quest stays visible even when the journey to it has six transport stops.
+    add(self.upcomingQuest,true,true)
     if A.settings.mapTaskScope=="route" then return points end
     -- Reuse resolved candidates; map coverage must not depend on the six-stop route preview.
     for _,choice in ipairs(self.plan and self.plan.taskChoices or {}) do
@@ -341,7 +354,7 @@ local function showPinTip(pin)
     local quest=(primary.kind=="accept" or primary.kind=="objective" or primary.kind=="turnin") and A.state.quests[primary.questId]
     local title=quest and quest.title or primary.title or "目的地"
     GameTooltip:SetOwner(pin,"ANCHOR_RIGHT")
-    GameTooltip:SetText((point.current and "当前目标 · " or "")..title)
+    GameTooltip:SetText((point.current and "当前目标 · " or point.upcoming and "接下来 · " or "")..title)
     for _,action in ipairs(point.actions) do
         if not pin.mini or action==primary or availableAction(action) then
             local active=A.state.quests[action.questId]
@@ -428,7 +441,7 @@ function N:SyncWaypointUI(force)
         return "external"
     end
     local target=action and N.Target(action)
-    if not target or A.char.paused or action.kind=="flight" or action.kind=="hearth" or action.publicTransit and action.atDeparture or
+    if not target or A.char.paused or action.kind=="flight" or action.mode=="hearth" or action.publicTransit and action.atDeparture or
         C_Map and C_Map.CanSetUserWaypointOnMap and not C_Map.CanSetUserWaypointOnMap(target.map) then
         if owned then api.ClearUserNavigation(not userTracked,true) end
         return
@@ -513,7 +526,7 @@ function N:DrawPins()
         local index=(order-1)*2
         -- Keep grouped quest tooltips even when WaypointUI draws the destination.
         local delegated=point.current and self.waypointDisplay=="itinerary" and #point.actions==1
-        local edge=point.current and not self.waypointDisplay
+        local edge=point.current and action.mode~="hearth" and not self.waypointDisplay
         if A.settings.pins and not delegated then
             local pin=self.pins[index+1] or mapPin(false);self.pins[index+1]=pin
             stylePin(pin,point,action,r,g,b)
@@ -572,6 +585,7 @@ function N:Update()
         return
     end
     self.atTransitDestination=nil
+    if action.mode=="hearth" then A.UI:SetNavigation(nil,nil,nil,action);return end
     local distance = self:Distance(pos, target)
     if action.kind=="manual" and not A.state.dead and pos.map==target.map and distance and distance<=(action.arrival or 12) then
         self:ClearManual()

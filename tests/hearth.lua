@@ -61,16 +61,24 @@ test("同名重新绑定清除旧位置且缺少物品不提供炉石路线端�
     B.state.bags={[6948]=1};snapshot(B);assert(B.state.hearthPoint)
     B.Hearth:Event("HEARTHSTONE_BOUND");snapshot(B);eq(B.state.hearthPoint,nil);eq(B.Hearth.landing,nil)
 end)
-test("关闭学习仍确认本人实际返回但不新增落点或样本",function()
-    local B=fixture(false);start(B);land(B)
-    eq(B.Navigation.index,2);eq(B.Hearth.landing,nil);eq(next(B.char.samples),nil)
+test("关闭耗时统计仍记住本人炉石落点并推进步骤",function()
+    local B=fixture(false)
+    local oldMap=C_Map
+    C_Map={GetMapInfo=function() return {name="暮色森林"} end,GetAreaInfo=function(id) if id==42 then return "夜色镇" end end}
+    B.Data={BindPoint=A.Data.BindPoint,innkeepers={6790},db={Npc={Get=function() return "A" end}},
+        EntityPoints=function() return {{map=1431,x=0.7387,y=0.4441}} end}
+    name="夜色镇";B.state.faction="Alliance";snapshot(B)
+    eq(B.state.hearthPoint.map,1431);eq(B.state.hearthBindingKey,"0:夜色镇")
+    C_Map=oldMap
+    start(B);land(B)
+    eq(B.Navigation.index,2);eq(B.state.hearthPoint.x,0.8);eq(next(B.char.samples),nil)
 end)
 test("加载后坐标暂不可用时重试且清除统计中断本次采样",function()
     local B=fixture();start(B);B.Hearth:Event("PLAYER_ENTERING_WORLD")
     now=15;pos=nil;snapshot(B);B.Hearth:Update();assert(B.wakes>0);eq(B.Hearth.landing,nil)
     now=16;pos={map=2,x=0.8,y=0};snapshot(B);B.Hearth:Update();assert(B.Hearth.landing)
     B=fixture();start(B);B.Hearth:InvalidateSample();land(B)
-    eq(next(B.char.samples),nil);eq(B.Hearth.landing,nil);eq(B.Navigation.index,2)
+    eq(next(B.char.samples),nil);eq(B.state.hearthPoint.x,0.8);eq(B.Navigation.index,2)
 end)
 test("加载与成功事件交换顺序仍须匹配同一施法才能记录",function()
     local B=fixture();B.Hearth:Event("UNIT_SPELLCAST_START","player","cast-one",8690)

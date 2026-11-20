@@ -99,6 +99,12 @@ test("地图标记按任务阶段合并并移除失效的导航步骤",function(
     B.Navigation.manual=nil;adds.world,adds.mini=0,0;B.Navigation:RefreshPins();eq(adds.world,3);eq(adds.mini,1)
     B.Navigation.plan={};B.Navigation.actions={nextGoal};adds.world,adds.mini=0,0
     B.Navigation:RefreshPins();eq(adds.world,1);eq(adds.mini,1);eq(pins[1].point.action,nextGoal);eq(pins[5].shown,false)
+    local journey={}
+    for i=1,7 do journey[i]={kind="move",position={map=2,x=i/10,y=0.5}} end
+    local pickup={kind="accept",questId=93585,position={map=1435,x=0.2222,y=0.5023}}
+    B.Navigation.actions=journey;B.settings.mapTaskScope="route";B.Navigation.upcomingQuest=pickup
+    local points=B.Navigation:MapPoints();eq(#points,7);eq(points[7].action,pickup);eq(points[7].upcoming,true)
+    B.Navigation.actions={nextGoal};B.Navigation.upcomingQuest=nil;B.settings.mapTaskScope=nil
     B.Navigation.plan={taskChoices={{questId=2,stages={nextGoal,steps[3].choice.stages[1]}},
         {questId=7,stages={{kind="accept",position={map=4,x=0.1,y=0.1}}}}}}
     B.Navigation:RefreshPins();eq(#B.Navigation:MapPoints(),2);eq(pins[3].point.action,steps[3].choice.stages[1])

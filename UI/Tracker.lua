@@ -796,8 +796,12 @@ function UI:TrackerMenu(owner)
         elseif action and action.kind=="service" and action.serviceKind=="repair" then
             menu:CreateButton("忽略维修",function() A.Supplies:IgnoreRepair() end)
         elseif id then
+            local point=owner.mapAction and A.Navigation.Target and A.Navigation.Target(owner.mapAction)
+            if point and C_Map and C_Map.OpenWorldMap then
+                menu:CreateButton("在地图上查看位置",function() C_Map.OpenWorldMap(point.map) end)
+            end
             menu:CreateButton("导航到此任务",function()
-                local step=owner.dungeonAction or owner.turnInAction
+                local step=owner.mapAction or owner.pickupAction or owner.dungeonAction or owner.turnInAction
                 if step and A.Navigation:Navigate(step) then return end
                 if not A.Navigation:NavigateQuest(id) then self:QuestClick(id,"RightButton") end
             end):SetEnabled(not owner.deferred)
@@ -1513,6 +1517,9 @@ function UI:RenderTracker(along)
     local sameQuest=taskStep and nextId==model.questId
     local tone=not taskStep and "white" or nextQuest and (nextQuest.ready and "green" or "gold") or "blue"
     nextRow.questId,nextRow.candidate,nextRow.revision=nextId,model.nextChoice,plan.revision
+    nextRow.mapAction=taskStep and nextStep or nil
+    if A.Navigation.SetUpcomingQuest then A.Navigation:SetUpcomingQuest(nextRow.mapAction) end
+    nextRow.pickupAction=taskStep and nextStep.kind=="accept" and nextStep or nil
     nextRow.turnInAction=model.nextOnArrival and nextStep or nil
     nextRow.status=taskStep and nextId and self.QuestStatus(state,nextId,plan)
     local following,title,instruction="","",""
@@ -1522,9 +1529,18 @@ function UI:RenderTracker(along)
         local verb=({accept="接取",objective="前往",turnin="交付"})[nextStep.kind] or "前往"
         if nextStep.kind=="turnin" and not (nextQuest and nextQuest.ready) then verb="完成后交付" end
         local target=destination(nextStep,true)
-        instruction=target and (verb.." · "..target) or nextStep.kind=="turnin" and verb or ""
-        if nextStep.kind=="accept" and model.batchPhases[nextId] then
-            instruction=(model.batchPhases[nextId]=="inside" and "副本内接取" or "入本前接取")..(target and " · "..target or "")
+        local phase=nextStep.kind=="accept" and model.batchPhases[nextId]
+        if phase then verb=phase=="inside" and "副本内接取" or "入本前接取" end
+        instruction=target and (verb.." · "..target) or (nextStep.kind=="turnin" or phase) and verb or ""
+        local point=taskStep and A.Navigation.Target and A.Navigation.Target(nextStep)
+        local location
+        if point and point.x and point.y and not point.approximate then
+            local map=C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
+            if map and map.name then
+                location=placeLabel(("%s %.1f，%.1f"):format(map.name,100*point.x,100*point.y))
+                local npc=point.entityName or point.siteName
+                instruction=npc and (verb.." · "..npc) or verb
+            end
         end
         following=(model.nextOnArrival or "接下来")..(nextRow.status and (" · |cff"..self.hex[tone]..nextRow.status.."|r") or "")
         if sameQuest then
@@ -1536,6 +1552,7 @@ function UI:RenderTracker(along)
                 if model.kind=="accept" then following="接取后" end
             else title=instruction;instruction="" end
         end
+        if location then instruction=location..(instruction~="" and ("\n"..instruction) or "") end
     end
     T.thenText:SetText(following)
     nextRow.title:SetText(title);nextRow.title:SetTextColor(unpack(self.daylight and tone~="green" and palette.white or palette[tone]))

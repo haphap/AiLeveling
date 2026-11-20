@@ -348,7 +348,7 @@ function F.Actions(route,action,navigation)
     for _,leg in ipairs(route.legs or {}) do
         -- The task points to its goal; transit steps already point to their departure.
         if leg.kind=="hearth" then
-            actions[#actions+1]={kind="transit",mode="hearth",questId=action.questId,title="炉石返回 "..(leg.name or "绑定地点"),
+            actions[#actions+1]={kind="transit",mode="hearth",questId=action.questId,title=(leg.wait>0 and "等待炉石冷却，再返回 " or "使用炉石返回 ")..(leg.name or "绑定地点"),
                 text=(leg.wait>0 and string.format("等待炉石冷却约 %.1f 分钟后，",leg.wait/60) or "").."手动使用炉石返回实际绑定地点，落地后继续任务。",
                 position=leg.to,toName=leg.name,arrival=12,departure=leg.from,hearthBindingKey=leg.bindingKey,travelSeconds=leg.seconds,travelWait=leg.wait,travelRide=leg.seconds-leg.wait,referenceHearth=true}
         elseif leg.kind=="portal" then

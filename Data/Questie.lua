@@ -66,6 +66,7 @@ function D:Connect(db)
     self.cache,self.chainIndex,self.byArea={},nil,{}
     self.servicesByMap,self.serviceCount={},0
     self.amenitiesByMap,self.amenityCount={},0
+    self.innkeepers,self.bindLookup=nil,nil
     self.ids={}
     for _,id in ipairs(db.Quest.GetAllIds()) do self.ids[#self.ids+1]=id end
     table.sort(self.ids)
@@ -129,6 +130,7 @@ function D:BuildServices()
     self.servicesByMap,self.serviceCount={},0
     self.amenitiesByMap,self.amenityCount={},0
     local npc,flags=self.db.Npc,self.db.Enum.npcFlags
+    local innkeepers={}
     self.dangerNames={}
     for _,faction in ipairs({"Alliance","Horde"}) do
         for _,rows in pairs(A.DangerData and A.DangerData[faction] or {}) do
@@ -154,6 +156,7 @@ function D:BuildServices()
             if next(maps) then
                 if service then self.serviceCount=self.serviceCount+1 end
                 if amenity then self.amenityCount=self.amenityCount+1 end
+                if flag(value,flags.INNKEEPER) then innkeepers[#innkeepers+1]=id end
             end
             for map in pairs(maps) do
                 if service then
@@ -168,6 +171,52 @@ function D:BuildServices()
         end
         if index%100==0 then coroutine.yield() end
     end
+    self.innkeepers,self.bindLookup=innkeepers,nil
+end
+
+-- Outdoor inn subareas at the QuestieDB spawns, from Forever 1.60.1.70862 terrain.
+-- Area names come from the client even when the exploration overlay is unavailable.
+local innAreas={
+    [295]=87,[1247]=131,[1464]=150,[2352]=271,[2388]=272,[3934]=380,[5688]=159,[5814]=117,
+    [6272]=513,[6727]=69,[6734]=144,[6735]=1659,[6736]=186,[6737]=442,[6738]=415,[6739]=228,
+    [6747]=222,[6790]=42,[6791]=392,[6807]=35,[6928]=362,[6930]=75,[7714]=378,[7731]=460,
+    [7733]=976,[7736]=1116,[7737]=1099,[7744]=349,[8931]=108,[9356]=340,[9501]=321,[11103]=608,
+    [11106]=2408,[11116]=484,[11118]=2255,[12196]=431,[14731]=3317,[15174]=3425,[16256]=2268,[16458]=467,
+    [28687]=279,[32413]=279,[240482]=3137,[243815]=16849,[244512]=16848,[254089]=16624,[255894]=16727,[255940]=16638,
+    [256675]=16743,[257595]=16724,[258380]=16848,
+}
+
+-- GetBindLocation gives a localized name. Match it to a friendly inn on the client map.
+function D:BindPoint(name,faction)
+    if not self.innkeepers or not (faction=="Alliance" or faction=="Horde") or not C_Map then return end
+    local lookup=self.bindLookup
+    if lookup and lookup.name==name and lookup.faction==faction then return lookup.point end
+    lookup={name=name,faction=faction};self.bindLookup=lookup
+    local npc=self.db.Npc
+    local explored=C_MapExplorationInfo and C_MapExplorationInfo.GetExploredAreaIDsAtPosition
+    for _,id in ipairs(self.innkeepers) do
+        local side=npc.Get(id,"friendlyToFaction")
+        if side=="AH" or side==(faction=="Alliance" and "A" or "H") then
+            for _,p in ipairs(self:EntityPoints(npc,id)) do
+                local map=C_Map.GetMapInfo(p.map)
+                local area=innAreas[id]
+                local matches=map and map.name==name or area and C_Map.GetAreaInfo and C_Map.GetAreaInfo(area)==name
+                if not matches and explored and CreateVector2D and C_Map.GetAreaInfo then
+                    for _,area in ipairs(explored(p.map,CreateVector2D(p.x,p.y)) or {}) do
+                        if C_Map.GetAreaInfo(area)==name then matches=true;break end
+                    end
+                end
+                if matches then
+                    if lookup.point and not (lookup.point.map==p.map and lookup.point.x==p.x and lookup.point.y==p.y)
+                        and not A.Navigation:Near(lookup.point,p,50) then
+                        lookup.point=nil;return
+                    end
+                    lookup.point=lookup.point or p
+                end
+            end
+        end
+    end
+    return lookup.point
 end
 
 function D:AmenityPoints(state,kind,maps)

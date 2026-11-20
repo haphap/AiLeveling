@@ -275,6 +275,19 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
         inside={{action=inside}},after={}}}
     B.UI:RenderTracker();eq(T.model.nextId,5);eq(T.model.nextStep.kind,"accept")
     assert(T.thenButton.progress.value:find("入本前接取",1,true))
+    local oldMap,oldTarget,oldPickup=C_Map,B.Navigation.Target,B.Navigation.Pickup
+    local opened,picked
+    C_Map={GetMapInfo=function(id) if id==1435 then return {name="悲伤沼泽"} end end,
+        OpenWorldMap=function(id) opened=id end}
+    B.Navigation.Target=function(step) return step and step.position end
+    B.Navigation.Pickup=function(_,step) picked=step;return true end
+    outside.position={map=1435,x=0.2222,y=0.5023,entityName="塔特尔神父"}
+    B.UI:RenderTracker()
+    assert(T.thenButton.progress.value:find("悲伤沼泽 22.2，50.2",1,true))
+    assert(T.thenButton.progress.value:find("入本前接取 · 塔特尔神父",1,true))
+    T.thenButton.scripts.OnClick(nil,"RightButton");B.menu["在地图上查看位置"].callback();eq(opened,1435)
+    T.thenButton.scripts.OnClick(nil,"LeftButton");eq(picked,outside)
+    C_Map,B.Navigation.Target,B.Navigation.Pickup=oldMap,oldTarget,oldPickup
     local insideRow;for _,row in ipairs(T.rows) do if row.shown and row.questId==6 then insideRow=row end end
     assert(insideRow);assert(insideRow.progress.value:find("副本内接取",1,true))
     B.plan.taskBatch=nil;B.plan.taskChoices=choices
