@@ -50,15 +50,17 @@ function N:Distance(from, to, onFoot)
 end
 
 function N:SetPlan(plan)
+    local sameFocus=not self.plan or self.plan.routeFocus==plan.routeFocus
     self.plan=plan
     self.planInstance=A.state.inInstance and A.state.instanceId
+    self.upcomingQuest=nil
     local current=self.actions and self.actions[self.index]
     local goal=self.actions and self.actions[#self.actions]
     local nextActions=plan.best and plan.best.actions or plan.travelActions or (plan.fallback and {plan.fallback}) or {}
     local nextGoal=nextActions[#nextActions]
     local before,after=goal and goal.position,nextGoal and nextGoal.position
     -- Replanning at sea must not send the same task back to its departure dock.
-    if current and current.publicTransit and current.atDeparture and goal and nextGoal and
+    if sameFocus and current and current.publicTransit and current.atDeparture and goal and nextGoal and
         goal.questId==nextGoal.questId and goal.kind==nextGoal.kind and goal.objectiveIndex==nextGoal.objectiveIndex and
         before and after and before.map==after.map and before.x==after.x and before.y==after.y and not A.state.dead and not self.manual then
         self:RefreshPins();A.QuestAssist:Update();return
@@ -72,6 +74,7 @@ end
 
 function N:Advance()
     local sequence=self:Sequence()
+    self.upcomingQuest=nil
     sequence.index, self.transitDeparted = sequence.index + 1, nil
     self:RefreshPins()
     A.QuestAssist:Update()
@@ -124,6 +127,7 @@ function N:Navigate(action,keepWaypoint)
     if not actions then actions={A.Flights and A.Flights.MissingCrossing and A.Flights.MissingCrossing(approach,state,self) or approach} end
     self.manual={title=action.title,action=target,actions=actions,index=1,
         instanceId=state.instanceId,inInstance=state.inInstance,plan={revision=-1,travelActions=actions,itemStock=self.plan and self.plan.itemStock}}
+    self.upcomingQuest=nil
     self:RefreshPins(not keepWaypoint)
     self:Update()
     A.QuestAssist:Update()
@@ -133,11 +137,40 @@ end
 
 function N:ClearManual(replan)
     if not self.manual then return end
-    self.manual = nil
+    self.manual,self.upcomingQuest=nil,nil
     self:RefreshPins()
     A.QuestAssist:Update()
     if replan~=false then A:Replan() end
     A.dirty = true
+end
+
+local function leveling(state)
+    return not (state.locked or state.preparingQuest or state.taskBatch or state.gearTarget or state.serviceStop or
+        state.inInstance or state.dead or state.onTaxi)
+end
+
+-- A numbered itinerary belongs to the selected activity and the zone where it was planned.
+function N:RouteStatus(plan,state)
+    if (self.planInstance or nil)~=(state.inInstance and state.instanceId or nil) or
+        plan and plan.routeFocus~=state.routeFocus then return "replaced" end
+    if not (state.position and plan and plan.origin and plan.origin.map~=state.position.map) then return end
+    local step=self.actions and self.actions[self.index]
+    if leveling(state) and not (step and step.publicTransit and step.atDeparture) then return "moved" end
+end
+
+local function regionChoices(plan,map)
+    for _,region in ipairs(plan and plan.regions or {}) do
+        if region.map==map then return region.choices end
+    end
+end
+
+function N:TrackerPlan(plan,state)
+    local status=self:RouteStatus(plan,state)
+    if status=="moved" then
+        return {revision=plan.revision,taskChoices=regionChoices(plan,state.position.map),itemStock=plan.itemStock}
+    end
+    if status=="replaced" then return {} end
+    return plan or {}
 end
 
 function N:Current()
@@ -156,6 +189,7 @@ function N:Current()
             if goal and (self.manual.inInstance~=A.state.inInstance or A.state.inInstance and self.manual.instanceId~=A.state.instanceId or
                 crossing and A.state.position and (crossing.map~=A.state.position.map or A.Travel.Separated(crossing,A.state.position,self))) then
                 if self:Navigate(goal,true) then return self:Current() end
+                return
             end
             if not N.StaleAction(action,A.state,self.manual.plan) then
                 return action or {kind="manual",title=self.manual.title or "手动目的地",position=self.manual}
@@ -163,19 +197,19 @@ function N:Current()
             self:ClearManual(false)
         end
     end
-    if A.state.inInstance and self.planInstance~=A.state.instanceId then return end
-    local action=self.actions and self.actions[self.index]
-    if N.StaleAction(action) then action=nil end
     local state=A.state
-    local position=state.position
     local plan=A.plan
-    local changedZone=position and plan and plan.origin and plan.origin.map~=position.map
-    if not changedZone and A.indexReady and not (A.jobs and A.jobs.plan) then return action end
-    local selected=state.locked or state.preparingQuest or state.taskBatch or state.gearTarget or state.serviceStop
-    local automatic=not (selected or state.dead or state.onTaxi or state.inInstance or (state.level or 0)>=60 or A.error or A.char.paused)
+    local status=self:RouteStatus(plan,state)
+    local action=self.actions and self.actions[self.index]
+    if status=="replaced" then plan,action=nil,nil
+    elseif N.StaleAction(action) then action=nil end
+    local position=state.position
+    local changedZone=status=="moved"
+    if not status and A.indexReady and not (A.jobs and A.jobs.plan) then return action end
+    local automatic=leveling(state) and (state.level or 0)<60 and not A.error and not A.char.paused
     local arrivedQuest
     -- Drop the old itinerary while the new plan waits for the player to stop.
-    if changedZone and automatic and action and not (action.publicTransit and action.atDeparture) then
+    if changedZone and action then
         local stop=N.Target(action)
         if stop and stop.map==position.map and (action.kind=="accept" or action.kind=="objective" or action.kind=="turnin") then
             arrivedQuest=action
@@ -195,11 +229,7 @@ function N:Current()
         end
         if nearest then return nearest end
         local choices=plan and plan.taskOrder
-        if changedZone then
-            for _,region in ipairs(plan.regions or {}) do
-                if region.map==position.map then choices=region.choices;break end
-            end
-        end
+        if changedZone then choices=regionChoices(plan,position.map) or choices end
         for _,choice in ipairs(choices or {}) do
             local quest=state.quests[choice.questId]
             local step=choice.executionAction or (choice.actions or {})[1]
@@ -261,6 +291,7 @@ end
 
 function N:SetUpcomingQuest(action)
     local old=self.upcomingQuest
+    self.upcomingManual=self.manual
     self.upcomingQuest=action
     if old==action then return end
     local before,after=N.Target(old),N.Target(action)
@@ -274,6 +305,8 @@ function N:MapPoints()
     local points,seen,routeCount={},{},0
     local current=self:Current()
     local sequence=self:Sequence()
+    local status=self:RouteStatus(self.plan,A.state)
+    local upcoming=self.upcomingManual==self.manual and (self.manual or not status) and self.upcomingQuest or nil
     local function add(action,required,catalog)
         if N.StaleAction(action,A.state,sequence.plan) then return end
         local pos=N.Target(action)
@@ -290,7 +323,7 @@ function N:MapPoints()
             point.order,point.action=routeCount,action
         end
         if action==current then point.current=true end
-        if action==self.upcomingQuest then point.upcoming=true end
+        if action==upcoming then point.upcoming=true end
         local identity=table.concat({action.kind or "",action.questId or "",action.objectiveIndex or action.targetId or ""},":")
         if not point.seen[identity] then
             point.actions[#point.actions+1]=action;point.seen[identity]=#point.actions
@@ -302,8 +335,10 @@ function N:MapPoints()
     end
     add(current)
     if self.manual then
-        for i=(self.manual.index or 1)+1,#(self.manual.actions or {}) do add(self.manual.actions[i]) end
-    else
+        if current then
+            for i=(self.manual.index or 1)+1,#(self.manual.actions or {}) do add(self.manual.actions[i]) end
+        end
+    elseif not status then
         local batch=self.plan and self.plan.taskBatch and A.Dungeon.TaskBatchFrontier(self.plan)
         for _,step in ipairs(batch or {}) do add(step.action,true,true) end
         for i=self.index+1,#(self.actions or {}) do add(self.actions[i]) end
@@ -323,8 +358,8 @@ function N:MapPoints()
         end
     end
     -- The next quest stays visible even when the journey to it has six transport stops.
-    add(self.upcomingQuest,true,true)
-    if A.settings.mapTaskScope=="route" then return points end
+    add(upcoming,true,true)
+    if A.settings.mapTaskScope=="route" or status=="replaced" then return points end
     -- Reuse resolved candidates; map coverage must not depend on the six-stop route preview.
     for _,choice in ipairs(self.plan and self.plan.taskChoices or {}) do
         local id=choice.questId

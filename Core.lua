@@ -185,7 +185,7 @@ function A:Replan(force, manual)
     local snapshot,revision={},self.state.revision
     for key,value in pairs(self.state) do snapshot[key]=value end
     local previous=self.plan
-    snapshot.currentTask=previous and previous.unverified and previous.origin and previous.origin.map==map and
+    snapshot.currentTask=previous and previous.routeFocus==snapshot.routeFocus and previous.unverified and previous.origin and previous.origin.map==map and
         previous.fallback and previous.fallback.questId or nil
     snapshot.completed={}
     for id,value in pairs(self.state.completed or {}) do snapshot.completed[id]=value end
@@ -195,7 +195,7 @@ function A:Replan(force, manual)
     self:Queue("plan", function()
         -- Use the position where planning actually starts, even if the job waited for a stop.
         local pos=self.state.position
-        if (pos and pos.map)~=map then self:Replan(true,manual);return end
+        if (pos and pos.map)~=map or snapshot.routeFocus~=self.state.routeFocus then self:Replan(true,manual);return end
         snapshot.position=nil
         if pos then
             snapshot.position={}
@@ -204,9 +204,10 @@ function A:Replan(force, manual)
         snapshot.runSpeed,snapshot.swimSpeed=self.state.runSpeed,self.state.swimSpeed
         local result = self.Planner.Build(snapshot, self.Data, options)
         if inTransit() then return end
-        if snapshot.position and self.state.position and snapshot.position.map~=self.state.position.map then
+        if snapshot.routeFocus~=self.state.routeFocus or map~=(self.state.position and self.state.position.map) then
             self:Replan(true);return
         end
+        result.routeFocus=snapshot.routeFocus
         result.itemStock=snapshot.bags
         if self.TaskQueue and self.TaskQueue.StockChanged(result,snapshot.bags,self.state.bags) then
             self:Replan(true);return

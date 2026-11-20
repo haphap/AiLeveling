@@ -89,11 +89,23 @@ local function placeText(text,origin,destination)
     return parts and table.concat(parts)..text:sub(start) or text
 end
 
+local function routeSequence(state)
+    local nav=A.Navigation
+    if nav and (nav.manual or not nav.RouteStatus or not nav:RouteStatus(A.plan,state)) then
+        return nav.Sequence and nav:Sequence() or nav
+    end
+end
+
+local function trackerPlan(state)
+    local nav=A.Navigation
+    return nav and nav.TrackerPlan and nav:TrackerPlan(A.plan,state) or A.plan or {}
+end
+
 function UI.TrackerJourney(state,action)
     local nav=A.Navigation
     if not action or not nav or not A.Travel then return end
-    local sequence=nav.Sequence and nav:Sequence() or nav
-    if not sequence.actions then return end
+    local sequence=routeSequence(state)
+    if not sequence or not sequence.actions then return end
     local index=sequence.index or 1
     local current=sequence.actions[index]
     local flight=A.Transport and A.Transport.flight
@@ -161,7 +173,10 @@ end
 
 local function nextAction(action,plan,state,rows,batchSteps)
     if not action or action.kind=="manual" then return end
+    local navigation=routeSequence(state)
     local function listed(stage,id)
+        if A.Navigation and A.Navigation.StaleAction and A.Navigation.StaleAction(stage,state,
+            navigation and navigation.plan or plan) then return true end
         if id and id==action.questId then
             if stage.kind==action.kind or stage.kind=="accept" then return true end
             if stage.kind=="objective" and action.kind~="accept" then return true end
@@ -171,14 +186,13 @@ local function nextAction(action,plan,state,rows,batchSteps)
                 (stage.kind~="objective" or stage.objectiveIndex==(row.sharedObjective or row.sideAction and row.sideAction.objectiveIndex)) then return true end
         end
     end
-    local navigation=A.Navigation
-    navigation=navigation and navigation.Sequence and navigation:Sequence() or navigation
     if navigation and navigation.actions and navigation.actions[navigation.index]==action then
         for i=navigation.index+1,#navigation.actions do
             local stage=navigation.actions[i]
             if stage.kind~="move" and not listed(stage,stage.questId) then return stage,stage.questId,stage.title end
         end
     end
+    if A.Navigation and A.Navigation.manual then return end
     if batchSteps then
         for _,step in ipairs(batchSteps) do
             local stage=step.action
@@ -1285,7 +1299,7 @@ function UI:UpdateNearby(along)
     local notice=self.tracker and self.tracker.nearby
     if not notice then return end
     if self.tracker.instanceRoster then notice:Hide();return end
-    local state,plan,navigation=A.state,A.plan or {},A.Navigation
+    local state,navigation=A.state,A.Navigation
     local position=state.position
     local map=position and position.map
     if notice.map~=map then notice.map=map;notice.ignored={} end
@@ -1295,7 +1309,7 @@ function UI:UpdateNearby(along)
         if not along then
             local action=navigation:Current()
             local journey=self.TrackerJourney(state,action)
-            along=alongTasks(state,plan,journey and journey.goal or action,false,self.tracker.model and self.tracker.model.deliveryGroups)
+            along=alongTasks(state,trackerPlan(state),journey and journey.goal or action,false,self.tracker.model and self.tracker.model.deliveryGroups)
         end
         for id,side in pairs(along) do
             local q=(state.quests or {})[id]
@@ -1405,7 +1419,7 @@ end
 function UI:UpdateTrackerDynamic()
     local T=self.tracker
     if not T or not T.model or T.model.dungeonName then return end
-    local state,plan=A.state,A.plan or {}
+    local state=A.state
     local action=A.Navigation:Current()
     if navigationStep(action)~=T.lastStep then self:RenderTracker();return end
     if action and action.kind=="tram" then return end
@@ -1418,7 +1432,7 @@ function UI:UpdateTrackerDynamic()
     end
     local journey=not A.char.paused and not A.error and self.TrackerJourney(state,action)
     local goal=journey and journey.goal or action
-    local along=alongTasks(state,plan,goal,A.char.paused,T.model.deliveryGroups)
+    local along=alongTasks(state,trackerPlan(state),goal,A.char.paused,T.model.deliveryGroups)
     local previous=T.model.along or {}
     for id,side in pairs(along) do
         if not previous[id] or previous[id].action~=side.action then self:RenderTracker(along);return end
@@ -1448,7 +1462,8 @@ end
 function UI:RenderTracker(along)
     local T=self.tracker
     if not T then return end
-    local state,plan=A.state or {},A.plan or {}
+    local state=A.state or {}
+    local plan=trackerPlan(state)
     local action=A.Navigation:Current()
     if action and action.kind=="tram" then plan={} end
     local model=self:DungeonTrackerModel(state,action) or UI.TrackerModel(state,plan,action,A.char.paused,along)
@@ -2152,12 +2167,12 @@ local function navigationInstruction(action,journey)
         return placeText(first.title,first.place),nil,second and placeText(second.title,second.place),stepIcon(first),second and stepIcon(second)
     end
     local heading=transitLabels[action.mode] or stepLabels[action.kind] or "当前步骤"
-    local sequence=nav.Sequence and nav:Sequence() or nav
-    local index=sequence.index
+    local sequence=routeSequence(A.state)
+    local index=sequence and sequence.index
     local nextStep,counter
     local leg=action.kind=="flight" and A.Transport and A.Transport.flight or
         action.kind=="hearthCast" and A.Hearth and (A.Hearth.cast or A.Hearth.pending)
-    if sequence.actions and #sequence.actions>1 and sequence.actions[index]==(leg and leg.action or action) then
+    if sequence and sequence.actions and #sequence.actions>1 and sequence.actions[index]==(leg and leg.action or action) then
         counter=string.format("%d/%d",index,#sequence.actions)
         nextStep=sequence.actions[index+1]
     end

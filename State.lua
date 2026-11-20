@@ -369,6 +369,12 @@ function State:Refresh(force, manual)
     if A.Dungeon.TaskBatchSnapshot then fingerprint[#fingerprint+1]=A.Dungeon:TaskBatchSnapshot(s) end
     fingerprint[#fingerprint+1]="map:"..tostring(s.position and s.position.map)
     if A.Services then fingerprint[#fingerprint+1]=A.Services:Snapshot(s) end
+    local stop=s.serviceStop
+    if s.locked or s.taskBatch or s.gearTarget or stop or s.inInstance or s.dead then
+        s.routeFocus=table.concat({s.locked or "",s.taskBatch and s.taskBatch.id or "",s.gearTarget or "",
+            stop and stop.kind or "",stop and stop.npcId or "",stop and stop.taxiId or "",stop and stop.learnKey or "",
+            s.inInstance and (s.instanceId or "instance") or "",s.dead and "dead" or ""},":")
+    end
     for kind, sample in pairs(A.char.samples) do
         s.samples[kind] = {}
         for key, value in pairs(sample) do s.samples[kind][key] = value end
@@ -385,7 +391,7 @@ function State:Refresh(force, manual)
     if force or key ~= self.fingerprint or A.TaskQueue and A.TaskQueue.StockChanged(A.plan,previous.bags,s.bags) then
         s.revision = s.revision + 1
         self.fingerprint = key
-        restart=restart or previous.level~=s.level or previous.dead~=s.dead or
+        restart=restart or previous.routeFocus~=s.routeFocus or previous.level~=s.level or previous.dead~=s.dead or
             previous.inInstance~=s.inInstance or previous.instanceId~=s.instanceId or
             (previous.freeSlots==0)~=(s.freeSlots==0) or previous.ignoreRepair~=s.ignoreRepair or
             (previous.durability and previous.durability<0.2)~=(s.durability and s.durability<0.2)

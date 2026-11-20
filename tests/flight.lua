@@ -295,6 +295,8 @@ test("飞行保留手动目的地且不混入步行校准",function()
     B.Navigation:Update();eq(nav,external);eq(B.distance,nil);eq(B.angle,nil);eq(B.guide,action)
     B.char.paused=true;B.Navigation:Update();eq(B.guide,nil)
     B.char.paused=false;B.state.inInstance=false;B.state.position=position(0.8);action.position=position(0.9)
+    B.Navigation:Update();eq(nav,external);eq(B.guide,nil)
+    B.Navigation:SetPlan({fallback=action,revision=B.state.revision})
     B.Navigation:Update();eq(nav,external);eq(B.guide,action)
     nav=nil;B.Navigation:Update();eq(nav.flags,"AiLeveling");eq(B.distance,nil)
     WaypointUIAPI=nil

@@ -257,8 +257,8 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.action,B.state.position=originalAction,originalPosition;B.state.quests[1]=originalQuest;starter.position.x=0.55
     -- An unaccepted quest's objectives have not been displayed above yet.
     B.action=starter;B.state.locked=nil;candidate.stages={starter,
-        {kind="objective",questId=4,text="迪克斯特·瓦德的手掌",areaId=717,targetKind="item",need=1},
-        {kind="turnin",questId=4,position=starter.position}}
+        {kind="objective",questId=4,expected=true,text="迪克斯特·瓦德的手掌",areaId=717,targetKind="item",need=1},
+        {kind="turnin",questId=4,expected=true,position=starter.position}}
     B.plan.taskOrder={candidate}
     local taskInstance=B.Dungeon.TaskInstance
     B.Dungeon.TaskInstance=function(_,_,_,area) if area==717 then return {title="暴风城监狱"} end end
@@ -733,6 +733,8 @@ test("交错行程按任务数汇总并显示每个目标与交付步骤",functi
     B.plan.taskQueue.steps=steps
     B.action=ob;B.UI:RenderTracker();eq(T.thenButton.title.value,"当前任务")
     eq(T.thenButton.status,"已接取");eq(T.thenButton.progress.value,"完成后交付")
+    B.action=oa;B.state.revision=B.plan.revision+1;B.state.quests[3]=nil;B.state.completed[3]=true
+    B.UI:RenderTracker();eq(T.model.nextId,1);eq(T.model.nextStep.kind,"turnin")
     B.char.paused=true;B.UI:RenderTracker();eq(T.thenText.shown,false);eq(T.thenButton.shown,false)
     B.finish()
 end)
@@ -800,7 +802,12 @@ test("分散交付点明确现在就近交和等同NPC任务一起交并跟随�
     local localWork={kind="objective",questId=58,position=city}
     B.state={revision=5,position=city,quests={[97329]={},[58]={}}}
     B.Navigation.actions={key};B.plan.regions={{map=city.map,choices={{questId=58,actions={localWork}}}}}
+    B.Navigation.plan=B.plan;B.plan.taskQueue={steps={{stage=key}}};B.Navigation.upcomingQuest=key
+    B.settings.mapTaskScope="route"
     B.jobs.plan=nil;eq(B.Navigation:Current(),localWork)
+    local pins=B.Navigation:MapPoints();eq(#pins,1);eq(pins[1].action,localWork)
+    local view=B.Navigation:TrackerPlan(B.plan,B.state)
+    eq(view.taskQueue,nil);eq(view.taskChoices[1].questId,58)
     B.jobs.plan=true;eq(B.Navigation:Current(),localWork)
     B.state.quests[58]=nil;eq(B.Navigation:Current(),nil)
     B.state.locked=97329;eq(B.Navigation:Current(),key)

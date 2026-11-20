@@ -578,7 +578,8 @@ function UI:QuestClick(id,button)
 end
 
 function UI:TaskLines(compact)
-    local state,plan=A.state or {},A.plan or {}
+    local state=A.state or {}
+    local plan=A.Navigation and A.Navigation.TrackerPlan and A.Navigation:TrackerPlan(A.plan,state) or A.plan or {}
     local quests,ids,seen=state.quests or {},{},{}
     local function add(id)
         if quests[id] and not seen[id] then ids[#ids+1]=id;seen[id]=true end
@@ -619,7 +620,9 @@ function UI:TaskLines(compact)
         local titles={}
         for _,choice in ipairs(plan.taskOrder) do
             local status=UI.QuestStatus(state,choice.questId,plan)
-            if status~="已交付" then titles[#titles+1]="["..status.."] "..(choice.title or ("任务 #"..choice.questId)) end
+            if status~="已交付" and not (state.skipped or {})[choice.questId] and not (state.chainDeferred or {})[choice.questId] then
+                titles[#titles+1]="["..status.."] "..(choice.title or ("任务 #"..choice.questId))
+            end
         end
         if #titles>0 then lines[#lines+1]="建议顺序："..table.concat(titles," → ").."。" end
     end

@@ -347,6 +347,13 @@ test("Forever 接任务事件与规划期间沿路移动保留有效结果",func
         return {best={id=1},alternatives={}}
     end
     C:Replan();C.settings.minutes=5;pending();eq(C.plan.best.id,1)
+    -- Leaving a selected activity on the same map supersedes its unfinished plan.
+    C.state.routeFocus="dungeon";local previous=C.plan
+    C.Planner.Build=function(snapshot)
+        if snapshot.routeFocus then C.state.routeFocus=nil;return {fallback={kind="dungeonEnter"}} end
+        return {fallback={kind="accept",questId=42}}
+    end
+    C:Replan();pending();eq(C.plan,previous);pending();eq(C.plan.fallback.questId,42)
     dofile("tests/assist.lua")(test,eq,F,A,C)
 end)
 dofile("tests/dungeon.lua")(test,eq,F,plan)
