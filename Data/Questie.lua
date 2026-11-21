@@ -516,6 +516,15 @@ local function collectedLoot(loot,state)
     return loot and ((state.bags or {})[loot.id] or 0)>=loot.count
 end
 
+local function escortContact(point,spawn)
+    -- Forever quests 657 and 660 share Kinelory, who leaves Quae during the escort.
+    if point.entityKind=="npc" and point.entityId==2713 and not point.travelHint then
+        point.travelHint="若只看到奎艾，可在奎艾处等基恩洛护送结束后返回。"
+        if spawn then point.sourceKind,point.label="escortStart","护送起点" end
+    end
+    return point
+end
+
 function D:Target(q, state)
     local status = A.State.Status(state, q.id)
     local active = state.quests[q.id]
@@ -604,13 +613,13 @@ function D:Target(q, state)
         local recipient=self:Recipient(q)
         if not recipient and best and not best.approximate and A.Navigation:Near(point,best,30) then recipient=best end
         if recipient then point.entityKind,point.entityId,point.entityName=recipient.entityKind,recipient.entityId,recipient.entityName end
-        return point
+        return escortContact(point)
     end
     if best and not best.approximate then
         if best.entityKind=="npc" and best.sourceAreaId then
             patrolContact(best,self.db.Npc.Get(best.entityId,"waypoints"),state.position,self.maps,active)
         end
-        if not best.approximate then return best end
+        if not best.approximate then return escortContact(best,best.sourceAreaId~=nil) end
     end
     -- Forecast turn-ins use a virtual ready state; only a genuinely ready quest has a native recipient waypoint.
     if active and active.ready and C_QuestLog and C_QuestLog.ReadyForTurnIn and C_QuestLog.ReadyForTurnIn(q.id) then

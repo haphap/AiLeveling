@@ -637,6 +637,20 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     B.Navigation.index=2;B.action=goal;U:RenderTracker();eq(T.journey.shown,false);eq(T.model.questId,4)
     U:SetNavigation(nil,nil,nil,goal);eq(T.navTitle.value,"接取「新的任务」");eq(T.navDetail.value,"向「接取人」接取任务。")
     eq(B.state.quests[4],nil);eq(B.state.completed[4],nil)
+    local savedMap=C_Map
+    C_Map={GetMapInfo=function(id) if id==1417 then return {name="阿拉希高地"} end end}
+    local point={map=1417,x=.6024,y=.5392,entityName="基恩洛",sourceKind="escortStart",
+        travelHint="若只看到奎艾，可在奎艾处等基恩洛护送结束后返回。"}
+    local handin={questId=657,kind="turnin",title="新的瘟疫？",position=point}
+    B.state.quests[657]={title=handin.title,ready=true};B.action=handin;B.Navigation.actions={handin};B.Navigation.index=1
+    U:RenderTracker();U:SetNavigation(nil,nil,nil,handin)
+    local location="护送起点 · 阿拉希高地 60.2，53.9"
+    assert(T.footer.value:find(location,1,true));eq(U.body.value,point.travelHint)
+    assert(T.navDetail.value:find(location,1,true));assert(T.navDetail.value:find(point.travelHint,1,true))
+    point.approximate=true;point.sourceKind="patrol"
+    U:RenderTracker();U:SetNavigation(nil,nil,nil,handin)
+    assert(not T.footer.value:find("60.2",1,true));assert(not T.navDetail.value:find("60.2",1,true))
+    C_Map=savedMap
     B.finish()
 end)
 test("商店事件触发刷新且维修卡片可以忽略",function()

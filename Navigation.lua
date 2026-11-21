@@ -18,6 +18,7 @@ function N.StaleAction(action,state,plan)
         if goal and goal.questId==action.questId then action=goal end
     end
     local active=(state.quests or {})[action.questId]
+    if action.kind=="turnin" and A.State and A.State.confirmed and A.State.confirmed[action.questId] then return true end
     if action.kind=="accept" then
         local loot=action.position and action.position.pickupLoot
         if loot and ((state.bags or {})[loot.id] or 0)>=loot.count then return true end
@@ -309,7 +310,7 @@ end
 
 function N:MapPoints()
     if A.settings.mapTaskScope=="off" then return {} end
-    local points,seen,routeCount={},{},0
+    local points,seen,turnins,routeCount={},{},{},0
     local current=self:Current()
     local sequence=self:Sequence()
     local status=self:RouteStatus(self.plan,A.state)
@@ -331,6 +332,7 @@ function N:MapPoints()
         end
         if action==current then point.current=true end
         if action==upcoming then point.upcoming=true end
+        if action.kind=="turnin" and action.questId then turnins[action.questId]=true end
         local identity=table.concat({action.kind or "",action.questId or "",action.objectiveIndex or action.targetId or ""},":")
         if not point.seen[identity] then
             point.actions[#point.actions+1]=action;point.seen[identity]=#point.actions
@@ -366,9 +368,10 @@ function N:MapPoints()
     end
     -- The next quest stays visible even when the journey to it has six transport stops.
     add(upcoming,true,true)
-    if A.settings.mapTaskScope=="route" or status=="replaced" then return points end
+    if A.settings.mapTaskScope=="route" then return points end
     -- Reuse resolved candidates; map coverage must not depend on the six-stop route preview.
-    for _,choice in ipairs(self.plan and self.plan.taskChoices or {}) do
+    local choices=status~="replaced" and self.plan and self.plan.taskChoices
+    for _,choice in ipairs(choices or {}) do
         local id=choice.questId
         local active=(A.state.quests or {})[id]
         if not choice.lowValue and not choice.acceptBlocked and not choice.requireCheck and not choice.entryBlocked and
@@ -383,6 +386,12 @@ function N:MapPoints()
                     if stage.kind==kind and not (objective and objective.finished) then add(stage,true,true) end
                 end
             end
+        end
+    end
+    if A.indexReady and A.TaskGuide and A.Data and A.Data.Target then
+        for id,step in pairs(A.TaskGuide.ReadyTurnIns(A.state,A.Data)) do
+            local active=A.state.quests[id]
+            if not turnins[id] and active and active.ready then add(step,true,true) end
         end
     end
     return points
@@ -436,8 +445,10 @@ local function showPinTip(pin)
     if place then
         if area and area~=place then place=place.." · "..area end
         if pos.approximate then place=place.." · "..(pos.sourceKind=="patrol" and "巡逻路线" or "区域参考点") end
+        if pos.sourceKind=="escortStart" then place=place.." · 护送起点" end
         GameTooltip:AddLine(place,0.8,0.8,0.82,true)
     end
+    if pos.travelHint then GameTooltip:AddLine(pos.travelHint,1,1,1,true) end
     GameTooltip:AddLine("左键导航"..(N.manual and "  ·  右键返回原行程" or ""),0.9,0.77,0.57)
     GameTooltip:Show()
 end

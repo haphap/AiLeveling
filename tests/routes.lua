@@ -193,6 +193,24 @@ test("普通任务地图点只显示可执行的接取、目标和交付",functi
     for _,point in ipairs(B.Navigation:MapPoints()) do
         assert(not (point.action.questId==106 and point.action.kind=="accept"))
     end
+    -- A just-completed quest can be absent from the last plan while another quest is selected.
+    assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B);B.indexReady=true
+    local pin={map=1417,x=.6024,y=.5392,ready=true}
+    B.state.quests[657]={ready=true,title="新的瘟疫？",mapPin=pin}
+    local function countHandins()
+        local count=0
+        for _,point in ipairs(B.Navigation:MapPoints()) do
+            for _,action in ipairs(point.actions) do
+                if action.questId==657 and action.kind=="turnin" then count=count+1;eq(point.position.map,1417) end
+            end
+        end
+        return count
+    end
+    eq(countHandins(),1)
+    B.settings.mapTaskScope="route";eq(countHandins(),0)
+    choices[#choices+1]={questId=657,actions={{kind="turnin",questId=657,position=pin}}}
+    B.settings.mapTaskScope="all";eq(countHandins(),1)
+    B.State.confirmed={[657]=true};eq(countHandins(),0)
     B.finish()
 end)
 end

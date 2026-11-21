@@ -33,6 +33,15 @@ local function placeLabel(name)
     return "|cff"..UI.hex.place..name.."|r"
 end
 
+local function mapLocation(point)
+    if not point or point.approximate or point.areaOnly or not (point.map and point.x and point.y) then return end
+    local map=C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
+    if map and map.name then
+        local prefix=point.sourceKind=="escortStart" and "护送起点 · " or ""
+        return placeLabel(("%s%s %.1f，%.1f"):format(prefix,map.name,100*point.x,100*point.y))
+    end
+end
+
 local function destination(action,styled)
     local point=action and action.position
     if A.Navigation and A.Navigation.Target then point=A.Navigation.Target(action) end
@@ -1548,14 +1557,10 @@ function UI:RenderTracker(along)
         if phase then verb=phase=="inside" and "副本内接取" or "入本前接取" end
         instruction=target and (verb.." · "..target) or (nextStep.kind=="turnin" or phase) and verb or ""
         local point=taskStep and A.Navigation.Target and A.Navigation.Target(nextStep)
-        local location
-        if point and point.x and point.y and not point.approximate then
-            local map=C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
-            if map and map.name then
-                location=placeLabel(("%s %.1f，%.1f"):format(map.name,100*point.x,100*point.y))
-                local npc=point.entityName or point.siteName
-                instruction=npc and (verb.." · "..npc) or verb
-            end
+        local location=mapLocation(point)
+        if location then
+            local npc=point.entityName or point.siteName
+            instruction=npc and (verb.." · "..npc) or verb
         end
         following=(model.nextOnArrival or "接下来")..(nextRow.status and (" · |cff"..self.hex[tone]..nextRow.status.."|r") or "")
         if sameQuest then
@@ -1600,6 +1605,8 @@ function UI:RenderTracker(along)
     T.region.region=(#handins>0 or nextRegion or first) and region or nil
 
     local instruction=model.instruction
+    local contact=(model.kind=="accept" or model.kind=="turnin") and action.position
+    local contactHint=contact and not A.char.paused and not A.error and contact.travelHint
     if model.kind=="accept" then
         for _,stage in ipairs(model.choice and model.choice.stages or {}) do
             local instance=stage.kind=="objective" and A.Dungeon and A.Dungeon.TaskInstance and
@@ -1609,11 +1616,13 @@ function UI:RenderTracker(along)
     end
     if model.kind=="objective" and #model.objectives>0 and not A.char.paused and not A.error and
         not (action.position and action.position.sourceKind=="vendor") then instruction=nil end
-    local lines={model.deliverySummary or instruction}
-    if model.deliverySummary and instruction and model.kind~="turnin" then lines[#lines+1]=instruction end
+    local lines={contactHint or model.deliverySummary or instruction}
+    if model.deliverySummary and instruction and model.kind~="turnin" and instruction~=lines[1] then lines[#lines+1]=instruction end
     if model.destination and model.kind~="objective" and not model.deliverySummary and
-        not (instruction and instruction:find(model.destination,1,true)) then lines[#lines+1]=model.destination end
-    T.footer:SetText(model.metrics or "");T.questTitle.metrics=model.metrics
+        not (lines[1] and lines[1]:find(model.destination,1,true)) then lines[#lines+1]=model.destination end
+    local location=(model.kind=="turnin" or contact and contact.sourceKind=="escortStart") and mapLocation(contact)
+    local footer=location and (location..(model.metrics and ("\n"..model.metrics) or "")) or model.metrics
+    T.footer:SetText(footer or "");T.footer:SetMaxLines(location and 0 or 1);T.questTitle.metrics=footer
     if #lines==0 and model.hint and not A.char.paused and state.locked~=model.questId then lines[#lines+1]=model.hint end
     if plan.selectionBlocked then lines[#lines+1]=plan.selectionBlocked end
     if plan.gearTargetBlocked then lines[#lines+1]=plan.gearTargetBlocked end
@@ -1840,9 +1849,9 @@ function UI:LayoutTracker()
     self.body:ClearAllPoints();self.body:SetPoint("TOPLEFT",indent,-childHeight);self.body:SetWidth(bodyWidth)
     self.body:SetShown((self.body:GetText() or "")~="")
     if self.body:IsShown() then childHeight=childHeight+self.body:GetStringHeight()+5 end
-    T.footer:ClearAllPoints();T.footer:SetPoint("TOPLEFT",indent,-childHeight);T.footer:SetWidth(bodyWidth);T.footer:SetMaxLines(1)
+    T.footer:ClearAllPoints();T.footer:SetPoint("TOPLEFT",indent,-childHeight);T.footer:SetWidth(bodyWidth)
     T.footer:SetShown((T.footer:GetText() or "")~="")
-    if T.footer:IsShown() then childHeight=childHeight+18*scale end
+    if T.footer:IsShown() then childHeight=childHeight+math.max(18*scale,T.footer:GetStringHeight()+spacing.gap*scale) end
     T.gear:ClearAllPoints();T.gear:SetPoint("TOPLEFT",indent,-childHeight);T.gear:SetSize(bodyWidth,spacing.hit*scale)
     T.gear.icon:ClearAllPoints();T.gear.icon:SetPoint("LEFT");T.gear.icon:SetSize(spacing.smallIcon*scale,spacing.smallIcon*scale)
     T.gear.text:ClearAllPoints();T.gear.text:SetPoint("LEFT",(spacing.smallIcon+spacing.gap)*scale,0)
@@ -2205,6 +2214,14 @@ local function navigationInstruction(action,journey)
         title=placeText(title,place,action.fromName)
     end
     detail=placeText(detail,place,action.fromPlace or action.fromName or action.roomName)
+    local location=(action.kind=="turnin" or target and target.sourceKind=="escortStart") and mapLocation(target)
+    if location then
+        if target.entityName and not (action.stageLabel or target.travelHint or action.roomName) then
+            detail=target.entityName.." · "..location
+        else
+            detail=location..(detail and ("\n"..detail) or "")
+        end
+    end
     return title..hint,detail,following,stepIcon(action),following and stepIcon(nextStep),counter
 end
 
