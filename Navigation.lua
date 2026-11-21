@@ -10,14 +10,21 @@ function N.StaleAction(action,state,plan)
         if unlocked["taxi:"..action.fromTaxi]~=true or unlocked["taxi:"..action.toTaxi]~=true or
             (state.taxiAvailability or {})[action.fromTaxi..":"..action.toTaxi]~=true then return true end
     end
-    if not (action and action.questId and plan and plan.revision and state and plan.revision~=state.revision) then return end
+    if not (action and action.questId and state) then return end
     action=action.questAction or action
-    if action.kind=="transit" or action.kind=="move" or action.kind=="approach" then
+    if plan and (action.kind=="transit" or action.kind=="move" or action.kind=="approach") then
         local actions=plan.best and plan.best.actions or plan.travelActions
         local goal=actions and actions[#actions]
         if goal and goal.questId==action.questId then action=goal end
     end
     local active=(state.quests or {})[action.questId]
+    if action.kind=="accept" then
+        local loot=action.position and action.position.pickupLoot
+        if loot and ((state.bags or {})[loot.id] or 0)>=loot.count then return true end
+    end
+    if not active and action.expected and action.kind=="objective" and action.targetKind=="item" and action.need and action.need>0 and
+        not (action.itemGain and action.itemGain>0) and ((state.bags or {})[action.targetId] or 0)>=action.need then return true end
+    if not (plan and plan.revision and plan.revision~=state.revision) then return end
     if (state.skipped or {})[action.questId] or (state.chainDeferred or {})[action.questId] then return true end
     if not active then
         if (state.completed or {})[action.questId] then return true end
@@ -109,7 +116,7 @@ function N:Navigate(action,keepWaypoint)
     local active=id and (state.quests or {})[id]
     if not action or (id and ((state.completed or {})[id] or (state.skipped or {})[id] or (state.chainDeferred or {})[id])) or
         state.dead or state.onTaxi or A.char.paused then return false end
-    if id and (action.kind=="accept" and active or action.kind=="objective" and (not active or active.ready or
+    if id and (action.kind=="accept" and (active or N.StaleAction(action,state,self.plan)) or action.kind=="objective" and (not active or active.ready or
         action.objectiveIndex and (active.objectives or {})[action.objectiveIndex] and active.objectives[action.objectiveIndex].finished) or
         action.kind=="turnin" and (not active or not active.ready)) then return false end
     if clicked.kind=="transit" and clicked==self:Current() then
@@ -406,7 +413,7 @@ local function showPinTip(pin)
     for _,action in ipairs(point.actions) do
         if not pin.mini or action==primary or availableAction(action) then
             local active=A.state.quests[action.questId]
-            local label=action.kind=="accept" and "接取任务" or action.kind=="turnin" and
+            local label=action.kind=="accept" and (action.position and action.position.pickupLoot and "拾取任务物品" or "接取任务") or action.kind=="turnin" and
                 (active and active.ready and "交付任务" or "完成后交付") or action.kind=="objective" and
                 (not active and "接取后目标" or action.targetKind=="item" and "收集目标" or "任务目标") or "前往"
             local objective=active and active.objectives and active.objectives[action.objectiveIndex]

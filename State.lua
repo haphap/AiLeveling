@@ -196,8 +196,15 @@ function State:SnapshotBags(s,fingerprint)
         C_ActionBar and C_ActionBar.ShouldShowKeyring and C_ActionBar.ShouldShowKeyring() then
         read(KEYRING_CONTAINER,true)
     end
-    for id in pairs(s.bags) do
+    local pickupItems=A.Data and A.Data.requirements and A.Data.requirements.pickupItems
+    for id,count in pairs(s.bags) do
         if id==6948 or indexed and indexed[id] then fingerprint[#fingerprint+1]="has:"..id end
+        local thresholds=pickupItems and pickupItems[id]
+        if thresholds then
+            for need in pairs(thresholds) do
+                if count>=need then fingerprint[#fingerprint+1]="pickup:"..id..":"..need end
+            end
+        end
     end
 end
 
@@ -267,13 +274,17 @@ function State:Refresh(force, manual)
     fingerprint[#fingerprint+1]=qualifications
     fingerprint[#fingerprint+1]="offers:"..(self.questOffersRevision or 0)
     local completed = C_QuestLog.GetAllCompletedQuestIDs()
+    local newlyCompleted=false
     s.completionKnown = type(completed) == "table"
     if s.completionKnown then
-        for _, id in ipairs(completed) do s.completed[id] = true end
+        for _, id in ipairs(completed) do
+            if not previous.completed[id] then newlyCompleted=true end
+            s.completed[id] = true
+        end
     else
         for id in pairs(previous.completed) do s.completed[id] = true end
     end
-    fingerprint[#fingerprint + 1] = "completed:" .. tostring(s.completionKnown)
+    fingerprint[#fingerprint + 1] = "completed:" .. tostring(s.completionKnown and #completed)
     for id in pairs(self.confirmed or {}) do s.completed[id] = true end
     local deliveries=0
     for id,count in pairs(A.char.turnIns or {}) do
@@ -388,7 +399,7 @@ function State:Refresh(force, manual)
     local key = table.concat(fingerprint, "|")
     A.state = s
     A.Gear:ScanBagOffers(s)
-    if force or key ~= self.fingerprint or A.TaskQueue and A.TaskQueue.StockChanged(A.plan,previous.bags,s.bags) then
+    if force or newlyCompleted or key ~= self.fingerprint or A.TaskQueue and A.TaskQueue.StockChanged(A.plan,previous.bags,s.bags) then
         s.revision = s.revision + 1
         self.fingerprint = key
         restart=restart or previous.routeFocus~=s.routeFocus or previous.level~=s.level or previous.dead~=s.dead or

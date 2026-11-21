@@ -49,6 +49,10 @@ test("专业包与隐藏钥匙链计数进入任务缺失判断且不读取银�
     local moved,movedKey=snapshot();eq(movedKey,nextKey);eq(moved.bags[100],4)
     c[0].items={{itemID=900,stackCount=1}};local loot,lootKey=snapshot();eq(lootKey,movedKey);eq(loot.bags[900],1)
     c[0].items[1].stackCount=5;loot,lootKey=snapshot();eq(lootKey,movedKey);eq(loot.bags[900],5)
+    B.Data.requirements.pickupItems={[215815]={[1]=true}}
+    c[0].items[1]={itemID=215815,stackCount=1};local _,bookKey=snapshot();assert(bookKey~=movedKey)
+    c[0].items[1].stackCount=2;local _,sameKey=snapshot();eq(sameKey,bookKey)
+    c[0].items[1]={itemID=900,stackCount=5}
     c[0].items[2]={itemID=6948,stackCount=1};local hearth,hearthKey=snapshot();assert(hearthKey~=lootKey)
     eq(hearth.bags[6948],1)
 end)

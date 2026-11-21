@@ -87,7 +87,7 @@ end
 
 function D:BuildIndex()
     self.byArea, self.count = {}, 0
-    self.requirements = {skills = {}, reputations = {}, spells = {}, specializations = {}, startItems = {}}
+    self.requirements = {skills = {}, reputations = {}, spells = {}, specializations = {}, startItems = {}, pickupItems = {}}
     local sets=A.ItemSets
     if sets and sets.version==A.clientVersion and sets.interface==A.interface then
         for _,set in pairs(sets.sets) do
@@ -109,6 +109,22 @@ function D:BuildIndex()
         local objectives=self.db.Quest.Get(id,"objectives") or {}
         indexThreshold(self.requirements.reputations,objectives[4])
         for _,item in ipairs(q and q.startedBy and q.startedBy[3] or {}) do self.requirements.startItems[item]=true end
+        -- Some quest markers point at the loot itself. The NPC can still offer the quest after pickup.
+        local starters=q and q.startedBy or {}
+        local objectives=q and q.taskFacts and q.taskFacts.objectives or {}
+        local item=objectives[1]
+        if next(starters[1] or {}) and next(starters[2] or {}) and #objectives==1 and
+            item.kind=="item" and (item.count or 0)>0 then
+            for _,drop in ipairs(self.db.Item.Get(item.id,"objectDrops") or {}) do
+                for _,object in ipairs(starters[2]) do
+                    if drop==object then
+                        q.pickupLoot=q.pickupLoot or {}
+                        q.pickupLoot[object]=item
+                        indexThreshold(self.requirements.pickupItems,{item.id,item.count})
+                    end
+                end
+            end
+        end
         local spell, spec = get("requiredSpell"), get("requiredSpecialization")
         if spell and spell > 0 then self.requirements.spells[spell] = true end
         for _,reward in ipairs(q and q.taskFacts and q.taskFacts.learnedSpells or {}) do self.requirements.spells[reward]=true end
@@ -496,6 +512,10 @@ local function waypointMatchesInstance(self,q,state,waypoint,target)
     return not destination or destination.instanceId~=state.instanceId or instanceFor(waypoint,state,self)==destination
 end
 
+local function collectedLoot(loot,state)
+    return loot and ((state.bags or {})[loot.id] or 0)>=loot.count
+end
+
 function D:Target(q, state)
     local status = A.State.Status(state, q.id)
     local active = state.quests[q.id]
@@ -560,7 +580,8 @@ function D:Target(q, state)
         for _, id in ipairs(sources[kind] or {}) do
             sourceCount=sourceCount+1
             local offers=not active and kind==1 and state.questOffers and state.questOffers[id]
-            if offers and not offers[q.id] or not (offers and offers[q.id]) and
+            local loot=not active and kind==2 and q.pickupLoot and q.pickupLoot[id]
+            if collectedLoot(loot,state) or offers and not offers[q.id] or not (offers and offers[q.id]) and
                 (offeredOnly or filterFaction and kind==1 and oppositeGiver(entity,id,state.faction)) then
                 unavailable=unavailable+1
             else
@@ -571,6 +592,7 @@ function D:Target(q, state)
                         best.label=best.travelHint and best.label or best.approximate and "区域参考点" or (kind==1 and "QuestieDB NPC 位置" or "QuestieDB 对象位置")
                         best.entityKind,best.entityId=kind==1 and "npc" or "object",id
                         best.entityName=entity.Get(id,"name")
+                        best.pickupLoot=loot or nil
                     end
                 end
             end
@@ -986,7 +1008,9 @@ function D:UnmappedTargetArea(q,state,objectiveIndex)
             local entity=kind==1 and self.db.Npc or self.db.Object
             for _,id in ipairs(sources[kind] or {}) do
                 local offers=not active and kind==1 and state.questOffers and state.questOffers[id]
-                if kind==2 or (offers and offers[q.id]) or not offers and (not filterFaction or not oppositeGiver(entity,id,state.faction)) then
+                local loot=not active and kind==2 and q.pickupLoot and q.pickupLoot[id]
+                if not collectedLoot(loot,state) and
+                    (kind==2 or (offers and offers[q.id]) or not offers and (not filterFaction or not oppositeGiver(entity,id,state.faction))) then
                     add(lists,entity,id)
                 end
             end
