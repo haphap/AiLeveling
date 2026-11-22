@@ -11,9 +11,11 @@ local weights = {
     tank={STAMINA=1,STRENGTH=0.4,AGILITY=0.4,DEFENSE_SKILL_RATING=1,DODGE_RATING=1,BLOCK_RATING=1},
     hybrid={STRENGTH=0.5,AGILITY=0.5,INTELLECT=0.5,STAMINA=0.25,SPIRIT=0.25},
 }
+weights.protection={SPELL_POWER=1,HOLY_DAMAGE_DONE=1}
+for stat,weight in pairs(weights.tank) do weights.protection[stat]=weight end
 local default = {WARRIOR="strength",PALADIN="hybrid",ROGUE="agility",HUNTER="ranged",MAGE="caster",
     PRIEST="caster",WARLOCK="caster",DRUID="hybrid",SHAMAN="hybrid"}
-local labels={strength="近战力量",agility="近战敏捷",ranged="远程物理",caster="施法输出",healer="治疗续航",tank="坦克生存",hybrid="混合属性"}
+local labels={strength="近战力量",agility="近战敏捷",ranged="远程物理",caster="施法输出",healer="治疗续航",tank="坦克生存",protection="防护圣骑士 · 生存与法伤",hybrid="混合属性"}
 local slots={INVTYPE_HEAD={1},INVTYPE_NECK={2},INVTYPE_SHOULDER={3},INVTYPE_BODY={4},INVTYPE_CHEST={5},INVTYPE_ROBE={5},
     INVTYPE_WAIST={6},INVTYPE_LEGS={7},INVTYPE_FEET={8},INVTYPE_WRIST={9},INVTYPE_HAND={10},INVTYPE_FINGER={11,12},
     INVTYPE_TRINKET={13,14},INVTYPE_CLOAK={15},INVTYPE_WEAPONMAINHAND={16},INVTYPE_WEAPONOFFHAND={17},
@@ -23,6 +25,7 @@ function G.Model(state)
     local style=state.damageStyle or "auto"
     local key=state.role=="HEALER" and "healer" or state.role=="TANK" and "tank" or
         (style~="auto" and style or default[state.class])
+    if state.class=="PALADIN" and (key=="tank" or state.role=="DAMAGER" and style=="auto" and state.protectionTalents) then key="protection" end
     return weights[key],labels[key],key
 end
 
@@ -66,11 +69,11 @@ function G.Score(item,state)
     local stats,score=item.stats,0
     for stat,weight in pairs(model) do
         local value=stats["ITEM_MOD_"..stat.."_SHORT"] or 0
-        if stat=="SPELL_POWER" then value=stats.ITEM_MOD_SPELL_POWER_SHORT or stats.ITEM_MOD_SPELL_DAMAGE_DONE_SHORT or 0 end
+        if stat=="SPELL_POWER" then value=stats.ITEM_MOD_SPELL_DAMAGE_DONE_SHORT or value end
         if stat=="HEALING" then value=stats.ITEM_MOD_SPELL_HEALING_DONE_SHORT or stats.ITEM_MOD_SPELL_POWER_SHORT or 0 end
         score=score+value*weight
     end
-    if key=="tank" then score=score+(stats.RESISTANCE0_NAME or stats.ITEM_MOD_ARMOR_SHORT or 0)*0.02 end
+    if key=="tank" or key=="protection" then score=score+(stats.RESISTANCE0_NAME or stats.ITEM_MOD_ARMOR_SHORT or 0)*0.02 end
     local dps=item.weaponDPS or stats.ITEM_MOD_DAMAGE_PER_SECOND_SHORT
     if dps and physicalWeapon(item,state) then score=score+dps*3 end
     return score
@@ -149,6 +152,10 @@ function G.Loadout(replacements,state)
         end
     end
     local notes,sets={},{}
+    if replacements[17]~=nil and state.equipment[17] and state.equipment[17].equipLoc=="INVTYPE_SHIELD" and
+        not (after[17] and after[17].equipLoc=="INVTYPE_SHIELD") and select(3,G.Model(state))=="protection" then
+        notes[#notes+1]="换装会卸下盾牌，失去格挡"
+    end
     if setUnknown then notes[#notes+1]="查看套装效果" end
     local function effects(item,verb)
         if not item then return end
@@ -311,7 +318,7 @@ function G.BagUpgrade(state,ignored)
         if item and not keep[id] and not junk and not (ignored or {})["item:"..id] and
             not (ignored or {})[tostring(item.link or id)] then
             local value=wearUpgrade(item,state)
-            if value or item.pending then remaining[#remaining+1]=id end
+            if value or item.pending or item.effectsPending then remaining[#remaining+1]=id end
             first=first or value
         end
     end

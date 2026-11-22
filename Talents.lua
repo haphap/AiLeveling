@@ -2,6 +2,40 @@ local _,A=...
 A.Talents={}
 local T=A.Talents
 
+-- Read the three point totals used by the Forever talent headers, once per active configuration change.
+function T:ProtectionMain()
+    local config=C_ClassTalents and C_ClassTalents.GetActiveConfigID and C_ClassTalents.GetActiveConfigID()
+    if not config or not C_Traits or not C_Traits.GetGroupCurrencyInfo then return end
+    if self.protectionConfig==config and not self.protectionDirty then return self.protectionMain end
+    if C_Traits.ConfigHasStagedChanges and C_Traits.ConfigHasStagedChanges(config) then
+        return self.protectionConfig==config and self.protectionMain
+    end
+    local info=C_Traits.GetConfigInfo(config)
+    local tree=info and info.treeIDs and info.treeIDs[1]
+    local groups=tree and C_Traits.GetGroupDisplayInfoByTreeID(tree)
+    if not groups or #groups~=3 then return end
+    local ids,protection={},nil
+    for _,group in ipairs(groups) do
+        ids[#ids+1]=group.groupID
+        if group.skillLineID==267 then protection=group.groupID end
+    end
+    if not protection then
+        table.sort(groups,function(a,b) return a.orderIndex<b.orderIndex end)
+        protection=groups[2].groupID
+    end
+    local points=C_Traits.GetGroupCurrencyInfo(config,ids)
+    if not points or #points==0 then return end
+    local defensive,other=0,0
+    for _,group in ipairs(points) do
+        local currency=group.currencyInfos[1]
+        local spent=currency and currency.spent or 0
+        if group.traitNodeGroupID==protection then defensive=spent else other=math.max(other,spent) end
+    end
+    self.protectionConfig,self.protectionDirty=config,false
+    self.protectionMain=defensive>other
+    return self.protectionMain
+end
+
 function T:Plans()
     if type(A.char.talentPlans)~="table" then A.char.talentPlans={plans={}} end
     local saved=A.char.talentPlans

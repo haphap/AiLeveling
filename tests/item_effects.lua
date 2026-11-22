@@ -7,8 +7,10 @@ local function fixture()
     return B,F.State()
 end
 local function native(run)
-    local saved={C_Item=C_Item,C_PlayerInfo=C_PlayerInfo,C_TooltipInfo=C_TooltipInfo,C_Spell=C_Spell,Enum=Enum}
-    local names={"C_Item","C_PlayerInfo","C_TooltipInfo","C_Spell","Enum"}
+    local saved={}
+    local names={"C_Item","C_PlayerInfo","C_TooltipInfo","C_Spell","Enum","ITEM_SPELL_TRIGGER_ONEQUIP",
+        "TOOLTIP_ITEM_STAT_SPELL_POWER_INCREASE","TOOLTIP_ITEM_STAT_HOLY_DAMAGE_INCREASE","C_ClassTalents","C_Traits"}
+    for _,name in ipairs(names) do saved[name]=_G[name] end
     C_Item={GetItemInfo=function(id) return "物品",tostring(id),2,1,1,nil,nil,1,"INVTYPE_CHEST" end,
         GetItemStats=function() return {ITEM_MOD_STRENGTH_SHORT=5} end}
     C_PlayerInfo={CanUseItem=function() return true end}
@@ -19,6 +21,58 @@ local function native(run)
     for _,name in ipairs(names) do _G[name]=saved[name] end
     assert(ok,err)
 end
+
+test("角树柄的常驻法伤在防骑背包和交付奖励比较中只计一次",function() native(function()
+    local B,s=fixture()
+    assert(loadfile("QuestAssist.lua"))("AiLeveling",B)
+    local raw={ITEM_MOD_STRENGTH_SHORT=6}
+    C_Item.GetItemInfo=function() return "角树柄","item:271664",2,33,0,nil,nil,1,"INVTYPE_WEAPON" end
+    C_Item.GetItemStats=function() return raw end
+    ITEM_SPELL_TRIGGER_ONEQUIP="装备："
+    TOOLTIP_ITEM_STAT_SPELL_POWER_INCREASE="装备：提高法术和魔法效果所造成的伤害和治疗效果，最多%1$d点。"
+    TOOLTIP_ITEM_STAT_HOLY_DAMAGE_INCREASE="装备：使神圣法术和效果所造成的伤害提高最多%1$d点。"
+    local lines={{type=0,leftText="装备：提高所有法术和魔法效果所造成的伤害和治疗效果，最多26点。"}}
+    C_TooltipInfo.GetHyperlink=function() return {lines=lines} end
+    s.class,s.role,s.protectionTalents="PALADIN","DAMAGER",true
+    local axe=B.Items:Read(271664)
+    eq(B.Gear.Score(axe,s),28.4);eq(raw.ITEM_MOD_SPELL_POWER_SHORT,nil);eq(#axe.effects,0)
+    raw.ITEM_MOD_SPELL_POWER_SHORT=26;raw.ITEM_MOD_SPELL_DAMAGE_DONE_SHORT=26
+    eq(B.Gear.Score(B.Items:Read(271664),s),28.4)
+    local strength={id=100,usable=true,equipLoc="INVTYPE_WEAPON",stats={ITEM_MOD_STRENGTH_SHORT=12}}
+    s.equipment={[16]=strength,[17]={id=101,equipLoc="INVTYPE_SHIELD",stats={ITEM_MOD_STAMINA_SHORT=5}}}
+    local best=B.QuestAssist.CompareRewards({strength,axe},s)
+    eq(best.index,2);eq(best.upgrade.replacements[17],nil)
+    B.indexReady=true;B.Gear:ScanBagOffers(s)
+    s.bags[axe.id]=1;s.bagEquipment={axe};B.Gear:ScanBagOffers(s)
+    eq(B.Gear.BagUpgrade(s).item.id,axe.id)
+    local twoHand=B.Gear.Upgrade({id=102,usable=true,equipLoc="INVTYPE_2HWEAPON",stats={ITEM_MOD_SPELL_POWER_SHORT=65}},s)
+    assert(table.concat(twoHand.notes):find("失去格挡",1,true))
+    raw={ITEM_MOD_FIRE_DAMAGE_DONE_SHORT=20,ITEM_MOD_SPELL_HEALING_DONE_SHORT=30}
+    lines={{type=45,leftText="使神圣法术和效果所造成的伤害提高最多8点。"},
+        {type=46,leftText="触发时增加26点法术强度"}}
+    local holy=B.Items:Read(103);eq(B.Gear.Score(holy,s),8);eq(#holy.effects,1)
+    s.role="TANK";eq(B.Gear.Score(axe,s),28.4)
+    s.class="WARRIOR";assert(math.abs(B.Gear.Score(axe,s)-2.4)<0.0001)
+end) end)
+
+test("自动评分采用已应用的防护天赋，切换配置及手动选择生效",function() native(function()
+    local B,s=fixture();assert(loadfile("Talents.lua"))("AiLeveling",B)
+    local config,staged,spent,reads=1,false,15,0
+    C_ClassTalents={GetActiveConfigID=function() return config end}
+    C_Traits={ConfigHasStagedChanges=function() return staged end,GetConfigInfo=function() return {treeIDs={22}} end,
+        GetGroupDisplayInfoByTreeID=function() return {{groupID=8,skillLineID=267},{groupID=7},{groupID=9}} end,
+        GetGroupCurrencyInfo=function()
+            reads=reads+1
+            return {{traitNodeGroupID=7,currencyInfos={{spent=10}}},{traitNodeGroupID=8,currencyInfos={{spent=spent}}}}
+        end}
+    s.class="PALADIN";s.protectionTalents=B.Talents:ProtectionMain();eq(select(3,B.Gear.Model(s)),"protection")
+    eq(B.Talents:ProtectionMain(),true);eq(reads,1)
+    B.Talents.protectionDirty=true;staged=true;spent=5;eq(B.Talents:ProtectionMain(),true);eq(reads,1)
+    staged=false;spent=10;eq(B.Talents:ProtectionMain(),false)
+    config=2;spent=20;eq(B.Talents:ProtectionMain(),true)
+    s.role="HEALER";eq(select(3,B.Gear.Model(s)),"healer")
+    s.role,s.damageStyle="DAMAGER","strength";eq(select(3,B.Gear.Model(s)),"strength")
+end) end)
 
 test("原生装备后被动触发进入新旧装备效果比较且不重复附加数据库说明",function() native(function()
     local B,s=fixture();local c=B.Items:Read(11815)

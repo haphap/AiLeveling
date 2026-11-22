@@ -257,6 +257,7 @@ function State:Refresh(force, manual)
     s.skipped, s.locked, s.samples = A.char.skipped, A.char.locked, {}
     s.role, s.groupSize = A.settings.role, GetNumGroupMembers()
     s.damageStyle=A.settings.damageStyle or "auto"
+    s.protectionTalents=class=="PALADIN" and s.role=="DAMAGER" and s.damageStyle=="auto" and A.Talents and A.Talents:ProtectionMain() or false
     self.Movement(s)
     s.now, s.freeSlots = GetTime(), 0
     s.groupSize = math.max(1, s.groupSize)
@@ -400,7 +401,7 @@ function State:Refresh(force, manual)
     fingerprint[#fingerprint + 1] = table.concat({s.level, tostring(s.maxXP), s.classId, s.raceId, s.groupSize,
         tostring(s.inInstance), A.settings.role, A.settings.minutes,
         tostring(A.settings.dungeons), tostring(s.locked), tostring(s.instanceId), tostring(s.instanceDifficultyId), tostring(s.dead),
-        tostring(A.settings.waitMinutes),s.damageStyle,tostring(s.gearTarget),tostring(A.settings.gearPreference)}, ":")
+        tostring(A.settings.waitMinutes),s.damageStyle,tostring(s.protectionTalents),tostring(s.gearTarget),tostring(A.settings.gearPreference)}, ":")
     table.sort(fingerprint)
     local key = table.concat(fingerprint, "|")
     A.state = s

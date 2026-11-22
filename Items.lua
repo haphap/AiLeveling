@@ -13,22 +13,39 @@ function I:SpellText(id)
     self.spellData[id]=true
 end
 
-local function effects(item,link)
-    local reference=A.ItemEffects
-    local record=reference and A.clientVersion==reference.version and
-        A.interface==reference.interface and reference.items[item.id]
-    local covered=record and not record.complex
-    if covered then
-        for stat,amount in pairs(record.stats) do
-            local value=item.stats and item.stats["ITEM_MOD_"..stat.."_SHORT"]
-            if not value and (stat=="SPELL_DAMAGE_DONE" or stat=="SPELL_HEALING_DONE") then
-                value=item.stats and item.stats.ITEM_MOD_SPELL_POWER_SHORT
-            end
-            if type(value)~="number" or value~=value or value<amount then covered=false;break end
+-- Forever also renders some permanent item stats as localized Equip lines.
+local spellStats={TOOLTIP_ITEM_STAT_SPELL_POWER_INCREASE="ITEM_MOD_SPELL_POWER_SHORT",
+    TOOLTIP_ITEM_STAT_SPELL_DAMAGE_INCREASE="ITEM_MOD_SPELL_DAMAGE_DONE_SHORT",
+    TOOLTIP_ITEM_STAT_HOLY_DAMAGE_INCREASE="ITEM_MOD_HOLY_DAMAGE_DONE_SHORT",
+    ITEM_MOD_SPELL_POWER="ITEM_MOD_SPELL_POWER_SHORT",ITEM_MOD_SPELL_DAMAGE_DONE="ITEM_MOD_SPELL_DAMAGE_DONE_SHORT",
+    ITEM_MOD_HOLY_DAMAGE_DONE="ITEM_MOD_HOLY_DAMAGE_DONE_SHORT"}
+local function equipBody(text)
+    local prefix=ITEM_SPELL_TRIGGER_ONEQUIP
+    if prefix and text:sub(1,#prefix)==prefix then text=text:sub(#prefix+1) end
+    return (text:match("^%s*(.-)%s*$"))
+end
+local function tooltipSpellStat(text)
+    local amount=text:match("%d+")
+    if not amount then return end
+    text=equipBody(text)
+    -- Some zhCN spell descriptions use the longer wording instead of the item-stat format.
+    if text:match("^提高所有法术和魔法效果所造成的伤害和治疗效果，最多%s*%d+%s*点。$") then
+        return "ITEM_MOD_SPELL_POWER_SHORT",tonumber(amount)
+    end
+    if text:match("^提高神圣法术和效果所造成的伤害，最多%s*%d+%s*点。$") then
+        return "ITEM_MOD_HOLY_DAMAGE_DONE_SHORT",tonumber(amount)
+    end
+    for key,stat in pairs(spellStats) do
+        local template=_G[key]
+        if template and equipBody(template):gsub("%%1%$d",amount):gsub("%%[ds]",amount)==text then
+            return stat,tonumber(amount)
         end
     end
+end
+
+local function effects(item,link)
     local types=Enum and Enum.TooltipDataLineType
-    local passive={}
+    local passive,flat,equipLines={},{},0
     if C_TooltipInfo and C_TooltipInfo.GetHyperlink and types then
         local ok,result=pcall(function()
             local data=C_TooltipInfo.GetHyperlink(link)
@@ -45,16 +62,46 @@ local function effects(item,link)
                     local text=line.leftText
                     found[#found+1]={kind=kind,text=type(text)=="string" and text~="" and text or
                         (kind=="use" and "主动效果" or "命中触发效果")}
-                elseif types.ItemSpellTriggerOnEquip and line.type==types.ItemSpellTriggerOnEquip then
-                    passive[#passive+1]={kind="equip",text=type(line.leftText)=="string" and line.leftText~="" and
-                        line.leftText or "装备被动效果"}
+                else
+                    local text=type(line.leftText)=="string" and line.leftText:gsub("|c%x%x%x%x%x%x%x%x",""):gsub("|r","") or ""
+                    local equip=types.ItemSpellTriggerOnEquip and line.type==types.ItemSpellTriggerOnEquip
+                    if equip or ITEM_SPELL_TRIGGER_ONEQUIP and text:sub(1,#ITEM_SPELL_TRIGGER_ONEQUIP)==ITEM_SPELL_TRIGGER_ONEQUIP then
+                        local stat,amount=tooltipSpellStat(text)
+                        if stat then flat[stat]=(flat[stat] or 0)+amount end
+                        if equip or stat then equipLines=equipLines+1 end
+                        if equip and not stat then passive[#passive+1]={kind="equip",text=text~="" and text or "装备被动效果"} end
+                    end
                 end
             end
             return found
         end)
         if ok and result then item.effects=result else item.effectsPending=true end
     end
-    if covered and #passive>#record.spells then covered=false end
+    if item.stats and next(flat) then
+        local power=flat.ITEM_MOD_SPELL_POWER_SHORT
+        if power then
+            flat.ITEM_MOD_SPELL_DAMAGE_DONE_SHORT=power+(flat.ITEM_MOD_SPELL_DAMAGE_DONE_SHORT or 0)
+            flat.ITEM_MOD_SPELL_HEALING_DONE_SHORT=power
+        end
+        local stats={}
+        for key,value in pairs(item.stats) do stats[key]=value end
+        for key,value in pairs(flat) do stats[key]=math.max(stats[key] or 0,value) end
+        item.stats=stats
+    end
+    local reference=A.ItemEffects
+    local record=reference and A.clientVersion==reference.version and
+        A.interface==reference.interface and reference.items[item.id]
+    local covered=record and not record.complex
+    if covered then
+        for stat,amount in pairs(record.stats) do
+            local value=item.stats and item.stats["ITEM_MOD_"..stat.."_SHORT"]
+            if not value and (stat=="SPELL_DAMAGE_DONE" or stat=="SPELL_HEALING_DONE") then
+                value=item.stats and item.stats.ITEM_MOD_SPELL_POWER_SHORT
+            end
+            if type(value)~="number" or value~=value or value<amount then covered=false;break end
+        end
+    end
+    if covered and equipLines>#record.spells then covered=false end
     if not covered then
         item.effects=item.effects or {}
         if #passive>0 then

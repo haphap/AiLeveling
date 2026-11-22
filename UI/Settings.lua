@@ -50,7 +50,7 @@ function S:Create(parent)
     cycle(1,"role","副本职责",{"DAMAGER","TANK","HEALER"},{"输出","坦克","治疗"},1)
     check(1,"dungeons","允许自动推荐副本",2)
     cycle(1,"waitMinutes","等队估计",{0,5,10,15,20,30,45,60},{"0 分钟","5 分钟","10 分钟","15 分钟","20 分钟","30 分钟","45 分钟","60 分钟"},3)
-    cycle(1,"damageStyle","输出属性",{"auto","strength","agility","ranged","caster","hybrid"},{"按职业／混合","近战力量","近战敏捷","远程物理","施法输出","混合属性"},4)
+    cycle(1,"damageStyle","输出属性",{"auto","strength","agility","ranged","caster","hybrid"},{"自动","近战力量","近战敏捷","远程物理","施法输出","混合属性"},4)
     cycle(1,"gearPreference","装备偏好",{"nearby","xp"},{"接近经验率时比较装备","按经验率选择"},5)
     local auto=A.UI:Button(self.groups[1],"恢复自动选择",270,function()
         local ok,why=A.Selection:Automatic();if not ok then A:Message(why) end

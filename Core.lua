@@ -423,6 +423,8 @@ frame:SetScript("OnEvent", function(_, event, ...)
         for _, name in ipairs({"SKILL_LINES_CHANGED", "UPDATE_FACTION", "SPELLS_CHANGED"}) do
             frame:RegisterEvent(name)
         end
+        frame:RegisterEvent("TRAIT_CONFIG_UPDATED")
+        frame:RegisterEvent("ACTIVE_COMBAT_CONFIG_CHANGED")
         for _,name in ipairs({"TAXIMAP_OPENED","TAXIMAP_CLOSED","TAXI_NODE_STATUS_CHANGED","HEARTHSTONE_BOUND","UPDATE_INSTANCE_INFO","UI_ERROR_MESSAGE","UI_INFO_MESSAGE"}) do frame:RegisterEvent(name) end
         for _,name in ipairs({"TRAINER_SHOW","TRAINER_UPDATE","TRAINER_CLOSED","TRAINER_DESCRIPTION_UPDATE","TRAINER_SERVICE_INFO_NAME_UPDATE","CONFIRM_BINDER"}) do frame:RegisterEvent(name) end
         for _,name in ipairs({"ENCOUNTER_START","ENCOUNTER_END"}) do frame:RegisterEvent(name) end
@@ -492,6 +494,12 @@ frame:SetScript("OnEvent", function(_, event, ...)
             if not A.Transport.taxiChoices then A.Transport:CaptureTaxi(true);A:RequestRefresh() end
             A.Navigation:RefreshTaxiMarker()
         end)
+    elseif event=="TRAIT_CONFIG_UPDATED" or event=="ACTIVE_COMBAT_CONFIG_CHANGED" then
+        if A.state.class=="PALADIN" then
+            A.Talents.protectionDirty=true
+            if A.state.role=="DAMAGER" and A.state.damageStyle=="auto" and
+                (A.Talents:ProtectionMain() or false)~=A.state.protectionTalents then A:RequestRefresh() end
+        end
     elseif event=="TAXIMAP_CLOSED" then
         A.Transport:CloseTaxiMap()
     elseif event=="HEARTHSTONE_BOUND" then
