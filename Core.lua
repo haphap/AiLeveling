@@ -6,7 +6,7 @@ A.defaults = { minutes = 60, dungeons = true, role = "DAMAGER",
     scale = 1, alpha = 0.94, arrow = true, pins = true, items = true, highlight = true, worldHighlight = true, scanRares = true,
     combatFold = true, learn = true, waitMinutes = 10, damageStyle = "auto",
     fontScale=1,density="normal",lockWindow=false,trackerDocked=true,trackerWidth=0,trackerHeight=0,routes=true,minimapPins=true,mapTaskScope="all",waypointUI=true,maxSoulShards=100,
-    partySync=true,autoShareQuests=false,partyAnnouncements=false,dangerMap=true,emergency=true,
+    partySync=true,autoShareQuests=false,partyAnnouncements=false,dangerMap=true,emergency=true,markTargets=true,
     distanceUnits="yards",transportHints=true,quantity=true,missingChecks=true,rewardAdvice=true,sound=false,gearPreference="nearby",autoAccept=true,autoTurnIn=true,autoGossip=true,autoTaxi=true,autoTrain=true,autoBind=true,autoSellJunk=false,targets=true,levelingStats=true }
 A.jobs, A.dirty, A.requestedItems = {}, false, {}
 
@@ -267,9 +267,9 @@ function A:RestoreSettings()
 end
 
 function A:ApplySettings()
+    self.UI:PlaceNavigation(true)
     for _,entry in ipairs({{self.UI.frame,"position","RIGHT","RIGHT",-60,100},
-        {self.UI.details,"detailPosition","CENTER","CENTER",0,0},
-        {self.UI.navFrame,"navigationPosition","CENTER","CENTER",0,-110}}) do
+        {self.UI.details,"detailPosition","CENTER","CENTER",0,0}}) do
         local frame,p=entry[1],self.settings[entry[2]]
         if frame then
             frame:ClearAllPoints()
@@ -460,11 +460,13 @@ frame:SetScript("OnEvent", function(_, event, ...)
     elseif event:sub(1,15)=="UNIT_SPELLCAST_" then
         if hearthChanged then A:RequestRefresh() end
     elseif event == "PLAYER_REGEN_ENABLED" then
+        A.UI:PlaceNavigation()
         A.QuestAssist:ApplyPending()
         A.UI:Combat(false)
     elseif event=="PLAYER_TARGET_CHANGED" then
         A.QuestAssist:TargetStatus()
     elseif event == "PLAYER_REGEN_DISABLED" then
+        if A.UI.navDragging then A.UI.navDragDeferred=true end
         A.UI:Combat(true)
     elseif event == "BAG_UPDATE_COOLDOWN" then
         A.QuestAssist:Cooldowns()

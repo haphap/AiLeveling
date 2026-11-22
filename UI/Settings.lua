@@ -16,7 +16,10 @@ function S:Create(parent)
         end)
         b:SetPoint("TOPLEFT",(tab-1)*96,0);group:SetShown(i==1)
     end
-    local function position(row) return math.floor(row/8)*286,-(row%8)*40 end
+    local function position(row,rows)
+        rows=rows or 8
+        return math.floor(row/rows)*286,-(row%rows)*40
+    end
     local function check(group,key,label,row)
         local api=A.UI.daylight
         local b=api and api.Switch(self.groups[group]) or CreateFrame("CheckButton",nil,self.groups[group],"UICheckButtonTemplate")
@@ -25,7 +28,7 @@ function S:Create(parent)
             b.Text:SetPoint("LEFT",b,"RIGHT",8,0)
             b.SetChecked=function(_,on) b.SetOn(on) end
         end
-        b:SetPoint("TOPLEFT",position(row));b.Text:SetText(label);b.Text:SetWidth(238)
+        b:SetPoint("TOPLEFT",position(row,group==3 and 9 or 8));b.Text:SetText(label);b.Text:SetWidth(238)
         if not api then A.UI:RegisterFont(b.Text,"caption") end
         b:SetScript("OnClick",function()
             local on=api and A.settings[key]~=true or not api and b:GetChecked()==true
@@ -79,7 +82,7 @@ function S:Create(parent)
     local navHint=A.UI:Text(self.groups[7],"caption")
     navHint:SetPoint("TOPLEFT",286,-184);navHint:SetWidth(268)
     navHint:SetText("AILeveling 显示行程步骤。WaypointUI 显示方向和距离；地图不支持标点时可用内置箭头。")
-    check(3,"items","显示任务物品按钮",0)
+    check(3,"items","在下一步框体显示任务物品按钮",0)
     check(3,"highlight","高亮背包任务物品",1)
     check(3,"quantity","显示物品数量",2)
     check(3,"missingChecks","显示物品缺失提醒",3)
@@ -95,9 +98,10 @@ function S:Create(parent)
     check(3,"autoBind","自动确认已安排的炉石绑定",13)
     check(3,"emergency","低血量急救高亮与溺水提醒",14)
     check(3,"autoGossip","自动继续当前任务的单选对话",15)
+    check(3,"markTargets","任务 NPC 姓名板与选中标记",16)
     local binding=A.UI:Text(self.groups[3],"caption")
-    binding:SetPoint("TOPLEFT",0,-332);binding:SetWidth(554)
-    binding:SetText("按住 Shift 临时手动操作，多选奖励由你选择。\n\n快捷键见系统按键设置的 AiLeveling。目标按钮左键选中、右键标记，战斗外滚轮／中键切换。")
+    binding:SetPoint("TOPLEFT",0,-364);binding:SetWidth(554)
+    binding:SetText("战斗外右键拖动物品图标，或左键拖动说明。目标按钮左键选中，右键标记，滚轮／中键切换。\n按住 Shift 临时手动操作，多选奖励由你选择。")
     check(4,"learn","记录本地耗时统计",0)
     local reset=A.UI:Button(self.groups[4],"重置本地统计",270,function()
         A.char.samples={}

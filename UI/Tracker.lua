@@ -1170,12 +1170,13 @@ function UI:CreateTracker()
     end
     T.progressLabel=text(T.progress,"caption",palette.muted);T.progressLabel:SetPoint("LEFT");T.progressLabel:SetText("当前任务进度")
     T.progressText=text(T.progress,"caption",palette.muted);T.progressText:SetPoint("RIGHT");T.progressText:SetWidth(40);T.progressText:SetJustifyH("RIGHT")
-    local nav=CreateFrame("Frame","AiLevelingNavigation",UIParent)
-    self.navFrame=nav;nav:SetPoint("CENTER",UIParent,"CENTER",0,-110)
-    p=A.settings.navigationPosition
-    if p then nav:ClearAllPoints();nav:SetPoint(p[1],UIParent,p[2],p[3],p[4]) end
-    self:Movable(nav,"navigationPosition")
-    nav:SetClampedToScreen(true)
+    -- The secure item buttons and the freely resizable card share a fixed lower edge.
+    local anchor=CreateFrame("Frame",nil,UIParent)
+    self.navAnchor=anchor;anchor:SetSize(268,48);anchor:SetClampedToScreen(true)
+    self:PlaceNavigation(true)
+    local nav=CreateFrame("Frame","AiLevelingNavigation",anchor)
+    self.navFrame=nav;nav:SetPoint("BOTTOM",anchor,"BOTTOM")
+    self:Movable(nav,"navigationPosition",anchor)
     nav:SetSize(268,48)
     if self.daylight then self:DaylightShell(nav,palette.navigation[4])
     else self:Rounded(nav,spacing.radius);nav:SetBackdropColor(unpack(palette.navigation));nav.material:Hide() end
@@ -2228,10 +2229,14 @@ end
 function UI:SetTrackerNavigation(distance,angle,unverified,action)
     if not self.navFrame then return end
     action=action or distance and A.Navigation:Current()
-    self.navFrame:SetShown(action~=nil and not A.char.paused)
-    if not action or A.char.paused then return end
+    local guide=action~=nil and not A.char.paused
+    local itemHeight=A.QuestAssist and A.QuestAssist:NavigationItems(action,guide) or 0
+    self.navFrame:SetShown(guide or itemHeight>0)
+    if not guide and itemHeight==0 then return end
     local T=self.tracker
-    local title,detail,following,icon,nextIcon,meta=navigationInstruction(action,T.model and T.model.journey)
+    local title,detail,following,icon,nextIcon,meta
+    if guide then title,detail,following,icon,nextIcon,meta=navigationInstruction(action,T.model and T.model.journey)
+    else title,icon="任务物品","collect" end
     if A.settings.arrow and distance then
         local meters=A.settings.distanceUnits=="meters"
         local value=string.format("%.0f %s",meters and distance*0.9144 or distance,meters and "米" or "码")
@@ -2247,10 +2252,11 @@ function UI:SetTrackerNavigation(distance,angle,unverified,action)
     local inset=spacing.padding*scale
     local metaRight=angle and inset+20*scale or inset
     local reserved=T.navMetaWidth+metaRight
-    if T.navScale~=scale or T.navReserved~=reserved or T.navTitle:GetText()~=title or
+    local width=self.navAnchor:GetWidth()
+    if T.navScale~=scale or T.navReserved~=reserved or T.navWidth~=width or T.navItemHeight~=itemHeight or T.navTitle:GetText()~=title or
         (T.navDetail:GetText() or "")~=(detail or "") or (T.navNext:GetText() or "")~=nextText or T.navKind~=icon or T.navNextKind~=nextIcon then
         T.navScale,T.navReserved,T.navKind,T.navNextKind=scale,reserved,icon,nextIcon
-        local width=268*scale
+        T.navWidth,T.navItemHeight=width,itemHeight
         local left=inset+spacing.indent*scale
         local textWidth=width-left-inset
         local function place(widget,x,y)
@@ -2279,7 +2285,11 @@ function UI:SetTrackerNavigation(distance,angle,unverified,action)
             place(T.navNextIcon,inset+2*scale,y+scale)
             T.navNext:SetWidth(textWidth);place(T.navNext,left,y);y=y+math.max(spacing.smallIcon*scale,T.navNext:GetStringHeight())
         end
-        if self.navFrame:GetWidth()~=width or self.navFrame:GetHeight()~=y+inset then self.navFrame:SetSize(width,y+inset) end
+        local height=y+inset+itemHeight
+        if self.navFrame:GetWidth()~=width or self.navFrame:GetHeight()~=height then
+            self.navFrame:SetSize(width,height)
+            if not InCombatLockdown() then self.navAnchor:SetClampRectInsets(0,0,math.max(0,height-48),0) end
+        end
     end
     T.navBearing:SetShown(angle~=nil)
     if angle then T.navBearing:SetRotation(-angle) end

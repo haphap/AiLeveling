@@ -12,7 +12,7 @@ local names={"DaylightUI","CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFon
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
     for _,key in ipairs({"SetResizable","SetClampedToScreen","SetHyperlinksEnabled","SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag",
-        "RegisterForClicks","SetAllPoints","SetTexture","SetTexCoord","SetHorizTile","SetVertTile","SetBlendMode","SetMaxLines","SetNonSpaceWrap","SetSpacing","SetFontObject","SetMultiLine",
+        "RegisterForClicks","SetClampRectInsets","SetAllPoints","SetTexture","SetTexCoord","SetHorizTile","SetVertTile","SetBlendMode","SetMaxLines","SetNonSpaceWrap","SetSpacing","SetFontObject","SetMultiLine",
         "SetMaxLetters","SetShadowColor","SetShadowOffset","SetAutoFocus","SetTextInsets","SetNumeric","ClearFocus","SetFocus","HighlightText","SetFrameStrata","SetCooldown","Clear"}) do w[key]=function() end end
     w.SetPoint=function(self,...) self.point={...} end
     w.GetPoint=function(self) return "CENTER",UIParent,"CENTER",25,-30 end
@@ -21,6 +21,7 @@ local function widget()
     w.SetWidth=function(self,x) self.width=x end;w.SetHeight=function(self,y) self.height=y end
     w.GetSize=function(self) return self.width,self.height end
     w.GetEffectiveScale=function(self) return self.scale or 1 end
+    w.GetFrameLevel=function(self) return self.frameLevel or 1 end;w.SetFrameLevel=function(self,v) self.frameLevel=v end
     w.GetCenter=function(self) return self.centerX or 300,self.centerY or 400 end
     w.SetParent=function(self,parent) self.parent=parent end
     w.GetWidth=function(self) return self.width or 18 end;w.GetHeight=function(self) return self.height end
@@ -71,7 +72,7 @@ local function widget()
     w.CreateLine=function() local line=widget();line.SetThickness=function() end;line.SetStartPoint=function() end;line.SetEndPoint=function() end;return line end
     return w
 end
-local function setup(fullUI,daylight)
+local function setup(fullUI,daylight,nameplates)
     local saved={};for _,name in ipairs(names) do saved[name]=_G[name] end
     DaylightUI=daylight and {API=daylight}
     local clock,combat=10,false
@@ -80,6 +81,7 @@ local function setup(fullUI,daylight)
     CreateFrame=function(kind,_,parent,template)
         local w=widget();w.kind,w.template,w.parent=kind,template,parent;if kind=="CheckButton" then w.Text=widget() end;return w
     end
+    C_NamePlate=nameplates
     InCombatLockdown=function() return combat end;GetTime=function() return clock end
     debugprofilestop=function() return 0 end
     local B={}

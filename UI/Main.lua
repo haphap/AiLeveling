@@ -293,20 +293,48 @@ function UI:ListButton(parent,label,width,callback,role)
     return b
 end
 
-function UI:Movable(frame,key)
-    frame:SetMovable(true);frame:EnableMouse(true);frame:RegisterForDrag("LeftButton")
-    frame:SetScript("OnDragStart",function()
-        if not A.settings.lockWindow then
+function UI:Movable(handle,key,frame,button)
+    frame=frame or handle
+    frame:SetMovable(true);handle:EnableMouse(true);handle:RegisterForDrag(button or "LeftButton")
+    handle:SetScript("OnDragStart",function()
+        if not A.settings.lockWindow and (frame~=self.navAnchor or not InCombatLockdown()) then
             if key=="position" then A.settings.trackerDocked=false end
+            if frame==self.navAnchor then self.navDragging=true end
             frame:StartMoving()
         end
     end)
-    frame:SetScript("OnDragStop",function()
+    handle:SetScript("OnDragStop",function()
+        if frame==self.navAnchor then
+            if InCombatLockdown() then return end
+            self.navDragging=nil
+        end
         frame:StopMovingOrSizing()
         local point,_,relative,x,y=frame:GetPoint()
         A.settings[key]={point,relative,x,y}
         if key=="position" and A.QuestAssist then A.QuestAssist:LayoutTarget() end
     end)
+end
+
+function UI:PlaceNavigation(restore)
+    local anchor=self.navAnchor
+    if not anchor then return end
+    if restore then self.restoreNavPosition=true end
+    if InCombatLockdown() then return end
+    if self.navDragging and (self.restoreNavPosition or A.settings.lockWindow or self.navDragDeferred) then
+        anchor:StopMovingOrSizing();self.navDragging=nil
+        if not self.restoreNavPosition then
+            local point,_,relative,x,y=anchor:GetPoint();A.settings.navigationPosition={point,relative,x,y}
+        end
+    end
+    self.navDragDeferred=nil
+    anchor:SetScale(A.settings.scale);anchor:SetWidth(268*self:FontScale())
+    if self.restoreNavPosition then
+        self.restoreNavPosition=nil
+        anchor:ClearAllPoints()
+        local p=A.settings.navigationPosition
+        if p then anchor:SetPoint(p[1],UIParent,p[2],p[3],p[4])
+        else anchor:SetPoint("CENTER",UIParent,"CENTER",0,-110) end
+    end
 end
 
 function UI:Menu(owner,build)
@@ -437,10 +465,9 @@ function UI:ApplyStyle()
     if A.settings.lockWindow then self.frame:StopMovingOrSizing();self.details:StopMovingOrSizing() end
     if self.navFrame then
         self.tracker.navScale=nil
-        self.navFrame:SetScale(A.settings.scale)
+        self:PlaceNavigation()
         self.tracker.navBearing:SetAlpha(A.settings.alpha)
         self.nav:SetAlpha(A.settings.alpha)
-        if A.settings.lockWindow then self.navFrame:StopMovingOrSizing() end
     end
     self:LayoutCard()
 end

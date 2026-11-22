@@ -434,13 +434,35 @@ test("关闭数量与缺失文字不取消物品需求和规划约束",function(
 end)
 test("战斗中显示设置不改变受保护容器和按钮属性",function()
     local B=setup();local Q=B.QuestAssist
+    local icon=Q.buttons[1]
+    eq(icon.type1,"item");eq(icon.type,nil);eq(icon.type2,nil)
+    local U=B.UI;local anchor=U.navAnchor
+    eq(Q.container.parent,anchor);eq(U.navFrame.parent,anchor);eq(Q.info.parent,U.navFrame)
+    U:SetNavigation(nil,nil,nil,B.action);eq(U.tracker.navItemHeight,36);eq(Q.container.shown,true)
+    local expanded=U.navFrame.height
+    B:SetOption("items",false);U:SetNavigation(nil,nil,nil,B.action)
+    eq(Q.container.shown,false);eq(Q.info.shown,false);eq(U.navFrame.height,expanded-36)
+    B:SetOption("items",true);U:SetNavigation(nil,nil,nil,B.action)
+    icon.scripts.OnDragStart();eq(anchor.moving,true);icon.scripts.OnDragStop()
+    eq(B.settings.navigationPosition[3],25);eq(B.settings.navigationPosition[4],-30)
+    U:PlaceNavigation(true);eq(anchor.point[4],25)
+    B:SetOption("lockWindow",true);Q.info.scripts.OnDragStart();eq(anchor.moving,false)
+    B:SetOption("lockWindow",false);Q.info.scripts.OnDragStart();eq(anchor.moving,true)
     local writes=Q.buttons[1].attributeWrites
     local width,height=Q.container:GetSize()
     B.combat(true)
+    B.frame.scripts.OnEvent(nil,"PLAYER_REGEN_DISABLED");Q.info.scripts.OnDragStop();eq(U.navDragging,true)
+    B.settings.navigationPosition={"CENTER","CENTER",100,-60};U:PlaceNavigation(true)
+    eq(anchor.point[4],25)
+    U:SetNavigation(nil);eq(U.navFrame.shown,true);eq(U.tracker.navTitle.value,"任务物品")
+    eq(Q.info.text.value,"战斗结束后更新物品")
+    U:SetNavigation(nil,nil,nil,B.action);eq(U.tracker.navItemHeight,36)
     B:SetOption("fontScale",1.1);B:SetOption("density","expanded");B:SetOption("quantity",false)
     eq(Q.buttons[1].attributeWrites,writes);eq(Q.buttons[1].count.value,2)
     eq(Q.container.width,width);eq(Q.container.height,height);assert(Q.pending)
-    B.combat(false);Q:ApplyPending();eq(Q.buttons[1].count.value,"")
+    B.combat(false);B.frame.scripts.OnEvent(nil,"PLAYER_REGEN_ENABLED");eq(Q.buttons[1].count.value,"")
+    eq(U.navDragging,nil);eq(anchor.point[4],100)
+    B.settings.navigationPosition=nil;U:PlaceNavigation(true);eq(anchor.point[4],0);eq(anchor.point[5],-110)
     B.finish()
 end)
 test("地图开关控制两张地图的标记范围且不改变导航",function()
@@ -471,6 +493,7 @@ test("交付奖励只显示在任务列表且开关不触发自动领奖",functi
     local B=setup()
     B.frame.scripts.OnEvent(nil,"QUEST_COMPLETE")
     B.UI:RenderTracker()
+    B.UI:SetNavigation(nil,nil,nil,B.action)
     assert(B.UI.tracker.reward.text.value:find("第 2 项",1,true));eq(B.UI.tracker.reward.shown,true)
     assert(not B.QuestAssist.info.text.value:find("奖励",1,true))
     B:SetOption("items",false);eq(B.QuestAssist.info.shown,false);eq(#B.QuestAssist.wanted,0)
@@ -535,13 +558,32 @@ test("跟随队长快捷键按真实队伍更新且战斗后同步并保留任�
     B.finish()
 end)
 test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝宏命令字符",function()
-    local B=setup();local Q=B.QuestAssist
+    local plate={namePlateUnitToken="nameplate1"}
+    local B=setup(false,nil,{GetNamePlates=function() return {plate} end,GetNamePlateForUnit=function(unit)
+        if unit=="nameplate1" then return plate end
+    end});local Q=B.QuestAssist
+    UnitGUID=function() return "Creature-0-1-2-3-10-0000" end
     local entities={[10]="矿工约翰",[20]="森林蜘蛛",[30]="旅店老板"}
     B.Data.db={Npc={Get=function(id,key) eq(key,"name");return entities[id] end}}
     B.action={kind="accept",questId=1,position={entityKind="npc",entityId=10}}
-    Q:Update();eq(Q.targetActive.id,10);eq(Q.targetButton.macrotext1,"/targetexact 矿工约翰")
-    eq(Q.targetButton.type1,"macro");eq(Q.targetButton.type2,"raidtarget")
-    eq(Q.targetButton.action2,"set-unmarked");eq(Q.targetButton.unit2,"target");eq(Q.targetButton.marker2,8)
+    Q:Update();eq(Q.targetActive.id,10)
+    local manual=Q.targetButton.macrotext2
+    eq(manual,"/tm [@target,harm,nodead] ~8\n/tm [@target,noharm,exists,nodead] ~1")
+    local function markMacro(name) return "/cleartarget [nocombat]\n/targetexact "..name.."\n/stopmacro [combat]\n"..manual end
+    eq(Q.targetButton.macrotext1,markMacro("矿工约翰"));eq(Q.targetButton.type1,"macro");eq(Q.targetButton.type2,"macro")
+    local badge=Q.plateBadges.nameplate1
+    eq(badge.shown,true);eq(badge.point[2],plate);eq(Q.plateIcon,"accept")
+    B:SetOption("markTargets",false);eq(badge.shown,false);eq(Q.targetButton.macrotext1,"/targetexact 矿工约翰")
+    B:SetOption("markTargets",true);eq(badge.shown,true)
+    local raid,leader,assistant=IsInRaid,UnitIsGroupLeader,UnitIsGroupAssistant
+    IsInRaid=function() return true end;UnitIsGroupLeader=function() return false end
+    UnitIsGroupAssistant=function() return false end;Q:ApplyTarget()
+    eq(Q.targetButton.macrotext2,nil);eq(Q.targetButton.macrotext1,"/targetexact 矿工约翰")
+    UnitIsGroupAssistant=function() return true end;Q:ApplyTarget();eq(Q.targetButton.macrotext2,manual)
+    IsInRaid,UnitIsGroupLeader,UnitIsGroupAssistant=raid,leader,assistant
+    Q.container.scripts.OnEvent(nil,"NAME_PLATE_UNIT_REMOVED","nameplate1");eq(badge.shown,false)
+    UnitGUID=function() return "Player-0-1-2-3-10-0000" end
+    Q.container.scripts.OnEvent(nil,"NAME_PLATE_UNIT_ADDED","nameplate1");eq(badge.shown,false)
     eq(Q.targetButton.shown,true)
     eq(Q.targetButton.parent,UIParent);eq(Q.targetButton.text,nil);eq(Q.targetButton.status,nil)
     eq(Q.targetButton.template,"SecureActionButtonTemplate")
@@ -572,7 +614,7 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     Q:Update();eq(Q.targetActive.id,10);eq(Q.targetWanted.id,20);eq(Q.targetButton.attributeWrites,writes)
     assert(Q.targetStatus:find("战斗结束",1,true))
     B.combat(false);B.frame.scripts.OnEvent(nil,"PLAYER_REGEN_ENABLED")
-    eq(Q.targetActive.id,20);eq(Q.targetButton.macrotext1,"/targetexact 森林蜘蛛")
+    eq(Q.targetActive.id,20);eq(Q.targetButton.macrotext1,markMacro("森林蜘蛛"))
     B.state.quests[1].objectives[1].finished=true;Q:Update();eq(Q.targetButton.shown,false)
     B.state.quests[1].objectives[1].finished=false
     B.action.targetKind="item";B.action.targetId=100
@@ -587,7 +629,7 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     B.Data.ObjectiveIdentities=function() return {[1]={kind="killcredit",npcIds={20,21,21}},[2]={kind="npc",id=22}} end
     Q:Update();eq(#Q.targetChoices,3);eq(Q.targetActive.id,20)
     local wheel=assert(Q.targetButton.scripts.OnMouseWheel)
-    wheel(nil,-1);eq(Q.targetActive.id,21);eq(Q.targetButton.macrotext1,"/targetexact 黑熊")
+    wheel(nil,-1);eq(Q.targetActive.id,21);eq(Q.targetButton.macrotext1,markMacro("黑熊"))
     assert(Q.targetTitle:find("2/3",1,true))
     Q:Update();eq(Q.targetActive.id,21)
     UnitGUID=function() return "Creature-0-1-2-3-22-0000" end
@@ -604,8 +646,10 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     B.Data.ObjectiveIdentities=nil;B.state.quests[1].objectives={}
     B.action={kind="turnin",questId=1}
     B.Data.Target=function(_,q,s) eq(s.quests[1].ready,true);return {entityKind="npc",entityId=10} end
-    Q:Update();eq(Q.targetActive.id,10)
+    UnitGUID=function() return "Creature-0-1-2-3-10-0000" end
+    Q:Update();eq(Q.targetActive.id,10);eq(badge.shown,true);eq(Q.plateIcon,"turnin")
     B.action={kind="service",npcId=30};Q:Update();eq(Q.targetActive.id,30)
+    eq(badge.shown,false)
     B.action={kind="manual"};Q:Update();eq(Q.targetButton.shown,false)
     B.action={kind="service",npcId=30};B:SetOption("targets",false);eq(Q.targetButton.shown,false)
     B:SetOption("targets",true);eq(Q.targetButton.shown,true)

@@ -10,6 +10,45 @@ BINDING_NAME_AILEVELING_TARGET_NEXT="切换当前任务目标"
 
 local function readable(value) return not canaccessvalue or canaccessvalue(value) end
 
+local function unitNpcId(unit)
+    local guid=UnitGUID and UnitGUID(unit)
+    if not readable(guid) or type(guid)~="string" then return end
+    local kind,id=guid:match("^(%a+)%-[^%-]+%-[^%-]+%-[^%-]+%-[^%-]+%-(%d+)%-")
+    if kind=="Creature" or kind=="Vehicle" then return tonumber(id) end
+end
+
+-- A local quest icon can be shown on each matching plate without using a party marker.
+function Q:MarkPlate(unit,removed)
+    local badge=self.plateBadges[unit]
+    local icon=self.plateIcon
+    local id=not removed and icon and unitNpcId(unit)
+    local plate=id and self.plateNPCs[id] and C_NamePlate.GetNamePlateForUnit(unit)
+    if not plate or plate.IsForbidden and plate:IsForbidden() then
+        if badge then badge:Hide();badge:ClearAllPoints() end
+        return
+    end
+    if not badge then
+        badge=CreateFrame("Frame",nil,UIParent);badge:SetSize(18,18);badge:EnableMouse(false)
+        badge.icon=badge:CreateTexture(nil,"ARTWORK");badge.icon:SetAllPoints()
+        self.plateBadges[unit]=badge
+    end
+    badge:ClearAllPoints();badge:SetPoint("LEFT",plate,"RIGHT",2,0)
+    badge.icon:SetTexture("Interface\\AddOns\\AiLeveling\\Media\\hud-"..icon..".tga")
+    badge.icon:SetVertexColor(unpack(A.UI.colors[icon] or A.UI.colors.gold))
+    badge:Show()
+end
+
+function Q:RefreshPlates()
+    if not self.plateBadges then return end
+    for unit in pairs(self.plateBadges) do self:MarkPlate(unit,true) end
+    if not self.plateIcon then return end
+    for _,plate in ipairs(C_NamePlate.GetNamePlates() or {}) do
+        if not (plate.IsForbidden and plate:IsForbidden()) and plate.namePlateUnitToken then
+            self:MarkPlate(plate.namePlateUnitToken)
+        end
+    end
+end
+
 function Q.Leader()
     if not IsInGroup or not IsInRaid or not UnitIsGroupLeader or not UnitIsConnected or not UnitName then return end
     local grouped,raid,own=IsInGroup(),IsInRaid(),UnitIsGroupLeader("player")
@@ -83,17 +122,12 @@ function Q:TargetStatus()
     local count=#(self.targetActiveChoices or {})
     local prefix=count>1 and (self.targetActiveIndex.."/"..count.." · ") or ""
     self.targetTitle=target and (prefix.."选中 "..target.name) or ""
-    local status=count>1 and "滚轮／中键切换 · 右键标记" or "右键：为当前选中的目标加骷髅标记"
+    local status=count>1 and "滚轮／中键切换 · 右键标记" or "右键标记当前目标 · 友善星星，敌对骷髅"
     if self.targetQueued then status="战斗结束后更新目标"
     elseif target and UnitGUID then
-        local guid=UnitGUID("target")
-        if (not canaccessvalue or canaccessvalue(guid)) and type(guid)=="string" then
-            local kind,id=guid:match("^(%a+)%-[^%-]+%-[^%-]+%-[^%-]+%-[^%-]+%-(%d+)%-")
-            if kind=="Creature" or kind=="Vehicle" then
-                for _,npc in ipairs(self.targetActiveChoices or {}) do
-                    if tonumber(id)==npc.id then status="已选中 · "..npc.name.." · 右键标记";break end
-                end
-            end
+        local id=unitNpcId("target")
+        for _,npc in ipairs(self.targetActiveChoices or {}) do
+            if id==npc.id then status="已选中 · "..npc.name.." · 右键标记";break end
         end
     end
     self.targetStatus=status
@@ -118,6 +152,18 @@ function Q:LayoutTarget()
     T.actionIcon:SetShown(not button:IsShown())
 end
 
+-- Forever's /tm ~N applies an icon only when the target has none.
+local markTarget="/tm [@target,harm,nodead] ~8\n/tm [@target,noharm,exists,nodead] ~1"
+
+local function canMarkTarget()
+    local raid=IsInRaid and IsInRaid()
+    if not readable(raid) then return false end
+    if not raid then return true end
+    local lead=UnitIsGroupLeader and UnitIsGroupLeader("player")
+    local assist=UnitIsGroupAssistant and UnitIsGroupAssistant("player")
+    return readable(lead) and lead==true or readable(assist) and assist==true
+end
+
 function Q:ApplyTarget()
     if not self.targetButton then return end
     if InCombatLockdown() then
@@ -128,7 +174,16 @@ function Q:ApplyTarget()
     local target=self.targetWanted
     self.targetActive=target
     self.targetActiveChoices,self.targetActiveIndex,self.targetActiveKey=self.targetChoices,self.targetIndex,self.targetKey
-    self.targetButton:SetAttribute("macrotext1",target and ("/targetexact "..target.name) or nil)
+    local macro=target and ("/targetexact "..target.name)
+    local allowed=canMarkTarget()
+    if macro and A.settings.markTargets and allowed then
+        -- A failed search must never mark a previously selected unit. In combat keep
+        -- the player's existing target on a miss; right click marks it explicitly.
+        local marked="/cleartarget [nocombat]\n"..macro.."\n/stopmacro [combat]\n"..markTarget
+        if #marked<=255 then macro=marked end
+    end
+    self.targetButton:SetAttribute("macrotext1",macro)
+    self.targetButton:SetAttribute("macrotext2",allowed and markTarget or nil)
     self:LayoutTarget()
     self:TargetStatus()
 end
@@ -339,25 +394,44 @@ end
 
 function Q:Create()
     if self.container or InCombatLockdown() then return end
-    local f = CreateFrame("Frame", "AiLevelingItems", UIParent)
-    f:SetSize(180, 48)
-    f:SetPoint("CENTER", UIParent, "CENTER", 0, -180)
+    local anchor,nav=A.UI.navAnchor,A.UI.navFrame
+    local f = CreateFrame("Frame", "AiLevelingItems", anchor)
+    f:SetSize(118,26);f:SetPoint("BOTTOMLEFT",anchor,"BOTTOMLEFT",10,6);f:Hide()
     self.container = f
-    self.info = CreateFrame("Frame",nil,UIParent)
-    self.info:SetSize(340,110); self.info:SetPoint("TOP",f,"BOTTOM",0,-4)
-    self.info.text = A.UI:Text(self.info,12)
-    self.info.text:SetPoint("TOPLEFT"); self.info.text:SetWidth(340); self.info.text:SetHeight(76)
-    self.info:EnableMouse(true)
+    if C_NamePlate and C_NamePlate.GetNamePlates and C_NamePlate.GetNamePlateForUnit then
+        self.plateBadges={}
+        f:RegisterEvent("NAME_PLATE_UNIT_ADDED");f:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+        f:RegisterEvent("PLAYER_ENTERING_WORLD")
+        f:SetScript("OnEvent",function(_,event,unit)
+            if event=="PLAYER_ENTERING_WORLD" then self:RefreshPlates()
+            else self:MarkPlate(unit,event=="NAME_PLATE_UNIT_REMOVED") end
+        end)
+    end
+    self.info = CreateFrame("Frame",nil,nav)
+    self.info:SetPoint("BOTTOMLEFT",nav,"BOTTOMLEFT",10,6)
+    self.info:SetPoint("BOTTOMRIGHT",nav,"BOTTOMRIGHT",-10,6);self.info:SetHeight(26)
+    self.info.text = A.UI:Text(self.info,"caption")
+    self.info.text:SetMaxLines(1);self.info.text:SetJustifyH("LEFT")
+    self.info.rule=self.info:CreateTexture(nil,"ARTWORK");self.info.rule:SetHeight(1)
+    self.info.rule:SetPoint("BOTTOMLEFT",self.info,"TOPLEFT",0,3)
+    self.info.rule:SetPoint("BOTTOMRIGHT",self.info,"TOPRIGHT",0,3)
+    self.info.rule:SetColorTexture(unpack(A.UI.colors.line))
+    A.UI:Movable(self.info,"navigationPosition",anchor)
+    -- Only the item buttons intercept clicks over their icons.
+    f:SetFrameLevel(self.info:GetFrameLevel()+1)
     self.info:SetScript("OnEnter",function(f)
         GameTooltip:SetOwner(f,"ANCHOR_RIGHT"); GameTooltip:SetText("任务辅助详情")
-        GameTooltip:AddLine(self.detailsText or "",1,1,1,true); GameTooltip:Show()
+        GameTooltip:AddLine(self.detailsText or "",1,1,1,true)
+        GameTooltip:AddLine("战斗外左键拖动可移动导航框。",0.75,0.8,0.85,true);GameTooltip:Show()
     end)
     self.info:SetScript("OnLeave",function() GameTooltip:Hide() end)
-    self.next = A.UI:Button(self.info,"下一组任务物品",150,function()
+    self.next = A.UI:Button(self.info,"›",38,function()
+        if InCombatLockdown() then return end
         self.page=(self.page or 1)%math.max(1,math.ceil(#(self.wanted or {})/4))+1
         self:Update()
     end)
-    self.next:SetPoint("TOPLEFT",0,-80)
+    self.next:SetPoint("RIGHT");self.next:SetHeight(24)
+    self.info:Hide()
     local target=CreateFrame("Button","AiLevelingTarget",UIParent,"SecureActionButtonTemplate")
     self.targetButton=target
     target:SetSize(24,24)
@@ -368,13 +442,12 @@ function Q:Create()
     target:SetScript("OnMouseWheel",function(_,delta) self:CycleTarget(delta>0 and -1 or 1) end)
     target:SetScript("PostClick",function(_,button,down) if button=="MiddleButton" and not down then self:CycleTarget(1) end end)
     target:SetAttribute("type1","macro")
-    target:SetAttribute("type2","raidtarget");target:SetAttribute("unit2","target")
-    target:SetAttribute("marker2",8);target:SetAttribute("action2","set-unmarked")
+    target:SetAttribute("type2","macro")
     target:SetScript("OnEnter",function(b)
         if self.targetActive then
             GameTooltip:SetOwner(b,"ANCHOR_LEFT");GameTooltip:SetText(self.targetTitle)
             GameTooltip:AddLine(self.targetStatus,1,1,1,true)
-            GameTooltip:AddLine("左键选中；右键标记；战斗外滚轮或中键切换。",1,1,1,true)
+            GameTooltip:AddLine(A.settings.markTargets and "左键选中，战斗外同时标记。战斗中可右键标记。" or "左键选中，右键标记。",1,1,1,true)
             GameTooltip:AddLine("标题栏右键可隐藏目标辅助。",0.75,0.8,0.85,true);GameTooltip:Show()
         end
     end)
@@ -388,10 +461,11 @@ function Q:Create()
     follow:EnableMouse(false);follow:Hide()
     for i = 1, 4 do
         local button = CreateFrame("Button", "AiLevelingItem" .. i, f, "SecureActionButtonTemplate")
-        button:SetSize(38, 38)
-        button:SetPoint("LEFT", f, "LEFT", (i - 1) * 46, 0)
+        button:SetSize(26,26)
+        button:SetPoint("LEFT",f,"LEFT",(i-1)*30,0)
         button:RegisterForClicks("AnyUp", "AnyDown")
-        button:SetAttribute("type", "item")
+        button:SetAttribute("type1", "item")
+        A.UI:Movable(button,"navigationPosition",anchor,"RightButton")
         button.icon = button:CreateTexture(nil, "ARTWORK")
         button.icon:SetAllPoints()
         button.count = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -399,7 +473,10 @@ function Q:Create()
         button.cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
         button.cooldown:SetAllPoints()
         button:SetScript("OnEnter", function(b)
-            if b.itemId then GameTooltip:SetOwner(b, "ANCHOR_RIGHT"); GameTooltip:SetItemByID(b.itemId); GameTooltip:Show() end
+            if b.itemId then
+                GameTooltip:SetOwner(b,"ANCHOR_RIGHT");GameTooltip:SetItemByID(b.itemId)
+                GameTooltip:AddLine("左键使用，战斗外右键拖动导航框。",0.75,0.8,0.85,true);GameTooltip:Show()
+            end
         end)
         button:SetScript("OnLeave", function() GameTooltip:Hide() end)
         button:Hide()
@@ -512,14 +589,23 @@ function Q:Update(quiet)
     local targets={tostring(action and action.kind),tostring(action and action.questId),tostring(action and action.objectiveIndex)}
     for _,npc in ipairs(self.targetChoices) do targets[#targets+1]=npc.id..":"..npc.name end
     local targetKey=table.concat(targets,"\031")
+    local icon=A.settings.markTargets and #self.targetChoices>0 and A.UI.QuestIcon(action.kind,action)
+    if icon=="compass" then icon="target" end
+    if self.targetKey~=targetKey or self.plateIcon~=icon then
+        self.plateIcon=icon
+        self.plateNPCs={}
+        for _,npc in ipairs(self.targetChoices) do self.plateNPCs[npc.id]=true end
+        self:RefreshPlates()
+    end
     if self.targetKey~=targetKey then self.targetIndex=1;self.targetKey=targetKey end
     self.targetWanted=self.targetChoices[self.targetIndex]
-    local wanted = Q.Desired(action,A.state,A.settings.items,A.Data)
+    local wanted = Q.Desired(action,A.state,A.settings.items and not A.char.paused,A.Data)
     local key = table.concat(wanted,":")
     if key~=self.key then self.page=1; self.key=key end
     self.wanted=wanted
     local pages
     self.pending,self.page,pages=Q.Page(wanted,self.page)
+    self.itemChangePending=InCombatLockdown() and table.concat(self.pending,":")~=table.concat(self.active or {},":")
     self:ApplyPending()
     local rows=Q.Requirements(action,A.state,A.Data)
     self.requirements=rows
@@ -535,12 +621,50 @@ function Q:Update(quiet)
             return name or ("物品 #"..id)
         end) or {}
         if pages>1 then lines[#lines+1]=string.format("物品按钮第 %d/%d 组",self.page,pages) end
-        if self.pending and InCombatLockdown() then lines[#lines+1]="物品按钮将在战斗结束后同步" end
         self.detailsText=table.concat(lines,"\n")
-        self.info.text:SetText(table.concat(lines,"\n"))
-        self.info:SetShown(#lines>0)
-        self.next:SetShown(pages>1)
+        self.itemAction=action
+        self.itemSummary=lines[1]
+        local first=self.active and self.active[1]
+        if first and self.itemSummary then
+            local name=C_Item.GetItemNameByID(first)
+            if name then
+                self.itemSummary=name..(A.settings.missingChecks~=false and (A.state.bags[first] or 0)==0 and " · 缺少物品" or "")
+            end
+        end
+        self.itemPages=pages
+        if pages>1 then self.next.text:SetText(self.page.."/"..pages.." ›") end
+        self:NavigationItems(action,A.UI.navFrame:IsShown() and not A.char.paused)
     end
+end
+
+function Q:NavigationItems(action,show)
+    if not self.info then return 0 end
+    local source=self.itemAction
+    local match=action and source and source.kind==action.kind and source.questId==action.questId and
+        source.objectiveIndex==action.objectiveIndex and source.mode==action.mode
+    local visible=show and match and self.itemSummary~=nil
+    local count=#(self.active or {})
+    local combat=InCombatLockdown()
+    local buttons=visible and count>0 or false
+    if not combat and self.container:IsShown()~=buttons then self.container:SetShown(buttons) end
+    local held=combat and self.container:IsShown() and count>0
+    local rowVisible=visible or held or false
+    if self.info:IsShown()~=rowVisible then self.info:SetShown(rowVisible) end
+    if not visible and not held then return 0 end
+    local paging=visible and self.itemPages>1 and not combat
+    if self.next:IsShown()~=(paging or false) then self.next:SetShown(paging or false) end
+    local summary=self.itemSummary
+    if held and (not visible or self.itemChangePending) then
+        summary="战斗结束后更新物品"
+    end
+    if self.info.text:GetText()~=summary then self.info.text:SetText(summary) end
+    local space=self.container:IsShown() and count*30 or 0
+    if self.itemSpace~=space or self.itemPaging~=paging then
+        self.itemSpace,self.itemPaging=space,paging
+        self.info.text:ClearAllPoints();self.info.text:SetPoint("LEFT",self.info,"LEFT",space,0)
+        self.info.text:SetPoint("RIGHT",self.info,"RIGHT",paging and -42 or 0,0)
+    end
+    return 36
 end
 
 function Q:ApplyPending()
@@ -551,6 +675,7 @@ function Q:ApplyPending()
     if not self.pending then return end
     local items = self.pending
     self.active, self.pending = items, nil
+    self.itemChangePending=nil
     for i, button in ipairs(self.buttons) do
         local id = items[i]
         button.itemId = id
