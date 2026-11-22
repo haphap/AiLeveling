@@ -2,6 +2,11 @@ local _, A = ...
 A.State = {}
 local State = A.State
 
+local function questTitle(id,title)
+    if A.Data and A.Data.QuestTitle then return A.Data:QuestTitle(id,title) end
+    return title
+end
+
 local offerResetEvents={PLAYER_ENTERING_WORLD=true,QUEST_ACCEPTED=true,QUEST_TURNED_IN=true,
     QUEST_REMOVED=true,PLAYER_LEVEL_UP=true}
 
@@ -32,7 +37,7 @@ function State:QuestOffersEvent(event)
     local function offer(id,title,level,repeatable)
         if canaccessvalue and not canaccessvalue(title) or type(title)~="string" then title=nil end
         if canaccessvalue and not canaccessvalue(level) or type(level)~="number" then level=nil end
-        return {id=id,title=title or ("任务 #"..id),questLevel=level,nativeOffer=point,
+        return {id=id,title=questTitle(id,title) or ("任务 #"..id),questLevel=level,nativeOffer=point,
             repeatable=(not canaccessvalue or canaccessvalue(repeatable)) and repeatable==true}
     end
     if event=="GOSSIP_SHOW" then
@@ -300,7 +305,7 @@ function State:Refresh(force, manual)
             local id = info.questID
             local nativeObjectives=C_QuestLog.GetQuestObjectives(id) or {}
             local objectives={}
-            local q = { id = id, title = info.title, level = info.level, objectives = objectives,
+            local q = { id = id, title = questTitle(id,info.title), level = info.level, objectives = objectives,
                 ready = C_QuestLog.ReadyForTurnIn(id) == true, logIndex = i }
             if GetQuestLogSpecialItemInfo then
                 local link = GetQuestLogSpecialItemInfo(i)
@@ -315,6 +320,7 @@ function State:Refresh(force, manual)
             end
             s.quests[id] = q
             local old=previous.quests[id]
+            if old and old.title~=q.title then A.dirty=true end
             if not old or old.ready~=q.ready then restart=true end
             if not questCount then s.questCount=s.questCount+1 end
             local parts = { tostring(id), tostring(q.ready), tostring(q.level), tostring(q.itemId), tostring(q.rewardXP) }

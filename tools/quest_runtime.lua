@@ -8,7 +8,7 @@ local A={clientVersion="1.60.1",build="70862",interface=16001,Navigation={Distan
     if a and b and a.map==b.map then return math.sqrt((a.x-b.x)^2+(a.y-b.y)^2)*1000 end
 end}}
 C_Map={GetMapInfo=function(id) return {mapID=id} end};C_QuestLog={}
-for _,file in ipairs({"State.lua","Hearth.lua","Data/TaskFacts.lua","Data/Experience.lua","Data/Flights.lua","Data/Dungeons.lua","Data/Questie.lua",
+for _,file in ipairs({"State.lua","Hearth.lua","Data/TaskFacts.lua","Data/Experience.lua","Data/Flights.lua","Data/Dungeons.lua","Data/QuestTitles_zhCN.lua","Data/Questie.lua",
     "Planner/Eligibility.lua","Planner/Chains.lua","Planner/TaskGuide.lua","Planner/TaskQueue.lua","Planner/Estimates.lua","Planner/Gear.lua",
     "Planner/Progression.lua","Planner/Travel.lua","Planner/Flights.lua","Planner/Supplies.lua","Planner/Dungeon.lua","Planner/Planner.lua"}) do
     assert(loadfile(root.."/"..file))("AiLeveling",A)

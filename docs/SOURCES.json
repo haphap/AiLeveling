@@ -994,6 +994,17 @@
       "clientVerified": false
     },
     {
+      "id": "Forever-zhCN-quest-titles",
+      "checked": "2026-11-22",
+      "file": "Data/QuestTitles_zhCN.lua",
+      "url": "https://www.wowhead.com/forever/cn/quest=79976",
+      "lookup": "https://nether.wowhead.com/forever/tooltip/quest/{questID}?locale=4",
+      "contactObjects": "Nine pickup and turn-in object names from the Forever zhCN object records, matched using https://nether.wowhead.com/forever/tooltip/object/{objectID}?locale=4.",
+      "scope": "620 localized short quest titles matched by Forever quest ID for titles missing in QuestieDB 1.0.12. Only the title is included. Seven NYI or DND records were left untouched.",
+      "additionalMatches": "9269/9270/9271 match Forever Atiesh quest 9257; 79952/79953/81951 match their required books 215822/215824/220347; 98287 matches the same Engineering quest title at 98285; 98913 matches its reward 285168 in the zhCN ItemSparse client table.",
+      "provisional": [87318, 88757, 88758]
+    },
+    {
       "id": "Undying-dungeon-recommended-levels",
       "checked": "2026-11-16",
       "version": "0.33.0",

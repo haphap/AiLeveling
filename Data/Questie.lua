@@ -298,6 +298,29 @@ function D:ServicePoints(state,kind,missing)
     return result
 end
 
+local function chineseTitle(value)
+    return (not canaccessvalue or canaccessvalue(value)) and type(value)=="string"
+        and value~="未知" and not value:match("^任务 #%d+$") and value:find("[\228-\233][\128-\191][\128-\191]")
+end
+
+function D:QuestTitle(id,native,database)
+    if not A.questTitlesZhCN then return database or native end
+    local record=self.cache[id]
+    database=database or record and record.title
+    if canaccessvalue and not canaccessvalue(native) then native=nil end
+    if not chineseTitle(native) and not chineseTitle(database) and HaveQuestData and HaveQuestData(id)
+        and C_QuestLog and C_QuestLog.GetTitleForQuestID then
+        local name=C_QuestLog.GetTitleForQuestID(id)
+        if chineseTitle(name) then native=name end
+    end
+    if chineseTitle(native) then
+        if record then record.title=native else A.questTitlesZhCN[id]=native end
+        return native
+    end
+    if chineseTitle(database) then return database end
+    return A.questTitlesZhCN[id] or native or database
+end
+
 function D:GetQuest(id,state)
     if self.cache[id] then return self.cache[id] end
     local values = self.db.Quest.GetAll(id, fields)
@@ -317,7 +340,8 @@ function D:GetQuest(id,state)
         q.preQuestGroup={parent}
     end
     q.repeatable = math.floor((q.specialFlags or 0) / 1) % 2 == 1
-    q.title = q.name or ("任务 #" .. id)
+    local quests=state and state.quests or A.state and A.state.quests
+    q.title = self:QuestTitle(id,quests and quests[id] and quests[id].title,q.name) or ("任务 #" .. id)
     if q.taskFacts and q.taskFacts.requiredLevel~=nil then
         q.questLevel,q.requiredLevel=q.taskFacts.level,q.taskFacts.requiredLevel
     end
@@ -453,12 +477,18 @@ local function nativeWaypoint(id)
     end
 end
 
+local function contactName(self,entity,id)
+    local name=entity.Get(id,"name")
+    if entity==self.db.Object and A.contactObjectsZhCN and not chineseTitle(name) then return A.contactObjectsZhCN[id] or name end
+    return name
+end
+
 local function soleContact(self,sources)
     if not sources or #(sources[1] or {})+#(sources[2] or {})~=1 then return end
     local npc=#(sources[1] or {})==1
     local id=sources[npc and 1 or 2][1]
     return {entityKind=npc and "npc" or "object",entityId=id,
-        entityName=(npc and self.db.Npc or self.db.Object).Get(id,"name")}
+        entityName=contactName(self,npc and self.db.Npc or self.db.Object,id)}
 end
 
 local function oppositeGiver(entity,id,faction)
@@ -600,7 +630,7 @@ function D:Target(q, state)
                     if nearer(point,priority) then
                         best.label=best.travelHint and best.label or best.approximate and "区域参考点" or (kind==1 and "QuestieDB NPC 位置" or "QuestieDB 对象位置")
                         best.entityKind,best.entityId=kind==1 and "npc" or "object",id
-                        best.entityName=entity.Get(id,"name")
+                        best.entityName=contactName(self,entity,id)
                         best.pickupLoot=loot or nil
                     end
                 end

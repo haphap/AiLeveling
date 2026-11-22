@@ -122,6 +122,25 @@ test("NPC 实际接取列表避开不可接任务并保留其他发布者与已�
     GetQuestID=function() return 100 end;GetTitleText=function() return "直接提供的任务" end
     B.State:QuestOffersEvent("QUEST_DETAIL");s.questOffers=B.State.questOffers
     eq(plan(s,d).fallback.questId,100);eq(plan(s,d).fallback.title,"直接提供的任务")
+    local oldLocale,oldHave=GetLocale,HaveQuestData
+    GetLocale=function() return "enUS" end
+    assert(loadfile("Data/QuestTitles_zhCN.lua"))("AiLeveling",B)
+    local id,en=79976,"This Must Be The Place"
+    eq(d:QuestTitle(id,nil,en),en)
+    GetLocale=function() return "zhCN" end
+    assert(loadfile("Data/QuestTitles_zhCN.lua"))("AiLeveling",B)
+    HaveQuestData=function() return false end
+    eq(d:QuestTitle(id,nil,en),"一定就是这里")
+    eq(d:QuestTitle(id,"任务 #79976",en),"一定就是这里")
+    d.cache[id]={id=id,title="一定就是这里"}
+    GetQuestID=function() return id end;GetTitleText=function() return en end
+    B.State:QuestOffersEvent("QUEST_DETAIL");eq(B.State.questOffers[npc][id].title,"一定就是这里")
+    list={{questID=id,title="客户端中文名"}};B.State:QuestOffersEvent("GOSSIP_SHOW")
+    eq(d:GetQuest(id).title,"客户端中文名");eq(d:QuestTitle(id,en),"客户端中文名")
+    HaveQuestData=function(key) return key==123 end
+    C_QuestLog.GetTitleForQuestID=function(key) eq(key,123);return "已缓存的中文名" end
+    eq(d:QuestTitle(123,nil,"Other title"),"已缓存的中文名")
+    GetLocale,HaveQuestData=oldLocale,oldHave
     UnitName,GetTitleText=oldName,oldTitle
     C_Map,C_QuestLog,C_GossipInfo,UnitGUID,GetQuestID,canaccessvalue=oldMap,oldLog,oldGossip,oldGuid,oldQuest,oldAccess
 end)
