@@ -225,7 +225,7 @@ test("连续航班的实际转乘点按直线连接",function()
     local routes=B.Flights.Routes(O,T4,s,nav)
     eq(routes[1].flights,2);eq(routes[1].seconds,175)
 end)
-test("暴风城换区无需先开飞行地图即引导飞往湖畔镇并等待实际交付",function()
+test("暴风城已确认的航班重新登录后可用于湖畔镇交付，未确认的航班不参与规划",function()
     local B,s,a,nav,O,D,L,T=joint()
     local oldMap,oldTaxi=C_Map,C_TaxiMap
     C_Map={GetBestMapForUnit=function() return 1453 end,GetMapInfo=function(map)
@@ -251,6 +251,8 @@ test("暴风城换区无需先开飞行地图即引导飞往湖畔镇并等待�
     s.position=O;B.state=s
     B.Transport:Snapshot(s)
     eq(s.taxiOrigin,nil);eq(next(s.taxiDepartures),nil);eq(next(B.Transport.availability),nil)
+    eq(s.taxiAvailability["2:5"],nil);eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
+    B.Transport:RestoreFlights({flightRoutes={["2:5"]=true}});B.Transport:Snapshot(s)
     eq(s.taxiAvailability["2:5"],true);eq(s.taxiNames[5],"湖畔镇")
     assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
     local oldFlights,oldGuide,oldNav=A.Flights,A.TaskGuide,A.Navigation
@@ -283,6 +285,8 @@ test("暴风城换区无需先开飞行地图即引导飞往湖畔镇并等待�
     result=plan(s,d);eq(result.referenceJourney.flights,0)
     for _,step in ipairs(result.travelActions) do assert(step.mode~="flight") end
     nodes[2].isUndiscovered=false;B.Transport.dirty=true;B.Transport:Snapshot(s)
+    eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
+    B.Transport.availability["2:5"]=true;B.Transport:Snapshot(s)
     eq(B.Flights.Routes(O,T,s,nav)[1].flights,1)
     nodes[1].isUndiscovered=true;B.Transport.dirty=true;B.Transport:Snapshot(s)
     eq(s.unlocked["taxi:2"],false);eq(B.Flights.Routes(O,T,s,nav)[1].flights,0)
@@ -748,7 +752,7 @@ test("原生飞行地图捕获独立快照并在世界变更或期限到期失�
     now=0;B.Transport:CaptureTaxi();B.Transport:World();eq(B.Transport.taxiOrigin,nil)
     GetTime,GetTaxiMapID,C_TaxiMap,TaxiNodeCost,UnitOnTaxi=old.GetTime,old.GetTaxiMapID,old.C_TaxiMap,old.TaxiNodeCost,old.UnitOnTaxi
 end)
-test("飞行加速变化清理旧可达信息且重新开图恢复",function()
+test("飞行加速变化清理旧耗时依据并保留已确认的航班",function()
     local old={GetTime=GetTime,GetTaxiMapID=GetTaxiMapID,C_TaxiMap=C_TaxiMap,TaxiNodeCost=TaxiNodeCost,C_SpellBook=C_SpellBook}
     local B,s=fixture();local learned=false
     B.state=s;B.char={}
@@ -762,11 +766,11 @@ test("飞行加速变化清理旧可达信息且重新开图恢复",function()
     B.Transport:CaptureTaxi();B.Transport:Snapshot(s)
     eq(s.taxiSpeed,1);eq(s.taxiAvailability["1:2"],true)
     local key=B.Transport.Key(s);learned=true;B.Transport:Snapshot(s)
-    eq(s.taxiSpeed,1.2);eq(next(s.taxiAvailability),nil)
+    eq(s.taxiSpeed,1.2);eq(s.taxiAvailability["1:2"],true)
     assert(key~=B.Transport.Key(s));eq(s.taxiOrigin,nil)
     B.Transport:CaptureTaxi();B.Transport:Snapshot(s);eq(s.taxiAvailability["1:2"],true)
     learned=false;B.Transport:CaptureTaxi();B.Transport:Snapshot(s);eq(s.taxiAvailability["1:2"],true);eq(s.taxiSpeed,1)
-    C_SpellBook=nil;B.Transport:Snapshot(s);eq(s.taxiSpeed,nil);eq(next(s.taxiAvailability),nil)
+    C_SpellBook=nil;B.Transport:Snapshot(s);eq(s.taxiSpeed,nil);eq(s.taxiAvailability["1:2"],true)
     for _,name in ipairs({"GetTime","GetTaxiMapID","C_TaxiMap","TaxiNodeCost","C_SpellBook"}) do _G[name]=old[name] end
 end)
 test("飞行停靠由原生槽位映射为节点且变化触发重算并清理失效路线",function()

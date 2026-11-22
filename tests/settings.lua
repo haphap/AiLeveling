@@ -208,6 +208,7 @@ test("原生任务对话自动接交同NPC任务，保留整组交付、多选�
     eq(B.state.completed[1],nil);eq(B.char.turnIns[1],nil)
     event("QUEST_FINISHED");count=0;event("QUEST_COMPLETE");eq(calls[6],"reward:0")
     event("GOSSIP_CLOSED");B.settings.autoTurnIn=false;event("QUEST_COMPLETE");eq(#calls,6)
+    assert(loadfile("Transport.lua"))("AiLeveling",B)
     B.Transport.taxiSelected=true;event("TAXIMAP_CLOSED");eq(B.Transport.taxiSelected,nil)
     calls={};local menus=0
     B.Merchant={NpcId=A.Merchant.NpcId,Event=function() end};B.State.Position=function() end
@@ -463,6 +464,63 @@ test("战斗中显示设置不改变受保护容器和按钮属性",function()
     B.combat(false);B.frame.scripts.OnEvent(nil,"PLAYER_REGEN_ENABLED");eq(Q.buttons[1].count.value,"")
     eq(U.navDragging,nil);eq(anchor.point[4],100)
     B.settings.navigationPosition=nil;U:PlaceNavigation(true);eq(anchor.point[4],0);eq(anchor.point[5],-110)
+    B.finish()
+end)
+test("凄凉之地的航段与飞行地图标记都只采用本站可点的落点",function()
+    local B=setupMap()
+    local names={"GetTaxiMapID","C_TaxiMap","TaxiNodeGetType","TaxiFrame","TaxiButton2","FlightMapFrame","hooksecurefunc"}
+    local saved={};for _,key in ipairs(names) do saved[key]=_G[key] end
+    assert(loadfile("Data/Flights.lua"))("AiLeveling",B)
+    assert(loadfile("Transport.lua"))("AiLeveling",B)
+    local T,N=B.Transport,B.Navigation
+    T:RestoreFlights(B.char);B.settings.autoTaxi=false
+    local nodes,kind
+    GetTaxiMapID=function() return 1 end
+    C_TaxiMap={GetAllTaxiNodes=function() return nodes end}
+    TaxiNodeGetType=function() return kind end
+    TaxiFrame,TaxiButton2=widget(),widget();TaxiButton2.GetID=function() return 2 end
+    FlightMapFrame=nil
+    local create=CreateFrame
+    CreateFrame=function(...)
+        local frame=create(...)
+        frame.GetParent=function(self) return self.parent end
+        frame.CreateTexture=function()
+            local tex=widget()
+            tex.CreateAnimationGroup=function()
+                local anim=setmetatable({},{__index=function() return function() end end})
+                return {CreateAnimation=function() return anim end,SetLooping=function() end,IsPlaying=function() return false end,
+                    Play=function() end,Stop=function() end}
+            end
+            return tex
+        end
+        return frame
+    end
+    for _,pair in ipairs({{33,37,"尼耶尔前哨站"},{22,38,"葬影村"}}) do
+        local from,to,name=unpack(pair)
+        local key=from..":"..to
+        local flight={kind="transit",mode="flight",fromTaxi=from,toTaxi=to}
+        N.actions={{kind="move"},flight}
+        nodes={{nodeID=from,state=0,slotIndex=1},{nodeID=to,state=1,slotIndex=2,name=name}}
+        kind="REACHABLE";T:CaptureTaxi();N:RefreshTaxiMarker()
+        local mark=N.taxiMarker
+        eq(mark.parent,TaxiButton2);eq(mark:IsShown(),true);eq(mark.label:GetText(),name);eq(B.char.flightRoutes[key],true)
+        kind="DISTANT";T:CaptureTaxi(true);N:RefreshTaxiMarker()
+        eq(T:TaxiDestination(),nil);eq(mark:IsShown(),false);eq(B.char.flightRoutes[key],nil)
+        nodes[2]=nil;T:CaptureTaxi(true);eq(B.char.flightRoutes[key],nil)
+        eq(N.StaleAction(flight,{transportKnown=true,unlocked={["taxi:"..from]=true,["taxi:"..to]=true},
+            taxiAvailability=T.availability}),true)
+    end
+    TaxiFrame:Hide();FlightMapFrame=widget()
+    local pin=widget();pin.taxiNodeData={nodeID=38,state=1}
+    FlightMapFrame.EnumeratePinsByTemplate=function() return coroutine.wrap(function() coroutine.yield(pin) end) end
+    local redraw
+    hooksecurefunc=function(_,_,callback) redraw=callback end
+    nodes[2]={nodeID=38,state=1,slotIndex=2,name="葬影村"}
+    T:CaptureTaxi();N:RefreshTaxiMarker();eq(N.taxiMarker.parent,pin)
+    pin.taxiNodeData.nodeID=37;redraw();eq(N.taxiMarker:IsShown(),false)
+    pin.taxiNodeData.nodeID=38;redraw();eq(N.taxiMarker:IsShown(),true)
+    T:CloseTaxiMap();redraw();eq(N.taxiMarker:IsShown(),false);eq(T:TaxiDestination(),nil)
+    for _,key in ipairs(names) do _G[key]=saved[key] end
     B.finish()
 end)
 test("地图开关控制两张地图的标记范围且不改变导航",function()

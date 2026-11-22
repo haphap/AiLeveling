@@ -195,6 +195,7 @@ function N:Current()
             local action=self.manual.actions and self.manual.actions[self.manual.index] or goal
             local crossing=action and action.crossingFrom
             if goal and (self.manual.inInstance~=A.state.inInstance or A.state.inInstance and self.manual.instanceId~=A.state.instanceId or
+                action and action.kind=="transit" and action.mode=="flight" and N.StaleAction(action,A.state,self.manual.plan) or
                 crossing and A.state.position and (crossing.map~=A.state.position.map or A.Travel.Separated(crossing,A.state.position,self))) then
                 if self:Navigate(goal,true) then return self:Current() end
                 return
@@ -403,6 +404,65 @@ local function cell(texture,index)
     texture:SetTexCoord(index/4,(index+1)/4,0,1)
 end
 
+local function taxiMarker(parent)
+    local mark=CreateFrame("Frame",nil,parent)
+    mark:EnableMouse(false);mark:SetSize(34,34)
+    local ring=mark:CreateTexture(nil,"OVERLAY");cell(ring,1);ring:SetAllPoints()
+    local arrow=mark:CreateTexture(nil,"OVERLAY");arrow:SetSize(21,21)
+    arrow:SetTexture(media.."hud-chevron-up.tga");arrow:SetRotation(math.pi)
+    arrow:SetPoint("BOTTOM",mark,"TOP",0,-3)
+    local label=mark:CreateFontString(nil,"OVERLAY","GameFontNormal")
+    label:SetPoint("BOTTOM",arrow,"TOP",0,2);label:SetShadowColor(0,0,0,1);label:SetShadowOffset(1,-1)
+    local wave=mark:CreateTexture(nil,"ARTWORK");cell(wave,1);wave:SetAllPoints()
+    local pulse=wave:CreateAnimationGroup();pulse:SetLooping("REPEAT")
+    local grow=pulse:CreateAnimation("Scale")
+    if grow.SetScaleFrom then grow:SetScaleFrom(1,1);grow:SetScaleTo(1.5,1.5) else grow:SetScale(1.5,1.5) end
+    grow:SetDuration(1.6)
+    local fade=pulse:CreateAnimation("Alpha");fade:SetFromAlpha(0.85);fade:SetToAlpha(0);fade:SetDuration(1.6)
+    local bob=arrow:CreateAnimationGroup();bob:SetLooping("BOUNCE")
+    local move=bob:CreateAnimation("Translation");move:SetOffset(0,4);move:SetDuration(0.75);move:SetSmoothing("IN_OUT")
+    mark:SetScript("OnHide",function() pulse:Stop();bob:Stop() end)
+    mark.label,mark.arrow,mark.ring,mark.wave,mark.pulse,mark.bob=label,arrow,ring,wave,pulse,bob
+    return mark
+end
+
+function N:RefreshTaxiMarker()
+    local slot,node=A.Transport:TaxiDestination()
+    local pin
+    if slot and TaxiFrame and TaxiFrame:IsShown() then
+        local button=_G["TaxiButton"..slot]
+        if button and button:GetID()==slot and button:IsShown() and TaxiNodeGetType(slot)=="REACHABLE" then pin=button end
+    elseif slot and FlightMapFrame and FlightMapFrame:IsShown() then
+        local map=FlightMapFrame
+        if self.hookedFlightMap~=map then
+            -- The map recycles these buttons when changing layers.
+            hooksecurefunc(map,"RefreshAllDataProviders",function() if A.Transport.taxiMapOpen then self:RefreshTaxiMarker() end end)
+            self.hookedFlightMap=map
+        end
+        for button in map:EnumeratePinsByTemplate("FlightMap_FlightPointPinTemplate") do
+            local data=button.taxiNodeData
+            if data and data.nodeID==node.id and data.state==1 and not data.isMapLayerTransition and button:IsShown() then pin=button;break end
+        end
+    end
+    local mark=self.taxiMarker
+    if not pin then if mark then mark:Hide() end;return end
+    if not mark then mark=taxiMarker(pin);self.taxiMarker=mark end
+    if mark:GetParent()~=pin then mark:SetParent(pin) end
+    mark:ClearAllPoints();mark:SetPoint("CENTER",pin,"CENTER")
+    mark:SetFrameLevel(pin:GetFrameLevel()+2)
+    mark.label:SetText(node.name or (TaxiNodeName and TaxiNodeName(slot)) or "下一站")
+    local r,g,b=A.UI:Accent()
+    mark.ring:SetVertexColor(r,g,b);mark.wave:SetVertexColor(r,g,b);mark.arrow:SetVertexColor(r,g,b)
+    mark:Show()
+    local reduce=C_CVar and C_CVar.GetCVarBool and C_CVar.GetCVarBool("cameraReduceUnexpectedMovement")
+    mark.wave:SetShown(not reduce)
+    if reduce then mark.pulse:Stop();mark.bob:Stop()
+    else
+        if not mark.pulse:IsPlaying() then mark.pulse:Play() end
+        if not mark.bob:IsPlaying() then mark.bob:Play() end
+    end
+end
+
 local function availableAction(action)
     local active=A.state.quests[action.questId]
     if action.kind=="accept" then return not active and not action.expected end
@@ -567,6 +627,7 @@ local function updateEdge(pin,pins)
 end
 
 function N:RefreshPins(force)
+    if A.Transport and A.Transport.taxiMapOpen then self:RefreshTaxiMarker() end
     self.waypointDisplay=self:SyncWaypointUI(force)
     self:DrawPins()
 end

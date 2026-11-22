@@ -88,8 +88,27 @@ function T:World()
     self:InvalidateSample()
     self.groundPosition,self.lastFlightTick=nil,nil
     self.taxiOrigin,self.taxiExpiry=nil,nil
-    self.taxiSelected=nil
+    self:CloseTaxiMap()
     self.taxiChoices,self.taxiRequest=nil,nil
+end
+
+function T:CloseTaxiMap()
+    self.taxiMapOpen,self.taxiSelected=nil,nil
+    if A.Navigation and A.Navigation.taxiMarker then A.Navigation.taxiMarker:Hide() end
+end
+
+function T:RestoreFlights(char)
+    local routes=type(char.flightRoutes)=="table" and char.flightRoutes or {}
+    for key,value in pairs(routes) do
+        local from,to
+        if type(key)=="string" then from,to=key:match("^(%d+):(%d+)$") end
+        if value~=true or not (from and A.FlightData.nodes[tonumber(from)] and A.FlightData.nodes[tonumber(to)]) then
+            routes[key]=nil
+        else
+            self.known["taxi:"..from],self.known["taxi:"..to]=true,true
+        end
+    end
+    char.flightRoutes,self.availability=routes,routes
 end
 
 function T:RefreshKnown(map,faction)
@@ -102,14 +121,24 @@ function T:RefreshKnown(map,faction)
     end
     local side=faction=="Alliance" and 2 or faction=="Horde" and 1
     self.taxiNames=self.taxiNames or {}
+    local discovered={}
     for _,id in ipairs(maps) do
         for _,node in ipairs(C_TaxiMap.GetTaxiNodesForMap(id) or {}) do
             if node.faction==0 or node.faction==side then
                 if type(node.name)=="string" then self.taxiNames[node.nodeID]=node.name end
-                if type(node.isUndiscovered)=="boolean" then
+                if type(node.isUndiscovered)=="boolean" and discovered[node.nodeID]==nil then
                     local key="taxi:"..node.nodeID
-                    self.known[key]=node.isUndiscovered==false
+                    discovered[node.nodeID]=not node.isUndiscovered
+                    self.known[key]=discovered[node.nodeID]
                 end
+            end
+        end
+    end
+    for key,available in pairs(self.availability) do
+        if available then
+            local from,to=key:match("^(%d+):(%d+)$")
+            if discovered[tonumber(from)]==false or discovered[tonumber(to)]==false then
+                self.availability[key],self.hops[key]=nil,nil
             end
         end
     end
@@ -132,6 +161,7 @@ end
 function T:PlannedFlight()
     local nav=A.Navigation
     if not nav or nav.manual and (type(nav.manual)~="table" or not nav.manual.actions) then return end
+    if not nav.manual and nav.RouteStatus and nav:RouteStatus(nav.plan,A.state) then return end
     nav=nav.Sequence and nav:Sequence() or nav
     for index=nav.index or 1,#(nav.actions or {}) do
         local action=nav.actions[index]
@@ -142,22 +172,26 @@ function T:PlannedFlight()
     end
 end
 
-function T:SelectTaxi(nodes,from)
-    if not A.ready or not A.settings or not A.settings.autoTaxi or not A.char or A.char.paused or
-        not A.state or A.state.dead or self.taxiSelected or self:InFlight() or type(TakeTaxiNode)~="function" or
-        InCombatLockdown and InCombatLockdown() or IsShiftKeyDown and IsShiftKeyDown() then return end
+function T:TaxiDestination()
+    local choices=self.taxiMapOpen and self.taxiChoices
+    if not choices or not A.ready or not A.char or A.char.paused or not A.state or A.state.dead or self:InFlight() then return end
     local action=self:PlannedFlight()
-    if not action or action.fromTaxi~=from then return end
-    for _,node in ipairs(nodes) do
-        if node.nodeID==action.toTaxi and node.state==1 and not node.isMapLayerTransition and
-            type(node.slotIndex)=="number" and node.slotIndex>0 and node.slotIndex%1==0 then
-            self.taxiSelected=true
-            self:RecordTaxi(node.slotIndex)
-            local ok,result=pcall(TakeTaxiNode,node.slotIndex)
-            if not ok then self.taxiRequest=nil end
-            return ok,result
-        end
+    if not action or action.fromTaxi~=choices.from then return end
+    for slot,node in pairs(choices.slots) do
+        if node.id==action.toTaxi then return slot,node end
     end
+end
+
+function T:SelectTaxi()
+    if not A.settings or not A.settings.autoTaxi or self.taxiSelected or type(TakeTaxiNode)~="function" or
+        InCombatLockdown and InCombatLockdown() or IsShiftKeyDown and IsShiftKeyDown() then return end
+    local slot=self:TaxiDestination()
+    if not slot then return end
+    self.taxiSelected=true
+    self:RecordTaxi(slot)
+    local ok,result=pcall(TakeTaxiNode,slot)
+    if not ok then self.taxiRequest=nil end
+    return ok,result
 end
 
 function T:RecordTaxi(slot)
@@ -171,7 +205,12 @@ function T:RecordTaxi(slot)
     end
 end
 
-function T:CaptureTaxi()
+function T:CaptureTaxi(refreshOnly,system)
+    self.taxiMapOpen=true
+    if not refreshOnly then
+        self.legacyTaxi=system==nil and not (FlightMapFrame and FlightMapFrame:IsShown()) or
+            system~=nil and Enum and Enum.UIMapSystem and system==Enum.UIMapSystem.Taxi
+    end
     self:SyncFlightSpeed(A.state)
     self.dirty=true
     self.taxiOrigin,self.taxiExpiry=nil,nil
@@ -184,17 +223,12 @@ function T:CaptureTaxi()
         if not node.isMapLayerTransition then
             if type(node.slotIndex)=="number" and node.slotIndex>0 then slots[node.slotIndex]=node.nodeID end
             if node.state==0 then from=node.nodeID end
-            if node.state==0 or node.state==1 then self.known["taxi:"..node.nodeID]=true end
         end
     end
     if from then
+        self.known["taxi:"..from]=true
         self.taxiChoices={from=from,at=GetTime(),slots={}}
         if self.taxiRequest and self.taxiRequest.from~=from then self.taxiRequest=nil end
-        for _,node in ipairs(nodes) do
-            if node.state==1 and not node.isMapLayerTransition and type(node.slotIndex)=="number" and node.slotIndex>0 and node.slotIndex%1==0 then
-                self.taxiChoices.slots[node.slotIndex]={id=node.nodeID,name=type(node.name)=="string" and node.name or nil}
-            end
-        end
         if not self.taxiHooked and hooksecurefunc and type(TakeTaxiNode)=="function" then
             hooksecurefunc("TakeTaxiNode",function(slot) self:RecordTaxi(slot) end);self.taxiHooked=true
         end
@@ -210,21 +244,27 @@ function T:CaptureTaxi()
         for key in pairs(self.availability) do
             if key:sub(1,#prefix)==prefix then self.availability[key]=nil;self.hops[key]=nil end
         end
+        local count=self.legacyTaxi and NumTaxiNodes and NumTaxiNodes()
         for _,node in ipairs(nodes) do
+            local slot=node.slotIndex
             if type(node.name)=="string" then self.taxiNames[node.nodeID]=node.name end
-            if node.nodeID~=from and not node.isMapLayerTransition then
+            if node.nodeID~=from and node.state==1 and not node.isMapLayerTransition and
+                type(slot)=="number" and slot>0 and slot%1==0 and (not count or slot<=count) and
+                (not self.legacyTaxi or not TaxiNodeGetType or TaxiNodeGetType(slot)=="REACHABLE") then
                 local key=prefix..node.nodeID
-                if node.state==1 or node.state==2 then self.availability[key]=node.state==1 end
-                if node.state==1 then self.hops[key]=taxiHops(from,node,slots,#nodes) end
+                self.taxiChoices.slots[slot]={id=node.nodeID,name=self.taxiNames[node.nodeID]}
+                self.known["taxi:"..node.nodeID]=true
+                self.availability[key]=true
+                self.hops[key]=taxiHops(from,node,slots,#nodes)
             end
         end
-        self:SelectTaxi(nodes,from)
+        if not refreshOnly then self:SelectTaxi() end
     else self.taxiRequest=nil
     end
 end
 
 function T:InvalidateFlights()
-    self.availability,self.hops,self.dirty={},{},true
+    self.hops,self.dirty={},true
     self.taxiOrigin,self.taxiExpiry=nil,nil
 end
 
@@ -250,19 +290,6 @@ function T:Snapshot(state)
     state.transportKnown,state.unlocked,state.taxiAvailability=true,{},{}
     for key,value in pairs(self.known) do state.unlocked[key]=value end
     for key,value in pairs(self.availability) do state.taxiAvailability[key]=value end
-    -- Discovered endpoints can use catalog connections before visiting a flight master.
-    -- An explicit unavailable result from the native flight map takes precedence.
-    if A.Flights and A.Flights.Matches(state) then
-        for _,path in pairs(A.FlightData.paths or {}) do
-            local from,to=path[1],path[2]
-            local source,dest=A.FlightData.nodes[from],A.FlightData.nodes[to]
-            local key=from..":"..to
-            if state.taxiAvailability[key]==nil and state.unlocked["taxi:"..from] and state.unlocked["taxi:"..to] and
-                source and dest and source.condition==0 and dest.condition==0 and source.visibility==0 and dest.visibility==0 then
-                state.taxiAvailability[key]=true
-            end
-        end
-    end
     state.taxiHops={};for key,value in pairs(self.hops) do state.taxiHops[key]=value end
     state.taxiNames={};for key,value in pairs(self.taxiNames or {}) do state.taxiNames[key]=value end
     for field,source in pairs({taxiDepartures=self.departures,taxiLandings=self.landings}) do

@@ -339,6 +339,7 @@ function A:Initialize()
     AiLevelingCharDB = type(AiLevelingCharDB)=="table" and AiLevelingCharDB or {}
     self:InitializeProfiles(AiLevelingDB,AiLevelingCharDB)
     self:NormalizeCharacter(self.char)
+    self.Transport:RestoreFlights(self.char)
     self.state = { revision = 0, completed = {}, quests = {} }
     self.UI:Create()
     self.QuestAssist:Create()
@@ -484,9 +485,15 @@ frame:SetScript("OnEvent", function(_, event, ...)
             if UnitLevel("player")~=A.state.level then A:RequestRefresh() end
         end
     elseif event=="TAXIMAP_OPENED" then
-        A.Transport:CaptureTaxi();A:RequestRefresh()
+        A.Transport:CaptureTaxi(false,...);A:RequestRefresh()
+        -- The game creates or repositions its node buttons during this same event.
+        C_Timer.After(0,function()
+            if not A.Transport.taxiMapOpen then return end
+            if not A.Transport.taxiChoices then A.Transport:CaptureTaxi(true);A:RequestRefresh() end
+            A.Navigation:RefreshTaxiMarker()
+        end)
     elseif event=="TAXIMAP_CLOSED" then
-        A.Transport.taxiSelected=nil
+        A.Transport:CloseTaxiMap()
     elseif event=="HEARTHSTONE_BOUND" then
         A.State:Position();A:RequestRefresh()
     elseif event == "BAG_OPEN" or event == "BAG_CLOSED" then
@@ -508,7 +515,10 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if A.Merchant then A.Merchant:Event(event) end
         if event=="TAXI_NODE_STATUS_CHANGED" or event=="PLAYER_ENTERING_WORLD" or event=="UPDATE_FACTION" then
             A.Transport.dirty=true
-            if event=="TAXI_NODE_STATUS_CHANGED" then A.Transport:InvalidateFlights() end
+            if event=="TAXI_NODE_STATUS_CHANGED" then
+                A.Transport:InvalidateFlights()
+                if A.Transport.taxiMapOpen then A.Transport:CaptureTaxi(true);A.Navigation:RefreshTaxiMarker() end
+            end
         end
         if event=="PLAYER_ENTERING_WORLD" then A.Instances:Request();A.Transport:World() end
         if (event=="SKILL_LINES_CHANGED" or event=="UPDATE_FACTION") and A.UI.Browser then

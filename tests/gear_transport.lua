@@ -95,11 +95,11 @@ end)
 test("飞行点已发现仍须尊重当前起点不可达",function()
     C_TaxiMap.GetAllTaxiNodes=function() return {{nodeID=1,state=0,slotIndex=1},{nodeID=5,state=2,slotIndex=2}} end
     B.Transport:CaptureTaxi();local s=snapshot();s.money=100
-    eq(s.unlocked["taxi:5"],true);eq(s.taxiAvailability["1:5"],false)
+    eq(s.unlocked["taxi:5"],true);eq(s.taxiAvailability["1:5"],nil)
     local key=B.Transport.Key(s)
     C_TaxiMap.GetAllTaxiNodes=function() return {{nodeID=1,state=0,slotIndex=1},{nodeID=5,state=1,slotIndex=2}} end
     B.Transport:CaptureTaxi();local fresh=snapshot();fresh.money=100
-    eq(s.taxiAvailability["1:5"],false)
+    eq(s.taxiAvailability["1:5"],nil)
 end)
 test("飞行地图切层图标不能当作实际飞行连接或询价",function()
     local calls=0;local original=TaxiNodeCost
