@@ -776,12 +776,7 @@ local function questTooltip(owner)
     if owner.detail then GameTooltip:AddLine(owner.detail,0.94,0.91,0.83,true)
     elseif owner.progress then GameTooltip:AddLine(owner.progress:GetText(),0.94,0.91,0.83,true) end
     if owner.metrics then GameTooltip:AddLine(owner.metrics,1,0.83,0.45,true) end
-    if owner.pickupAction then
-        local pickup=owner.pickupAction
-        local item=pickup.startItemId or pickup.position and pickup.position.startItemId
-        GameTooltip:AddLine(item and "左键：显示接任务物品" or "左键：导航到接取地点",1,1,1,true)
-    end
-    if owner.questId then GameTooltip:AddLine("右键：任务操作\nShift+左键：插入任务链接",1,1,1,true) end
+    if owner.questId then GameTooltip:AddLine("左键查看任务详情\n右键导航或选择任务操作\nShift+左键插入任务链接",1,1,1,true) end
     GameTooltip:Show()
 end
 
@@ -819,12 +814,12 @@ function UI:TrackerMenu(owner)
         elseif action and action.kind=="service" and action.serviceKind=="repair" then
             menu:CreateButton("忽略维修",function() A.Supplies:IgnoreRepair() end)
         elseif id then
+            local step=owner.mapAction or owner.pickupAction or owner.dungeonAction or owner.turnInAction
             local point=owner.mapAction and A.Navigation.Target and A.Navigation.Target(owner.mapAction)
             if point and C_Map and C_Map.OpenWorldMap then
                 menu:CreateButton("在地图上查看位置",function() C_Map.OpenWorldMap(point.map) end)
             end
             menu:CreateButton("导航到此任务",function()
-                local step=owner.mapAction or owner.pickupAction or owner.dungeonAction or owner.turnInAction
                 if step and A.Navigation:Navigate(step) then return end
                 if not A.Navigation:NavigateQuest(id) then self:QuestClick(id,"RightButton") end
             end):SetEnabled(not owner.deferred)
@@ -1055,13 +1050,14 @@ function UI:CreateTracker()
     T.questTitle:RegisterForClicks("LeftButtonUp","RightButtonUp")
     T.questTitle:SetScript("OnClick",function(_,mouse)
         if mouse=="RightButton" then self:TrackerMenu(T.questTitle)
+        elseif T.questTitle.questId then self:QuestClick(T.questTitle.questId,mouse)
         elseif T.model and T.model.dungeonName then
             if T.model.dungeonId then
                 self.Dungeon.selected=T.model.dungeonId;self.Browser:ClearSearch()
                 if self.Browser.dungeonDetail then self.Browser.dungeonDetail.showLoot=false end
             end
             self.details:Show();self:SelectTab(T.model.dungeonId and 4 or 1)
-        else self:QuestClick(T.questTitle.questId,mouse) end
+        end
     end)
     T.questTitle:SetScript("OnEnter",questTooltip)
     T.questTitle:SetScript("OnLeave",function() GameTooltip:Hide() end)
@@ -1174,9 +1170,14 @@ function UI:CreateTracker()
     local anchor=CreateFrame("Frame",nil,UIParent)
     self.navAnchor=anchor;anchor:SetSize(268,48);anchor:SetClampedToScreen(true)
     self:PlaceNavigation(true)
-    local nav=CreateFrame("Frame","AiLevelingNavigation",anchor)
+    local nav=CreateFrame("Button","AiLevelingNavigation",anchor)
     self.navFrame=nav;nav:SetPoint("BOTTOM",anchor,"BOTTOM")
     self:Movable(nav,"navigationPosition",anchor)
+    nav:SetScript("OnMouseDown",function(button) button.dragged=nil end)
+    nav:HookScript("OnDragStart",function(button) button.dragged=true end)
+    nav:SetScript("OnClick",function(button,mouse)
+        if not button.dragged then self:QuestClick(button.questId,mouse) end
+    end)
     nav:SetSize(268,48)
     if self.daylight then self:DaylightShell(nav,palette.navigation[4])
     else self:Rounded(nav,spacing.radius);nav:SetBackdropColor(unpack(palette.navigation));nav.material:Hide() end
@@ -1297,8 +1298,6 @@ function UI:TrackerRow(index,parent)
         if button=="RightButton" then self:TrackerMenu(row)
         elseif row.serviceStop then self:PickTrackerFlight(row.serviceStop)
         elseif row.dungeonId then self.Dungeon.selected=row.dungeonId;self.details:Show();self:SelectTab(4)
-        elseif row.pickupAction and not (IsModifiedClick and IsModifiedClick("CHATLINK")) and A.Navigation:Pickup(row.pickupAction) then
-            GameTooltip:Hide()
         else self:QuestClick(row.questId,button) end
     end)
     if index then T.rows[index]=row end
@@ -2230,6 +2229,7 @@ function UI:SetTrackerNavigation(distance,angle,unverified,action)
     if not self.navFrame then return end
     action=action or distance and A.Navigation:Current()
     local guide=action~=nil and not A.char.paused
+    self.navFrame.questId=guide and questVerbs[action.kind] and action.questId or nil
     local itemHeight=A.QuestAssist and A.QuestAssist:NavigationItems(action,guide) or 0
     self.navFrame:SetShown(guide or itemHeight>0)
     if not guide and itemHeight==0 then return end

@@ -132,16 +132,19 @@ function B:TaskRows(mode)
     local state=A.state
     local action=mode==1 and A.Navigation:Current()
     local currentId=action and action.questId
+    local requested=mode==1 and tonumber((A.UI.Plan.key or ""):match("^q:(%d+)$"))
     local currentLabel=A.char.paused and "已暂停" or A.char.locked and "已锁定" or
         A.char.taskBatch and "整组指引" or "推荐先做"
     local function add(choice,q)
         local id=choice.questId
-        if seen[id] or (state.completed or {})[id] and not state.quests[id] then return end
+        local complete=(state.completed or {})[id] and not state.quests[id]
+        if seen[id] then return end
+        if id~=requested and (complete or mode==1 and self:IsCareerChoice(choice)) then return end
         seen[id]=true
-        if mode==1 and self:IsCareerChoice(choice) then return end
-        local status=A.UI.QuestStatus(state,id,A.plan)
+        local status=complete and "已交付" or A.UI.QuestStatus(state,id,A.plan)
         local allowed,why,pre=true
         if q then allowed,why,pre=A.Eligibility.Check(q,state,A.Data) end
+        if complete then allowed,why,pre=false,nil,nil end
         if not allowed and status=="未接取" then status=why end
         local c=status=="可交付" and green or state.quests[id] and gold or allowed and blue or muted
         local meta={color(c,status)}
@@ -169,6 +172,11 @@ function B:TaskRows(mode)
         for _,c in ipairs(A.plan and A.plan.taskChoices or {}) do add(c) end
         local ids={};for id in pairs(state.quests or {}) do ids[#ids+1]=id end;table.sort(ids)
         for _,id in ipairs(ids) do add({id="task:"..id,questId=id,title=state.quests[id].title,kind="task",actions={}}) end
+        if requested and not seen[requested] then
+            local q=A.Data:GetQuest(requested,state)
+            add({id="task:"..requested,questId=requested,kind="task",actions={}},q)
+            if not q then rows[#rows].allowed=false;rows[#rows].reason="暂无这项任务的详细资料。" end
+        end
     else
         -- An unlock chain may start with a shared, unrestricted prerequisite.
         if mode==9 then
@@ -299,8 +307,6 @@ function B:Refresh(mode,reuse)
     local key=self.selection[mode]
     if mode==1 then
         key=A.UI.Plan.key
-        local id=key and key:match("task:(%d+)")
-        if id then key="q:"..id end
         if not key then for _,row in ipairs(rows) do if row.current then key=row.key;break end end end
     end
     if mode==4 and A.UI.Dungeon.selected then key=A.UI.Dungeon.selected end
@@ -358,11 +364,12 @@ function B:DrawRows(offset)
             row:RegisterForClicks("LeftButtonUp","RightButtonUp")
             row:SetScript("OnClick",function(f,button)
                 if button=="RightButton" and f.entry.questId then A.UI:TrackerMenu(f);return end
+                if f.entry.questId and IsModifiedClick and IsModifiedClick("CHATLINK") then A.UI:QuestClick(f.entry.questId,button);return end
                 self.message=nil
                 local previous=self.selected
                 self.selected=f.entry;self.selection[self.mode]=f.entry.key;self.info:SetVerticalScroll(0)
                 if self.mode==1 then
-                    A.UI.Plan.key=A.UI.Plan.Key(f.entry.choice or f.entry.dungeonCandidate)
+                    A.UI.Plan.key=f.entry.key
                     A.UI.Plan.preview=f.entry.choice
                 end
                 if self.mode==4 then A.UI.Dungeon.selected=f.entry.key end
@@ -444,7 +451,7 @@ function B:Detail()
         end,can)
         self:Action(2,"查看地下城",function() A.UI.Dungeon.selected=c.dungeonId;A.UI:SelectTab(4) end)
     elseif e.choice then
-        local q=e.q or A.Data:GetQuest(e.questId)
+        local q=e.q or A.Data:GetQuest(e.questId,A.state)
         self.title:SetText("|Hquest:"..e.questId..":0|h"..e.title.."|h")
         local timing=e.choice.executionTiming or e.choice.timing
         local status=e.sub
@@ -460,6 +467,18 @@ function B:Detail()
             lines[#lines+1]="前置  "..questLink(e.prerequisite,pre and pre.title or "任务 #"..e.prerequisite)
         end
         local active=(A.state.quests or {})[e.questId]
+        local db=A.Data.db and A.Data.db.Quest
+        if not active and db then
+            for _,text in ipairs(db.Get(e.questId,"objectivesText") or {}) do
+                if text~="" then lines[#lines+1]=text end
+            end
+            if q and #(e.choice.stages or {})==0 and A.Data.QuestContact then
+                local giver=A.Data:QuestContact(q.id,"startedBy")
+                local recipient=A.Data:QuestContact(q.id,"finishedBy")
+                if giver and giver.entityName then lines[#lines+1]=A.UI:Icon("accept",16).." 接取于 "..color(blue,giver.entityName) end
+                if recipient and recipient.entityName then lines[#lines+1]=A.UI:Icon("turnin",16).." 交付给 "..color(blue,recipient.entityName) end
+            end
+        end
         if active and active.objectives and #active.objectives>0 then
             self.goalHeading:ClearAllPoints();self.goalHeading:SetPoint("TOPLEFT",0,-detailTop);self.goalHeading:Show()
             detailTop=detailTop+self.goalHeading:GetStringHeight()+metrics.gap
@@ -764,8 +783,7 @@ function B:DungeonDetail(e)
             row:RegisterForClicks("LeftButtonUp","RightButtonUp")
             row:SetScript("OnClick",function(f,button)
                 if button=="RightButton" then A.UI:TrackerMenu(f)
-                elseif A.state.quests[f.questId] or IsModifiedClick and IsModifiedClick("CHATLINK") then A.UI:QuestClick(f.questId,button)
-                else A.UI.Chains:Focus(f.questId) end
+                else A.UI:QuestClick(f.questId,button) end
             end)
             row:HookScript("OnLeave",function(f) f:SetBackdropColor(0,0,0,0);GameTooltip:Hide() end)
             row:HookScript("OnEnter",function(f)

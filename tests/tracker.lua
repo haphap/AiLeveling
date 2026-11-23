@@ -141,6 +141,12 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     eq(T.rows[1].clicks[2],"RightButtonUp")
     T.rows[1].scripts.OnClick(nil,"LeftButton");eq(shown,2);eq(B.char.locked,nil)
     T.questTitle.scripts.OnClick(nil,"LeftButton");eq(shown,1);eq(B.char.locked,nil)
+    B.UI:SetTrackerNavigation(nil,nil,nil,B.action)
+    shown=nil;B.UI.navFrame.scripts.OnClick(B.UI.navFrame,"LeftButton");eq(shown,1)
+    local nav=B.UI.navFrame
+    nav.scripts.OnDragStart(nav);nav.scripts.OnDragStop(nav)
+    shown=nil;nav.scripts.OnClick(nav,"LeftButton");eq(shown,nil)
+    nav.scripts.OnMouseDown(nav);nav.scripts.OnClick(nav,"LeftButton");eq(shown,1)
     modified=true;T.rows[1].scripts.OnClick(nil,"LeftButton")
     eq(inserted,GetQuestLink(2));eq(opened,nil);eq(B.char.locked,nil)
     focused=false;T.questTitle.scripts.OnClick(nil,"LeftButton");eq(opened,GetQuestLink(1))
@@ -156,6 +162,21 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     local defer=B.menu["暂缓此任务"].callback
     T.rows[2].questId=1;defer();eq(B.char.skipped[3],true);eq(B.char.skipped[1],nil)
     eq(T.tools,nil)
+    B.finish()
+end)
+test("未列入行程的任务链接打开对应详情并保留当前路线",function()
+    local B=ready(true);local browser=B.UI.Browser
+    assert(loadfile("Planner/Eligibility.lua"))("AiLeveling",B)
+    B.state.quests[1]=nil;B.plan.taskChoices={};B.plan.taskOrder={}
+    B.Data.db={Quest={Get=function(id,key)
+        if id==1 and key=="objectivesText" then return {"把包裹送到旅店。"} end
+    end}}
+    C_QuestLog.GetLogIndexForQuestID=function() return 0 end
+    browser.infoChild.scripts.OnHyperlinkClick(browser.infoChild,"quest:1:0","测试任务","LeftButton")
+    eq(browser.selected.questId,1);assert(browser.detail.value:find("把包裹送到旅店。",1,true))
+    eq(B.UI.selectedTab,1);eq(B.Navigation.manual,nil);eq(B.char.locked,nil);eq(#B.plan.taskChoices,0)
+    B.state.completed[1]=true;B.state.revision=B.state.revision+1;B.UI:RefreshDetails()
+    eq(browser.selected.questId,1);assert(browser.selected.sub:find("已交付",1,true));eq(browser.selected.allowed,false)
     B.finish()
 end)
 test("后续任务按真实日志区分已接和未接且接取后更新进度",function()
@@ -275,19 +296,20 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
         inside={{action=inside}},after={}}}
     B.UI:RenderTracker();eq(T.model.nextId,5);eq(T.model.nextStep.kind,"accept")
     assert(T.thenButton.progress.value:find("入本前接取",1,true))
-    local oldMap,oldTarget,oldPickup=C_Map,B.Navigation.Target,B.Navigation.Pickup
+    local oldMap,oldTarget,oldNavigate=C_Map,B.Navigation.Target,B.Navigation.Navigate
     local opened,picked
     C_Map={GetMapInfo=function(id) if id==1435 then return {name="悲伤沼泽"} end end,
         OpenWorldMap=function(id) opened=id end}
     B.Navigation.Target=function(step) return step and step.position end
-    B.Navigation.Pickup=function(_,step) picked=step;return true end
+    B.Navigation.Navigate=function(_,step) picked=step;return true end
     outside.position={map=1435,x=0.2222,y=0.5023,entityName="塔特尔神父"}
     B.UI:RenderTracker()
     assert(T.thenButton.progress.value:find("悲伤沼泽 22.2，50.2",1,true))
     assert(T.thenButton.progress.value:find("入本前接取 · 塔特尔神父",1,true))
     T.thenButton.scripts.OnClick(nil,"RightButton");B.menu["在地图上查看位置"].callback();eq(opened,1435)
-    T.thenButton.scripts.OnClick(nil,"LeftButton");eq(picked,outside)
-    C_Map,B.Navigation.Target,B.Navigation.Pickup=oldMap,oldTarget,oldPickup
+    T.thenButton.scripts.OnClick(nil,"LeftButton");eq(B.UI.Browser.selected.questId,5);eq(picked,nil)
+    T.thenButton.scripts.OnClick(nil,"RightButton");B.menu["导航到此任务"].callback();eq(picked,outside)
+    C_Map,B.Navigation.Target,B.Navigation.Navigate=oldMap,oldTarget,oldNavigate
     local insideRow;for _,row in ipairs(T.rows) do if row.shown and row.questId==6 then insideRow=row end end
     assert(insideRow);assert(insideRow.progress.value:find("副本内接取",1,true))
     B.plan.taskBatch=nil;B.plan.taskChoices=choices
@@ -319,6 +341,8 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     T.rows[1].scripts.OnClick(nil,"LeftButton");eq(B.Navigation.manual,nil)
     IsModifiedClick=modified
     T.rows[1].scripts.OnClick(nil,"LeftButton")
+    eq(B.UI.Browser.selected.questId,4);eq(B.Navigation.manual,nil)
+    T.rows[1].scripts.OnClick(nil,"RightButton");B.menu["导航到此任务"].callback()
     eq(B.Navigation:Current(),starter);eq(B.Navigation:MapPoints()[1].position.entityName,"焦焚残骸")
     B.UI:RenderTracker();eq(T.model.questId,4);eq(T.model.destination,"焦焚残骸")
     eq(B.char.locked,1);eq(B.Navigation.actions[1],B.action)
@@ -331,7 +355,7 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     starter.position={map=1,x=0.5,y=0.5,startItemId=500};starter.text="使用「任务信件」接取任务。"
     local getQuest=B.Data.GetQuest
     B.Data.GetQuest=function(self,id) if id==4 then return {id=4,startedBy={{},{},{500}}} end;return getQuest(self,id) end
-    B.UI:RenderTracker();T.rows[1].scripts.OnClick(nil,"LeftButton");B.UI:RenderTracker()
+    B.UI:RenderTracker();T.rows[1].scripts.OnClick(nil,"RightButton");B.menu["导航到此任务"].callback();B.UI:RenderTracker()
     eq(B.Navigation:Current(),starter);eq(#B.Navigation:MapPoints(),0)
     eq(T.model.instruction,starter.text);eq(B.QuestAssist.wanted[1],500);eq(B.QuestAssist.requirements[1].kind,"start")
     B.state.quests[4]={objectives={}};eq(B.Navigation:Current(),B.action)

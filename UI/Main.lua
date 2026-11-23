@@ -588,18 +588,23 @@ function UI:QuestClick(id,button)
     end
     local index=C_QuestLog and C_QuestLog.GetLogIndexForQuestID and C_QuestLog.GetLogIndexForQuestID(id)
     if (not canaccessvalue or canaccessvalue(index)) and type(index)=="number" and index>0 and QuestMapFrame_OpenToQuestDetails then
+        self.details:Hide()
         QuestMapFrame_OpenToQuestDetails(id)
-    else
-        for _,candidate in ipairs(self.Plan.Rows(A.plan)) do
-            if candidate.questId==id then
-                local career=self.Browser:IsCareerChoice(candidate)
-                if career then self.Browser.selection[9]="q:"..id
-                else self.Plan.key=self.Plan.Key(candidate);self.Plan.message=nil end
-                self.Browser:ClearSearch();self.scroll:SetVerticalScroll(0);self.details:Show();self:SelectTab(career and 9 or 1)
-                return true
-            end
+        return true
+    end
+    local tab=1
+    for _,choice in ipairs(A.plan and A.plan.taskChoices or {}) do
+        if choice.questId==id then
+            if self.Browser:IsCareerChoice(choice) then tab=9 end
+            break
         end
-        self.details:Show();self.Chains:Focus(id)
+    end
+    local key="q:"..id
+    if tab==9 then self.Browser.selection[tab]=key else self.Plan.key=key end
+    self.Browser:ClearSearch();self.Browser.info:SetVerticalScroll(0)
+    self.details:Show();self:SelectTab(tab)
+    if tab==9 and not (self.Browser.selected and self.Browser.selected.questId==id) then
+        self.Plan.key=key;self:SelectTab(1)
     end
     return true
 end
