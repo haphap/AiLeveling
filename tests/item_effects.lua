@@ -26,7 +26,7 @@ end
 test("角树柄的常驻法伤在防骑背包和交付奖励比较中只计一次",function() native(function()
     local B,s=fixture()
     assert(loadfile("QuestAssist.lua"))("AiLeveling",B)
-    local raw={ITEM_MOD_STRENGTH_SHORT=6}
+    local raw={ITEM_MOD_STRENGTH_SHORT=6,ITEM_MOD_DAMAGE_PER_SECOND_SHORT=11.5}
     C_Item.GetItemInfo=function() return "角树柄","item:271664",2,33,0,nil,nil,1,"INVTYPE_WEAPON" end
     C_Item.GetItemStats=function() return raw end
     ITEM_SPELL_TRIGGER_ONEQUIP="装备："
@@ -34,12 +34,12 @@ test("角树柄的常驻法伤在防骑背包和交付奖励比较中只计一�
     TOOLTIP_ITEM_STAT_HOLY_DAMAGE_INCREASE="装备：使神圣法术和效果所造成的伤害提高最多%1$d点。"
     local lines={{type=0,leftText="装备：提高所有法术和魔法效果所造成的伤害和治疗效果，最多26点。"}}
     C_TooltipInfo.GetHyperlink=function() return {lines=lines} end
-    s.class,s.role,s.protectionTalents="PALADIN","DAMAGER",true
+    s.class,s.role,s.talentTree="PALADIN","DAMAGER",267
     local axe=B.Items:Read(271664)
-    eq(B.Gear.Score(axe,s),28.4);eq(raw.ITEM_MOD_SPELL_POWER_SHORT,nil);eq(#axe.effects,0)
+    eq(B.Gear.Score(axe,s),28.4+11.5*5.35);eq(raw.ITEM_MOD_SPELL_POWER_SHORT,nil);eq(#axe.effects,0)
     raw.ITEM_MOD_SPELL_POWER_SHORT=26;raw.ITEM_MOD_SPELL_DAMAGE_DONE_SHORT=26
-    eq(B.Gear.Score(B.Items:Read(271664),s),28.4)
-    local strength={id=100,usable=true,equipLoc="INVTYPE_WEAPON",stats={ITEM_MOD_STRENGTH_SHORT=12}}
+    eq(B.Gear.Score(B.Items:Read(271664),s),28.4+11.5*5.35)
+    local strength={id=100,usable=true,equipLoc="INVTYPE_WEAPON",stats={ITEM_MOD_STRENGTH_SHORT=12,ITEM_MOD_DAMAGE_PER_SECOND_SHORT=11.5}}
     s.equipment={[16]=strength,[17]={id=101,equipLoc="INVTYPE_SHIELD",stats={ITEM_MOD_STAMINA_SHORT=5}}}
     local best=B.QuestAssist.CompareRewards({strength,axe},s)
     eq(best.index,2);eq(best.upgrade.replacements[17],nil)
@@ -52,8 +52,8 @@ test("角树柄的常驻法伤在防骑背包和交付奖励比较中只计一�
     lines={{type=45,leftText="使神圣法术和效果所造成的伤害提高最多8点。"},
         {type=46,leftText="触发时增加26点法术强度"}}
     local holy=B.Items:Read(103);eq(B.Gear.Score(holy,s),8);eq(#holy.effects,1)
-    s.role="TANK";eq(B.Gear.Score(axe,s),28.4)
-    s.class="WARRIOR";assert(math.abs(B.Gear.Score(axe,s)-2.4)<0.0001)
+    s.role="TANK";eq(B.Gear.Score(axe,s),28.4+11.5*5.35)
+    s.class="WARRIOR";assert(math.abs(B.Gear.Score(axe,s)-(6+11.5*2.57))<0.0001)
 end) end)
 
 test("激流堡兜帽的命中等级进入防骑背包和奖励评分",function() native(function()
@@ -77,7 +77,7 @@ test("激流堡兜帽的命中等级进入防骑背包和奖励评分",function(
     s.equipment={[1]=hood}
     local bag=B.Gear.Upgrade(helm,s)
     eq(math.floor(bag.delta*100+0.5),1179)
-    s.role,s.protectionTalents="DAMAGER",true
+    s.role,s.talentTree="DAMAGER",267
     local reward=B.QuestAssist.CompareRewards({hood,helm},s)
     eq(reward.index,2);eq(reward.upgrade.delta,bag.delta)
 end) end)
@@ -108,8 +108,8 @@ test("装备提示逐行显示各专精的换装百分比，双栏位分别比�
     local data={lines={{type=0,leftText="头部"}}}
     link=helm.link;post(GameTooltip,data)
     assert(lines[2]:find("AILeveling 评分",1,true));eq(#lines,5)
-    assert(lines[3]:find("惩戒 +63%",1,true));assert(lines[4]:find("|cff78d973防骑 +79%",1,true))
-    assert(lines[5]:find("奶骑 +663%",1,true));eq(s.role,"TANK")
+    assert(lines[3]:find("惩戒 +348%",1,true));assert(lines[4]:find("|cff78d973防骑 +79%",1,true))
+    assert(lines[5]:find("奶骑 +157%",1,true));eq(s.role,"TANK")
     -- The bag slot changed before the next character snapshot.
     link="item:278567";lines={};post(GameTooltip,data);eq(#lines,0);eq(scans,0)
     local function ring(id,stamina)
@@ -119,6 +119,9 @@ test("装备提示逐行显示各专精的换装百分比，双栏位分别比�
     s.equipment={[11]=ring(1,10),[12]=ring(2,20)};s.bagEquipment={candidate};link=candidate.link
     post(GameTooltip,data)
     assert(lines[4]:find("|cff78d973#1 +50%",1,true));assert(lines[4]:find("|cffeb6b61#2 -25%",1,true))
+    s.equipment[11]=nil
+    B.state=setmetatable({},{__index=s});lines={};post(GameTooltip,data)
+    assert(lines[4]:find("#1 +15.00 分",1,true));assert(lines[4]:find("#2 -25%",1,true))
     lines={};post(ShoppingTooltip1,data);eq(#lines,0)
     B.settings.rewardAdvice=false;post(GameTooltip,data);eq(#lines,0)
 end) end)
@@ -128,18 +131,54 @@ test("自动评分采用已应用的防护天赋，切换配置及手动选择�
     local config,staged,spent,reads=1,false,15,0
     C_ClassTalents={GetActiveConfigID=function() return config end}
     C_Traits={ConfigHasStagedChanges=function() return staged end,GetConfigInfo=function() return {treeIDs={22}} end,
-        GetGroupDisplayInfoByTreeID=function() return {{groupID=8,skillLineID=267},{groupID=7},{groupID=9}} end,
+        GetGroupDisplayInfoByTreeID=function() return {{groupID=8,skillLineID=267},{groupID=7,skillLineID=184},{groupID=9,skillLineID=56}} end,
         GetGroupCurrencyInfo=function()
             reads=reads+1
-            return {{traitNodeGroupID=7,currencyInfos={{spent=10}}},{traitNodeGroupID=8,currencyInfos={{spent=spent}}}}
+            return {{traitNodeGroupID=7,currencyInfos={{spent=10}}},{traitNodeGroupID=8,currencyInfos={{spent=spent}}},{traitNodeGroupID=9,currencyInfos={{spent=0}}}}
         end}
-    s.class="PALADIN";s.protectionTalents=B.Talents:ProtectionMain();eq(select(3,B.Gear.Model(s)),"protection")
-    eq(B.Talents:ProtectionMain(),true);eq(reads,1)
-    B.Talents.protectionDirty=true;staged=true;spent=5;eq(B.Talents:ProtectionMain(),true);eq(reads,1)
-    staged=false;spent=10;eq(B.Talents:ProtectionMain(),false)
-    config=2;spent=20;eq(B.Talents:ProtectionMain(),true)
-    s.role="HEALER";eq(select(3,B.Gear.Model(s)),"healer")
+    s.class="PALADIN";s.talentTree=B.Talents:MainTree();eq(select(3,B.Gear.Model(s)),"prot_paladin")
+    eq(B.Talents:MainTree(),267);eq(reads,1)
+    B.Talents.treeDirty=true;staged=true;spent=5;eq(B.Talents:MainTree(),267);eq(reads,1)
+    staged=false;spent=10;eq(B.Talents:MainTree(),nil)
+    config=2;spent=20;eq(B.Talents:MainTree(),267)
+    s.role="HEALER";eq(select(3,B.Gear.Model(s)),"holy_paladin")
     s.role,s.damageStyle="DAMAGER","strength";eq(select(3,B.Gear.Model(s)),"strength")
+end) end)
+
+test("专精决定单系法伤、治疗与武器栏位的收益",function() native(function()
+    local B,s=fixture()
+    local function points(item) return math.floor(B.Gear.Score(item,s)*100+0.5) end
+    s.class,s.level,s.talentTree="MAGE",60,8
+    C_TooltipInfo.GetHyperlink=function() return {lines={
+        {type=45,leftText="提高火焰法术和效果所造成的伤害，最多12点。"},
+        {type=46,leftText="提高火焰法术和效果所造成的伤害，最多30点。"}}} end
+    local fire=B.Items:Read(1)
+    eq(points(fire),1152);s.talentTree=6;eq(points(fire),0)
+    s.class,s.talentTree="WARLOCK",355
+    local shadow={stats={ITEM_MOD_SHADOW_DAMAGE_DONE_SHORT=12}}
+    eq(points(shadow),1092);s.talentTree=593;eq(points(shadow),960)
+    s.class,s.talentTree="PRIEST",594
+    local mixed={stats={ITEM_MOD_SPELL_POWER_SHORT=10,ITEM_MOD_SPELL_HEALING_DONE_SHORT=15}}
+    eq(points(mixed),2500);s.talentTree=78;eq(points(mixed),1000)
+    s.class,s.talentTree="ROGUE",38
+    C_Item.GetItemInfo=function() return "短剑","item:2",2,30,1,nil,nil,1,"INVTYPE_WEAPON",nil,nil,2,15 end
+    C_Item.GetItemStats=function() return {} end
+    C_TooltipInfo.GetHyperlink=function() return {lines={{type=0,leftText="(每秒伤害10.0)"}}} end
+    local sword=B.Items:Read(2);eq(sword.weaponDPS,10)
+    eq(B.Gear.Score(sword,s,17),15);eq(points(sword),5310)
+    s.equipment={[16]={id=3,equipLoc="INVTYPE_WEAPONMAINHAND",weaponDPS=12,stats={}}}
+    s.bagEquipment={{id=4,usable=true,equipLoc="INVTYPE_SHIELD",stats={ITEM_MOD_AGILITY_SHORT=99}}}
+    assert(B.Gear.Upgrade(sword,s).delta<0)
+    s.class,s.talentTree="DRUID",134
+    eq(select(3,B.Gear.Model(s)),"feral_cat")
+    s.role="TANK";eq(select(3,B.Gear.Model(s)),"feral_bear")
+    eq(points({stats={ITEM_MOD_PARRY_RATING_SHORT=20,ITEM_MOD_BLOCK_RATING_SHORT=5}}),0)
+    local old={id=5,link="item:5:old",equipLoc="INVTYPE_HEAD",stats={ITEM_MOD_AGILITY_SHORT=5},usable=true}
+    local improved={id=5,link="item:5:new",equipLoc="INVTYPE_HEAD",stats={ITEM_MOD_AGILITY_SHORT=10},usable=true}
+    s.equipment={[1]=old};s.bagEquipment={old};s.bags={[5]=1}
+    B.indexReady=true;B.Gear:ScanBagOffers(s)
+    s.bagEquipment[2]=improved;s.bags[5]=2;B.Gear:ScanBagOffers(s)
+    eq(B.Gear.BagUpgrade(s).item.link,improved.link)
 end) end)
 
 test("原生装备后被动触发进入新旧装备效果比较且不重复附加数据库说明",function() native(function()

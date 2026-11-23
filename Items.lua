@@ -16,9 +16,15 @@ end
 -- Forever also renders some permanent item stats as localized Equip lines.
 local spellStats={TOOLTIP_ITEM_STAT_SPELL_POWER_INCREASE="ITEM_MOD_SPELL_POWER_SHORT",
     TOOLTIP_ITEM_STAT_SPELL_DAMAGE_INCREASE="ITEM_MOD_SPELL_DAMAGE_DONE_SHORT",
-    TOOLTIP_ITEM_STAT_HOLY_DAMAGE_INCREASE="ITEM_MOD_HOLY_DAMAGE_DONE_SHORT",
+    TOOLTIP_ITEM_STAT_HEALING_INCREASE="ITEM_MOD_SPELL_HEALING_DONE_SHORT",
     ITEM_MOD_SPELL_POWER="ITEM_MOD_SPELL_POWER_SHORT",ITEM_MOD_SPELL_DAMAGE_DONE="ITEM_MOD_SPELL_DAMAGE_DONE_SHORT",
-    ITEM_MOD_HOLY_DAMAGE_DONE="ITEM_MOD_HOLY_DAMAGE_DONE_SHORT"}
+    ITEM_MOD_SPELL_HEALING_DONE="ITEM_MOD_SPELL_HEALING_DONE_SHORT"}
+local schools={["神圣"]="HOLY",["火焰"]="FIRE",["冰霜"]="FROST",["自然"]="NATURE",["暗影"]="SHADOW",["奥术"]="ARCANE"}
+for _,school in pairs(schools) do
+    local stat="ITEM_MOD_"..school.."_DAMAGE_DONE_SHORT"
+    spellStats["TOOLTIP_ITEM_STAT_"..school.."_DAMAGE_INCREASE"]=stat
+    spellStats["ITEM_MOD_"..school.."_DAMAGE_DONE"]=stat
+end
 local function equipBody(text)
     local prefix=ITEM_SPELL_TRIGGER_ONEQUIP
     if prefix and text:sub(1,#prefix)==prefix then text=text:sub(#prefix+1) end
@@ -32,8 +38,11 @@ local function tooltipSpellStat(text)
     if text:match("^提高所有法术和魔法效果所造成的伤害和治疗效果，最多%s*%d+%s*点。$") then
         return "ITEM_MOD_SPELL_POWER_SHORT",tonumber(amount)
     end
-    if text:match("^提高神圣法术和效果所造成的伤害，最多%s*%d+%s*点。$") then
-        return "ITEM_MOD_HOLY_DAMAGE_DONE_SHORT",tonumber(amount)
+    local school=text:match("^提高(.-)法术和效果所造成的伤害，最多%s*%d+%s*点。$")
+        or text:match("^使(.-)法术和效果所造成的伤害提高最多%s*%d+%s*点。$")
+    if schools[school] then return "ITEM_MOD_"..schools[school].."_DAMAGE_DONE_SHORT",tonumber(amount) end
+    if text:match("^提高法术所造成的治疗效果，最多%s*%d+%s*点。$") then
+        return "ITEM_MOD_SPELL_HEALING_DONE_SHORT",tonumber(amount)
     end
     for key,stat in pairs(spellStats) do
         local template=_G[key]
@@ -41,6 +50,14 @@ local function tooltipSpellStat(text)
             return stat,tonumber(amount)
         end
     end
+end
+
+local function tooltipDPS(text)
+    local body=text:match("^%s*%((.-)%)%s*$") or text:match("^%s*（(.-)）%s*$") or text
+    local value=body:match("^%s*([%d%.,]+)%s*每秒伤害%s*$") or body:match("^%s*每秒伤害%s*([%d%.,]+)%s*$")
+        or body:match("^%s*([%d%.,]+)%s*每秒傷害%s*$") or body:match("^%s*每秒傷害%s*([%d%.,]+)%s*$")
+        or body:match("^%s*([%d%.,]+)%s+damage per second%s*$")
+    return value and tonumber((value:gsub(",",".")))
 end
 
 local function effects(item,link,displayed)
@@ -65,6 +82,9 @@ local function effects(item,link,displayed)
                 else
                     local text=type(line.leftText)=="string" and line.leftText:gsub("|c%x%x%x%x%x%x%x%x",""):gsub("|r","") or ""
                     local equip=types.ItemSpellTriggerOnEquip and line.type==types.ItemSpellTriggerOnEquip
+                    if item.classID==2 and not item.weaponDPS and not (item.stats and item.stats.ITEM_MOD_DAMAGE_PER_SECOND_SHORT) then
+                        item.weaponDPS=tooltipDPS(text)
+                    end
                     if equip or ITEM_SPELL_TRIGGER_ONEQUIP and text:sub(1,#ITEM_SPELL_TRIGGER_ONEQUIP)==ITEM_SPELL_TRIGGER_ONEQUIP then
                         local stat,amount=tooltipSpellStat(text)
                         if stat then flat[stat]=(flat[stat] or 0)+amount end
@@ -78,13 +98,15 @@ local function effects(item,link,displayed)
         if ok and result then item.effects=result else item.effectsPending=true end
     end
     if item.stats and next(flat) then
-        local power=flat.ITEM_MOD_SPELL_POWER_SHORT
-        if power then
-            flat.ITEM_MOD_SPELL_DAMAGE_DONE_SHORT=power+(flat.ITEM_MOD_SPELL_DAMAGE_DONE_SHORT or 0)
-            flat.ITEM_MOD_SPELL_HEALING_DONE_SHORT=power
-        end
         local stats={}
         for key,value in pairs(item.stats) do stats[key]=value end
+        -- Some clients mirror the displayed all-spells Equip bonus into the component fields.
+        local power=flat.ITEM_MOD_SPELL_POWER_SHORT
+        if power then
+            for _,key in ipairs({"ITEM_MOD_SPELL_DAMAGE_DONE_SHORT","ITEM_MOD_SPELL_HEALING_DONE_SHORT"}) do
+                if stats[key]==power+(flat[key] or 0) then stats[key]=flat[key] end
+            end
+        end
         for key,value in pairs(flat) do stats[key]=math.max(stats[key] or 0,value) end
         item.stats=stats
     end
@@ -95,8 +117,8 @@ local function effects(item,link,displayed)
     if covered then
         for stat,amount in pairs(record.stats) do
             local value=item.stats and item.stats["ITEM_MOD_"..stat.."_SHORT"]
-            if not value and (stat=="SPELL_DAMAGE_DONE" or stat=="SPELL_HEALING_DONE") then
-                value=item.stats and item.stats.ITEM_MOD_SPELL_POWER_SHORT
+            if item.stats and (stat=="SPELL_DAMAGE_DONE" or stat=="SPELL_HEALING_DONE") then
+                value=(value or 0)+(item.stats.ITEM_MOD_SPELL_POWER_SHORT or 0)
             end
             if type(value)~="number" or value~=value or value<amount then covered=false;break end
         end
@@ -153,7 +175,7 @@ end
 
 function I.Key(item)
     local parts={"item:"..tostring(item.link or item.id),"pending:"..tostring(item.pending),
-        "usable:"..tostring(item.usable),"effectsPending:"..tostring(item.effectsPending)}
+        "usable:"..tostring(item.usable),"effectsPending:"..tostring(item.effectsPending),"weaponDPS:"..tostring(item.weaponDPS)}
     for key,value in pairs(item.stats or {}) do parts[#parts+1]=key.."="..tostring(value) end
     for _,effect in ipairs(item.effects or {}) do parts[#parts+1]=effect.kind..":"..effect.text end
     table.sort(parts)

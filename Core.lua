@@ -495,11 +495,8 @@ frame:SetScript("OnEvent", function(_, event, ...)
             A.Navigation:RefreshTaxiMarker()
         end)
     elseif event=="TRAIT_CONFIG_UPDATED" or event=="ACTIVE_COMBAT_CONFIG_CHANGED" then
-        if A.state.class=="PALADIN" then
-            A.Talents.protectionDirty=true
-            if A.state.role=="DAMAGER" and A.state.damageStyle=="auto" and
-                (A.Talents:ProtectionMain() or false)~=A.state.protectionTalents then A:RequestRefresh() end
-        end
+        A.Talents.treeDirty=true
+        if A.Talents:MainTree()~=A.state.talentTree then A:RequestRefresh() end
     elseif event=="TAXIMAP_CLOSED" then
         A.Transport:CloseTaxiMap()
     elseif event=="HEARTHSTONE_BOUND" then

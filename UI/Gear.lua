@@ -9,63 +9,48 @@ local function bagItem(state,key,link)
     end
 end
 
--- Specs sharing an AILeveling model can reuse the same comparison.
-local specModels={
-    PALADIN={{"strength","惩戒"},{"tank","防骑"},{"healer","奶骑"}},
-    WARRIOR={{"strength","武器","狂暴"},{"tank","防战"}},
-    PRIEST={{"caster","暗牧"},{"healer","戒律","神牧"}},
-    DRUID={{"caster","鸟德"},{"agility","猫德"},{"tank","熊德"},{"healer","奶德"}},
-    SHAMAN={{"caster","元素"},{"agility","增强"},{"healer","奶萨"}},
-    HUNTER={{"ranged","兽王","射击","生存"}},
-    ROGUE={{"agility","奇袭","战斗","敏锐"}},
-    MAGE={{"caster","奥法","火法","冰法"}},
-    WARLOCK={{"caster","痛苦","恶魔","毁灭"}},
-}
-local function percent(upgrade)
-    if not upgrade or upgrade.provisional or upgrade.oldScore<=0 then return end
-    local change=upgrade.delta*100/upgrade.oldScore
-    local rounded=change<0 and math.ceil(change-0.5) or math.floor(change+0.5)
-    return math.max(-999,math.min(999,rounded))
-end
-
-local function percentageText(p,label)
-    local color=p>0 and "78d973" or p<0 and "eb6b61" or "a8adbd"
-    return string.format("|cff%s%s%+d%%|r",color,label,p)
+local function comparison(upgrade,label)
+    if not upgrade or upgrade.provisional then return end
+    local delta=upgrade.delta
+    local color=delta>0 and "78d973" or delta<0 and "eb6b61" or "a8adbd"
+    local text
+    if upgrade.oldScore==0 then
+        if delta==0 then return end
+        text=string.format("%+.2f 分",delta)
+    else
+        local p=delta*100/upgrade.oldScore
+        if p~=0 and math.abs(p)<0.5 then text=p>0 and "+<1%" or "−<1%"
+        else text=string.format("%+d%%",p<0 and math.ceil(p-0.5) or math.floor(p+0.5)) end
+    end
+    return "|cff"..color..label..text.."|r",delta~=0
 end
 
 local function scoreRows(item,state)
     local rows,changed={},false
     local view=setmetatable({},{__index=state})
     local paired=item.equipLoc=="INVTYPE_FINGER" or item.equipLoc=="INVTYPE_TRINKET"
-    for _,group in ipairs(specModels[state.class] or {}) do
-        local model=group[1]
-        view.role=model=="tank" and "TANK" or model=="healer" and "HEALER" or "DAMAGER"
-        view.damageStyle=model
-        local p,parts
+    for _,spec in ipairs(A.GearSpecs[state.class] or {}) do
+        view.gearSpec=spec
+        view.role=spec.role=="tank" and "TANK" or spec.role=="healer" and "HEALER" or "DAMAGER"
+        local row,changes
         if paired then
-            parts={}
+            local parts={}
             for index,slot in ipairs(A.Gear.Slots(item,view)) do
-                if state.equipment[slot] then
-                    local change=percent(A.Gear.Loadout({[slot]=item},view))
-                    if change then
-                        parts[#parts+1]=percentageText(change,"#"..index.." ")
-                        changed=changed or change~=0
-                    end
-                end
+                local text,different=comparison(A.Gear.Loadout({[slot]=item},view),"#"..index.." ")
+                if text then parts[#parts+1]=text end
+                changes=changes or different
             end
+            if #parts>0 then row=spec.label.."  "..table.concat(parts," · ") end
         else
-            p=percent(A.Gear.Upgrade(item,view))
-            changed=changed or (p~=nil and p~=0)
+            row,changes=comparison(A.Gear.Upgrade(item,view),spec.label.." ")
         end
-        for i=2,#group do
-            if p then rows[#rows+1]=percentageText(p,group[i].." ")
-            elseif parts and #parts>0 then rows[#rows+1]=group[i].."  "..table.concat(parts," · ") end
-        end
+        if row then rows[#rows+1]=row end
+        changed=changed or changes
     end
     if changed then return rows end
 end
 
-local lastBagItem,lastRows
+local lastBagItem,lastState,lastRows
 local function addScore(tip,data)
     if tip~=GameTooltip then return end
     local state=A.state
@@ -84,11 +69,11 @@ local function addScore(tip,data)
     local item=bag or A.Items:Read(id,link,data)
     if item.pending or #A.Gear.Slots(item,state)==0 then return end
     local rows
-    if bag and bag==lastBagItem then rows=lastRows
+    if bag and bag==lastBagItem and state==lastState then rows=lastRows
     else
         if key and not bag then item.instanceKey=key end
         rows=scoreRows(item,state)
-        if bag then lastBagItem,lastRows=bag,rows end
+        if bag then lastBagItem,lastState,lastRows=bag,state,rows end
     end
     if not rows then return end
     tip:AddLine(" ")

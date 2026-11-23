@@ -3,37 +3,37 @@ A.Talents={}
 local T=A.Talents
 
 -- Read the three point totals used by the Forever talent headers, once per active configuration change.
-function T:ProtectionMain()
+function T:MainTree()
     local config=C_ClassTalents and C_ClassTalents.GetActiveConfigID and C_ClassTalents.GetActiveConfigID()
     if not config or not C_Traits or not C_Traits.GetGroupCurrencyInfo then return end
-    if self.protectionConfig==config and not self.protectionDirty then return self.protectionMain end
-    if C_Traits.ConfigHasStagedChanges and C_Traits.ConfigHasStagedChanges(config) then
-        return self.protectionConfig==config and self.protectionMain
+    local previous
+    if self.appliedConfig==config then
+        previous=self.appliedTree
+        if not self.treeDirty then return previous end
     end
+    if C_Traits.ConfigHasStagedChanges and C_Traits.ConfigHasStagedChanges(config) then return previous end
     local info=C_Traits.GetConfigInfo(config)
     local tree=info and info.treeIDs and info.treeIDs[1]
     local groups=tree and C_Traits.GetGroupDisplayInfoByTreeID(tree)
-    if not groups or #groups~=3 then return end
-    local ids,protection={},nil
-    for _,group in ipairs(groups) do
-        ids[#ids+1]=group.groupID
-        if group.skillLineID==267 then protection=group.groupID end
-    end
-    if not protection then
-        table.sort(groups,function(a,b) return a.orderIndex<b.orderIndex end)
-        protection=groups[2].groupID
+    if not groups or #groups~=3 then return previous end
+    local ids,skills={},{}
+    for i,group in ipairs(groups) do
+        if not group.groupID or not group.skillLineID then return previous end
+        ids[i],skills[group.groupID]=group.groupID,group.skillLineID
     end
     local points=C_Traits.GetGroupCurrencyInfo(config,ids)
-    if not points or #points==0 then return end
-    local defensive,other=0,0
+    if not points or #points==0 then return previous end
+    local highest,main=0,nil
     for _,group in ipairs(points) do
-        local currency=group.currencyInfos[1]
+        local currency=group.currencyInfos and group.currencyInfos[1]
         local spent=currency and currency.spent or 0
-        if group.traitNodeGroupID==protection then defensive=spent else other=math.max(other,spent) end
+        local skill=skills[group.traitNodeGroupID]
+        if type(spent)~="number" or not skill then return previous end
+        if spent>highest then highest,main=spent,skill
+        elseif spent==highest then main=nil end
     end
-    self.protectionConfig,self.protectionDirty=config,false
-    self.protectionMain=defensive>other
-    return self.protectionMain
+    self.appliedConfig,self.appliedTree,self.treeDirty=config,main,false
+    return main
 end
 
 function T:Plans()

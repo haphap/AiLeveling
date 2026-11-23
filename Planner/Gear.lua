@@ -11,31 +11,62 @@ local weights = {
     tank={STAMINA=1,STRENGTH=0.4,AGILITY=0.4,DEFENSE_SKILL_RATING=1,DODGE_RATING=1,BLOCK_RATING=1},
     hybrid={STRENGTH=0.5,AGILITY=0.5,INTELLECT=0.5,STAMINA=0.25,SPIRIT=0.25},
 }
--- The Forever item API returns hit rating (Stromgarde Hood: 5), not tooltip percent (0.5).
-weights.protection={SPELL_POWER=1,HOLY_DAMAGE_DONE=1,HIT_RATING=0.77}
-for stat,weight in pairs(weights.tank) do weights.protection[stat]=weight end
+weights.strength.MAIN_DPS,weights.agility.MAIN_DPS,weights.ranged.RANGED_DPS,weights.tank.ARMOR=3,3,3,0.02
 local default = {WARRIOR="strength",PALADIN="hybrid",ROGUE="agility",HUNTER="ranged",MAGE="caster",
     PRIEST="caster",WARLOCK="caster",DRUID="hybrid",SHAMAN="hybrid"}
-local labels={strength="近战力量",agility="近战敏捷",ranged="远程物理",caster="施法输出",healer="治疗续航",tank="坦克生存",protection="防护圣骑士 · 生存与法伤",hybrid="混合属性"}
+local labels={strength="近战力量",agility="近战敏捷",ranged="远程物理",caster="施法输出",healer="治疗续航",tank="坦克生存",hybrid="混合属性"}
 local slots={INVTYPE_HEAD={1},INVTYPE_NECK={2},INVTYPE_SHOULDER={3},INVTYPE_BODY={4},INVTYPE_CHEST={5},INVTYPE_ROBE={5},
     INVTYPE_WAIST={6},INVTYPE_LEGS={7},INVTYPE_FEET={8},INVTYPE_WRIST={9},INVTYPE_HAND={10},INVTYPE_FINGER={11,12},
     INVTYPE_TRINKET={13,14},INVTYPE_CLOAK={15},INVTYPE_WEAPONMAINHAND={16},INVTYPE_WEAPONOFFHAND={17},
     INVTYPE_SHIELD={17},INVTYPE_HOLDABLE={17},INVTYPE_RANGED={18},INVTYPE_RANGEDRIGHT={18},INVTYPE_THROWN={18},INVTYPE_RELIC={18},INVTYPE_TABARD={19}}
 
+local function selectedSpec(state)
+    if state.gearSpec then return state.gearSpec end
+    local role=state.role=="TANK" and "tank" or state.role=="HEALER" and "healer"
+    if not role and state.damageStyle and state.damageStyle~="auto" then return end
+    local roleDefault,matches=nil,0
+    for _,spec in ipairs(A.GearSpecs and A.GearSpecs[state.class] or {}) do
+        if not role or role==spec.role then
+            if spec.tree==state.talentTree then return spec end
+            if role then roleDefault,matches=spec,matches+1 end
+        end
+    end
+    if matches==1 then return roleDefault end
+end
+
+local function levelWeights(spec,level)
+    if not level or level>=60 then return spec.weights end
+    if spec.lastLevel==level then return spec.levelWeights end
+    local f=math.min(1,(60-level)/30)
+    local w={}
+    for stat,weight in pairs(spec.weights) do w[stat]=weight end
+    if w.HIT_RATING and spec.key~="prot_paladin" then w.HIT_RATING=w.HIT_RATING*(1-0.5*f) end
+    if w.EXPERTISE_RATING then w.EXPERTISE_RATING=w.EXPERTISE_RATING*(1-0.5*f) end
+    if spec.role~="tank" then w.STAMINA=w.STAMINA+math.max(0,0.4-w.STAMINA)*f end
+    if spec.role=="caster" or spec.role=="healer" then
+        local spirit=w.SPIRIT or 0
+        w.SPIRIT=spirit+math.max(0,0.2-spirit)*f
+    end
+    spec.lastLevel,spec.levelWeights=level,w
+    return w
+end
+
 function G.Model(state)
+    local spec=selectedSpec(state)
+    if spec then return levelWeights(spec,state.level),spec.label,spec.key end
     local style=state.damageStyle or "auto"
     local key=state.role=="HEALER" and "healer" or state.role=="TANK" and "tank" or
         (style~="auto" and style or default[state.class])
-    if state.class=="PALADIN" and (key=="tank" or state.role=="DAMAGER" and style=="auto" and state.protectionTalents) then key="protection" end
     return weights[key],labels[key],key
 end
 
-local function physicalWeapon(item,state)
-    local _,_,key=G.Model(state)
+local function weaponWeight(item,model,slot)
     local loc=item.equipLoc
-    return key=="ranged" and (loc=="INVTYPE_RANGED" or loc=="INVTYPE_RANGEDRIGHT") or
-        (key=="strength" or key=="agility") and (loc=="INVTYPE_WEAPON" or loc=="INVTYPE_WEAPONMAINHAND" or
-            loc=="INVTYPE_WEAPONOFFHAND" or loc=="INVTYPE_2HWEAPON")
+    if loc=="INVTYPE_RANGED" or loc=="INVTYPE_RANGEDRIGHT" or loc=="INVTYPE_THROWN" then return model.RANGED_DPS end
+    if loc=="INVTYPE_WEAPON" or loc=="INVTYPE_2HWEAPON" or loc=="INVTYPE_WEAPONMAINHAND" or loc=="INVTYPE_WEAPONOFFHAND" then
+        if slot==17 or loc=="INVTYPE_WEAPONOFFHAND" then return model.OFF_DPS or (model.MAIN_DPS and model.MAIN_DPS*0.5) end
+        return model.MAIN_DPS
+    end
 end
 
 function G.WeaponSkill(item,state)
@@ -46,8 +77,8 @@ function G.WeaponSkill(item,state)
     return reference,reference and (state.weaponSkills or {})[reference.skill],true
 end
 
-local function skillNote(item,old,state)
-    if not physicalWeapon(item,state) then return end
+local function skillNote(item,old,state,model,slot)
+    if not weaponWeight(item,model,slot) then return end
     local reference,skill,enabled=G.WeaponSkill(item,state)
     if not enabled then return end
     if not reference then return "在技能面板查看武器熟练度。" end
@@ -55,7 +86,7 @@ local function skillNote(item,old,state)
     if previous and previous.skill==reference.skill then return end
     if not skill then return reference.name.."熟练度：在技能面板查看。" end
     local effective=skill.rank+skill.modifier+skill.tempPoints
-    if old and physicalWeapon(old,state) and not previousSkill then return "在技能面板查看当前武器熟练度。" end
+    if old and weaponWeight(old,model,slot) and not previousSkill then return "在技能面板查看当前武器熟练度。" end
     local before=previousSkill and previousSkill.rank+previousSkill.modifier+previousSkill.tempPoints or skill.maxRank
     if effective<before then
         return string.format("%s熟练度 %d/%d（有效 %d），低于%s %d；换装后需先练习。",
@@ -63,21 +94,23 @@ local function skillNote(item,old,state)
     end
 end
 
-function G.Score(item,state)
-    if not item or not item.stats then return nil end
-    local model,_,key=G.Model(state)
-    if not model then return nil end
+local function scoreItem(item,model,slot)
+    if not item or not item.stats or not model then return end
     local stats,score=item.stats,0
     for stat,weight in pairs(model) do
         local value=stats["ITEM_MOD_"..stat.."_SHORT"] or 0
-        if stat=="SPELL_POWER" then value=stats.ITEM_MOD_SPELL_DAMAGE_DONE_SHORT or value end
-        if stat=="HEALING" then value=stats.ITEM_MOD_SPELL_HEALING_DONE_SHORT or stats.ITEM_MOD_SPELL_POWER_SHORT or 0 end
+        if stat=="SPELL_POWER" then value=value+(stats.ITEM_MOD_SPELL_DAMAGE_DONE_SHORT or 0) end
+        if stat=="HEALING" then value=(stats.ITEM_MOD_SPELL_HEALING_DONE_SHORT or 0)+(stats.ITEM_MOD_SPELL_POWER_SHORT or 0) end
+        if stat=="ARMOR" then value=stats.RESISTANCE0_NAME or stats.ITEM_MOD_ARMOR_SHORT or 0 end
         score=score+value*weight
     end
-    if key=="tank" or key=="protection" then score=score+(stats.RESISTANCE0_NAME or stats.ITEM_MOD_ARMOR_SHORT or 0)*0.02 end
-    local dps=item.weaponDPS or stats.ITEM_MOD_DAMAGE_PER_SECOND_SHORT
-    if dps and physicalWeapon(item,state) then score=score+dps*3 end
+    local dps=stats.ITEM_MOD_DAMAGE_PER_SECOND_SHORT or item.weaponDPS
+    if dps then score=score+dps*(weaponWeight(item,model,slot) or 0) end
     return score
+end
+
+function G.Score(item,state,slot)
+    return scoreItem(item,G.Model(state),slot)
 end
 
 function G.Usable(item,state)
@@ -105,15 +138,17 @@ function G.Slots(item,state)
     return slots[item.equipLoc] or (item.slot and {item.slot}) or {}
 end
 
-function G.Compare(candidate,equipped,state)
+function G.Compare(candidate,equipped,state,slot)
     local ok,reason=G.Usable(candidate,state)
     if not ok then return nil,reason end
-    local new,old=G.Score(candidate,state),equipped and G.Score(equipped,state) or 0
+    local new,old=G.Score(candidate,state,slot),G.Score(equipped,state,slot)
+    if not equipped then old=0 end
     if not new or old==nil then return nil,"装备属性加载中" end
     return {delta=new-old,qualitative=true,label="属性评分变化"}
 end
 
 function G.Loadout(replacements,state)
+    local model,_,key=G.Model(state)
     local after,removed,added,setUnknown={},0,0
     for slot,item in pairs(state.equipment) do
         if item.pending then return nil,"当前装备属性加载中" end
@@ -122,14 +157,14 @@ function G.Loadout(replacements,state)
     end
     for slot,item in pairs(replacements) do
         if after[slot] then
-            local score=G.Score(after[slot],state)
+            local score=scoreItem(after[slot],model,slot)
             if not score then return nil,"当前装备属性加载中" end
             removed=removed+score
         end
         if item~=false then
             local ok,reason=G.Usable(item,state)
             if not ok then return nil,reason end
-            local score=G.Score(item,state)
+            local score=scoreItem(item,model,slot)
             if not score then return nil,"候选装备属性加载中" end
             added=added+score
             if item.setUnknown then setUnknown=true end
@@ -154,7 +189,7 @@ function G.Loadout(replacements,state)
     end
     local notes,sets={},{}
     if replacements[17]~=nil and state.equipment[17] and state.equipment[17].equipLoc=="INVTYPE_SHIELD" and
-        not (after[17] and after[17].equipLoc=="INVTYPE_SHIELD") and select(3,G.Model(state))=="protection" then
+        not (after[17] and after[17].equipLoc=="INVTYPE_SHIELD") and (key=="prot_paladin" or key=="prot_warrior") then
         notes[#notes+1]="换装会卸下盾牌，失去格挡"
     end
     if setUnknown then notes[#notes+1]="查看套装效果" end
@@ -176,7 +211,7 @@ function G.Loadout(replacements,state)
         if old~=item then
             effects(old,"失去")
             if item~=false then effects(item,"获得") end
-            local note=item~=false and skillNote(item,old,state)
+            local note=item~=false and skillNote(item,old,state,model,slot)
             if note then notes[#notes+1]=(item.link or item.name or ("物品 #"..item.id)).." · "..note end
         end
     end
@@ -205,12 +240,12 @@ function G.Loadout(replacements,state)
             end
         end
     end
-    local function missingWeapon(item)
-        return item and physicalWeapon(item,state) and not (item.weaponDPS or (item.stats and item.stats.ITEM_MOD_DAMAGE_PER_SECOND_SHORT))
+    local function missingWeapon(item,slot)
+        return item and weaponWeight(item,model,slot) and not (item.weaponDPS or item.stats.ITEM_MOD_DAMAGE_PER_SECOND_SHORT)
     end
     local missing
     for slot,item in pairs(replacements) do
-        if missingWeapon(state.equipment[slot]) or missingWeapon(item) then missing=true;break end
+        if missingWeapon(state.equipment[slot],slot) or missingWeapon(item,slot) then missing=true;break end
     end
     if missing then notes[#notes+1]="武器伤害加载中" end
     return {delta=added-removed,oldScore=removed,newScore=added,replacements=replacements,provisional=missing,
@@ -230,7 +265,9 @@ function G.Upgrade(candidate,state)
         if slot==16 and candidate.equipLoc=="INVTYPE_2HWEAPON" and not (state.capabilities or {}).titanGrip then replacements[17]=false end
         compare(replacements)
         -- Compare a two-hand swap with an actually owned compatible companion.
-        if slot==16 or slot==17 then
+        local main=state.equipment[16]
+        if (slot==16 or slot==17) and main and main.equipLoc=="INVTYPE_2HWEAPON" and
+            candidate.equipLoc~="INVTYPE_2HWEAPON" and not (state.capabilities or {}).titanGrip then
             local other=slot==16 and 17 or 16
             local companions={}
             if state.bagEquipment then companions=state.bagEquipment
@@ -272,12 +309,12 @@ function G:ScanBagOffers(state)
     local counts,worn,queued={},{},{}
     self.bagOffers=self.bagOffers or {}
     for id,count in pairs(state.bags or {}) do counts[id]=count end
-    for _,item in pairs(state.equipment or {}) do worn[item.id]=true end
+    for _,item in pairs(state.equipment or {}) do worn[item.link or item.id]=true end
     for _,id in ipairs(self.bagOffers) do queued[id]=true end
     for _,item in ipairs(state.bagEquipment or {}) do
-        local id=item.id
+        local id,key=item.id,item.link or item.id
         if self.bagCounts and (counts[id] or 0)>(self.bagCounts[id] or 0) and
-            not worn[id] and not (self.wornGear or {})[id] and not queued[id] then
+            not worn[key] and not (self.wornGear or {})[key] and not queued[id] then
             self.bagOffers[#self.bagOffers+1]=id;queued[id]=true
         end
     end
@@ -311,17 +348,24 @@ function G.BagUpgrade(state,ignored)
         for _,item in ipairs(step.stage and step.stage.itemRequirements or {}) do keep[item.targetId]=true end
     end
     local items={}
-    for _,item in ipairs(state.bagEquipment or {}) do if not items[item.id] then items[item.id]=item end end
+    for _,id in ipairs(G.bagOffers) do items[id]={} end
+    for _,item in ipairs(state.bagEquipment or {}) do
+        if items[item.id] then table.insert(items[item.id],item) end
+    end
     local remaining,first={},nil
     for _,id in ipairs(G.bagOffers or {}) do
-        local item=items[id]
-        local junk=item and A.Merchant and A.Merchant:IsJunk(id,item.quality)
-        if item and not keep[id] and not junk and not (ignored or {})["item:"..id] and
-            not (ignored or {})[tostring(item.link or id)] then
-            local value=wearUpgrade(item,state)
-            if value or item.pending or item.effectsPending then remaining[#remaining+1]=id end
-            first=first or value
+        local best,pending
+        if not keep[id] and not (ignored or {})["item:"..id] then
+            for _,item in ipairs(items[id] or {}) do
+                if not (ignored or {})[tostring(item.link or id)] and not (A.Merchant and A.Merchant:IsJunk(id,item.quality)) then
+                    local value=wearUpgrade(item,state)
+                    if value and (not best or value.upgrade.delta>best.upgrade.delta) then best=value end
+                    pending=pending or item.pending or item.effectsPending
+                end
+            end
         end
+        if best or pending then remaining[#remaining+1]=id end
+        first=first or best
     end
     G.bagOffers=remaining
     return first

@@ -224,6 +224,13 @@
       "code_copied": false,
       "assets_copied": false,
       "license": "GPL-3.0; docs/LICENSE.Polestar.txt"
+    },
+    {
+      "name": "Forever gear specialization weights",
+      "url": "https://github.com/cachila/gearguide/blob/34697c4f78b0af71dbbaec13afd931fd097670ac/addon/GearGuide/Weights.lua",
+      "methodology": "https://github.com/cachila/gearguide/blob/34697c4f78b0af71dbbaec13afd931fd097670ac/docs/stat-weights.md",
+      "license": "MIT; notice included in Data/GearSpecs.lua",
+      "scope": "28 talent and role profiles. Rating units and leveling adjustments from GearGuide. AILeveling retains its Protection Paladin survival weights and omits parry and shield stats for Feral bear. Talent group skill IDs from Forever SkillLine 1.60.1.70862."
     }
   ],
   "api_references": [

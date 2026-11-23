@@ -2,7 +2,7 @@ io.stdout:setvbuf("line")
 local A, passed = {}, 0
 local function load(path) assert(loadfile(path))("AiLeveling", A) end
 for _, path in ipairs({"State.lua","Items.lua","Merchant.lua","Services.lua","Transport.lua","Instances.lua","Data/Questie.lua","Planner/Eligibility.lua",
-    "Planner/Chains.lua","Planner/Travel.lua","Planner/Gear.lua","Planner/Progression.lua","Planner/Supplies.lua","Planner/Dungeon.lua","Planner/Planner.lua",
+    "Planner/Chains.lua","Planner/Travel.lua","Data/GearSpecs.lua","Planner/Gear.lua","Planner/Progression.lua","Planner/Supplies.lua","Planner/Dungeon.lua","Planner/Planner.lua",
     "Planner/Selection.lua","QuestAssist.lua", "Data/Audit.lua","Data/Experience.lua","Planner/Estimates.lua"}) do load(path) end
 local F = dofile("tests/fixtures.lua")
 A.Navigation=F.Navigation
