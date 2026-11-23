@@ -638,6 +638,10 @@ function D:Target(q, state)
         end
     end
     local pin=active and active.ready and active.mapPin
+    -- The Desolace clan quests can retain the hunting-area POI at turn-in.
+    if pin and best and not best.approximate and best.entityKind=="npc" and (best.entityId==5397 or best.entityId==5398) then
+        return best
+    end
     if pin and pin.ready and waypointMatchesInstance(self,q,state,pin,best) then
         local point={map=pin.map,x=pin.x,y=pin.y,label="任务交付点"}
         local recipient=self:Recipient(q)
@@ -861,6 +865,12 @@ function D:EventNPC(q,objective)
     return found
 end
 
+-- Ordinary centaur in the opposing clan's village. The quest extras also list a friendly bodyguard.
+local centaurHunts={
+    [92]={camp="玛格拉姆村",hint="击败玛格拉姆半人马，提升吉尔吉斯声望。",npcs={4638,4639,4640,4641,4642,4643,4644,4645}},
+    [93]={camp="吉尔吉斯村",hint="击败吉尔吉斯半人马，提升玛格拉姆声望。",npcs={4646,4647,4648,4649,4651,4652,4653}},
+}
+
 function D:ObjectiveTargets(q,state)
     local active=state.quests[q.id]
     if not active then return {} end
@@ -901,7 +911,14 @@ function D:ObjectiveTargets(q,state)
         checkpoint()
     end
     for index,entry in pairs(identities) do
-        if entry.kind=="killcredit" then
+        local hunt=entry.kind=="reputation" and centaurHunts[entry.id]
+        if hunt then
+            for _,id in ipairs(hunt.npcs) do
+                consider(self.db.Npc,id,hunt.camp,index,"npc",entry,"reputation",self:EntityPoints(self.db.Npc,id,false))
+            end
+            local point=chosen[index]
+            if point then point.siteName,point.travelHint=hunt.camp,hunt.hint end
+        elseif entry.kind=="killcredit" then
             for _,id in ipairs(entry.npcIds or {}) do
                 consider(self.db.Npc,id,"任务目标分布",index,"npc",entry)
             end
@@ -974,7 +991,7 @@ function D:ObjectiveTargets(q,state)
             local unmapped=not point and self:UnmappedTargetArea(q,state,index)
             if not point and not unmapped then point=self:QuestAreaTarget(q,state) end
             local pin=index==singleIndex and active.mapPin
-            if pin and not pin.ready and not inside and not unmapped then
+            if pin and not pin.ready and not inside and not unmapped and not (point and point.sourceKind=="reputation") then
                 if not point or point.approximate or not A.Navigation:Near(pin,point,100) then
                     point={label="任务目标地点"}
                 end

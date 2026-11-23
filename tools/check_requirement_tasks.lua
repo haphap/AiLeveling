@@ -70,6 +70,21 @@ for _,id in ipairs(A.Data.ids) do
   for index,d in ipairs(descriptions) do
    if d.targetKind=="reputation" or d.targetKind=="spell" then
     assert(identities[index] and identities[index].kind==d.targetKind and identities[index].id==d.targetId,"native identity "..id)
+    if d.targetKind=="reputation" and (d.targetId==92 or d.targetId==93) then
+     local gelkis=d.targetId==92
+     local quest=s.quests[id]
+     for i,o in ipairs(live) do o.finished=i~=index end
+     quest.mapPin={map=1443,x=0.70,y=0.46}
+     local p=A.Data:Target(q,s)
+     assert(p and p.sourceKind=="reputation" and p.travelHint and p.map==1443)
+     assert(p.x~=quest.mapPin.x and db.Npc.Get(p.entityId,"factionID")== (gelkis and 133 or 132))
+     assert(positions[index].siteName==p.siteName)
+     quest.ready,quest.mapPin.ready=true,true
+     local recipient=A.Data:Target(q,s)
+     assert(recipient.entityId==(gelkis and 5397 or 5398) and recipient.x~=quest.mapPin.x)
+     quest.ready,quest.mapPin=nil,nil
+     for _,o in ipairs(live) do o.finished=false end
+    end
     live[index].finished=true
     for _,p in ipairs(A.Data:ObjectiveTargets(q,s)) do assert(p.objectiveIndex~=index) end
    end
