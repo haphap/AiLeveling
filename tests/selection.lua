@@ -38,12 +38,16 @@ test("恢复自动与任务暂缓清理旧锁定并保留副本控制",function(
     local B=fixture();B.char.locked=1
     B.Selection:LockQuest(3);eq(B.char.itinerary,nil);eq(B.char.locked,3)
     B.char.locked=1;B.char.gearTarget="wanted";B.Gear={GetSource=function(id) if id=="wanted" then return {questId=1} end end}
-    B.Selection:Skip(1);eq(B.char.itinerary,nil);eq(B.char.locked,nil);eq(B.char.skipped[1],true);eq(B.char.gearTarget,nil)
+    B.Selection:Skip(1);eq(B.char.itinerary,nil);eq(B.char.locked,nil);eq(B.char.skipped[1],B.state.level);eq(B.char.gearTarget,nil)
     B.state.skipped=B.char.skipped
     B.char.locked=3;B.Selection:Skip(2);eq(B.char.locked,3)
     local nextPlan=plan(B.state,B.Data);eq(#nextPlan.taskChoices,1);eq(nextPlan.taskChoices[1].questId,3)
-    B.Selection:ResumeQuest(1);eq(B.char.skipped[1],nil);eq(B.char.skipped[2],true);eq(B.char.locked,3)
+    B.Selection:Skip(2,true);eq(B.char.skipped[2],"ignored")
+    B.Selection:Snapshot(B.state);eq(B.char.skipped[1],B.state.level)
+    B.Selection:Snapshot({level=B.state.level+1,quests={},completed={}})
+    eq(B.char.skipped[1],nil);eq(B.char.skipped[2],"ignored");eq(B.char.locked,3)
     eq(#plan(B.state,B.Data).taskChoices,2)
+    B.Selection:ResumeQuest(2);eq(#plan(B.state,B.Data).taskChoices,3)
     B.char.serviceStop={};assert(B.Selection:Automatic());eq(B.char.itinerary,nil);eq(B.char.paused,false);eq(B.char.serviceStop,nil)
 end)
 

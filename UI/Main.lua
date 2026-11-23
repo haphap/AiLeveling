@@ -577,13 +577,15 @@ function UI.QuestStatus(state,id,plan)
 end
 
 function UI.QuestDeferral(id)
-    if not id or (A.state.chainDeferred or {})[id] then return end
-    if (A.char.skipped or {})[id] then return "恢复推荐",A.Selection.ResumeQuest end
+    if not id then return end
+    local skipped=(A.char.skipped or {})[id]
+    if skipped then return "恢复推荐",A.Selection.ResumeQuest,skipped~="ignored" end
+    if (A.state.chainDeferred or {})[id] then return end
     if (A.state.completed or {})[id] and not (A.state.quests or {})[id] then
         local q=A.Data:GetQuest(id,A.state)
         if not (q and q.repeatable) then return end
     end
-    return "暂时不做",A.Selection.Skip
+    return "暂时不做",A.Selection.Skip,true
 end
 
 function UI:QuestClick(id,button)
@@ -682,7 +684,7 @@ function UI:TaskLines(compact)
     for i,id in ipairs(ids) do
         local q=quests[id]
         local deferred=(state.skipped or {})[id] or (state.chainDeferred or {})[id]
-        local label=UI.QuestStatus(state,id)..(deferred and "·暂缓" or "")
+        local label=UI.QuestStatus(state,id)..(deferred=="ignored" and "·忽略" or deferred and "·暂缓" or "")
         lines[#lines+1]=string.format("%d. %s[%s] %s",i,id==recommended and "★ " or "",label,q.title or ("任务 #"..id))
         local counts={}
         for _,objective in ipairs(q.objectives or {}) do
@@ -698,7 +700,7 @@ function UI:TaskLines(compact)
         lines[#lines+1]="未接取任务 · 先到发布者处接取"
         for i,choice in ipairs(pending) do
             local deferred=(state.skipped or {})[choice.questId] or (state.chainDeferred or {})[choice.questId]
-            lines[#lines+1]=string.format("%d. [未接取%s] %s",i,deferred and "·暂缓" or "",choice.title or ("任务 #"..choice.questId))
+            lines[#lines+1]=string.format("%d. [未接取%s] %s",i,deferred=="ignored" and "·忽略" or deferred and "·暂缓" or "",choice.title or ("任务 #"..choice.questId))
             lines[#lines+1]=choice.acceptBlocked and ("  "..choice.acceptBlocked) or choice.requireCheck and "  先向发布者确认任务是否开放，再接取。" or "  先接取，再推进任务目标。"
         end
     end

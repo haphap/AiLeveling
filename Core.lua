@@ -55,7 +55,9 @@ function A:NormalizeCharacter(char)
     end
     for _,key in ipairs({"skipped","deferredChains"}) do
         for id,value in pairs(char[key]) do
-            if type(id)~="number" or id<=0 or id>=2147483648 or id%1~=0 or value~=true then char[key][id]=nil end
+            local valid=value==true or key=="skipped" and (value=="ignored" or
+                type(value)=="number" and value>=1 and value<=1000 and value%1==0)
+            if type(id)~="number" or id<=0 or id>=2147483648 or id%1~=0 or not valid then char[key][id]=nil end
         end
     end
     local flightCount,hearthCount=0,0

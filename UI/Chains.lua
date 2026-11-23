@@ -135,7 +135,7 @@ function UI:Draw(graph)
         end
         card.questId,card.node=node.id,node
         card:ClearAllPoints();card:SetPoint("TOPLEFT",self.canvas,"TOPLEFT",node.x,-node.y)
-        card.text:SetText("#"..node.id.." · "..(node.deferredRoot and "整链暂缓" or node.skipped and "已暂缓" or status[node.status]))
+        card.text:SetText("#"..node.id.." · "..(node.deferredRoot and "整链暂缓" or node.skipped=="ignored" and "已忽略" or node.skipped and "已暂缓" or status[node.status]))
         card.title:SetText(node.title)
         card.baseColor=node.id==self.focus and A.UI.colors.selected or A.UI.colors.button
         card:SetBackdropColor(unpack(card.baseColor))

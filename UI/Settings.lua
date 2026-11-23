@@ -110,7 +110,7 @@ function S:Create(parent)
         if A.ready then A.State:Refresh(true) end
     end)
     reset:SetPoint("TOPLEFT",position(1))
-    local resume=A.UI:Button(self.groups[4],"清除暂缓与锁定",270,function()
+    local resume=A.UI:Button(self.groups[4],"清除暂缓、忽略与锁定",270,function()
         A.char.skipped,A.char.locked={},nil;A.char.deferredChains={};A.Selection:Clear()
         if A.ready then A.State:Refresh(true) end
     end)

@@ -8,6 +8,11 @@ function S:Clear()
 end
 
 function S:Snapshot(state)
+    if state.level and state.level~=(A.state or {}).level then
+        for questId,level in pairs(A.char.skipped) do
+            if type(level)=="number" and level<state.level then A.char.skipped[questId]=nil end
+        end
+    end
     local id=A.char.locked
     local q=id and A.Data:GetQuest(id)
     if id and (not q or not q.repeatable) and state.completed[id] and not state.quests[id] then self:Clear();state.locked=nil end
@@ -56,7 +61,7 @@ end
 function S:LockQuest(id)
     if type(id)~="number" or id<=0 or id%1~=0 then return false,"当前没有可锁定任务" end
     if (A.state.skipped and A.state.skipped[id]) or (A.state.chainDeferred and A.state.chainDeferred[id]) then
-        return false,"此任务已暂缓，请先恢复相应任务或整链偏好"
+        return false,"请先恢复此任务的推荐或取消整链暂缓"
     end
     self:Clear();A.char.locked=id
     A.char.gearTarget,A.char.gearBaseline=nil,nil
@@ -65,9 +70,11 @@ function S:LockQuest(id)
     return true
 end
 
-function S:Skip(id)
-    if type(id)~="number" or id<=0 or id%1~=0 or A.char.skipped[id] then return end
-    A.char.skipped[id]=true
+function S:Skip(id,ignore)
+    if type(id)~="number" or id<=0 or id%1~=0 then return end
+    local previous=A.char.skipped[id]
+    if previous and (not ignore or previous=="ignored") then return end
+    A.char.skipped[id]=ignore and "ignored" or A.state.level or true
     local lock=A.char.locked
     if lock==id then self:Clear()
     elseif lock and A.plan and A.plan.preparingQuest and A.plan.preparingQuest.id==lock then

@@ -90,7 +90,7 @@ function B:Create(parent)
     self.goals=CreateFrame("Frame",nil,self.infoChild)
     self.goalHeading=A.UI:Text(self.infoChild,"caption",colors.muted);self.goalHeading:SetText("任务目标")
     self.buttons={}
-    for i=1,4 do
+    for i=1,5 do
         local create=i==1 and A.UI.Button or A.UI.ListButton
         local b=create(A.UI,self.infoChild,"",330,function() local f=self.buttons[i].run;if f then f() end end,"body")
         self.buttons[i]=b
@@ -154,7 +154,7 @@ function B:TaskRows(mode)
         local allowed,why,pre=true
         if q then allowed,why,pre=A.Eligibility.Check(q,state,A.Data) end
         if complete then allowed,why,pre=false,nil,nil end
-        if skipped then allowed,why,pre=false,"已暂缓",nil
+        if skipped then allowed,why,pre=false,skipped=="ignored" and "已忽略" or "已暂缓",nil
         elseif not allowed and status=="未接取" then status=why end
         local c=status=="可交付" and green or state.quests[id] and gold or allowed and blue or muted
         local meta={color(c,status)}
@@ -531,11 +531,13 @@ function B:Detail()
             else ok,why=A.Selection:LockQuest(e.questId) end
             self.message=not ok and why or nil;self:Refresh(self.mode)
         end,(can and e.allowed) or e.prerequisite~=nil)
-        local label,change=A.UI.QuestDeferral(e.questId)
-        if label then self:Action(2,label,function()
+        local label,change,canIgnore=A.UI.QuestDeferral(e.questId)
+        local function preference(method,ignore)
             if self.mode==1 then A.UI.Plan.key=e.key end
-            change(A.Selection,e.questId);self:Refresh(self.mode)
-        end) end
+            method(A.Selection,e.questId,ignore);self:Refresh(self.mode)
+        end
+        if label then self:Action(2,label,function() preference(change) end) end
+        if canIgnore then self:Action(5,"忽略此任务",function() preference(A.Selection.Skip,true) end) end
         self:Action(4,"查看任务链",function() A.UI.Chains:Focus(e.questId) end)
         if A.char.locked or A.char.itinerary or A.char.taskBatch or A.char.gearTarget or A.Navigation.manual or A.char.serviceStop or A.char.paused then
             self:Action(3,"恢复练级导航",function() A.Selection:Automatic();self:Refresh(self.mode) end)

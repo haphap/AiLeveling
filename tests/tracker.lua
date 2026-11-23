@@ -160,10 +160,11 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     T.questTitle.scripts.OnClick(nil,"RightButton");B.menu["恢复自动安排"].callback();eq(B.char.locked,nil)
     T.rows[2].scripts.OnClick(nil,"RightButton")
     local defer=B.menu["暂时不做"].callback
-    T.rows[2].questId=1;defer();eq(B.char.skipped[3],true);eq(B.char.skipped[1],nil)
-    eq(T.skip:IsShown(),true);T.skip:Click();eq(B.char.skipped[1],true);assert(B.state.quests[1])
+    T.rows[2].questId=1;defer();eq(B.char.skipped[3],B.state.level);eq(B.char.skipped[1],nil)
+    eq(T.skip:IsShown(),true);T.skip:Click();eq(B.char.skipped[1],B.state.level);assert(B.state.quests[1])
+    nav.scripts.OnClick(nav,"RightButton");B.menu["忽略此任务"].callback();eq(B.char.skipped[1],"ignored")
     nav.scripts.OnClick(nav,"RightButton");B.menu["恢复推荐"].callback()
-    eq(B.char.skipped[1],nil);eq(B.char.skipped[3],true)
+    eq(B.char.skipped[1],nil);eq(B.char.skipped[3],B.state.level)
     eq(T.tools,nil)
     B.finish()
 end)
@@ -183,6 +184,7 @@ test("未列入行程的任务链接打开对应详情并保留当前路线",fun
     local deferred
     for _,row in ipairs(browser:TaskRows(1)) do if row.questId==1 then deferred=row end end
     assert(deferred and deferred.sub:find("已暂缓",1,true));eq(deferred.allowed,false)
+    browser.buttons[5]:Click();assert(browser.selected.sub:find("已忽略",1,true));eq(browser.buttons[5]:IsShown(),false)
     eq(browser.buttons[2].text.value,"恢复推荐");browser.buttons[2]:Click();eq(B.char.skipped[1],nil)
     B.UI.Plan.key="q:1"
     B.state.completed[1]=true;B.state.revision=B.state.revision+1;B.UI:RefreshDetails()

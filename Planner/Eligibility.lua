@@ -39,7 +39,7 @@ function E.Closed(q,s)
 end
 
 function E.Check(q, s, data, ignorePrerequisites)
-    if s.skipped and s.skipped[q.id] then return false, "已暂缓" end
+    if s.skipped and s.skipped[q.id] then return false,s.skipped[q.id]=="ignored" and "已忽略" or "已暂缓" end
     if s.chainDeferred and s.chainDeferred[q.id] then return false,"整链已暂缓（起点 #"..s.chainDeferred[q.id].."）" end
     if s.quests[q.id] then return true end
     if q.taskFacts and q.taskFacts.hidden=="retired" then return false,"无限版已停用" end

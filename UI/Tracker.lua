@@ -832,8 +832,9 @@ function UI:TrackerMenu(owner)
             end)
             choose:SetEnabled(not owner.deferred and (not candidate or A.Selection.CanChoose(candidate,revision)==true))
         end
-        local label,change=self.QuestDeferral(id)
+        local label,change,canIgnore=self.QuestDeferral(id)
         if label then menu:CreateButton(label,function() change(A.Selection,id) end) end
+        if canIgnore then menu:CreateButton("忽略此任务",function() A.Selection:Skip(id,true) end) end
         if A.char.taskBatch or A.char.locked or A.char.itinerary then
             menu:CreateButton(A.char.taskBatch and "返回正常练级" or "恢复自动安排",function()
                 local ok,why=A.Selection:Automatic();if not ok then A:Message(why) end
@@ -1064,6 +1065,11 @@ function UI:CreateTracker()
     T.questTitle:SetScript("OnLeave",function() GameTooltip:Hide() end)
     T.skip=self:ListButton(T.card,"暂时不做",64,function() A.Selection:Skip(T.questTitle.questId) end,"caption")
     T.skip.text:SetTextColor(unpack(palette.muted))
+    T.skip:HookScript("OnEnter",function(button)
+        GameTooltip:SetOwner(button,"ANCHOR_TOP");GameTooltip:SetText("升级后重新推荐")
+        GameTooltip:AddLine("右键点任务名可选择「忽略此任务」。",1,1,1);GameTooltip:Show()
+    end)
+    T.skip:HookScript("OnLeave",function() GameTooltip:Hide() end)
     T.currentScroll=CreateFrame("ScrollFrame",nil,T.card,"UIPanelScrollFrameTemplate")
     T.currentChild=CreateFrame("Frame",nil,T.currentScroll);T.currentScroll:SetScrollChild(T.currentChild)
     T.career:SetParent(T.currentChild)
@@ -1675,7 +1681,7 @@ function UI:RenderTracker(along)
         row.title:SetText(model.dungeonName and (title.."  |cff"..self.hex[item.kind=="accept" and "blue" or item.kind=="turnin" and "green" or "muted"]..item.status.."|r") or title)
         local color=(item.deferred or item.candidate and item.candidate.lowValue) and palette.muted or item.kind=="turnin" and palette.green or item.accepted and palette.gold or palette.blue
         row.title:SetTextColor(unpack(self.daylight and not item.deferred and item.kind~="turnin" and palette.white or color))
-        row.status=item.deferred and (item.accepted and "已接·暂缓" or "未接·暂缓") or item.status
+        row.status=item.deferred and ((item.accepted and "已接" or "未接")..(item.deferred=="ignored" and "·忽略" or "·暂缓")) or item.status
         local progress=item.delivery or item.progress
         if item.along and not item.serviceStop then
             local verb=({accept="顺路接取",turnin="顺路交付",objective="顺路完成"})[item.kind]

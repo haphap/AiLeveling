@@ -462,7 +462,7 @@ function G:SetTarget(id)
     if source.reference and source.kind=="quest" then
         local q=A.Data:GetQuest(source.questId)
         if A.state.completed[source.questId] and not A.state.quests[source.questId] and not q.repeatable then return false,"该奖励任务已经交付" end
-        if A.state.skipped[source.questId] or (A.state.chainDeferred or {})[source.questId] then return false,"先恢复暂缓的任务或任务线" end
+        if A.state.skipped[source.questId] or (A.state.chainDeferred or {})[source.questId] then return false,"请先恢复来源任务的推荐或取消整链暂缓" end
     end
     if value.owned then return false,"已经携带目标物品，可直接比较装备" end
     if value.chanceHigh<=0 then return false,"当前来源无法获得目标物品" end

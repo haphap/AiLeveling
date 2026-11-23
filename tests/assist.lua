@@ -66,12 +66,14 @@ return function(test,eq,F,A,C)
         char.samples[routeKey..":speed:1"]={n=3,mean=200,m2=2,unit="seconds"}
         char.samples[routeKey..":speed:1.2"]={n=3,mean=180,m2=2,unit="seconds"}
         char.samples[routeKey..":speed:unknown"]={n=3,mean=1,m2=0,unit="seconds"}
+        char.skipped[43],char.skipped[44],char.skipped[45]="ignored",34,"typo"
         C:NormalizeCharacter(char)
         eq(char.samples.bad,nil);eq(char.samples.good.n,3)
         eq(char.samples[routeKey].mean,210)
         eq(char.samples[routeKey..":speed:1"].mean,200);eq(char.samples[routeKey..":speed:1.2"].mean,180)
         eq(char.samples[routeKey..":speed:unknown"],nil)
         eq(char.turnIns[1],2);eq(char.turnIns[2],nil);eq(char.skipped[42],true);eq(char.dungeon,nil)
+        eq(char.skipped[43],"ignored");eq(char.skipped[44],34);eq(char.skipped[45],nil)
         eq(char.gearTarget,nil);eq(char.gearBaseline,nil);eq(char.hearthBinding,nil)
         eq(char.itinerary,nil);eq(char.locked,nil)
         eq(char.deferredChains[1],true);eq(char.deferredChains[2],nil);eq(char.deferredChains[-3],nil)
