@@ -1,6 +1,7 @@
 local root=assert(arg[1])
 local A,db=dofile(root.."/tools/quest_runtime.lua")
 local faction=arg[3]
+local raceMask=assert(db.Enum.raceMaskById[tonumber(arg[5])])
 
 local standings={}
 C_Reputation={GetFactionDataByID=function(id) return {name="阵营"..id,currentStanding=standings[id]} end}
@@ -8,7 +9,7 @@ C_Spell={GetSpellName=function(id) return "法术"..id end}
 local repCount,spellCount,repLocated,spellLocated,extraCount=0,0,0,0,0
 for _,id in ipairs(A.Data.ids) do
  local rows=db.Quest.Get(id,"objectives") or {}
- if next(rows[4] or {}) or next(rows[6] or {}) then
+ if (next(rows[4] or {}) or next(rows[6] or {})) and A.Eligibility.InMask(db.Quest.Get(id,"requiredRaces"),raceMask) then
   local q=A.Data:GetQuest(id)
   local s={faction=faction,quests={},completed={},spells={}}
   local rep=rows[4]
@@ -18,6 +19,7 @@ for _,id in ipairs(A.Data.ids) do
    A.State:Qualifications(s,A.Data.requirements)
    assert(s.reputations[rep[1]]==rep[2]-1)
   end
+  local previousSpellGoals=spellLocated
   if next(rows[6] or {}) then spellCount=spellCount+1 end
   local descriptions,positions,complex=A.Data:ReferenceObjectiveTargets(q,s)
   assert(not complex,"unexpanded requirement "..id)
@@ -50,6 +52,7 @@ for _,id in ipairs(A.Data.ids) do
     print(table.concat({"requirement",id,q.title,d.targetKind,d.targetId,p and p.map or 0,p and (p.sourceKind or "area") or "unlocated"},"\t"))
    end
   end
+  assert(not next(rows[6] or {}) or spellLocated>previousSpellGoals,"missing spell objective "..id)
   if repIndex then
    standings[rep[1]]=rep[2];A.State:Qualifications(s,A.Data.requirements)
    local met,at=A.Data:ReferenceObjectiveTargets(q,s)
@@ -92,5 +95,5 @@ for _,id in ipairs(A.Data.ids) do
   assert(not s.quests[id].ready and not s.completed[id])
  end
 end
-assert(repCount>0 and spellCount>0)
+assert(repCount>0 and repLocated==repCount)
 print(string.format("PASS %d reputation quests (%d located); %d spell quests (%d located goals); %d special placements",repCount,repLocated,spellCount,spellLocated,extraCount))

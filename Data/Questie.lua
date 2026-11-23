@@ -508,21 +508,25 @@ local function hasFriendlyRecipient(entity,sources,faction)
 end
 
 -- Use a recorded passing point when the contact patrols the player's current zone.
-local function patrolContact(point,paths,origin,maps,turnin)
+local function patrolContact(point,paths,origin,maps,turnin,pin)
     if type(paths)~="table" then return end
     local nearest
     for area,segments in pairs(paths) do
         local hasPath=type(segments)=="table" and type(segments[1])=="table" and type(segments[1][1])=="table"
         if hasPath then point.sourceKind="patrol" end
-        if hasPath and origin and maps[area]==origin.map then
+        local map=maps[area]
+        if hasPath and (origin and map==origin.map or pin and map==pin.map) then
             for _,path in ipairs(segments) do
                 for _,p in ipairs(path) do
                     if usableSpawn(p) then
                         local x,y=p[1]/100,p[2]/100
-                        local distance=((x-origin.x)*1.5)^2+(y-origin.y)^2
-                        if not nearest or distance<nearest then
-                            nearest=distance
-                            point.map,point.x,point.y,point.sourceAreaId=origin.map,x,y,area
+                        if pin and map==pin.map and A.Navigation:Near(pin,{map=map,x=x,y=y},30) then return true end
+                        if origin and map==origin.map then
+                            local distance=((x-origin.x)*1.5)^2+(y-origin.y)^2
+                            if not nearest or distance<nearest then
+                                nearest=distance
+                                point.map,point.x,point.y,point.sourceAreaId=map,x,y,area
+                            end
                         end
                     end
                 end
@@ -534,23 +538,32 @@ local function patrolContact(point,paths,origin,maps,turnin)
     point.travelHint="沿巡逻路线寻找「"..(point.entityName or "任务联系人").."」"..(turnin and "交付任务。" or "接取任务。")
 end
 
-local function waypointMatchesInstance(self,q,state,waypoint,target)
-    local instanceFor=state.inInstance and A.Dungeon and A.Dungeon.TaskInstance
+local function matchesSourceMap(waypoint,target)
+    return not (target and target.areaOnly and target.sourceAreaId) or waypoint.map==target.map
+end
+
+local function waypointFitsTarget(self,q,state,waypoint,target,turnin)
+    if not matchesSourceMap(waypoint,target) then return false end
+    local instanceFor=(state.inInstance or turnin) and A.Dungeon and A.Dungeon.TaskInstance
     if not instanceFor then return true end
     local area=not target and self:UnmappedTargetArea(q,state)
     local destination=instanceFor(target,state,self,area)
-    return not destination or destination.instanceId~=state.instanceId or instanceFor(waypoint,state,self)==destination
+    if not destination or (not turnin and destination.instanceId~=state.instanceId) then return true end
+    return instanceFor(waypoint,state,self)==destination
 end
 
 local function collectedLoot(loot,state)
     return loot and ((state.bags or {})[loot.id] or 0)>=loot.count
 end
 
-local function escortContact(point,spawn)
+local function contactHint(point,spawn,turnin)
     -- Forever quests 657 and 660 share Kinelory, who leaves Quae during the escort.
     if point.entityKind=="npc" and point.entityId==2713 and not point.travelHint then
         point.travelHint="若只看到奎艾，可在奎艾处等基恩洛护送结束后返回。"
         if spawn then point.sourceKind,point.label="escortStart","护送起点" end
+    elseif turnin and point.entityKind=="object" and point.entityId==177491 then
+        -- Both factions place the quest barrel on crate 177490 at the same mill.
+        point.travelHint="在北山伐木场的箱子上放置白蚁桶，再与桶互动交付。"
     end
     return point
 end
@@ -569,7 +582,7 @@ function D:Target(q, state)
         if target and not target.approximate then return target end
         local waypoint=nativeWaypoint(q.id)
         if waypoint then
-            if waypointMatchesInstance(self,q,state,waypoint,target) then return waypoint end
+            if waypointFitsTarget(self,q,state,waypoint,target) then return waypoint end
             return target
         end
         if target then return target end
@@ -596,6 +609,8 @@ function D:Target(q, state)
         end
     end
     local best, bestDistance, sourceCount, unavailable = nil, nil, 0, 0
+    local pin=active and active.ready and active.mapPin
+    if pin and not pin.ready then pin=nil end
     local bestPriority=0
     local function nearer(point,priority)
         if priority<bestPriority then return false end
@@ -627,6 +642,8 @@ function D:Target(q, state)
                 for _, point in ipairs(self:EntityPoints(entity, id, active~=nil)) do
                     -- Current giver, known location, then area fallback.
                     local priority=offer and kind==1 and id==state.questNPC and 3 or point.approximate and 1 or 2
+                    -- A quest-wide marker may identify one of several eligible recipients.
+                    if pin and not point.approximate and A.Navigation:Near(pin,point,30) then priority=4 end
                     if nearer(point,priority) then
                         best.label=best.travelHint and best.label or best.approximate and "区域参考点" or (kind==1 and "QuestieDB NPC 位置" or "QuestieDB 对象位置")
                         best.entityKind,best.entityId=kind==1 and "npc" or "object",id
@@ -637,28 +654,21 @@ function D:Target(q, state)
             end
         end
     end
-    local pin=active and active.ready and active.mapPin
-    -- The Desolace clan quests can retain the hunting-area POI at turn-in.
-    if pin and best and not best.approximate and best.entityKind=="npc" and (best.entityId==5397 or best.entityId==5398) then
-        return best
+    local matchesRecipient=bestPriority==4
+    if best and not best.approximate and best.entityKind=="npc" and best.sourceAreaId and not matchesRecipient then
+        matchesRecipient=patrolContact(best,self.db.Npc.Get(best.entityId,"waypoints"),state.position,self.maps,active,pin)
     end
-    if pin and pin.ready and waypointMatchesInstance(self,q,state,pin,best) then
+    if pin and (matchesRecipient or not best or best.areaOnly) and waypointFitsTarget(self,q,state,pin,best,true) then
         local point={map=pin.map,x=pin.x,y=pin.y,label="任务交付点"}
-        local recipient=self:Recipient(q)
-        if not recipient and best and not best.approximate and A.Navigation:Near(point,best,30) then recipient=best end
+        local recipient=matchesRecipient and best or self:Recipient(q)
         if recipient then point.entityKind,point.entityId,point.entityName=recipient.entityKind,recipient.entityId,recipient.entityName end
-        return escortContact(point)
+        return contactHint(point,false,true)
     end
-    if best and not best.approximate then
-        if best.entityKind=="npc" and best.sourceAreaId then
-            patrolContact(best,self.db.Npc.Get(best.entityId,"waypoints"),state.position,self.maps,active)
-        end
-        if not best.approximate then return escortContact(best,best.sourceAreaId~=nil) end
-    end
+    if best and not best.approximate then return contactHint(best,best.sourceAreaId~=nil,active) end
     -- Forecast turn-ins use a virtual ready state; only a genuinely ready quest has a native recipient waypoint.
     if active and active.ready and C_QuestLog and C_QuestLog.ReadyForTurnIn and C_QuestLog.ReadyForTurnIn(q.id) then
         local point=nativeWaypoint(q.id)
-        if point and waypointMatchesInstance(self,q,state,point,best) then return point end
+        if point and waypointFitsTarget(self,q,state,point,best,true) then return point end
     end
     if best then return best end
     if (sourceCount>0 or offeredOnly) and unavailable==sourceCount then return nil,true end
@@ -970,13 +980,8 @@ function D:ObjectiveTargets(q,state)
         local id=not chosen[index] and not identities[index] and self:EventNPC(q,o)
         if id then consider(self.db.Npc,id,"任务事件地点",index,"npc",{},"event") end
     end
-    local singleIndex
-    for index,o in ipairs(active.objectives or {}) do
-        if not o.finished then
-            if singleIndex then singleIndex=nil;break end
-            singleIndex=index
-        end
-    end
+    -- The POI has no objective index. Use it only for a single goal without a known site.
+    local pin=#(active.objectives or {})==1 and active.mapPin
     local result={}
     local areas=dungeonAreas(q,state)
     local inside=areas and areas.objective and A.Dungeon and A.Dungeon.TaskInstance and
@@ -990,12 +995,8 @@ function D:ObjectiveTargets(q,state)
             if point and inside and A.Dungeon.TaskInstance(point,state,self)~=inside then point=nil end
             local unmapped=not point and self:UnmappedTargetArea(q,state,index)
             if not point and not unmapped then point=self:QuestAreaTarget(q,state) end
-            local pin=index==singleIndex and active.mapPin
-            if pin and not pin.ready and not inside and not unmapped and not (point and point.sourceKind=="reputation") then
-                if not point or point.approximate or not A.Navigation:Near(pin,point,100) then
-                    point={label="任务目标地点"}
-                end
-                point.map,point.x,point.y=pin.map,pin.x,pin.y
+            if pin and not pin.ready and not inside and not unmapped and (not point or point.areaOnly) and matchesSourceMap(pin,point) then
+                point={map=pin.map,x=pin.x,y=pin.y,label="客户端任务标记"}
             end
             if point then
                 if point.entityId then

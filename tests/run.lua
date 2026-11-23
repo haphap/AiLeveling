@@ -51,6 +51,7 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     A.Replan=function(_,force,immediate) restart,manual=force,immediate end
     local mapRefreshes=0;A.RequestRefresh=function() mapRefreshes=mapRefreshes+1 end
     local x,map=0.1,1
+    local poiX,ready=0.3,false
     local objectiveText,objectiveType,objectiveCount,finished="目标待加载","item",0,false
     GetTime=function() return 100 end
     UnitLevel=function() return 20 end;UnitXP=function() return 100 end;UnitXPMax=function() return 1000 end
@@ -60,10 +61,10 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     LibQuestieDB={Enum={classKeys={WARRIOR=1},raceMaskById={[1]=1}}}
     C_QuestLog={GetMaxNumQuestsCanAccept=function() return 20 end,GetAllCompletedQuestIDs=function() return {} end,GetNumQuestLogEntries=function() return 1,1 end,
         GetInfo=function() return {questID=42,title="测试"} end,
-        GetQuestsOnMap=function(mapID) return {{questID=42,mapID=mapID,x=0.3,y=0.4},
+        GetQuestsOnMap=function(mapID) return {{questID=42,mapID=mapID,x=poiX,y=0.4},
             {questID=42,mapID=mapID,x=0.9,y=0.9,isQuestStart=true}} end,
         GetQuestObjectives=function() return {{text=objectiveText,type=objectiveType,numFulfilled=objectiveCount,numRequired=3,finished=finished}} end,
-        ReadyForTurnIn=function() return false end}
+        ReadyForTurnIn=function() return ready end}
     C_Map={GetBestMapForUnit=function() return map end,GetPlayerMapPosition=function() return {x=x,y=0.5} end}
     NUM_BAG_SLOTS=4
     C_Container={GetContainerNumFreeSlots=function() return 16 end,GetContainerNumSlots=function() return 0 end}
@@ -154,6 +155,9 @@ test("状态重建不修改正在计算的旧快照且走动不递增版本",fun
     local history=A.state;A.char.turnIns[88]=1;A.State.confirmed={};A.State:Refresh()
     eq(A.state.completed[88],true);eq(history.completed[88],nil);eq(A.state.revision,history.revision+1)
     history=A.state;A.char.turnIns[88]=2;A.State:Refresh();eq(A.state.revision,history.revision+1)
+    ready=true;A.State:Refresh();eq(A.state.quests[42].ready,true);eq(A.state.quests[42].mapPin.ready,false)
+    history=A.state;A.State:Refresh();eq(A.state.quests[42].mapPin.ready,false)
+    poiX=0.6;A.State:Refresh();eq(A.state.quests[42].mapPin.ready,true);eq(history.quests[42].mapPin.ready,false)
     C_SkillInfo,A.WeaponSkills=oldSkills,oldWeaponSkills
     A.clientVersion,A.build,A.interface=oldVersion,oldBuild,oldInterface
     local saved={C_Item=C_Item,C_PlayerInfo=C_PlayerInfo,C_TooltipInfo=C_TooltipInfo,Enum=Enum,

@@ -4,9 +4,11 @@ local client,metadata=dofile("emulator/client.lua"),dofile("emulator/metadata.lu
 client.install({expansion="Forever",faction=faction,classFile=class,raceId=raceId,raceFile=raceFile,locale="zhCN"})
 metadata.load(package.."/QuestieDB_Forever.toc","QuestieDB")
 local db=metadata.loadAddon(package.."/QuestieDB_Forever.toc","QuestieDB",package)
-local A={clientVersion="1.60.1",build="70862",interface=16001,Navigation={Distance=function(_,a,b)
+local A={clientVersion="1.60.1",build="70862",interface=16001}
+assert(loadfile(root.."/Navigation.lua"))("AiLeveling",A)
+function A.Navigation:Distance(a,b)
     if a and b and a.map==b.map then return math.sqrt((a.x-b.x)^2+(a.y-b.y)^2)*1000 end
-end}}
+end
 C_Map={GetMapInfo=function(id) return {mapID=id} end};C_QuestLog={}
 for _,file in ipairs({"State.lua","Hearth.lua","Data/TaskFacts.lua","Data/Experience.lua","Data/Flights.lua","Data/Dungeons.lua","Data/QuestTitles_zhCN.lua","Data/Questie.lua",
     "Planner/Eligibility.lua","Planner/Chains.lua","Planner/TaskGuide.lua","Planner/TaskQueue.lua","Planner/Estimates.lua","Planner/Gear.lua",

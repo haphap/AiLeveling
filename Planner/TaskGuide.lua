@@ -444,7 +444,8 @@ function G.ReadyTurnIns(state,data,arrival)
         if active.ready and not (state.skipped or {})[id] and not (state.chainDeferred or {})[id] then
             local q=data:GetQuest(id,state)
             local point
-            if q then point=data:Target(q,lookup) else point=active.mapPin end
+            if q then point=data:Target(q,lookup)
+            elseif active.mapPin and active.mapPin.ready then point=active.mapPin end
             if point and point.map and not point.areaOnly and (not point.approximate or point.travelHint) then
                 actions[id]={kind="turnin",questId=id,title=active.title or q and q.title,position=point,
                     text=point.travelHint or "前往任务交付者。"}

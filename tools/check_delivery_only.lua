@@ -17,12 +17,14 @@ for _,id in ipairs(A.Data.ids) do
     if A.Data:DeliveryOnly(q,s) then
         count=count+1;qualifying[id]=true
         if next(db.Quest.Get(id,"extraObjectives") or {}) then
-            assert(id==5931 or id==5932,"review new delivery hint "..id)
+            assert(id==5904 or id==5931 or id==5932,"review new delivery hint "..id)
             hints[id]=true
         end
-        local stages=A.TaskGuide.Stages(q,s,A.Data,{kind="accept",position=A.Data:Target(q,s)})
+        local pickup=A.Data:Target(q,s)
+        local stages=A.TaskGuide.Stages(q,s,A.Data,{kind="accept",position=pickup})
         assert(#stages==2 and stages[1].kind=="accept" and stages[2].kind=="turnin","invented objective "..id)
         local finish=stages[2].position
+        s.position=pickup and not pickup.areaOnly and pickup or nil
         s.quests[id]={objectives={}}
         local target=A.Data:Target(q,s)
         if target then
@@ -30,11 +32,15 @@ for _,id in ipairs(A.Data.ids) do
             located=located+1
         elseif A.Data:UnmappedTargetArea(q,s) then unmapped=unmapped+1 end
         local activeStages=A.TaskGuide.Stages(q,s,A.Data,{kind="objective",position=target})
-        assert(activeStages[1].kind=="objective" and activeStages[1].text:find("对话",1,true),"lost dialog instruction "..id)
+        local step=activeStages[1]
+        assert(step.kind=="objective" and (step.text:find("对话",1,true) or target and target.travelHint==step.text),"lost contact instruction "..id)
+        if id==5902 or id==5904 then
+            assert(target.entityId==177491 and step.text:find("放置白蚁桶",1,true) and stages[2].text==step.text)
+        end
         assert(not s.quests[id].ready and not s.completed[id],"changed native completion "..id)
         s.quests[id].objectives={{text="native requirement",finished=false}}
         assert(not A.Data:DeliveryOnly(q,s),"ignored native requirement "..id)
-        s.quests[id]=nil
+        s.quests[id],s.position=nil,nil
     end
 end
 for _,id in ipairs({1489,96627,97281,5931,5932}) do assert(qualifying[id],"missing known delivery "..id) end

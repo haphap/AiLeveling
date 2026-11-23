@@ -235,11 +235,21 @@ test("缺交付坐标或目标对应时使用任务区域中心且精确位置�
     p=d:Target(q,s);eq(p.x,0.25);eq(p.entityName,"怪物甲")
     local active=s.quests[1]
     active.mapPin={map=1,x=0.7,y=0.8,ready=false}
+    p=d:Target(q,s);eq(p.x,0.25);eq(p.entityId,6);eq(p.targetId,6)
+    npcs[6].spawns=nil
     p=d:Target(q,s);eq(p.x,0.7);eq(p.entityId,nil);eq(p.targetId,6)
+    active.objectives[2]={text="上一步",finished=true}
+    eq(d:ObjectiveTargets(q,s)[1].areaOnly,true)
     active.ready=true;p=d:Target(q,s);eq(p.x,0.2);eq(p.entityId,9)
     active.mapPin={map=1,x=0.85,y=0.95,ready=true}
-    p=d:Target(q,s);eq(p.x,0.85);eq(p.entityName,"交付者")
-    C_QuestLog.GetNextWaypoint=nil;s.quests={};eq(d:Target(q,s),nil)
+    p=d:Target(q,s);eq(p.x,0.2);eq(p.entityName,"交付者")
+    npcs[7].name="另一位交付者";npcs[7].spawns={[12]={{84,95}}};rows.finishedBy={{9,7}}
+    p=d:Target(q,s);eq(p.x,0.85);eq(p.entityId,7)
+    rows.finishedBy={{9}};npcs[9].waypoints={[12]={{{20,30},{84,95}}}}
+    p=d:Target(q,s);eq(p.x,0.85);eq(p.entityId,9)
+    active.mapPin.x=0.65;C_QuestLog.GetNextWaypoint=nil
+    p=d:Target(q,s);eq(p.sourceKind,"patrol");eq(p.approximate,true)
+    s.quests={};eq(d:Target(q,s),nil)
     npcs[8].spawns={[12]={{36,41}}};p=d:Target(q,s);eq(p.x,0.36);eq(p.entityId,8)
     q.zoneOrSort=-12;eq(d:AreaTarget(q),nil)
     q.zoneOrSort=99;eq(d:AreaTarget(q),nil)
@@ -249,9 +259,10 @@ test("已知实体区域的缺坐标标记优先于任务分类并保留身份",
     C_Map.GetMapInfo=function(map) return {mapID=map} end
     d.maps[99]=2;npcs[6].spawns={[99]={{-1,-1}}}
     q.zoneOrSort=-61;s.quests[1].objectives[1].text="怪物甲：1/3"
+    s.quests[1].mapPin={map=1,x=0.6,y=0.7,ready=false}
     local p=d:Target(q,s);eq(p.map,2);eq(p.approximate,true);eq(p.targetId,6);eq(p.entityId,6)
     eq(p.label,"区域参考点");eq(#d:EntityPoints(d.db.Npc,6),0)
-    s.quests[1].ready=true;npcs[9].spawns={[99]={{-1,-1}}}
+    s.quests[1].ready=true;s.quests[1].mapPin.ready=true;npcs[9].spawns={[99]={{-1,-1}}}
     p=d:Target(q,s);eq(p.map,2);eq(p.entityId,9);eq(p.approximate,true)
     s.quests={};npcs[8].spawns={[99]={{-1,-1}}}
     eq(d:Target(q,s),nil);eq(d:UnmappedTargetArea(q,s),99)
@@ -604,6 +615,8 @@ test("缺地图的接交和实体目标按实际来源区域解析且不猜任�
     mine.areas={97,98}
     s.quests[1]={ready=true,mapPin={map=1,x=0.5,y=0.5,ready=true}}
     C_QuestLog.ReadyForTurnIn=function() return true end
+    eq(d:Target(q,s),nil);eq(d:UnmappedTargetArea(q,s),97)
+    s.inInstance,s.instanceId=false,nil
     eq(d:Target(q,s),nil);eq(d:UnmappedTargetArea(q,s),97)
 end)
 test("副本目标缺地图时不退回野外分类中心且逐目标保留区域",function()

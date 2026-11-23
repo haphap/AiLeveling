@@ -381,7 +381,12 @@ function State:Refresh(force, manual)
         end
         for id,quest in pairs(s.quests) do
             local pin=quest.mapPin
-            if pin then fingerprint[#fingerprint+1]=string.format("poi:%d:%.4f:%.4f",id,pin.x,pin.y) end
+            if pin then
+                local old=previous.quests[id] and previous.quests[id].mapPin
+                -- The map and quest log can update in separate frames.
+                if old and old.map==pin.map and old.x==pin.x and old.y==pin.y then pin.ready=old.ready end
+                fingerprint[#fingerprint+1]=string.format("poi:%d:%.4f:%.4f:%s",id,pin.x,pin.y,tostring(pin.ready))
+            end
         end
     end
     if A.Dungeon.TaskBatchSnapshot then fingerprint[#fingerprint+1]=A.Dungeon:TaskBatchSnapshot(s) end
