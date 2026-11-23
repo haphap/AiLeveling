@@ -43,14 +43,14 @@ local function tooltipSpellStat(text)
     end
 end
 
-local function effects(item,link)
+local function effects(item,link,displayed)
     local types=Enum and Enum.TooltipDataLineType
     local passive,flat,equipLines={},{},0
-    if C_TooltipInfo and C_TooltipInfo.GetHyperlink and types then
+    if types and (displayed or C_TooltipInfo and C_TooltipInfo.GetHyperlink) then
         local ok,result=pcall(function()
-            local data=C_TooltipInfo.GetHyperlink(link)
+            local data=displayed or C_TooltipInfo.GetHyperlink(link)
             if type(data)~="table" then return end
-            if type(data.dataInstanceID)=="number" then
+            if not displayed and type(data.dataInstanceID)=="number" then
                 I.tooltipData=I.tooltipData or {};I.tooltipData[data.dataInstanceID]=true
             end
             if type(data.lines)~="table" or #data.lines==0 then return end
@@ -117,7 +117,7 @@ local function effects(item,link)
     end
 end
 
-function I:Read(id,link)
+function I:Read(id,link,displayed)
     local item={id=id,link=link}
     local sets=A.ItemSets
     if sets and A.clientVersion==sets.version and A.interface==sets.interface then
@@ -138,12 +138,12 @@ function I:Read(id,link)
             if category and category>0 then item.uniqueCategory,item.uniqueLimit=category,limit end
         end
         if C_Item.GetItemSpell then item.useSpell=select(2,C_Item.GetItemSpell(fullLink)) end
-        if equipLoc and equipLoc~="" then effects(item,fullLink) end
+        if equipLoc and equipLoc~="" then effects(item,fullLink,displayed) end
     elseif C_Item.GetItemInfoInstant then
         local _,_,_,loc,texture,cls,sub=C_Item.GetItemInfoInstant(id)
         item.equipLoc,item.icon,item.classID,item.subClassID=loc,texture,cls,sub
     end
-    if (not name or not item.stats) and not A.requestedItems[id] then
+    if not displayed and (not name or not item.stats) and not A.requestedItems[id] then
         A.requestedItems[id]=true
         C_Item.RequestLoadItemDataByID(id)
     end

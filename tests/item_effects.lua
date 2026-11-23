@@ -9,7 +9,8 @@ end
 local function native(run)
     local saved={}
     local names={"C_Item","C_PlayerInfo","C_TooltipInfo","C_Spell","Enum","ITEM_SPELL_TRIGGER_ONEQUIP",
-        "TOOLTIP_ITEM_STAT_SPELL_POWER_INCREASE","TOOLTIP_ITEM_STAT_HOLY_DAMAGE_INCREASE","C_ClassTalents","C_Traits"}
+        "TOOLTIP_ITEM_STAT_SPELL_POWER_INCREASE","TOOLTIP_ITEM_STAT_HOLY_DAMAGE_INCREASE","C_ClassTalents","C_Traits",
+        "TooltipDataProcessor","TooltipUtil","GameTooltip","ShoppingTooltip1"}
     for _,name in ipairs(names) do saved[name]=_G[name] end
     C_Item={GetItemInfo=function(id) return "物品",tostring(id),2,1,1,nil,nil,1,"INVTYPE_CHEST" end,
         GetItemStats=function() return {ITEM_MOD_STRENGTH_SHORT=5} end}
@@ -79,6 +80,38 @@ test("激流堡兜帽的命中等级进入防骑背包和奖励评分",function(
     s.role,s.protectionTalents="DAMAGER",true
     local reward=B.QuestAssist.CompareRewards({hood,helm},s)
     eq(reward.index,2);eq(reward.upgrade.delta,bag.delta)
+end) end)
+
+test("背包装备提示使用当前物品的评分与整套换装差值，对照栏仅显示已穿装备分数",function() native(function()
+    local B,s=fixture()
+    s.class,s.role,s.level="PALADIN","TANK",39
+    local helm={id=252456,link="item:252456",instanceKey="0:2",usable=true,equipLoc="INVTYPE_HEAD",
+        stats={ITEM_MOD_STAMINA_SHORT=13,RESISTANCE0_NAME=84,ITEM_MOD_SPELL_POWER_SHORT=12}}
+    local hoodStats={ITEM_MOD_STAMINA_SHORT=8,RESISTANCE0_NAME=152,ITEM_MOD_HIT_RATING_SHORT=5}
+    s.bagEquipment={helm};s.equipment={[1]={id=278567,equipLoc="INVTYPE_HEAD",stats=hoodStats}}
+    B.UI,B.state,B.settings={},s,{}
+    local post,link,left,right
+    local info={getterName="GetBagItem",getterArgs={0,2}}
+    Enum.TooltipDataType={Item=0}
+    TooltipDataProcessor={AddTooltipPostCall=function(kind,callback) eq(kind,0);post=callback end}
+    TooltipUtil={GetDisplayedItem=function() return "装备",link end}
+    GameTooltip={GetPrimaryTooltipInfo=function() return info end,GetProcessingTooltipInfo=function() return info end,
+        IsForbidden=function() return false end,AddDoubleLine=function(_,label,value) left,right=label,value end}
+    ShoppingTooltip1=setmetatable({},{__index=GameTooltip})
+    C_Item.GetItemInfoInstant=function(value) return tonumber(value:match("%d+")),nil,nil,"INVTYPE_HEAD" end
+    C_Item.GetItemInfo=function(value) return "激流堡兜帽",value,2,39,0,nil,nil,1,"INVTYPE_HEAD" end
+    C_Item.GetItemStats=function() return hoodStats end
+    local scans=0
+    C_TooltipInfo.GetHyperlink=function() scans=scans+1 end
+    assert(loadfile("UI/Gear.lua"))("AiLeveling",B)
+    local data={lines={{type=0,leftText="头部"}}}
+    link=helm.link;post(GameTooltip,data)
+    eq(left,"AILeveling · 防骑");assert(right:find("26.68 分",1,true) and right:find("换装 +11.79",1,true))
+    -- The bag slot changed before the next character snapshot.
+    link="item:278567";post(GameTooltip,data)
+    assert(right:find("14.89 分",1,true) and right:find("换装 +0.00",1,true))
+    post(ShoppingTooltip1,data);eq(right,"14.89 分");eq(scans,0)
+    B.settings.rewardAdvice=false;right=nil;post(GameTooltip,data);eq(right,nil)
 end) end)
 
 test("自动评分采用已应用的防护天赋，切换配置及手动选择生效",function() native(function()
