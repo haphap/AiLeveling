@@ -831,8 +831,9 @@ function UI:TrackerMenu(owner)
                 if not ok then A:Message(why) end
             end)
             choose:SetEnabled(not owner.deferred and (not candidate or A.Selection.CanChoose(candidate,revision)==true))
-            menu:CreateButton("暂缓此任务",function() A.Selection:Skip(id) end):SetEnabled(not owner.deferred)
         end
+        local label,change=self.QuestDeferral(id)
+        if label then menu:CreateButton(label,function() change(A.Selection,id) end) end
         if A.char.taskBatch or A.char.locked or A.char.itinerary then
             menu:CreateButton(A.char.taskBatch and "返回正常练级" or "恢复自动安排",function()
                 local ok,why=A.Selection:Automatic();if not ok then A:Message(why) end
@@ -1061,6 +1062,8 @@ function UI:CreateTracker()
     end)
     T.questTitle:SetScript("OnEnter",questTooltip)
     T.questTitle:SetScript("OnLeave",function() GameTooltip:Hide() end)
+    T.skip=self:ListButton(T.card,"暂时不做",64,function() A.Selection:Skip(T.questTitle.questId) end,"caption")
+    T.skip.text:SetTextColor(unpack(palette.muted))
     T.currentScroll=CreateFrame("ScrollFrame",nil,T.card,"UIPanelScrollFrameTemplate")
     T.currentChild=CreateFrame("Frame",nil,T.currentScroll);T.currentScroll:SetScrollChild(T.currentChild)
     T.career:SetParent(T.currentChild)
@@ -1173,10 +1176,13 @@ function UI:CreateTracker()
     local nav=CreateFrame("Button","AiLevelingNavigation",anchor)
     self.navFrame=nav;nav:SetPoint("BOTTOM",anchor,"BOTTOM")
     self:Movable(nav,"navigationPosition",anchor)
+    nav:RegisterForClicks("LeftButtonUp","RightButtonUp")
     nav:SetScript("OnMouseDown",function(button) button.dragged=nil end)
     nav:HookScript("OnDragStart",function(button) button.dragged=true end)
     nav:SetScript("OnClick",function(button,mouse)
-        if not button.dragged then self:QuestClick(button.questId,mouse) end
+        if button.dragged then return end
+        if mouse=="RightButton" and button.questId then self:TrackerMenu(button)
+        else self:QuestClick(button.questId,mouse) end
     end)
     nav:SetSize(268,48)
     if self.daylight then self:DaylightShell(nav,palette.navigation[4])
@@ -1815,6 +1821,12 @@ function UI:LayoutTracker()
     T.actionIcon:ClearAllPoints();T.actionIcon:SetPoint("TOPLEFT",gap,-2);T.actionIcon:SetSize(16*scale,16*scale)
     self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT",indent+gap,0)
     local titleWidth=width-indent-gap
+    T.skip:SetShown(self.QuestDeferral(T.questTitle.questId)=="暂时不做")
+    if T.skip:IsShown() then
+        local w=math.ceil(T.skip.text:GetStringWidth())+2*gap
+        T.skip:ClearAllPoints();T.skip:SetPoint("TOPRIGHT");T.skip:SetSize(w,20*scale)
+        titleWidth=titleWidth-w-gap
+    end
     if T.primaryLabel:IsShown() then
         self.title:SetWidth(0)
         titleWidth=math.min(math.ceil(self.title:GetStringWidth()),titleWidth-math.ceil(T.primaryLabel:GetStringWidth())-gap)

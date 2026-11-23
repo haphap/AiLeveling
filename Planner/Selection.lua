@@ -66,11 +66,23 @@ function S:LockQuest(id)
 end
 
 function S:Skip(id)
-    if not id then return end
-    if A.Dungeon then A.Dungeon.taskActivity=nil end
-    if A.char.taskBatch then A.char.taskBatch.baselines[id]=nil else self:Clear() end
+    if type(id)~="number" or id<=0 or id%1~=0 or A.char.skipped[id] then return end
     A.char.skipped[id]=true
+    local lock=A.char.locked
+    if lock==id then self:Clear()
+    elseif lock and A.plan and A.plan.preparingQuest and A.plan.preparingQuest.id==lock then
+        local frontier,closed=A.Chains.Preparation(lock,A.Data,A.state)
+        if closed and #frontier==0 then self:Clear() end
+    end
+    local manual=A.Navigation and A.Navigation.manual
+    if manual and manual.action and manual.action.questId==id then A.Navigation:ClearManual(false) end
     local source=A.Gear and A.Gear.GetSource and A.Gear.GetSource(A.char.gearTarget)
     if source and source.questId==id then A.char.gearTarget,A.char.gearBaseline=nil,nil end
+    if A.ready then A.State:Refresh(true) end
+end
+
+function S:ResumeQuest(id)
+    if not A.char.skipped[id] then return end
+    A.char.skipped[id]=nil
     if A.ready then A.State:Refresh(true) end
 end

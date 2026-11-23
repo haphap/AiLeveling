@@ -180,6 +180,12 @@ test("选择后续任务后跨地图完成前置并逐项交付，再回到原�
     s.completed[3]=true;s.quests[3]=nil;p=plan(s,d,B.settings,B);eq(p.fallback.questId,2);eq(p.fallback.kind,"accept")
     s.completed[2]=true;p=plan(s,d,B.settings,B);eq(p.fallback.questId,1);eq(p.preparingQuest,nil)
     eq(s.completed[1],nil);eq(s.locked,1)
+    s.completed={};q[1].preQuestSingle={2,4};q[1].preQuestGroup=nil
+    B.ready=false;s.skipped=B.char.skipped;B.plan=plan(s,d,B.settings,B)
+    local first=B.plan.fallback.questId;B.Selection:Skip(first);eq(B.char.locked,1)
+    B.plan=plan(s,d,B.settings,B);local other=B.plan.fallback.questId
+    assert(other~=first and (other==3 or other==4))
+    B.Selection:Skip(other);eq(B.char.locked,nil)
 end)
 test("前置准备遵守全部任一及可替代关系，完成一个备选即不再做其余分支",function()
     local B,s,d,q=preparationFixture();q[1].preQuestGroup={2};q[2].preQuestSingle={3,4}

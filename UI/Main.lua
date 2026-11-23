@@ -576,6 +576,16 @@ function UI.QuestStatus(state,id,plan)
     return "未接取"
 end
 
+function UI.QuestDeferral(id)
+    if not id or (A.state.chainDeferred or {})[id] then return end
+    if (A.char.skipped or {})[id] then return "恢复推荐",A.Selection.ResumeQuest end
+    if (A.state.completed or {})[id] and not (A.state.quests or {})[id] then
+        local q=A.Data:GetQuest(id,A.state)
+        if not (q and q.repeatable) then return end
+    end
+    return "暂时不做",A.Selection.Skip
+end
+
 function UI:QuestClick(id,button)
     if type(id)~="number" or id<=0 or id%1~=0 then return end
     if button~="RightButton" and IsModifiedClick and IsModifiedClick("CHATLINK") then

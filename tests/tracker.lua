@@ -159,8 +159,11 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     eq(B.char.locked,2);eq(B.state.completed[2],nil)
     T.questTitle.scripts.OnClick(nil,"RightButton");B.menu["恢复自动安排"].callback();eq(B.char.locked,nil)
     T.rows[2].scripts.OnClick(nil,"RightButton")
-    local defer=B.menu["暂缓此任务"].callback
+    local defer=B.menu["暂时不做"].callback
     T.rows[2].questId=1;defer();eq(B.char.skipped[3],true);eq(B.char.skipped[1],nil)
+    eq(T.skip:IsShown(),true);T.skip:Click();eq(B.char.skipped[1],true);assert(B.state.quests[1])
+    nav.scripts.OnClick(nav,"RightButton");B.menu["恢复推荐"].callback()
+    eq(B.char.skipped[1],nil);eq(B.char.skipped[3],true)
     eq(T.tools,nil)
     B.finish()
 end)
@@ -175,6 +178,13 @@ test("未列入行程的任务链接打开对应详情并保留当前路线",fun
     browser.infoChild.scripts.OnHyperlinkClick(browser.infoChild,"quest:1:0","测试任务","LeftButton")
     eq(browser.selected.questId,1);assert(browser.detail.value:find("把包裹送到旅店。",1,true))
     eq(B.UI.selectedTab,1);eq(B.Navigation.manual,nil);eq(B.char.locked,nil);eq(#B.plan.taskChoices,0)
+    eq(browser.buttons[2].text.value,"暂时不做");browser.buttons[2]:Click()
+    B.UI.Plan.key=nil
+    local deferred
+    for _,row in ipairs(browser:TaskRows(1)) do if row.questId==1 then deferred=row end end
+    assert(deferred and deferred.sub:find("已暂缓",1,true));eq(deferred.allowed,false)
+    eq(browser.buttons[2].text.value,"恢复推荐");browser.buttons[2]:Click();eq(B.char.skipped[1],nil)
+    B.UI.Plan.key="q:1"
     B.state.completed[1]=true;B.state.revision=B.state.revision+1;B.UI:RefreshDetails()
     eq(browser.selected.questId,1);assert(browser.selected.sub:find("已交付",1,true));eq(browser.selected.allowed,false)
     B.finish()
@@ -688,7 +698,7 @@ test("商店事件触发刷新且维修卡片可以忽略",function()
     T.questTitle.scripts.OnClick(nil,"RightButton");B.menu["忽略维修"].callback();eq(B.char.ignoreRepair,true);assert(B.refreshAt)
     eq(B.char.skipped[1],nil);eq(B.state.quests[1].objectives[1].finished,nil)
     B.action={kind="objective",questId=1,title="当前任务"};B.UI:RenderTracker()
-    T.questTitle.scripts.OnClick(nil,"RightButton");assert(B.menu["暂缓此任务"]);eq(B.menu["忽略维修"],nil)
+    T.questTitle.scripts.OnClick(nil,"RightButton");assert(B.menu["暂时不做"]);eq(B.menu["忽略维修"],nil)
     local event=B.frame.scripts.OnEvent
     event(nil,"MERCHANT_SHOW");eq(B.Merchant.open,true);assert(B.refreshAt)
     local saleRefresh

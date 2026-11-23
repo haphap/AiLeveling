@@ -90,7 +90,7 @@ function B:Create(parent)
     self.goals=CreateFrame("Frame",nil,self.infoChild)
     self.goalHeading=A.UI:Text(self.infoChild,"caption",colors.muted);self.goalHeading:SetText("任务目标")
     self.buttons={}
-    for i=1,3 do
+    for i=1,4 do
         local create=i==1 and A.UI.Button or A.UI.ListButton
         local b=create(A.UI,self.infoChild,"",330,function() local f=self.buttons[i].run;if f then f() end end,"body")
         self.buttons[i]=b
@@ -144,18 +144,22 @@ function B:TaskRows(mode)
         A.char.taskBatch and "整组指引" or "推荐先做"
     local function add(choice,q)
         local id=choice.questId
-        local complete=(state.completed or {})[id] and not state.quests[id]
         if seen[id] then return end
-        if id~=requested and (complete or mode==1 and self:IsCareerChoice(choice)) then return end
+        local complete=(state.completed or {})[id] and not state.quests[id]
+        if complete then q=q or A.Data:GetQuest(id,state);complete=not (q and q.repeatable) end
+        local skipped=(A.char.skipped or {})[id]
+        if id~=requested and not skipped and (complete or mode==1 and self:IsCareerChoice(choice)) then return end
         seen[id]=true
         local status=complete and "已交付" or A.UI.QuestStatus(state,id,A.plan)
         local allowed,why,pre=true
         if q then allowed,why,pre=A.Eligibility.Check(q,state,A.Data) end
         if complete then allowed,why,pre=false,nil,nil end
-        if not allowed and status=="未接取" then status=why end
+        if skipped then allowed,why,pre=false,"已暂缓",nil
+        elseif not allowed and status=="未接取" then status=why end
         local c=status=="可交付" and green or state.quests[id] and gold or allowed and blue or muted
         local meta={color(c,status)}
-        if id==currentId then table.insert(meta,1,color(gold,currentLabel)) end
+        if skipped then table.insert(meta,1,color(muted,why))
+        elseif id==currentId then table.insert(meta,1,color(gold,currentLabel)) end
         if choice.revisitLevel then meta[#meta+1]=color(muted,choice.revisitLevel.."级回访") end
         if choice.unlock then meta[#meta+1]=color(gold,A.TaskGuide.UnlockText(choice.unlock)) end
         if q and q.requiredLevel then meta[#meta+1]="接取 "..q.requiredLevel.."级" end
@@ -166,7 +170,7 @@ function B:TaskRows(mode)
         rows[#rows+1]={key="q:"..id,title=choice.title or q and q.title or "任务 #"..id,sub=table.concat(meta," · "),
             icon=A.UI.QuestIcon(status=="可交付" and "turnin" or state.quests[id] and "objective" or "accept",
                 id==currentId and action or choice.executionAction,state.quests[id] and state.quests[id].objectives),tone=c,
-            choice=choice,q=q,allowed=allowed,reason=why,prerequisite=pre,questId=id,current=id==currentId}
+            choice=choice,q=q,allowed=allowed,reason=why,prerequisite=pre,questId=id,current=id==currentId and not skipped}
     end
     local choices={}
     for _,c in ipairs(A.plan and A.plan.taskChoices or {}) do choices[c.questId]=c end
@@ -179,6 +183,10 @@ function B:TaskRows(mode)
         for _,c in ipairs(A.plan and A.plan.taskChoices or {}) do add(c) end
         local ids={};for id in pairs(state.quests or {}) do ids[#ids+1]=id end;table.sort(ids)
         for _,id in ipairs(ids) do add({id="task:"..id,questId=id,title=state.quests[id].title,kind="task",actions={}}) end
+        local deferred={}
+        for id in pairs(A.char.skipped or {}) do if not seen[id] then deferred[#deferred+1]=id end end
+        table.sort(deferred)
+        for _,id in ipairs(deferred) do add({id="task:"..id,questId=id,kind="task",actions={}},A.Data:GetQuest(id,state)) end
         if requested and not seen[requested] then
             local q=A.Data:GetQuest(requested,state)
             add({id="task:"..requested,questId=requested,kind="task",actions={}},q)
@@ -523,7 +531,12 @@ function B:Detail()
             else ok,why=A.Selection:LockQuest(e.questId) end
             self.message=not ok and why or nil;self:Refresh(self.mode)
         end,(can and e.allowed) or e.prerequisite~=nil)
-        self:Action(2,"查看任务链",function() A.UI.Chains:Focus(e.questId) end)
+        local label,change=A.UI.QuestDeferral(e.questId)
+        if label then self:Action(2,label,function()
+            if self.mode==1 then A.UI.Plan.key=e.key end
+            change(A.Selection,e.questId);self:Refresh(self.mode)
+        end) end
+        self:Action(4,"查看任务链",function() A.UI.Chains:Focus(e.questId) end)
         if A.char.locked or A.char.itinerary or A.char.taskBatch or A.char.gearTarget or A.Navigation.manual or A.char.serviceStop or A.char.paused then
             self:Action(3,"恢复练级导航",function() A.Selection:Automatic();self:Refresh(self.mode) end)
         end

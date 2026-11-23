@@ -12,6 +12,7 @@ function N.StaleAction(action,state,plan)
     end
     if not (action and action.questId and state) then return end
     action=action.questAction or action
+    if (state.skipped or {})[action.questId] or (state.chainDeferred or {})[action.questId] then return true end
     if plan and (action.kind=="transit" or action.kind=="move" or action.kind=="approach") then
         local actions=plan.best and plan.best.actions or plan.travelActions
         local goal=actions and actions[#actions]
@@ -26,7 +27,6 @@ function N.StaleAction(action,state,plan)
     if not active and action.expected and action.kind=="objective" and action.targetKind=="item" and action.need and action.need>0 and
         not (action.itemGain and action.itemGain>0) and ((state.bags or {})[action.targetId] or 0)>=action.need then return true end
     if not (plan and plan.revision and plan.revision~=state.revision) then return end
-    if (state.skipped or {})[action.questId] or (state.chainDeferred or {})[action.questId] then return true end
     if not active then
         if (state.completed or {})[action.questId] then return true end
         if (action.kind=="objective" or action.kind=="turnin") and not action.expected then return true end
