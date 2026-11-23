@@ -55,6 +55,32 @@ test("角树柄的常驻法伤在防骑背包和交付奖励比较中只计一�
     s.class="WARRIOR";assert(math.abs(B.Gear.Score(axe,s)-2.4)<0.0001)
 end) end)
 
+test("激流堡兜帽的命中等级进入防骑背包和奖励评分",function() native(function()
+    local B,s=fixture()
+    assert(loadfile("QuestAssist.lua"))("AiLeveling",B)
+    local stats={
+        [278567]={ITEM_MOD_STAMINA_SHORT=8,RESISTANCE0_NAME=152,ITEM_MOD_HIT_RATING_SHORT=5},
+        [252456]={ITEM_MOD_STAMINA_SHORT=13,RESISTANCE0_NAME=84,ITEM_MOD_SPELL_POWER_SHORT=12},
+    }
+    C_Item.GetItemInfo=function(id)
+        local hood=id==278567
+        return hood and "激流堡兜帽" or "图腾师的皮头盔","item:"..id,hood and 2 or 3,hood and 39 or 30,0,nil,nil,1,"INVTYPE_HEAD"
+    end
+    C_Item.GetItemStats=function(link) return stats[tonumber(link:match("item:(%d+)"))] end
+    C_TooltipInfo.GetHyperlink=function(link)
+        return {lines={{type=0,leftText=link=="item:278567" and "+0.5% 命中几率" or "+12 法术强度"}}}
+    end
+    local hood,helm=B.Items:Read(278567),B.Items:Read(252456)
+    s.class,s.role,s.level="PALADIN","TANK",39
+    eq(math.floor(B.Gear.Score(hood,s)*100+0.5),1489)
+    s.equipment={[1]=hood}
+    local bag=B.Gear.Upgrade(helm,s)
+    eq(math.floor(bag.delta*100+0.5),1179)
+    s.role,s.protectionTalents="DAMAGER",true
+    local reward=B.QuestAssist.CompareRewards({hood,helm},s)
+    eq(reward.index,2);eq(reward.upgrade.delta,bag.delta)
+end) end)
+
 test("自动评分采用已应用的防护天赋，切换配置及手动选择生效",function() native(function()
     local B,s=fixture();assert(loadfile("Talents.lua"))("AiLeveling",B)
     local config,staged,spent,reads=1,false,15,0

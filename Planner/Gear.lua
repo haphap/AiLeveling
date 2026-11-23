@@ -11,7 +11,8 @@ local weights = {
     tank={STAMINA=1,STRENGTH=0.4,AGILITY=0.4,DEFENSE_SKILL_RATING=1,DODGE_RATING=1,BLOCK_RATING=1},
     hybrid={STRENGTH=0.5,AGILITY=0.5,INTELLECT=0.5,STAMINA=0.25,SPIRIT=0.25},
 }
-weights.protection={SPELL_POWER=1,HOLY_DAMAGE_DONE=1}
+-- The Forever item API returns hit rating (Stromgarde Hood: 5), not tooltip percent (0.5).
+weights.protection={SPELL_POWER=1,HOLY_DAMAGE_DONE=1,HIT_RATING=0.77}
 for stat,weight in pairs(weights.tank) do weights.protection[stat]=weight end
 local default = {WARRIOR="strength",PALADIN="hybrid",ROGUE="agility",HUNTER="ranged",MAGE="caster",
     PRIEST="caster",WARLOCK="caster",DRUID="hybrid",SHAMAN="hybrid"}
