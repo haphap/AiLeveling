@@ -71,10 +71,17 @@ function B:Create(parent)
     self.infoChild=CreateFrame("Frame",nil,self.info);self.infoChild:SetSize(330,382);self.info:SetScrollChild(self.infoChild)
     self.infoChild:SetHyperlinksEnabled(true)
     self.infoChild:SetScript("OnHyperlinkClick",function(_,link,text,button)
+        local source=link:match("^ailquesturl:(%d+)$")
+        if source then
+            local locale=GetLocale()=="zhCN" and "cn" or "www"
+            A.UI:ShowText("https://"..locale..".wowhead.com/forever/quest="..source)
+            return
+        end
         local id=tonumber(link:match("^quest:(%d+)"))
         if id then A.UI:QuestClick(id,button) elseif SetItemRef then SetItemRef(link,text,button) end
     end)
     self.infoChild:SetScript("OnHyperlinkEnter",function(f,link)
+        if link:match("^ailquesturl:") then return end
         GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetHyperlink(link);GameTooltip:Show()
     end)
     self.infoChild:SetScript("OnHyperlinkLeave",function() GameTooltip:Hide() end)
@@ -461,17 +468,23 @@ function B:Detail()
         self.meta:ClearAllPoints();self.meta:SetPoint("TOPLEFT",0,-detailTop);self.meta:SetWidth(self.info:GetWidth())
         self.meta:SetText(meta);self.meta:Show()
         detailTop=detailTop+self.meta:GetStringHeight()+metrics.section
+        local active=(A.state.quests or {})[e.questId]
+        local db=A.Data.db and A.Data.db.Quest
+        local description,objective
+        if A.State and A.State.QuestText then description,objective=A.State:QuestText(e.questId) end
+        if not objective and not active and db then
+            objective=table.concat(db.Get(e.questId,"objectivesText") or {},"\n")
+        end
+        local sourceLink=color(blue,"|Hailquesturl:"..e.questId.."|h[复制 Wowhead 链接]|h")
+        lines[#lines+1]=color(gold,"任务原文").."\n"..(description or color(muted,
+            active and "请在任务日志中查看原文。" or "打开接任务对话后，可在这里回看原文。").." "..sourceLink)
+        if objective and objective~="" then lines[#lines+1]=color(gold,"任务目标").."\n"..objective end
         if q and q.requiredSkill then lines[#lines+1]="需要 "..skillName(q.requiredSkill[1]).." "..q.requiredSkill[2] end
         if e.prerequisite then
             local pre=A.Data:GetQuest(e.prerequisite)
             lines[#lines+1]="前置  "..questLink(e.prerequisite,pre and pre.title or "任务 #"..e.prerequisite)
         end
-        local active=(A.state.quests or {})[e.questId]
-        local db=A.Data.db and A.Data.db.Quest
         if not active and db then
-            for _,text in ipairs(db.Get(e.questId,"objectivesText") or {}) do
-                if text~="" then lines[#lines+1]=text end
-            end
             if q and #(e.choice.stages or {})==0 and A.Data.QuestContact then
                 local giver=A.Data:QuestContact(q.id,"startedBy")
                 local recipient=A.Data:QuestContact(q.id,"finishedBy")

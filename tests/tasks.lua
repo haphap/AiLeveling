@@ -18,6 +18,29 @@ test("全量资格通过任务保留跨区和缺位置候选且不伪造经验�
     eq(p.taskChoices[1].questId,1);eq(p.taskChoices[1].rate,nil);eq(p.taskChoices[1].seconds,nil)
     eq(p.fallback.kind,"accept");eq(p.fallback.position.map,1)
 end)
+test("任务原文按角色语言和任务编号回看，物品起始任务也可在接取前记录",function()
+    local B={char={}}
+    assert(loadfile("State.lua"))("AiLeveling",B)
+    local oldLocale,oldId,oldText,oldGoal,oldLog,oldLogText=GetLocale,GetQuestID,GetQuestText,GetObjectiveText,C_QuestLog,GetQuestLogQuestText
+    local locale,id="zhCN",3904
+    GetLocale=function() return locale end
+    GetQuestID=function() return id end
+    GetQuestText=function() return "第一段。\n\n第二段。" end
+    GetObjectiveText=function() return "收集八箱葡萄。" end
+    C_QuestLog={}
+    B.State:QuestOffersEvent("QUEST_DETAIL")
+    local body,goal=B.State:QuestText(id)
+    eq(body,"第一段。\n\n第二段。");eq(goal,"收集八箱葡萄。")
+    eq(B.State:QuestText(id+1),nil)
+    GetQuestText=function() return "" end
+    B.State:QuestOffersEvent("QUEST_DETAIL");eq(B.State:QuestText(id),body)
+    locale="enUS";eq(B.State:QuestText(id),nil);locale="zhCN"
+    C_QuestLog.GetLogIndexForQuestID=function(q) return q==id+1 and 4 or nil end
+    GetQuestLogQuestText=function(index) eq(index,4);return "日志正文。","日志目标。" end
+    body,goal=B.State:QuestText(id+1);eq(body,"日志正文。");eq(goal,"日志目标。")
+    C_QuestLog={};eq(B.State:QuestText(id+1),body)
+    GetLocale,GetQuestID,GetQuestText,GetObjectiveText,C_QuestLog,GetQuestLogQuestText=oldLocale,oldId,oldText,oldGoal,oldLog,oldLogText
+end)
 test("日志任务含无坐标和数据库未收录任务且交付优先",function()
     local s,d=fixture();s.quests={[7]={title="无位置",objectives={}},[99]={title="原生新增任务",ready=true,objectives={}}}
     d.Target=function(_,q) if q.id==99 then return {map=2,x=0.5,y=0.5} end end

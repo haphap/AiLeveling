@@ -10,6 +10,34 @@ end
 local offerResetEvents={PLAYER_ENTERING_WORLD=true,QUEST_ACCEPTED=true,QUEST_TURNED_IN=true,
     QUEST_REMOVED=true,PLAYER_LEVEL_UP=true}
 
+local function readableText(text)
+    if (not canaccessvalue or canaccessvalue(text)) and type(text)=="string" and text:find("%S") then return text end
+end
+
+-- The offer contains the character's name and class in the client's current language.
+local function rememberQuestText(id,description,objective)
+    description,objective=readableText(description),readableText(objective)
+    if not A.char or not description then return end
+    local locale=GetLocale()
+    A.char.questText=A.char.questText or {}
+    local texts=A.char.questText[locale] or {}
+    A.char.questText[locale]=texts
+    local entry=texts[id]
+    if entry and entry.description==description and (not objective or entry.objective==objective) then return end
+    texts[id]={description=description,objective=objective or (entry and entry.objective)}
+    return true
+end
+
+function State:QuestText(id)
+    local index=C_QuestLog and C_QuestLog.GetLogIndexForQuestID and C_QuestLog.GetLogIndexForQuestID(id)
+    if (not canaccessvalue or canaccessvalue(index)) and type(index)=="number" and index>0 and GetQuestLogQuestText then
+        rememberQuestText(id,GetQuestLogQuestText(index))
+    end
+    local texts=A.char and A.char.questText and A.char.questText[GetLocale()]
+    local entry=texts and texts[id]
+    if entry then return entry.description,entry.objective end
+end
+
 -- Observed offers belong to this NPC and this eligibility context, not to saved progress.
 function State:QuestOffersEvent(event)
     if offerResetEvents[event] then
@@ -20,11 +48,20 @@ function State:QuestOffersEvent(event)
         return
     end
     if event~="GOSSIP_SHOW" and event~="QUEST_DETAIL" then return end
-    local npc=A.Merchant and UnitGUID and A.Merchant.NpcId(UnitGUID("npc"))
-    if not npc then return end
     local function valid(id)
         return (not canaccessvalue or canaccessvalue(id)) and type(id)=="number" and id>0 and id<math.huge and id%1==0
     end
+    local detailId
+    if event=="QUEST_DETAIL" then
+        detailId=GetQuestID and GetQuestID()
+        if not valid(detailId) then return end
+        if GetQuestText and rememberQuestText(detailId,GetQuestText(),GetObjectiveText and GetObjectiveText()) then
+            local browser=A.UI and A.UI.Browser
+            if browser and browser.selected and browser.selected.questId==detailId and browser.frame:IsVisible() then browser:Detail() end
+        end
+    end
+    local npc=A.Merchant and UnitGUID and A.Merchant.NpcId(UnitGUID("npc"))
+    if not npc then return end
     local offers={}
     local previous=self.questOffers and self.questOffers[npc]
     local location={};self:Position(location)
@@ -50,8 +87,8 @@ function State:QuestOffersEvent(event)
         end
     else
         -- A direct quest window is also an offer when the NPC skipped gossip.
-        local id=GetQuestID and GetQuestID()
-        if not valid(id) or previous and previous[id] then return end
+        local id=detailId
+        if previous and previous[id] then return end
         for quest,info in pairs(previous or {}) do offers[quest]=info end
         offers[id]=offer(id,GetTitleText and GetTitleText())
     end

@@ -588,6 +588,7 @@ function UI:QuestClick(id,button)
     end
     local index=C_QuestLog and C_QuestLog.GetLogIndexForQuestID and C_QuestLog.GetLogIndexForQuestID(id)
     if (not canaccessvalue or canaccessvalue(index)) and type(index)=="number" and index>0 and QuestMapFrame_OpenToQuestDetails then
+        if A.State and A.State.QuestText then A.State:QuestText(id) end
         self.details:Hide()
         QuestMapFrame_OpenToQuestDetails(id)
         return true
