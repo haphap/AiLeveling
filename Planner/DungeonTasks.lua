@@ -108,6 +108,9 @@ function D.TaskApproach(action,state,data)
     if point and point.areaOnly then
         local guide={};for k,v in pairs(action) do guide[k]=v end
         guide.position,guide.areaId=nil,point.sourceAreaId or action.areaId
+        if (action.kind=="accept" or action.kind=="turnin") and point.entityId then
+            guide.targetKind,guide.targetId=point.entityKind,point.entityId
+        end
         if point.entityName and action.kind=="turnin" then
             guide.text="寻找「"..point.entityName.."」交付任务。"
         else
@@ -145,6 +148,7 @@ function D.TaskApproach(action,state,data)
             local group=action.kind=="accept" and "startedBy" or "finishedBy"
             local contact=data:QuestContact(action.questId,group)
             if contact and contact.entityName then
+                inside.targetKind,inside.targetId=contact.entityKind,contact.entityId
                 local object=contact.entityKind=="object"
                 local room=object and sparklematicObjects[contact.entityId] and "清洁区" or "内"
                 inside.text="在"..instance.title..room.."，"..(object and "使用" or "找到").."「"..contact.entityName.."」"..

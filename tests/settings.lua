@@ -636,6 +636,11 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     eq(Q.targetButton.macrotext1,markMacro("矿工约翰"));eq(Q.targetButton.type1,"macro");eq(Q.targetButton.type2,"macro")
     local badge=Q.plateBadges.nameplate1
     eq(badge.shown,true);eq(badge.point[2],plate);eq(Q.plateIcon,"accept")
+    local pickup=B.action
+    B.action={kind="transit",mode="tram",questId=1,questAction=pickup,position={entityKind="npc",entityId=30}}
+    Q:Update();eq(list.shown,true);eq(row.face.creature,10);eq(Q.plateIcon,"accept");eq(row.attributeWrites,written)
+    B.action={kind="transit",mode="tram"};Q:Update();eq(list.shown,false)
+    B.action=pickup;Q:Update()
     B:SetOption("markTargets",false);eq(badge.shown,false);eq(Q.targetButton.macrotext1,"/targetexact 矿工约翰")
     eq(row.macrotext1,"/targetexact 矿工约翰")
     B:SetOption("markTargets",true);eq(badge.shown,true)
@@ -721,6 +726,10 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     B.Data.Target=function(_,q,s) eq(s.quests[1].ready,true);return {entityKind="npc",entityId=10} end
     UnitGUID=function() return "Creature-0-1-2-3-10-0000" end
     Q:Update();eq(Q.targetActive.id,10);eq(badge.shown,true);eq(Q.plateIcon,"turnin")
+    B.action.targetKind,B.action.targetId="npc",30;Q:Update();eq(row.face.creature,30)
+    assert(row.macrotext1:find("/targetexact 旅店老板\n/tm",1,true))
+    B.action.targetKind,B.action.targetId="object",30;Q:Update();eq(list.shown,false)
+    B.action={kind="accept",questId=1,startItemId=100};Q:Update();eq(list.shown,false)
     B.action={kind="service",npcId=30};Q:Update();eq(Q.targetActive.id,30)
     eq(badge.shown,false)
     B.action={kind="manual"};Q:Update();eq(Q.targetButton.shown,false)

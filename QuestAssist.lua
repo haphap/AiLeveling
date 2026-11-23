@@ -105,6 +105,10 @@ function Q.TargetNPCs(action,state,data)
             end
         end
     else
+        if action.startItemId or point and point.startItemId then return targets end
+        local kind=point and point.entityKind or action.targetKind
+        if kind and kind~="npc" then return targets end
+        if not id and kind=="npc" then id=action.targetId end
         if not id and q and data.Target then
             local lookup={position=state.position,faction=state.faction,completed=state.completed,quests={}}
             if action.kind=="turnin" then lookup.quests[q.id]={ready=true} end
@@ -682,12 +686,13 @@ end
 function Q:Update(quiet)
     if not A.state or not A.settings then return end
     local action = A.Navigation:Current()
+    local targetAction=action and (action.questAction or action)
     self.followWanted=A.settings.targets~=false and not A.char.paused and Q.Leader() or nil
-    self.targetChoices=A.settings.targets~=false and not A.char.paused and Q.TargetNPCs(action,A.state,A.Data) or {}
-    local targets={tostring(action and action.kind),tostring(action and action.questId),tostring(action and action.objectiveIndex)}
+    self.targetChoices=A.settings.targets~=false and not A.char.paused and Q.TargetNPCs(targetAction,A.state,A.Data) or {}
+    local targets={tostring(targetAction and targetAction.kind),tostring(targetAction and targetAction.questId),tostring(targetAction and targetAction.objectiveIndex)}
     for _,npc in ipairs(self.targetChoices) do targets[#targets+1]=npc.id..":"..npc.name end
     local targetKey=table.concat(targets,"\031")
-    local icon=A.settings.markTargets and #self.targetChoices>0 and A.UI.QuestIcon(action.kind,action)
+    local icon=A.settings.markTargets and #self.targetChoices>0 and A.UI.QuestIcon(targetAction.kind,targetAction)
     if icon=="compass" then icon="target" end
     if self.targetKey~=targetKey or self.plateIcon~=icon then
         self.plateIcon=icon

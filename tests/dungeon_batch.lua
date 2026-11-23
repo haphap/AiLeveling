@@ -163,6 +163,12 @@ run("关闭副本建议仍继续当前本内目标及出本交付，缺图目标
     assert(p.fallback.text:find("已关闭副本建议",1,true))
     s.inInstance,s.instanceId,s.position=true,42,{map=2,x=0,y=0}
     p=plan(s,data,B.settings,B);eq(p.fallback.kind,"objective");eq(p.fallback.questId,1)
+    data.QuestContact=function(_,id,group)
+        eq(id,1);eq(group,"finishedBy");return {entityKind="npc",entityId=10,entityName="交付人"}
+    end
+    local inside=B.Dungeon.TaskApproach({kind="turnin",questId=1,areaId=100},s,data)
+    eq(inside.targetKind,"npc");eq(inside.targetId,10);eq(inside.position,nil)
+    data.QuestContact=nil
     s.quests[1].ready=true;p=plan(s,data,B.settings,B);eq(p.fallback.kind,"dungeonLeave")
     s.inInstance=false;s.position={map=1,x=0,y=0}
     p=plan(s,data,B.settings,B);eq(p.fallback.kind,"turnin");eq(s.completed[1],nil)
