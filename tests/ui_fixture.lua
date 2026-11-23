@@ -79,7 +79,14 @@ local function setup(fullUI,daylight,nameplates)
     UIParent=widget();UIParent:SetSize(1920,1080);STANDARD_TEXT_FONT="font";GameFontHighlight={};SlashCmdList={};NUM_CONTAINER_FRAMES=0;ContainerFrameCombinedBags=nil
     MinimapCluster=widget();MinimapCluster:SetSize(280,280);ObjectiveTrackerFrame=widget()
     CreateFrame=function(kind,_,parent,template)
-        local w=widget();w.kind,w.template,w.parent=kind,template,parent;if kind=="CheckButton" then w.Text=widget() end;return w
+        local w=widget();w.kind,w.template,w.parent=kind,template,parent
+        if kind=="CheckButton" then w.Text=widget() end
+        if kind=="PlayerModel" then
+            w.ClearModel=function(self) self.creature=nil end
+            w.SetCreature=function(self,id) self.creature=id end
+            w.SetPortraitZoom=function(self,zoom) self.zoom=zoom end
+        end
+        return w
     end
     C_NamePlate=nameplates
     InCombatLockdown=function() return combat end;GetTime=function() return clock end

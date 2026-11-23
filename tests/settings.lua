@@ -625,6 +625,11 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     B.Data.db={Npc={Get=function(id,key) eq(key,"name");return entities[id] end}}
     B.action={kind="accept",questId=1,position={entityKind="npc",entityId=10}}
     Q:Update();eq(Q.targetActive.id,10)
+    local list=Q.targetList;local row=list.rows[1]
+    eq(list.parent,B.UI.navAnchor);eq(row.label:GetText(),"矿工约翰");eq(row.face.creature,10)
+    row.face.scripts.OnModelLoaded(row.face);eq(row.face.zoom,1);eq(row.fallback.shown,false)
+    assert(row.macrotext1:find("/cleartarget\n/targetexact 矿工约翰\n/tm",1,true))
+    local written=row.attributeWrites;Q:Update();eq(row.attributeWrites,written)
     local manual=Q.targetButton.macrotext2
     eq(manual,"/tm [@target,harm,nodead] ~8\n/tm [@target,noharm,exists,nodead] ~1")
     local function markMacro(name) return "/cleartarget [nocombat]\n/targetexact "..name.."\n/stopmacro [combat]\n"..manual end
@@ -632,6 +637,7 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     local badge=Q.plateBadges.nameplate1
     eq(badge.shown,true);eq(badge.point[2],plate);eq(Q.plateIcon,"accept")
     B:SetOption("markTargets",false);eq(badge.shown,false);eq(Q.targetButton.macrotext1,"/targetexact 矿工约翰")
+    eq(row.macrotext1,"/targetexact 矿工约翰")
     B:SetOption("markTargets",true);eq(badge.shown,true)
     local raid,leader,assistant=IsInRaid,UnitIsGroupLeader,UnitIsGroupAssistant
     IsInRaid=function() return true end;UnitIsGroupLeader=function() return false end
@@ -686,6 +692,14 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     B.Data.ObjectiveTargets=function() return {{objectiveIndex=1,entityKind="npc",entityId=20},{objectiveIndex=2,entityKind="npc",entityId=22}} end
     B.Data.ObjectiveIdentities=function() return {[1]={kind="killcredit",npcIds={20,21,21}},[2]={kind="npc",id=22}} end
     Q:Update();eq(#Q.targetChoices,3);eq(Q.targetActive.id,20)
+    eq(list.rows[2].face.creature,21);assert(list.rows[2].macrotext1:find("/targetexact 黑熊\n",1,true))
+    entities[23],entities[24]="小蜘蛛","大蜘蛛"
+    local identities=B.Data.ObjectiveIdentities
+    B.Data.ObjectiveIdentities=function() return {[1]={kind="killcredit",npcIds={20,21,23,24}},[2]={kind="npc",id=22}} end
+    Q:Update();eq(#list.rows,4);eq(list.page.shown,true)
+    row.scripts.OnMouseWheel(row,-1);eq(row.face.creature,22);eq(list.rows[2].shown,false)
+    row.scripts.OnMouseWheel(row,1);eq(row.face.creature,20)
+    B.Data.ObjectiveIdentities=identities;Q:Update()
     local wheel=assert(Q.targetButton.scripts.OnMouseWheel)
     wheel(nil,-1);eq(Q.targetActive.id,21);eq(Q.targetButton.macrotext1,markMacro("黑熊"))
     assert(Q.targetTitle:find("2/3",1,true))
@@ -701,6 +715,7 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     B.combat(false);B.frame.scripts.OnEvent(nil,"PLAYER_REGEN_ENABLED")
     eq(Q.targetActive.id,22);eq(#Q.targetChoices,1)
     B.state.quests[1].ready=true;Q:Update();eq(Q.targetButton.shown,false);B.state.quests[1].ready=nil
+    eq(list.shown,false)
     B.Data.ObjectiveIdentities=nil;B.state.quests[1].objectives={}
     B.action={kind="turnin",questId=1}
     B.Data.Target=function(_,q,s) eq(s.quests[1].ready,true);return {entityKind="npc",entityId=10} end

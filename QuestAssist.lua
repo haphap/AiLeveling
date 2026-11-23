@@ -164,6 +164,103 @@ local function canMarkTarget()
     return readable(lead) and lead==true or readable(assist) and assist==true
 end
 
+-- A row names exactly one NPC. On a combat miss, restore the previous target after the mark command.
+local function rowMacro(name,mark)
+    local selectName="/targetexact "..name
+    if mark then
+        local macro="/cleartarget\n"..selectName.."\n"..markTarget.."\n/targetlasttarget [combat,noexists]"
+        if #macro<=255 then return macro,true end
+    end
+    return selectName
+end
+
+local rowsPerPage=4
+local function createTargetRow(self,index)
+    local list=self.targetList
+    local row=CreateFrame("Button",nil,list,"SecureActionButtonTemplate")
+    row:SetAttribute("type1","macro");row:RegisterForClicks("LeftButtonUp","LeftButtonDown")
+    local hover=row:CreateTexture(nil,"HIGHLIGHT");hover:SetAllPoints()
+    hover:SetColorTexture(1,1,1,0.12)
+    row:EnableMouseWheel(true)
+    row:SetScript("OnMouseWheel",function(_,delta)
+        local size=#self.targetActiveChoices
+        if InCombatLockdown() or size<=rowsPerPage then return end
+        local page=math.floor((self.targetActiveIndex-1)/rowsPerPage)
+        local nextPage=(page+(delta>0 and -1 or 1))%math.ceil(size/rowsPerPage)
+        self:CycleTarget(1+nextPage*rowsPerPage-self.targetActiveIndex)
+    end)
+    A.UI:Movable(row,"navigationPosition",A.UI.navAnchor,"RightButton")
+    row.fallback=row:CreateTexture(nil,"ARTWORK")
+    row.fallback:SetPoint("LEFT",5,0)
+    row.fallback:SetTexture("Interface\\AddOns\\AiLeveling\\Media\\target.tga")
+    row.face=CreateFrame("PlayerModel",nil,row)
+    row.face:EnableMouse(false);row.face:SetAllPoints(row.fallback)
+    row.face:SetScript("OnModelLoaded",function(face)
+        face:SetPortraitZoom(1)
+        row.fallback:Hide()
+    end)
+    row.label=A.UI:Text(row,13)
+    row.label:SetPoint("LEFT",row.face,"RIGHT",7,0);row.label:SetPoint("RIGHT",row,"RIGHT",-5,0)
+    row.label:SetMaxLines(1)
+    row:SetScript("OnEnter",function()
+        GameTooltip:SetOwner(row,"ANCHOR_RIGHT");GameTooltip:SetText(row.npcName)
+        GameTooltip:AddLine(row.mark and "点击选中并标记" or "点击选中",1,1,1)
+        GameTooltip:Show()
+    end)
+    row:SetScript("OnLeave",function() GameTooltip:Hide() end)
+    list.rows[index]=row
+    return row
+end
+
+function Q:LayoutTargetList(mark)
+    local choices=self.targetActiveChoices or {}
+    local list=self.targetList
+    if #choices==0 then
+        if list and list:IsShown() then list:Hide() end
+        return
+    end
+    if not list then
+        list=A.UI:Panel(nil,A.UI.navAnchor,200,34)
+        list:SetPoint("TOPLEFT",A.UI.navAnchor,"BOTTOMLEFT",0,-4);list:SetClampedToScreen(true)
+        list.rows={};self.targetList=list
+        list.page=A.UI:Text(list,11)
+        list.page:SetPoint("BOTTOMRIGHT",-6,3)
+    end
+    local first=1+math.floor((self.targetActiveIndex-1)/rowsPerPage)*rowsPerPage
+    local count=math.min(rowsPerPage,#choices-first+1)
+    local scale=A.UI:FontScale()
+    local visible=list:IsShown()
+    if visible and list.key==self.targetActiveKey and list.first==first and list.scaleUsed==scale and list.mark==mark then return end
+    list.key,list.first,list.scaleUsed,list.mark=self.targetActiveKey,first,scale,mark
+    local height=32*scale
+    local paged=#choices>rowsPerPage
+    list:SetSize(208*scale,height*count+4+(paged and 16*scale or 0));list:Show()
+    list.page:SetShown(paged)
+    if paged then list.page:SetText(string.format("%d–%d / %d · 滚轮翻页",first,first+count-1,#choices)) end
+    for i=1,math.max(count,#list.rows) do
+        local npc=i<=count and choices[first+i-1]
+        local row=list.rows[i] or createTargetRow(self,i)
+        if npc then
+            row:SetSize(list:GetWidth()-4,height)
+            row:ClearAllPoints();row:SetPoint("TOPLEFT",list,"TOPLEFT",2,-2-(i-1)*height)
+            row.fallback:SetSize(26*scale,26*scale)
+            local macro,marked=rowMacro(npc.name,mark)
+            row.npcName,row.mark=npc.name,marked
+            row.label:SetText(npc.name)
+            row:SetAttribute("macrotext1",macro)
+            row:Show()
+            if row.npcId~=npc.id or not visible then
+                row.npcId=npc.id;row.face:ClearModel()
+                row.fallback:Show()
+                row.face:SetCreature(npc.id)
+            end
+        else
+            row:Hide();row:SetAttribute("macrotext1",nil)
+            row.npcId=nil
+        end
+    end
+end
+
 function Q:ApplyTarget()
     if not self.targetButton then return end
     if InCombatLockdown() then
@@ -184,6 +281,7 @@ function Q:ApplyTarget()
     end
     self.targetButton:SetAttribute("macrotext1",macro)
     self.targetButton:SetAttribute("macrotext2",allowed and markTarget or nil)
+    self:LayoutTargetList(A.settings.markTargets and allowed)
     self:LayoutTarget()
     self:TargetStatus()
 end
