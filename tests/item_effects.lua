@@ -82,7 +82,7 @@ test("激流堡兜帽的命中等级进入防骑背包和奖励评分",function(
     eq(reward.index,2);eq(reward.upgrade.delta,bag.delta)
 end) end)
 
-test("背包装备提示使用当前物品的评分与整套换装差值，对照栏仅显示已穿装备分数",function() native(function()
+test("装备提示逐行显示各专精的换装百分比，双栏位分别比较",function() native(function()
     local B,s=fixture()
     s.class,s.role,s.level="PALADIN","TANK",39
     local helm={id=252456,link="item:252456",instanceKey="0:2",usable=true,equipLoc="INVTYPE_HEAD",
@@ -90,13 +90,14 @@ test("背包装备提示使用当前物品的评分与整套换装差值，对�
     local hoodStats={ITEM_MOD_STAMINA_SHORT=8,RESISTANCE0_NAME=152,ITEM_MOD_HIT_RATING_SHORT=5}
     s.bagEquipment={helm};s.equipment={[1]={id=278567,equipLoc="INVTYPE_HEAD",stats=hoodStats}}
     B.UI,B.state,B.settings={},s,{}
-    local post,link,left,right
+    local post,link
+    local lines={}
     local info={getterName="GetBagItem",getterArgs={0,2}}
     Enum.TooltipDataType={Item=0}
     TooltipDataProcessor={AddTooltipPostCall=function(kind,callback) eq(kind,0);post=callback end}
     TooltipUtil={GetDisplayedItem=function() return "装备",link end}
     GameTooltip={GetPrimaryTooltipInfo=function() return info end,GetProcessingTooltipInfo=function() return info end,
-        IsForbidden=function() return false end,AddDoubleLine=function(_,label,value) left,right=label,value end}
+        IsForbidden=function() return false end,AddLine=function(_,text) lines[#lines+1]=text end}
     ShoppingTooltip1=setmetatable({},{__index=GameTooltip})
     C_Item.GetItemInfoInstant=function(value) return tonumber(value:match("%d+")),nil,nil,"INVTYPE_HEAD" end
     C_Item.GetItemInfo=function(value) return "激流堡兜帽",value,2,39,0,nil,nil,1,"INVTYPE_HEAD" end
@@ -106,12 +107,20 @@ test("背包装备提示使用当前物品的评分与整套换装差值，对�
     assert(loadfile("UI/Gear.lua"))("AiLeveling",B)
     local data={lines={{type=0,leftText="头部"}}}
     link=helm.link;post(GameTooltip,data)
-    eq(left,"AILeveling · 防骑");assert(right:find("26.68 分",1,true) and right:find("换装 +11.79",1,true))
+    assert(lines[2]:find("AILeveling 评分",1,true));eq(#lines,5)
+    assert(lines[3]:find("惩戒 +63%",1,true));assert(lines[4]:find("|cff78d973防骑 +79%",1,true))
+    assert(lines[5]:find("奶骑 +663%",1,true));eq(s.role,"TANK")
     -- The bag slot changed before the next character snapshot.
-    link="item:278567";post(GameTooltip,data)
-    assert(right:find("14.89 分",1,true) and right:find("换装 +0.00",1,true))
-    post(ShoppingTooltip1,data);eq(right,"14.89 分");eq(scans,0)
-    B.settings.rewardAdvice=false;right=nil;post(GameTooltip,data);eq(right,nil)
+    link="item:278567";lines={};post(GameTooltip,data);eq(#lines,0);eq(scans,0)
+    local function ring(id,stamina)
+        return {id=id,link="item:"..id,equipLoc="INVTYPE_FINGER",usable=true,stats={ITEM_MOD_STAMINA_SHORT=stamina}}
+    end
+    local candidate=ring(3,15);candidate.instanceKey="0:2"
+    s.equipment={[11]=ring(1,10),[12]=ring(2,20)};s.bagEquipment={candidate};link=candidate.link
+    post(GameTooltip,data)
+    assert(lines[4]:find("|cff78d973#1 +50%",1,true));assert(lines[4]:find("|cffeb6b61#2 -25%",1,true))
+    lines={};post(ShoppingTooltip1,data);eq(#lines,0)
+    B.settings.rewardAdvice=false;post(GameTooltip,data);eq(#lines,0)
 end) end)
 
 test("自动评分采用已应用的防护天赋，切换配置及手动选择生效",function() native(function()
