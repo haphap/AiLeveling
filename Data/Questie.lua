@@ -45,6 +45,12 @@ local function eachItemDrop(self,item,state,visit)
     end
     if current and current.areas and A.Dungeon and A.Dungeon.TaskInstance and scan(true) then return end
     scan(false)
+    -- Forever's Mature Paletusk drops the same boar meat as the starter-zone boars.
+    if item==769 then
+        for _,id in ipairs(self.db.Item.Get(item,"npcDrops") or {}) do if id==255851 then return end end
+        local spawns=self.db.Npc.Get(255851,"spawns")
+        if spawns then visit(self.db.Npc,255851,"npc",spawns) end
+    end
 end
 
 -- Parse only numeric map entries from the provider's documented Lua data string.
@@ -374,9 +380,70 @@ function D:Candidates(snapshot)
     return ids
 end
 
-function D:EntityPoints(entity, id, allowArea, spawns)
+-- Outdoor farming areas use a recorded spawn nearest the center of each populated patch.
+local huntPatches=setmetatable({}, {__mode="k"})
+local function patchesFor(spawns)
+    if huntPatches[spawns]~=nil then return huntPatches[spawns] end
+    local cells,seen={},{}
+    local peak=0
+    for _,p in ipairs(spawns) do
+        if usableSpawn(p) then
+            local x,y=p[1],p[2]
+            local key=x..","..y
+            if not seen[key] then
+                seen[key]=true
+                -- Outdoor zone maps have a 3:2 aspect ratio.
+                local cellId=math.floor(x/3)*32+math.floor(y/4.5)
+                local cell=cells[cellId] or {x=0,y=0}
+                cells[cellId]=cell
+                cell[#cell+1]=p
+                cell.x,cell.y=cell.x+x,cell.y+y
+                peak=math.max(peak,#cell)
+            end
+        end
+    end
+    local result=peak>=3 and {peak=peak,cells={}} or false
+    if result then
+        for cellId,cell in pairs(cells) do
+            local x,y=cell.x/#cell,cell.y/#cell
+            local best,distance
+            for _,p in ipairs(cell) do
+                local d=((p[1]-x)*1.5)^2+(p[2]-y)^2
+                if not best or d<distance then best,distance=p,d end
+            end
+            result.cells[cellId]={point=best,count=#cell}
+        end
+    end
+    huntPatches[spawns]=result
+    return result
+end
+
+local function useHuntPatch(cells,cellId,minimum)
+    if cells[cellId].count>=minimum then return true end
+    -- Suppress a fringe point only in favour of a neighbouring patch. A smaller,
+    -- separate camp can still be the best place for a player already beside it.
+    local nearby=0
+    for dx=-1,1 do
+        for dy=-1,1 do
+            local cell=cells[cellId+32*dx+dy]
+            if cell then
+                if cell.count>=minimum then return false end
+                nearby=nearby+cell.count
+            end
+        end
+    end
+    return nearby>=3
+end
+
+function D:EntityPoints(entity, id, allowArea, spawns, huntCount)
     spawns=spawns or entity.Get(id,"spawns")
-    local points=self:SpawnPoints(spawns,allowArea)
+    local points=self:SpawnPoints(spawns,allowArea,huntCount)
+    -- Pyron's synthetic continent pin misses the quarry. Forever kill credit locates
+    -- the search area near the BRD portal, not a fixed spawn for this patrol.
+    if entity==self.db.Npc and id==9026 and #points==1 and points[1].sourceAreaId==10074 and C_Map.GetMapInfo(1427) then
+        points[1]={map=1427,x=0.2615,y=0.7413,sourceAreaId=1445,approximate=true,sourceKind="observation",
+            siteName="黑石山采石场",label="任务目标附近",travelHint="进入黑石山，在黑石深渊入口外的采石场寻找巡逻的征服者派隆。"}
+    end
     -- The two tram quests have no zone map. Guide to the existing entrance, then name the platform.
     local map=entity==self.db.Npc and ({[12997]=1455,[13016]=1455,[13018]=1453})[id]
     if #points==0 and map and spawns and spawns[2257] then
@@ -392,11 +459,23 @@ function D:EntityPoints(entity, id, allowArea, spawns)
     return points
 end
 
-function D:SpawnPoints(spawnList,allowArea)
+function D:SpawnPoints(spawnList,allowArea,huntCount)
     local points,areas = {},{}
     for area, spawns in pairs(spawnList or {}) do
         local map = self.maps[area]
-        if map and map > 0 and C_Map.GetMapInfo(map) then
+        local info=map and map>0 and C_Map.GetMapInfo(map)
+        local patches=info and huntCount and huntCount>=1 and #spawns>=8 and
+            (not info.mapType or info.mapType==3) and patchesFor(spawns)
+        if patches and (huntCount>1 or patches.peak>=8) then
+            -- Even one quest drop can take repeated kills. Only group these for well-sampled common mobs.
+            local minimum=math.max(3,huntCount==1 and math.ceil(patches.peak/2) or math.min(huntCount,patches.peak))
+            for cellId,patch in pairs(patches.cells) do
+                if useHuntPatch(patches.cells,cellId,minimum) then
+                    local p=patch.point
+                    points[#points+1]={map=map,x=p[1]/100,y=p[2]/100,sourceAreaId=area,spawnArea=true}
+                end
+            end
+        elseif info then
             for _, p in ipairs(spawns) do
                 if usableSpawn(p) then
                     points[#points + 1] = { map = map, x = p[1] / 100, y = p[2] / 100, sourceAreaId=area }
@@ -435,14 +514,22 @@ local function nearerSource(state,point,distance,best,bestDistance)
     return not bestDistance and state.position and point.map==state.position.map and best.map~=point.map
 end
 
+-- Compare travel to a known patrol and a fixed spawn on equal terms.
+local function preferObjective(state,point,distance,best,bestDistance)
+    if best then
+        local located=not point.approximate or point.sourceKind=="patrol"
+        local bestLocated=not best.approximate or best.sourceKind=="patrol"
+        if located~=bestLocated then return located end
+    end
+    return nearerSource(state,point,distance,best,bestDistance)
+end
+
 function D:TriggerTarget(q,state)
     local trigger=self.db.Quest.Get(q.id,"triggerEnd")
     local best,bestDistance
     for _,point in ipairs(self:SpawnPoints(trigger and trigger[2],true)) do
         local distance=A.Navigation:Distance(state.position,point)
-        local precise=best and best.approximate and not point.approximate
-        local comparable=not best or (not best.approximate)==(not point.approximate)
-        if precise or comparable and nearerSource(state,point,distance,best,bestDistance) then
+        if preferObjective(state,point,distance,best,bestDistance) then
             best,bestDistance=point,distance
         end
     end
@@ -507,12 +594,12 @@ local function hasFriendlyRecipient(entity,sources,faction)
     return false
 end
 
--- Use a recorded passing point when the contact patrols the player's current zone.
-local function patrolContact(point,paths,origin,maps,turnin,pin)
+-- Use a recorded passing point when the target patrols the player's current zone.
+local function patrolTarget(point,paths,origin,maps,phase,pin)
     if type(paths)~="table" then return end
     local nearest
     for area,segments in pairs(paths) do
-        local hasPath=type(segments)=="table" and type(segments[1])=="table" and type(segments[1][1])=="table"
+        local hasPath=(phase~="objective" or area==point.sourceAreaId) and type(segments)=="table" and type(segments[1])=="table" and type(segments[1][1])=="table"
         if hasPath then point.sourceKind="patrol" end
         local map=maps[area]
         if hasPath and (origin and map==origin.map or pin and map==pin.map) then
@@ -535,7 +622,8 @@ local function patrolContact(point,paths,origin,maps,turnin,pin)
     end
     if point.sourceKind~="patrol" then return end
     point.approximate,point.label=true,"巡逻路线参考点"
-    point.travelHint="沿巡逻路线寻找「"..(point.entityName or "任务联系人").."」"..(turnin and "交付任务。" or "接取任务。")
+    point.travelHint="沿巡逻路线寻找「"..(point.entityName or "任务目标").."」"..
+        (phase=="objective" and "。" or phase=="turnin" and "交付任务。" or "接取任务。")
 end
 
 local function matchesSourceMap(waypoint,target)
@@ -579,7 +667,7 @@ function D:Target(q, state)
     if status == "active" then
         local target=self:ObjectiveTarget(q,state)
         if not target and #(active.objectives or {})==0 then target=self:TriggerTarget(q,state) end
-        if target and not target.approximate then return target end
+        if target and (not target.approximate or target.sourceKind=="patrol") then return target end
         local waypoint=nativeWaypoint(q.id)
         if waypoint then
             if waypointFitsTarget(self,q,state,waypoint,target) then return waypoint end
@@ -656,7 +744,7 @@ function D:Target(q, state)
     end
     local matchesRecipient=bestPriority==4
     if best and not best.approximate and best.entityKind=="npc" and best.sourceAreaId and not matchesRecipient then
-        matchesRecipient=patrolContact(best,self.db.Npc.Get(best.entityId,"waypoints"),state.position,self.maps,active,pin)
+        matchesRecipient=patrolTarget(best,self.db.Npc.Get(best.entityId,"waypoints"),state.position,self.maps,active and "turnin" or "accept",pin)
     end
     if pin and (matchesRecipient or not best or best.areaOnly) and waypointFitsTarget(self,q,state,pin,best,true) then
         local point={map=pin.map,x=pin.x,y=pin.y,label="任务交付点"}
@@ -896,8 +984,24 @@ function D:ObjectiveTargets(q,state)
         work=work+1
         if work==100 and thread and not main then work=0;coroutine.yield() end
     end
-    local function consider(entity,id,label,index,kind,identity,sourceKind,points)
-        for _,point in ipairs(points or self:EntityPoints(entity,id,true)) do
+    local areas=dungeonAreas(q,state)
+    local outdoor=not state.inInstance and not (areas and areas.objective)
+    local function consider(entity,id,label,index,kind,identity,sourceKind,points,spawns)
+        if not points then
+            local hunt=outdoor and kind=="npc" and not sourceKind and active.objectives[index].numRequired
+            if hunt==1 and (identity.kind~="item" or (entity.Get(id,"rank") or 0)~=0 or next(entity.Get(id,"waypoints") or {})) then
+                hunt=nil
+            end
+            points=self:EntityPoints(entity,id,true,spawns,hunt)
+        end
+        if outdoor and kind=="npc" and not sourceKind and #points==1 and not points[1].approximate and not points[1].spawnArea then
+            local paths=entity.Get(id,"waypoints")
+            if paths and paths[points[1].sourceAreaId] then
+                points[1].entityName=entity.Get(id,"name")
+                patrolTarget(points[1],paths,state.position,self.maps,"objective")
+            end
+        end
+        for _,point in ipairs(points) do
             local best,bestDistance=chosen[index],distances[index]
             local distance=A.Navigation:Distance(state.position,point)
             if sourceKind=="vendor" then
@@ -906,14 +1010,12 @@ function D:ObjectiveTargets(q,state)
                     purchases[index]={npcId=id,name=entity.Get(id,"name"),map=point.map,distance=distance}
                 end
             end
-            local precise=best and best.approximate and not point.approximate
-            local comparable=not best or (not best.approximate)==(not point.approximate)
-            if precise or comparable and nearerSource(state,point,distance,best,bestDistance) then
+            if preferObjective(state,point,distance,best,bestDistance) then
                 chosen[index],distances[index]=point,distance
                 point.label,point.objectiveIndex=point.travelHint and point.label or point.approximate and "区域参考点" or label,index
                 point.entityKind,point.entityId=kind,id
                 point.targetKind,point.targetId=identity.kind,identity.id
-                point.sourceKind=sourceKind
+                point.sourceKind=sourceKind or point.sourceKind
                 if sourceKind=="vendor" then point.targetName=self.db.Item.Get(identity.id,"name") end
             end
             checkpoint()
@@ -940,7 +1042,7 @@ function D:ObjectiveTargets(q,state)
             if chosen[index] then chosen[index].siteName="铁须之墓" end
         elseif entry.kind=="item" then
             eachItemDrop(self,entry.id,state,function(entity,id,kind,spawns)
-                consider(entity,id,"QuestieDB 任务物品来源分布",index,kind,entry,nil,self:EntityPoints(entity,id,true,spawns))
+                consider(entity,id,"QuestieDB 任务物品来源分布",index,kind,entry,nil,nil,spawns)
             end)
             for _,id in ipairs(self.db.Item.Get(entry.id,"vendors") or {}) do
                 local faction=self.db.Npc.Get(id,"friendlyToFaction")
@@ -983,14 +1085,13 @@ function D:ObjectiveTargets(q,state)
     -- The POI has no objective index. Use it only for a single goal without a known site.
     local pin=#(active.objectives or {})==1 and active.mapPin
     local result={}
-    local areas=dungeonAreas(q,state)
     local inside=areas and areas.objective and A.Dungeon and A.Dungeon.TaskInstance and
         A.Dungeon.TaskInstance(nil,state,self,areas.objective)
     for index,o in ipairs(active.objectives or {}) do
         if not o.finished then
             local identity=identities[index]
             local point=chosen[index]
-            if not point or point.approximate then point=self:ObservedObjectiveTarget(q,state,identity,o) or point end
+            if not point or point.approximate and point.sourceKind~="patrol" then point=self:ObservedObjectiveTarget(q,state,identity,o) or point end
             -- Some instance mobs are also plotted on the outdoor entrance map by the provider.
             if point and inside and A.Dungeon.TaskInstance(point,state,self)~=inside then point=nil end
             local unmapped=not point and self:UnmappedTargetArea(q,state,index)
@@ -1016,9 +1117,7 @@ function D:ObjectiveTarget(q,state)
     local best,bestDistance
     for _,point in ipairs(self:ObjectiveTargets(q,state)) do
         local distance=A.Navigation:Distance(state.position,point)
-        local precise=best and best.approximate and not point.approximate
-        local comparable=not best or (not best.approximate)==(not point.approximate)
-        if precise or comparable and nearerSource(state,point,distance,best,bestDistance) then
+        if preferObjective(state,point,distance,best,bestDistance) then
             best,bestDistance=point,distance
         end
     end

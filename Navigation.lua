@@ -505,6 +505,7 @@ local function showPinTip(pin)
     if place then
         if area and area~=place then place=place.." · "..area end
         if pos.approximate then place=place.." · "..(pos.sourceKind=="patrol" and "巡逻路线" or "区域参考点") end
+        if pos.spawnArea then place=place.." · 出没区域" end
         if pos.sourceKind=="escortStart" then place=place.." · 护送起点" end
         GameTooltip:AddLine(place,0.8,0.8,0.82,true)
     end

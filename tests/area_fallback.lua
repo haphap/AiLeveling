@@ -20,6 +20,51 @@ local function fixture()
     s.quests={[1]={objectives={{text="日志中无法对应的目标",type="monster",numRequired=3,numFulfilled=1}}}}
     return B,q,s,rows,npcs
 end
+test("野外群怪目标和掉落选有多处记录的活动区，接交和单个目标保留原坐标",function()
+    local B,q,s,rows,npcs=fixture()
+    local d=B.Data
+    local spawns={{1,1},{1,1},{1,1},{1,1},{1,1},{1,1},{1,1},
+        {40,50},{40.1,50},{40.2,50},{40.3,50},{40.4,50},{40.5,50},{40.6,50},{40.7,50},{40.8,50},
+        {70,50},{70.3,50},{70.6,50}}
+    npcs[6].spawns={[12]=spawns}
+    rows.startedBy,rows.finishedBy,rows.objectives={{6}},{{6}},{{{6}}}
+    local goal={text="怪物甲",type="monster",numRequired=3}
+    local active={objectives={goal}}
+    s.quests[1]=nil
+    eq(d:Target(q,s).x,0.01)
+    s.quests[1]=active
+    local target=d:Target(q,s)
+    eq(target.x,40.4/100);eq(target.spawnArea,true);eq(target.entityId,6)
+    s.position={map=1,x=0.75,y=0.5}
+    eq(d:Target(q,s).x,70.3/100)
+    s.position={map=1,x=0,y=0}
+    goal.numRequired=1
+    eq(d:Target(q,s).x,0.01)
+    goal.type,goal.text,goal.numRequired="item","毛皮",3
+    rows.objectives={[3]={{100}}}
+    d.db.Item.Get=function(_,k) if k=="npcDrops" then return {6} elseif k=="name" then return "毛皮" end end
+    target=d:Target(q,s)
+    eq(target.x,40.4/100);eq(target.targetId,100);eq(target.spawnArea,true)
+    goal.numRequired=1
+    eq(d:Target(q,s).x,40.4/100)
+    npcs[6].rank=2
+    eq(d:Target(q,s).x,0.01)
+    npcs[6].rank=0
+    s.inInstance=true
+    eq(d:Target(q,s).x,0.01)
+    s.inInstance=false
+    npcs[6].spawns={[12]={{1,1}}}
+    npcs[6].waypoints={[12]={{{1,1},{84,95}}}}
+    s.position={map=1,x=0.85,y=0.95}
+    target=d:Target(q,s)
+    eq(target.x,0.84);eq(target.sourceKind,"patrol");eq(target.approximate,true);eq(target.targetId,100)
+    npcs[7].spawns={[12]={{20,20}}}
+    d.db.Item.Get=function(_,k) if k=="npcDrops" then return {7,6} elseif k=="name" then return "毛皮" end end
+    eq(d:Target(q,s).entityId,6)
+    active.ready=true
+    s.position={map=1,x=0,y=0}
+    eq(d:Target(q,s).x,0.01)
+end)
 test("零数量进入区域仍需实际完成且多个触发目标分别保留",function()
     local B,q,s,rows=fixture();q.questLevel=10;s.quests={};rows.objectives={}
     s.clientVersion,s.clientBuild,s.interface="1.60.1","70862",16001

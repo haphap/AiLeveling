@@ -37,7 +37,7 @@ local function mapLocation(point)
     if not point or point.approximate or point.areaOnly or not (point.map and point.x and point.y) then return end
     local map=C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
     if map and map.name then
-        local prefix=point.sourceKind=="escortStart" and "护送起点 · " or ""
+        local prefix=point.sourceKind=="escortStart" and "护送起点 · " or point.spawnArea and "出没区域 · " or ""
         return placeLabel(("%s%s %.1f，%.1f"):format(prefix,map.name,100*point.x,100*point.y))
     end
 end
@@ -2204,7 +2204,7 @@ local function navigationInstruction(action,journey)
         nextStep=sequence.actions[index+1]
     end
     local target=nav.Target(action)
-    local hint=target and target.approximate and (target.sourceKind=="patrol" and " · 巡逻路线" or " · 区域参考点") or ""
+    local hint=target and target.spawnArea and " · 出没区域" or target and target.approximate and (target.sourceKind=="patrol" and " · 巡逻路线" or " · 区域参考点") or ""
     local title=action.title or heading
     if action.title and (action.kind=="accept" or action.kind=="turnin") then title=questVerbs[action.kind].."「"..title.."」" end
     local detail=questStepHint(action)
