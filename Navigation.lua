@@ -143,7 +143,16 @@ function N:Navigate(action,keepWaypoint)
     return true
 end
 
+local function clearMapArea()
+    if not N.mapAreaAction then return end
+    N.mapAreaAction=nil
+    -- Restore the native details panel's focus if it was open behind this preview.
+    local detail=QuestMapFrame_GetDetailQuestID and QuestMapFrame_GetDetailQuestID()
+    if detail then WorldMapFrame:SetFocusedQuestID(detail) else WorldMapFrame:ClearFocusedQuestID() end
+end
+
 function N:ClearManual(replan)
+    clearMapArea()
     if not self.manual then return end
     self.manual,self.upcomingQuest=nil,nil
     self:RefreshPins()
@@ -473,6 +482,39 @@ local function availableAction(action)
     end
 end
 
+local function isAreaTarget(action)
+    return action.kind=="objective" and availableAction(action)
+end
+
+local function showMapArea(action,point)
+    if not isAreaTarget(action) then return end
+    local map=WorldMapFrame
+    if not map or not map:IsShown() or map:GetMapID()~=point.map then
+        local open=OpenWorldMap or C_Map and C_Map.OpenWorldMap
+        if open then open(point.map) end
+        map=WorldMapFrame
+    end
+    if not (map and map:IsShown() and map:GetMapID()==point.map and map.SetFocusedQuestID and map.ClearFocusedQuestID) then return end
+    if not N.mapAreaHooks then
+        map:HookScript("OnHide",clearMapArea)
+        -- A subsequent native selection owns the highlight from then on.
+        local function nativeSelection() N.mapAreaAction=nil end
+        map:RegisterCallback("SetFocusedQuestID",nativeSelection,N)
+        map:RegisterCallback("ClearFocusedQuestID",nativeSelection,N)
+        if EventRegistry then
+            EventRegistry:RegisterFrameEventAndCallback("SUPER_TRACKING_CHANGED",function()
+                if not N.mapAreaAction or C_SuperTrack.GetHighestPrioritySuperTrackingType()~=Enum.SuperTrackingType.Quest then return end
+                local id=C_SuperTrack.GetSuperTrackedQuestID()
+                if id and id>0 and id~=N.mapAreaAction.questId then clearMapArea() end
+            end,N)
+        end
+        N.mapAreaHooks=true
+    end
+    map:SetFocusedQuestID(action.questId)
+    N.mapAreaAction=action
+    return true
+end
+
 local function showPinTip(pin)
     local point,primary=pin.point,pin.action
     local quest=(primary.kind=="accept" or primary.kind=="objective" or primary.kind=="turnin") and A.state.quests[primary.questId]
@@ -510,7 +552,7 @@ local function showPinTip(pin)
         GameTooltip:AddLine(place,0.8,0.8,0.82,true)
     end
     if pos.travelHint then GameTooltip:AddLine(pos.travelHint,1,1,1,true) end
-    GameTooltip:AddLine("左键导航"..(N.manual and "  ·  右键返回原行程" or ""),0.9,0.77,0.57)
+    GameTooltip:AddLine((isAreaTarget(primary) and "左键查看任务范围并导航" or "左键导航")..(N.manual and "  ·  右键返回原行程" or ""),0.9,0.77,0.57)
     GameTooltip:Show()
 end
 
@@ -534,11 +576,17 @@ local function mapPin(mini)
         GameTooltip:Hide()
         local action=f.action
         if button=="RightButton" then
-            if N.manual then N:ClearManual() end
+            N:ClearManual()
         elseif IsModifiedClick and IsModifiedClick("CHATLINK") and action.questId then
             A.UI:QuestClick(action.questId,button)
-        elseif not N:Navigate(action) and action.questId then
-            if not N:NavigateQuest(action.questId) then A.UI:QuestClick(action.questId,button) end
+        else
+            -- Navigating can recycle this pin. Keep the coordinates actually clicked.
+            local point=f.point.position
+            clearMapArea()
+            local routed=N:Navigate(action)
+            if not showMapArea(action,point) and not routed and action.questId then
+                if not N:NavigateQuest(action.questId) then A.UI:QuestClick(action.questId,button) end
+            end
         end
     end)
     pin:SetScript("OnEnter",showPinTip)
@@ -588,8 +636,9 @@ function N:SyncWaypointUI(force)
     if owned then api.ClearUserNavigation(not userTracked,true) end
 end
 
-local function stylePin(pin,point,action,r,g,b)
+local function stylePin(pin,point,action,r,g,b,hitOnly)
     pin.point,pin.action=point,action
+    pin:SetAlpha(hitOnly and 0 or 1)
     local size=(pin.mini and 19 or 24)+(point.current and 4 or 0)
     pin:SetSize(size,size)
     pin.texture:SetSize(size-4,size-4)
@@ -622,6 +671,7 @@ function N:RefreshPins(force)
 end
 
 function N:DrawPins()
+    if self.mapAreaAction and (not isAreaTarget(self.mapAreaAction) or A.char.paused or A.settings.mapTaskScope=="off") then clearMapArea() end
     if not self.hbdPins then return end
     self.hbdPins:RemoveAllWorldMapIcons(self)
     self.hbdPins:RemoveAllMinimapIcons(self)
@@ -642,15 +692,18 @@ function N:DrawPins()
         local index=(order-1)*2
         -- Keep grouped quest tooltips even when WaypointUI draws the destination.
         local delegated=point.current and self.waypointDisplay=="itinerary" and #point.actions==1
+        -- WaypointUI draws a single destination glyph. Keep our quest click target over it.
+        local areaHit=delegated and isAreaTarget(action)
         local edge=point.current and action.mode~="hearth" and not self.waypointDisplay
-        if A.settings.pins and not delegated then
+        if A.settings.pins and (not delegated or areaHit) then
             local pin=self.pins[index+1] or mapPin(false);self.pins[index+1]=pin
-            stylePin(pin,point,action,r,g,b)
-            self.hbdPins:AddWorldMapIconMap(self,pin,pos.map,pos.x,pos.y,1)
+            stylePin(pin,point,action,r,g,b,areaHit)
+            self.hbdPins:AddWorldMapIconMap(self,pin,pos.map,pos.x,pos.y,1,
+                areaHit and "PIN_FRAME_LEVEL_WAYPOINT_LOCATION" or nil)
         end
-        if A.settings.minimapPins and not delegated and (point.current or nearby) then
+        if A.settings.minimapPins and (not delegated or areaHit) and (point.current or nearby) then
             local pin=self.pins[index+2] or mapPin(true);self.pins[index+2]=pin
-            stylePin(pin,point,point.current and action or nearby,r,g,b)
+            stylePin(pin,point,point.current and action or nearby,r,g,b,areaHit)
             if edge then
                 if not pin.arrow then
                     pin.arrow=pin:CreateTexture(nil,"OVERLAY");pin.arrow:SetTexture(media.."hud-chevron-up.tga")

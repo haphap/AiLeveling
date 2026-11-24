@@ -53,6 +53,48 @@ test("原生地图绘制目的地直线且关闭和换图清除旧连线",functi
     if saved.WorldMapFrame==nil then WorldMapFrame=nil end
     if saved.Enum==nil then Enum=nil end
 end)
+test("点任务标记聚焦原生地图范围，保留导航和原生选择",function()
+    local B=setupMap()
+    local nav=B.Navigation
+    local oldOpen,oldDetail,oldTooltip=OpenWorldMap,QuestMapFrame_GetDetailQuestID,GameTooltip
+    local oldRegistry,oldSuper=EventRegistry,C_SuperTrack
+    local superChanged
+    EventRegistry={RegisterFrameEventAndCallback=function(_,event,callback) eq(event,"SUPER_TRACKING_CHANGED");superChanged=callback end}
+    local tracked,trackingType
+    Enum={SuperTrackingType={Quest=1,UserWaypoint=2}}
+    C_SuperTrack={GetSuperTrackedQuestID=function() return tracked end,GetHighestPrioritySuperTrackingType=function() return trackingType end}
+    local map={shown=true,id=1,events={}}
+    function map:IsShown() return self.shown end
+    function map:GetMapID() return self.id end
+    function map:HookScript(event,fn) eq(event,"OnHide");self.hide=fn end
+    function map:RegisterCallback(event,fn) self.events[event]=fn end
+    function map:SetFocusedQuestID(id) self.focus=id;self.events.SetFocusedQuestID() end
+    function map:ClearFocusedQuestID() self.focus=nil;self.events.ClearFocusedQuestID() end
+    WorldMapFrame=map
+    local opens=0
+    OpenWorldMap=function(id) opens=opens+1;map.shown=true;map.id=id end
+    GameTooltip={Hide=function() end}
+    local goal={kind="objective",questId=42,objectiveIndex=1,position=point(.3,.4,2)}
+    local pickup={kind="accept",questId=43,position=point(.2,.3,2)}
+    local q={objectives={{type="item"}}};B.state.quests[42]=q
+    nav:SetPlan({fallback=goal,taskChoices={{questId=43,actions={pickup}}}})
+    local function click(i,button) local pin=nav.pins[i];pin.scripts.OnClick(pin,button or "LeftButton") end
+    click(1);eq(opens,1);eq(map.id,2);eq(map.focus,42);eq(nav.manual.action,goal)
+    click(1);eq(opens,1);eq(map.focus,42)
+    click(1,"RightButton");eq(map.focus,nil);eq(nav.manual,nil)
+    map.shown=false;nav.waypointDisplay="itinerary";nav:DrawPins();eq(nav.pins[2].alpha,0)
+    click(2);eq(opens,2);eq(map.focus,42);eq(nav.manual.action,goal)
+    tracked=77;trackingType=2;superChanged();eq(map.focus,42)
+    trackingType=1;superChanged();eq(map.focus,nil)
+    click(2);map:SetFocusedQuestID(77);click(2,"RightButton");eq(map.focus,77)
+    click(2);q.objectives[1].finished=true;nav:DrawPins();eq(map.focus,nil)
+    q.objectives[1].finished=false;nav:ClearManual(false);click(1)
+    map.hide();eq(map.focus,nil)
+    nav:ClearManual(false);nav:SetPlan({fallback=pickup});click(1);eq(map.focus,nil);eq(nav.manual.action,pickup)
+    EventRegistry,C_SuperTrack=oldRegistry,oldSuper
+    OpenWorldMap,QuestMapFrame_GetDetailQuestID,GameTooltip=oldOpen,oldDetail,oldTooltip
+    B.finish()
+end)
 test("地图标记按任务阶段合并并移除失效的导航步骤",function()
     local B,adds=setupMap()
     for _,kind in ipairs({"accept","turnin","objective","transit","dungeonEnter"}) do
@@ -87,8 +129,8 @@ test("地图标记按任务阶段合并并移除失效的导航步骤",function(
     eq(pins[1].point.action,current);eq(pins[3].point.action,nextGoal);eq(pins[3].point.position.map,2)
     eq(#pins[5].point.actions,5);eq(pins[5].number.value,"3");eq(pins[2].floats,true);eq(pins[2].number,nil);eq(pins[4],nil)
     B.Navigation.waypointDisplay="itinerary";B.Navigation:DrawPins()
-    eq(pins[1].shown,false);eq(pins[2].shown,false);eq(pins[3].shown,true);eq(pins[5].shown,true)
-    B.Navigation:RefreshPins();eq(pins[1].shown,true);eq(pins[2].floats,true)
+    eq(pins[1].shown,true);eq(pins[1].alpha,0);eq(pins[2].alpha,0);eq(pins[3].shown,true);eq(pins[5].shown,true)
+    B.Navigation:RefreshPins();eq(pins[1].shown,true);eq(pins[1].alpha,1);eq(pins[2].floats,true)
     local oldTooltip,tooltip=GameTooltip,{lines={}}
     GameTooltip={SetOwner=function() end,SetText=function(_,text) tooltip.title=text end,
         AddLine=function(_,text) tooltip.lines[#tooltip.lines+1]=text end,Show=function() end,Hide=function() end}
