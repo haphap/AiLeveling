@@ -92,22 +92,37 @@ function UI:RegisterFont(text,size,role,flags)
     self:StyleFont(self.fonts[#self.fonts])
 end
 
-local objectiveIcons={item="collect",monster="objective",npc="objective",areaTrigger="location",areaTriggerEnter="location",
-    object="target",event="target",killcredit="target",spell="target",reputation="target"}
+local objectiveIcons={item="collect",monster="objective",talkto="talk",object="interact",spell="spell",
+    areaTrigger="location",areaTriggerEnter="location",reputation="reputation"}
+local travelIcons={walk="location",move="location",approach="location",manual="location",zeppelin="boat",flight="flight",
+    boat="boat",tram="tram",hearth="hearth",hearthCast="hearth",portal="entry",dungeonEnter="entry",dungeonLeave="entry",dungeonRun="entry"}
+
 function UI.ObjectiveIcon(goal)
     if not goal then return end
     if goal.areaTriggerId and goal.areaTriggerId>0 then return "location" end
-    return objectiveIcons[goal.type or goal.objectiveType] or objectiveIcons[goal.targetKind]
+    local kind=goal.type or goal.objectiveType
+    -- Some conversations are logged as monster or event credit. Only use
+    -- the speech bubble when the objective itself calls for talking.
+    local text=goal.text
+    if type(text)=="string" and (kind=="monster" or kind=="event" or goal.targetKind=="npc" or goal.targetKind=="killcredit") and
+        (text:match("^与.-交谈") or text:match("^和.-交谈") or text:match("^与.-对话") or text:match("^[Ss]peak to ") or text:match("^[Tt]alk to ")) then
+        return "talk"
+    end
+    return objectiveIcons[kind] or objectiveIcons[goal.targetKind]
 end
 
 function UI.QuestIcon(kind,step,goals)
+    if kind=="turnin" and step and step.kind=="turnin" then
+        local quest=(A.state.quests or {})[step.questId]
+        return quest and quest.ready and "turnin" or "pending"
+    end
     if kind=="accept" or kind=="turnin" then return kind end
-    if kind~="objective" then return "compass" end
+    if kind~="objective" then return travelIcons[kind] or step and travelIcons[step.mode] or "compass" end
     if step and step.kind=="objective" then
         local quest=(A.state.quests or {})[step.questId]
         local selected=quest and (quest.objectives or {})[step.objectiveIndex]
-        if not (selected and selected.finished) then
-            local icon=step.areaTriggerId and UI.ObjectiveIcon(step) or UI.ObjectiveIcon(selected) or UI.ObjectiveIcon(step) or UI.ObjectiveIcon(step.position)
+        if not (selected and (selected.finished or selected.done)) then
+            local icon=step.areaTriggerId and step.areaTriggerId>0 and "location" or UI.ObjectiveIcon(selected) or UI.ObjectiveIcon(step) or UI.ObjectiveIcon(step.position)
             if icon then return icon end
         end
     end
@@ -117,9 +132,13 @@ function UI.QuestIcon(kind,step,goals)
     return "target"
 end
 
+function UI.IconTexture(name)
+    return media..name..".tga"
+end
+
 function UI:Icon(name,size)
     size=math.floor((size or metrics.icon)*self:FontScale()+0.5)
-    return "|T"..media..name..".tga:"..size..":"..size..":0:0|t"
+    return "|T"..UI.IconTexture(name)..":"..size..":"..size..":0:0|t"
 end
 
 function UI:Rounded(frame,radius,border)
@@ -402,7 +421,7 @@ function UI:Create()
     local brand=self:Text(side,"brand",colors.gold);brand:SetPoint("TOPLEFT",42,-18);brand:SetText("AILeveling")
     local subtitle=self:Text(side,"caption",colors.muted);subtitle:SetPoint("TOPLEFT",12,-50);subtitle:SetText("少跑路 · 多经验")
     local labels={"练级任务","任务链","装备","地下城","设置","数据","服务","专业任务","职业任务","练级区域","坐骑任务"}
-    local icons={"compass","chain","gear","entry","settings","xp","accept","profession","class","location","mount"}
+    local icons={"compass","chain","gear","entry","settings","xp","talk","profession","class","location","mount"}
     for n,i in ipairs({1,9,10,8,11,4,3,2,7,5,6}) do
         local b=self:ListButton(side,self:Icon(icons[i],16).."  "..labels[i],148,function() self:SelectTab(i) end,"body")
         b:SetPoint("TOPLEFT",8,-84-(n-1)*40);b:SetHeight(30)

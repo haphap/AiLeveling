@@ -58,6 +58,7 @@ local function widget(kind,parent)
     function w:SetStatusBarColor(...) self.barColor={...} end
     function w:SetValue(value) self.barValue=value end
     function w:SetTextColor(...) self.color={...} end;w.SetColorTexture=w.SetTextColor
+    function w:SetAlpha(alpha) self.alpha=alpha end
     w.SetVertexColor=w.SetTextColor
     function w:SetTexture(path) self.texture=path end
     function w:SetRotation(radians) self.rotation=radians end
@@ -90,8 +91,8 @@ local function widget(kind,parent)
     function w:SetThickness(value) self.thickness=value end
     function w:SetStartPoint(point,relative,x,y) self.start={point=point,relative=relative,x=x,y=y} end
     function w:SetEndPoint(point,relative,x,y) self.finish={point=point,relative=relative,x=x,y=y} end
-    for _,name in ipairs({"RegisterEvent","SetResizable","SetResizeBounds","SetClampedToScreen","SetJustifyV","SetBackdrop","SetShadowColor","SetShadowOffset","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag","SetHyperlinksEnabled",
-        "SetFrameStrata","SetAlpha","SetVerticalScroll","SetFontObject","SetMultiLine","SetAutoFocus","SetTextInsets","SetNumeric","SetMaxLetters","ClearFocus","SetFocus","HighlightText","RegisterForClicks","SetAttribute","SetScale","SetDesaturated","SetCooldown","Clear"}) do w[name]=function() end end
+    for _,name in ipairs({"RegisterEvent","SetResizable","SetResizeBounds","SetClampedToScreen","SetClampRectInsets","SetJustifyV","SetBackdrop","SetShadowColor","SetShadowOffset","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag","SetHyperlinksEnabled",
+        "SetFrameStrata","SetVerticalScroll","SetFontObject","SetMultiLine","SetAutoFocus","SetTextInsets","SetNumeric","SetMaxLetters","ClearFocus","SetFocus","HighlightText","RegisterForClicks","SetAttribute","SetScale","SetDesaturated","SetCooldown","Clear"}) do w[name]=function() end end
     return w
 end
 local dungeonPreview=arg[1]=="dungeon"
@@ -558,6 +559,10 @@ local function visit(w,visible,clip)
     if not visible then return end
     local rect=box(w)
     local record={kind=w.kind,rect=rect,text=w.value,size=w.size,spacing=w.spacing,color=w.color,background=w.background,border=w.border,justify=w.justify,maxLines=w.maxLines,nonSpaceWrap=w.nonSpaceWrap,clip=clip,layer=w.layer,texture=w.texture,uv=w.uv,tileX=w.tileX,tileY=w.tileY}
+    if w.kind=="Texture" and w.alpha then
+        local color=w.color or {1,1,1}
+        record.color={color[1],color[2],color[3],(color[4] or 1)*w.alpha}
+    end
     record.rotation=w.rotation
     if w.kind=="Line" then
         local function point(p)

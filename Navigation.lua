@@ -401,7 +401,7 @@ end
 local media="Interface\\AddOns\\AiLeveling\\Media\\"
 local function cell(texture,index)
     texture:SetTexture(media.."map-markers.tga")
-    texture:SetTexCoord(index/4,(index+1)/4,0,1)
+    texture:SetTexCoord(index/2,(index+1)/2,0,1)
 end
 
 local function taxiMarker(parent)
@@ -546,9 +546,10 @@ local function mapPin(mini)
     return pin
 end
 
-local function actionAtlas(action)
-    return ({accept="QuestNormal",turnin="UI-QuestPoi-QuestBangTurnIn",dungeonEnter="Dungeon"})[action.kind]
-        or (action.kind=="transit" and action.mode=="flight" and "FlightPath") or "Waypoint-MapPin-Tracked"
+local function actionTexture(action)
+    local quest=(A.state.quests or {})[action.questId]
+    local icon=A.UI.QuestIcon(action.kind,action,quest and quest.objectives)
+    return A.UI.IconTexture(icon=="compass" and "location" or icon)
 end
 
 function N:SyncWaypointUI(force)
@@ -575,14 +576,14 @@ function N:SyncWaypointUI(force)
     end
     local q=action.questId and ((A.state.quests or {})[action.questId] or A.Data and A.Data:GetQuest(action.questId))
     local label=action.title or q and q.title or target.entityName or action.text or "任务目的地"
-    local atlas=actionAtlas(action)
+    local texture=actionTexture(action)
     if owned and nav.mapID==target.map and math.abs(nav.x-target.x)<0.000001 and math.abs(nav.y-target.y)<0.000001 and
-        nav.name==label and nav.iconTexture==atlas and (tracked or not force) then
+        nav.name==label and nav.iconTexture==texture and (tracked or not force) then
         if tracked then return "itinerary" end
         return
     end
     local placed=api.NewUserNavigation({mapID=target.map,x=target.x*100,y=target.y*100,name=label,flags="AiLeveling",
-        iconTexture=atlas,iconType="ATLAS",stripCoordinates=true,suppressAudio=true})
+        iconTexture=texture,iconType="TEXTURE",stripCoordinates=true,suppressAudio=true})
     if placed then return "itinerary" end
     if owned then api.ClearUserNavigation(not userTracked,true) end
 end
@@ -599,20 +600,7 @@ local function stylePin(pin,point,action,r,g,b)
         if point.current then pin.badge:SetVertexColor(r,g,b);pin.number:SetTextColor(0.08,0.07,0.09)
         else pin.badge:SetVertexColor(0.16,0.16,0.19);pin.number:SetTextColor(1,1,1) end
     end
-    local tex=pin.texture
-    if action.kind=="accept" then
-        cell(tex,2);tex:SetVertexColor(1,0.84,0.46)
-    elseif action.kind=="turnin" then
-        cell(tex,3)
-        if availableAction(action) then tex:SetVertexColor(0.56,0.93,0.77) else tex:SetVertexColor(0.73,0.72,0.69) end
-    elseif action.kind=="objective" then
-        local item=action.targetKind=="item"
-        tex:SetTexture(media..(item and "hud-collect.tga" or "hud-objective.tga"))
-        tex:SetTexCoord(0,1,0,1)
-        if item then tex:SetVertexColor(0.87,0.74,1) else tex:SetVertexColor(0.64,0.83,1) end
-    else
-        tex:SetAtlas(actionAtlas(action),false);tex:SetVertexColor(1,1,1)
-    end
+    pin.texture:SetTexture(actionTexture(action))
 end
 
 local function updateEdge(pin,pins)

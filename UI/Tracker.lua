@@ -4,9 +4,9 @@ local palette=UI.colors
 local spacing=UI.metrics
 local media="Interface\\AddOns\\AiLeveling\\Media\\"
 
-local function setHUDIcon(texture,icon,tint)
-    texture:SetTexture(media..(icon=="compass" and icon or "hud-"..icon)..".tga")
-    texture:SetVertexColor(unpack(tint))
+local function setHUDIcon(texture,icon,muted)
+    texture:SetTexture(UI.IconTexture(icon))
+    texture:SetAlpha(muted and 0.72 or 1)
 end
 
 local function nearbyDistance(yards)
@@ -906,7 +906,7 @@ function UI:CreateTracker()
     if self.daylight then notice:SetBackdrop(nil);self:DaylightShell(notice,palette.hud[4])
     else notice:SetBackdropColor(unpack(palette.hud));notice:SetBackdropBorderColor(unpack(palette.line)) end
     notice.mark=notice:CreateTexture(nil,"ARTWORK");notice.mark:SetColorTexture(unpack(palette.gold))
-    notice.icon=notice:CreateTexture(nil,"ARTWORK");notice.icon:SetVertexColor(unpack(palette.gold))
+    notice.icon=notice:CreateTexture(nil,"ARTWORK")
     notice.heading=self:Text(notice,"caption",palette.gold);notice.heading:SetText("顺便完成")
     notice.body=self:Text(notice,"body",palette.white);notice.body:SetMaxLines(1)
     for _,label in ipairs(not self.daylight and {notice.heading,notice.body} or {}) do
@@ -1251,7 +1251,7 @@ local function renderObjectives(owner,parent,pool,objectives,sharedIndex)
         row.purchaseText:SetText(row.purchase and ("可购买 · "..(purchase.name or ("商人 #"..purchase.npcId))) or "")
         row.purchaseText:SetShown(row.purchase~=nil)
         row.text:SetTextColor(unpack(done and palette.muted or UI.daylight and palette.white or icon=="collect" and palette.purple or palette.blue))
-        setHUDIcon(row.icon,done and "turnin" or icon or "target",done and palette.green or icon=="collect" and palette.collect or palette.gold)
+        setHUDIcon(row.icon,done and "done" or icon or "target")
         row.count:SetText(row.known and string.format("%d/%d",have,need) or "")
         row.count:SetTextColor(unpack(done and palette.green or palette.white))
         row.check:SetText(done and "✓" or "□");row.check:SetTextColor(unpack(done and palette.green or palette.muted))
@@ -1369,7 +1369,7 @@ function UI:UpdateNearby(along)
     if type(need)=="number" and need>0 then title=string.format("%s，还差 %d",title,math.max(0,need-have)) end
     notice.key,notice.action,notice.title=bestKey,best.action,title
     notice.body:SetText(title.."  ·  "..nearbyDistance(best.distance))
-    setHUDIcon(notice.icon,UI.ObjectiveIcon(goal) or UI.ObjectiveIcon(step) or "target",palette.gold)
+    setHUDIcon(notice.icon,UI.ObjectiveIcon(goal) or UI.ObjectiveIcon(step) or "target")
     local scale=A.settings.fontScale or 1
     notice.mark:ClearAllPoints();notice.mark:SetPoint("TOPLEFT",1,-1);notice.mark:SetPoint("BOTTOMLEFT",1,1);notice.mark:SetWidth(2*scale)
     notice.icon:ClearAllPoints();notice.icon:SetPoint("LEFT",14*scale,0);notice.icon:SetSize(16*scale,16*scale)
@@ -1379,15 +1379,11 @@ function UI:UpdateNearby(along)
     notice:Show()
 end
 
-local travelIcons={walk="location",move="location",approach="location",zeppelin="boat",flight="flight",boat="boat",tram="tram",
-    hearth="hearth",hearthCast="hearth",portal="entry",dungeonEnter="entry",dungeonLeave="entry",manual="location"}
 local function stepIcon(step)
     local task=step.action or step
-    if task.kind=="accept" or task.kind=="objective" or task.kind=="turnin" then
-        local quest=(A.state.quests or {})[task.questId]
-        return UI.QuestIcon(task.kind,task,quest and quest.objectives)
-    end
-    return travelIcons[step.mode or step.kind] or "location"
+    local quest=(A.state.quests or {})[task.questId]
+    local icon=UI.QuestIcon(task.kind,task,quest and quest.objectives)
+    return icon=="compass" and "location" or icon
 end
 
 function UI:RenderJourney(journey,dynamic)
@@ -1412,7 +1408,7 @@ function UI:RenderJourney(journey,dynamic)
         if not dynamic then
             row.number:SetText(i)
             local icon=stepIcon(step)
-            setHUDIcon(row.icon,icon,icon=="collect" and palette.collect or i==1 and palette.gold or palette.blue)
+            setHUDIcon(row.icon,icon)
             row.title:SetText(placeText(step.title,step.place));row.title:SetTextColor(unpack(i==1 and palette.gold or palette.white))
             row.detail:SetText(step.detail or "")
             row:SetShown(i==1 or not T.journeyClosed)
@@ -1535,14 +1531,14 @@ function UI:RenderTracker(along)
     T.experience:SetText(A.char.paused and "已暂停" or model.dungeonName and (#model.rows.." 项") or "已接 "..count.." 项")
     T.currentMark:SetColorTexture(self:Accent())
     T.currentMark:SetShown(model.questId~=nil)
-    local currentIcon=model.dungeonName and "entry" or model.kind=="tram" and "tram" or UI.QuestIcon(model.kind,action,model.objectives)
+    local currentIcon=model.dungeonName and not model.questId and "entry" or UI.QuestIcon(model.kind,action,model.objectives)
     self.title:SetText(questTitle(model.questId,model.title))
     self.title:SetTextColor(unpack(model.kind=="turnin" and palette.green or self.daylight and palette.white or model.kind=="accept" and palette.blue or palette.gold))
     local place,name,area
     if model.kind and not A.error then place,name,area=destination(action,true) end
     name=model.dungeonName and placeLabel(model.dungeonName) or name
-    T.location:SetText(name and (self:Icon("hud-location",18).." "..name) or "当前行程")
-    setHUDIcon(T.actionIcon,currentIcon,currentIcon=="collect" and palette.collect or palette[model.kind] or palette.gold)
+    T.location:SetText(name and (self:Icon("location",18).." "..name) or "当前行程")
+    setHUDIcon(T.actionIcon,currentIcon)
     T.area:SetText(area or "")
     local nextStep,nextId,nextTitle=model.nextStep,model.nextId,model.nextTitle
     T.primaryLabel:SetText(model.questId and (model.kind=="objective" and current and not current.ready and "进行中" or self.QuestStatus(state,model.questId,plan)) or "")
@@ -1589,7 +1585,7 @@ function UI:RenderTracker(along)
     T.thenText:SetText(following)
     nextRow.title:SetText(title);nextRow.title:SetTextColor(unpack(self.daylight and tone~="green" and palette.white or palette[tone]))
     local nextIcon=UI.QuestIcon(nextStep and nextStep.kind,nextStep,nextQuest and nextQuest.objectives)
-    setHUDIcon(nextRow.icon,nextIcon,nextIcon=="collect" and palette.collect or palette[tone]);nextRow.progress:SetText(instruction)
+    setHUDIcon(nextRow.icon,nextIcon);nextRow.progress:SetText(instruction)
     nextRow.detail=(nextRow.status or "").."\n"..instruction
     renderObjectives(nextRow,nextRow.objectiveFrame,nextRow.objectives,taskStep and not sameQuest and nextQuest and not nextQuest.ready and nextQuest.objectives or {})
     local visit=not model.dungeonName and plan.regionPlan
@@ -1715,8 +1711,8 @@ function UI:RenderTracker(along)
             not (item.candidate and (item.candidate.lowValue or item.candidate.entryBlocked)) and native and native.objectives or {}
         if item.sharedObjective then objectives={objectives[item.sharedObjective]} end
         local step=item.sideAction or item.dungeonAction or item.candidate and item.candidate.executionAction
-        local icon=item.serviceStop and "flight" or item.dungeonId and "entry" or UI.QuestIcon(item.kind,step,objectives)
-        setHUDIcon(row.icon,icon,icon=="collect" and color~=palette.muted and palette.collect or color)
+        local icon=item.serviceStop and "flight" or item.dungeonId and not item.questId and "entry" or UI.QuestIcon(item.kind,step,objectives)
+        setHUDIcon(row.icon,icon,color==palette.muted)
         renderObjectives(row,row.objectiveFrame,row.objectives,objectives,item.sharedObjective)
         if #objectives>0 and not item.objectives and not item.delivery and not (item.candidate and item.candidate.itemShortage) then row.progress:SetText("") end
         row.detail=table.concat({row.status,item.groupTitle or "",item.delivery or item.progress},"\n")
@@ -2280,7 +2276,7 @@ function UI:SetTrackerNavigation(distance,angle,unverified,action)
         local function place(widget,x,y)
             widget:ClearAllPoints();widget:SetPoint("TOPLEFT",self.navFrame,"TOPLEFT",x,-y)
         end
-        setHUDIcon(T.navIcon,icon,palette[icon] or palette.accent)
+        setHUDIcon(T.navIcon,icon)
         T.navIcon:SetSize(spacing.icon*scale,spacing.icon*scale);place(T.navIcon,inset,inset)
         T.navTitle:SetWidth(width-left-reserved);T.navTitle:SetText(title);place(T.navTitle,left,inset)
         self.nav:ClearAllPoints();self.nav:SetPoint("TOPRIGHT",self.navFrame,"TOPRIGHT",-metaRight,-inset)
@@ -2299,7 +2295,7 @@ function UI:SetTrackerNavigation(distance,angle,unverified,action)
             y=y+spacing.gap*scale
             T.navRule:SetColorTexture(unpack(palette.line));T.navRule:SetSize(width-2*inset,1);place(T.navRule,inset,y)
             y=y+1+spacing.gap*scale
-            setHUDIcon(T.navNextIcon,nextIcon,palette.muted);T.navNextIcon:SetSize(spacing.smallIcon*scale,spacing.smallIcon*scale)
+            setHUDIcon(T.navNextIcon,nextIcon,true);T.navNextIcon:SetSize(spacing.smallIcon*scale,spacing.smallIcon*scale)
             place(T.navNextIcon,inset+2*scale,y+scale)
             T.navNext:SetWidth(textWidth);place(T.navNext,left,y);y=y+math.max(spacing.smallIcon*scale,T.navNext:GetStringHeight())
         end

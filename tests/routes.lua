@@ -59,9 +59,20 @@ test("地图标记按任务阶段合并并移除失效的导航步骤",function(
         B.Navigation.actions={{kind=kind,mode="flight",position={map=1,x=0.5,y=0.5}}}
         B.Navigation:RefreshPins()
         local tex=B.Navigation.pins[1].texture
-        if kind=="transit" or kind=="dungeonEnter" then eq(tex.atlas,kind=="transit" and "FlightPath" or "Dungeon")
-        else assert(tex.texture:find(kind=="objective" and "hud-objective.tga" or "map-markers.tga",1,true)) end
+        local icons={accept="accept",turnin="pending",objective="target",transit="flight",dungeonEnter="entry"}
+        eq(tex.texture,B.UI.IconTexture(icons[kind]))
     end
+    -- Exercise the same log objective on both map layers, including reused pins.
+    local stage={kind="objective",questId=77,objectiveIndex=1,position={map=1,x=0.5,y=0.5}}
+    B.Navigation.actions={stage}
+    for kind,icon in pairs({monster="objective",item="collect",object="interact",talkto="talk",spell="spell",
+        areaTrigger="location",reputation="reputation",event="target"}) do
+        B.state.quests[77]={objectives={{type=kind}}}
+        B.Navigation:RefreshPins()
+        eq(B.Navigation.pins[1].texture.texture,B.UI.IconTexture(icon))
+        eq(B.Navigation.pins[2].texture.texture,B.Navigation.pins[1].texture.texture)
+    end
+    B.state.quests[77]=nil
     local current={kind="objective",questId=1,title="当前目标",position={map=1,x=0.1,y=0.2}}
     local nextGoal={kind="objective",questId=2,expected=true,title="跨区目标",position={map=2,x=0.3,y=0.4}}
     local steps={{stage=current},{stage=nextGoal}}
@@ -89,7 +100,7 @@ test("地图标记按任务阶段合并并移除失效的导航步骤",function(
     B.state.quests[4]={ready=true,title="可以交付"}
     B.Navigation:RefreshPins()
     eq(pins[6].action.questId,4);eq(pins[6].floats,false)
-    eq(pins[6].texture.color[2],0.93);eq(pins[5].number.value,"3")
+    eq(pins[6].texture.texture,B.UI.IconTexture("turnin"));eq(pins[5].number.value,"3")
     tooltip.lines={};pins[6].scripts.OnEnter(pins[6]);eq(tooltip.title,"可以交付")
     eq(tooltip.lines[1],"交付任务");eq(#tooltip.lines,2)
     B.state.quests[4]=nil;B.Navigation:RefreshPins();eq(pins[6].shown,false)
@@ -179,8 +190,9 @@ test("普通任务地图点只显示可执行的接取、目标和交付",functi
     B.state.bags[215815]=nil;eq(#B.Navigation:MapPoints(),11)
     local pins=B.Navigation.pins
     eq(pins[1].number.value,"1");eq(pins[3].number.value,"")
-    assert(pins[1].texture.texture:find("hud-collect.tga",1,true));assert(pins[3].texture.texture:find("map-markers.tga",1,true))
-    eq(pins[3].texture.color[1],1);eq(pins[3].texture.color[3],0.46)
+    eq(pins[1].texture.texture,B.UI.IconTexture("collect"))
+    eq(pins[2].texture.texture,pins[1].texture.texture)
+    eq(pins[3].texture.texture,B.UI.IconTexture("accept"))
     assert(B.Navigation:Navigate(choices[1].actions[1]));eq(#B.Navigation:MapPoints(),11)
     eq(B.Navigation:Current(),choices[1].actions[1]);eq(pins[1].point.current,true)
     B.Navigation:ClearManual();B.state.quests[108].objectives[1].finished=true;B.state.revision=B.state.revision+1

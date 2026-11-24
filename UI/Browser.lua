@@ -168,7 +168,7 @@ function B:TaskRows(mode)
             meta[#meta+1]=skillName(q.requiredSkill[1]).." "..(state.skills[q.requiredSkill[1]] or 0).."/"..q.requiredSkill[2]
         end
         rows[#rows+1]={key="q:"..id,title=choice.title or q and q.title or "任务 #"..id,sub=table.concat(meta," · "),
-            icon=A.UI.QuestIcon(status=="可交付" and "turnin" or state.quests[id] and "objective" or "accept",
+            icon=complete and "done" or A.UI.QuestIcon(status=="可交付" and "turnin" or state.quests[id] and "objective" or "accept",
                 id==currentId and action or choice.executionAction,state.quests[id] and state.quests[id].objectives),tone=c,
             choice=choice,q=q,allowed=allowed,reason=why,prerequisite=pre,questId=id,current=id==currentId and not skipped}
     end
@@ -245,21 +245,21 @@ function B:GearRows()
         local c=A.Gear.Upgrade(item,A.state)
         if c and not c.provisional and (c.delta>0 or #(c.notes or {})>0) then
             rows[#rows+1]={key="bag:"..(item.instanceKey or item.id),title=item.name or "物品 #"..item.id,
-                sub=color(green,"背包可替换")..string.format(" · 评分 %+.1f",c.delta),icon="turnin",item=item,comparison=c}
+                sub=color(green,"背包可替换")..string.format(" · 评分 %+.1f",c.delta),icon="gear",item=item,comparison=c}
         end
     end
     for _,id in ipairs(A.UI.Gear:Ids()) do
         local source=A.Gear.GetSource(id)
         local value=source and A.Gear.Source(source,A.state,A.Data)
         if value then rows[#rows+1]={key="source:"..id,title=value.item.name or source.title,sub=(source.kind=="quest" and "任务奖励" or "副本掉落")..(value.upgrade.provisional and " · 属性加载中" or string.format(" · 评分 %+.1f",value.upgrade.delta)),
-            icon="turnin",item=value.item,comparison=value.upgrade,source=source,sourceId=id} end
+            icon="gear",item=value.item,comparison=value.upgrade,source=source,sourceId=id} end
     end
     for slot=1,19 do
         local item=(A.state.equipment or {})[slot]
         if item then
             local reference,skill=A.Gear.WeaponSkill(item,A.state)
             local detail=reference and skill and string.format("%s熟练度 %d/%d（有效 %d）",reference.name,skill.rank,skill.maxRank,skill.rank+skill.modifier+skill.tempPoints)
-            rows[#rows+1]={key="slot:"..slot,title=item.name or "物品 #"..item.id,sub=color(muted,"已装备 · "..slots[slot]),icon="objective",item=item,slot=slot,skill=detail}
+            rows[#rows+1]={key="slot:"..slot,title=item.name or "物品 #"..item.id,sub=color(muted,"已装备 · "..slots[slot]),icon="gear",item=item,slot=slot,skill=detail}
         end
     end
     return rows
@@ -303,7 +303,7 @@ function B:Refresh(mode,reuse)
     elseif mode==10 then
         rows={}
         for _,region in ipairs(A.plan and A.plan.regions or A.Planner.TaskRegions(A.state,A.plan,A.Data)) do
-            rows[#rows+1]={key="map:"..region.map,title=region.title,icon="entry",region=region,
+            rows[#rows+1]={key="map:"..region.map,title=region.title,icon="location",region=region,
                 sub=string.format("%d项适级任务 · %s",#region.choices,color(gold,region.xp..(region.unknownXP>0 and "+经验" or "经验")))..(region.current and " · 当前区域" or "")..(#(region.revisit or {})>0 and (" · 回访"..#region.revisit.."项") or "")}
         end
     else
@@ -497,7 +497,7 @@ function B:Detail()
                 local giver=A.Data:QuestContact(q.id,"startedBy")
                 local recipient=A.Data:QuestContact(q.id,"finishedBy")
                 if giver and giver.entityName then lines[#lines+1]=A.UI:Icon("accept",16).." 接取于 "..color(blue,giver.entityName) end
-                if recipient and recipient.entityName then lines[#lines+1]=A.UI:Icon("turnin",16).." 交付给 "..color(blue,recipient.entityName) end
+                if recipient and recipient.entityName then lines[#lines+1]=A.UI:Icon("pending",16).." 交付给 "..color(blue,recipient.entityName) end
             end
         end
         if active and active.objectives and #active.objectives>0 then
@@ -514,7 +514,7 @@ function B:Detail()
             end
             local where=stage.recipient or stage.position
             if stage.kind~="objective" and where and where.entityName then
-                lines[#lines+1]=A.UI:Icon(stage.kind,16).." "..(stage.kind=="turnin" and "交付给 " or "接取于 ")..color(blue,where.entityName)
+                lines[#lines+1]=A.UI:Icon(A.UI.QuestIcon(stage.kind,stage),16).." "..(stage.kind=="turnin" and "交付给 " or "接取于 ")..color(blue,where.entityName)
             elseif not active and stage.kind=="objective" and stage.text then lines[#lines+1]=A.UI:Icon(A.UI.QuestIcon(stage.kind,stage),14).." "..stage.text end
         end
         if e.choice.lowValue then lines[#lines+1]=color(gold,e.choice.lowValue.suggestion).." · "..e.choice.lowValue.reason end
@@ -851,7 +851,7 @@ function B:DungeonDetail(e)
         row.revision=A.plan and A.plan.revision
         row.text:SetWidth(292-64*(A.settings.fontScale or 1));row.text:SetText(task.title);row.text:SetTextColor(unpack(colors.blue))
         local active=(A.state.quests or {})[task.id]
-        local icon=A.UI.QuestIcon(task.group==1 and "turnin" or task.group==2 and "objective" or "accept",nil,active and active.objectives)
+        local icon=task.group==5 and "done" or A.UI.QuestIcon(task.group==1 and "turnin" or task.group==2 and "objective" or "accept",nil,active and active.objectives)
         row.icon:SetText(A.UI:Icon(icon,14))
         row.status:SetWidth(64*(A.settings.fontScale or 1));row.status:SetText(i>=insideFirst and i<insideFirst+#inside and "副本内接" or task.group==4 and (task.preparation and "需前置" or "未解锁") or task.status)
         row.status:SetTextColor(unpack(tones[task.group]))

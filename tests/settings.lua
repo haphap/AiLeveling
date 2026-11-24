@@ -530,7 +530,7 @@ test("地图开关控制两张地图的标记范围且不改变导航",function(
     eq(adds.world,0);eq(adds.mini,1);eq(B.Navigation.pins[1],nil);eq(B.Navigation.pins[2].shown,true)
     B.settings.pins=true;B.settings.minimapPins=false;B.Navigation:RefreshPins()
     eq(adds.world,1);eq(adds.mini,1);eq(B.Navigation.pins[2].shown,false)
-    eq(B.Navigation.pins[1].texture.atlas,"Waypoint-MapPin-Tracked")
+    eq(B.Navigation.pins[1].texture.texture,B.UI.IconTexture("location"))
     B.Navigation.manual=nil
     local collect={kind="objective",questId=1,position={map=1,x=0.2,y=0.1}}
     local accept={kind="accept",questId=2,position={map=1,x=0.3,y=0.1}}
@@ -660,7 +660,7 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     anchor.centerX,anchor.centerY=500,600;anchor:SetSize(18,18);B.UI.frame.scale=1.5
     Q:LayoutTarget();eq(Q.targetButton.point[2],UIParent)
     eq(Q.targetButton.point[4],750);eq(Q.targetButton.point[5],900);eq(Q.targetButton.width,36)
-    eq(anchor.shown,false)
+    eq(anchor.shown,true);eq(Q.targetButton.icon,nil)
     B.combat(true);anchor.centerX=700;Q:LayoutTarget();eq(Q.targetButton.point[4],750)
     B.combat(false);B.UI.frame.scripts.OnDragStop();eq(Q.targetButton.point[4],1050)
     local tip={};GameTooltip.SetOwner=function(_,owner) tip.owner=owner end
@@ -725,7 +725,9 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     B.action={kind="turnin",questId=1}
     B.Data.Target=function(_,q,s) eq(s.quests[1].ready,true);return {entityKind="npc",entityId=10} end
     UnitGUID=function() return "Creature-0-1-2-3-10-0000" end
-    Q:Update();eq(Q.targetActive.id,10);eq(badge.shown,true);eq(Q.plateIcon,"turnin")
+    Q:Update();eq(Q.targetActive.id,10);eq(badge.shown,true);eq(Q.plateIcon,"pending")
+    B.state.quests[1].ready=true;Q:Update();eq(Q.plateIcon,"turnin");eq(badge.icon.texture,B.UI.IconTexture("turnin"))
+    B.state.quests[1].ready=nil
     B.action.targetKind,B.action.targetId="npc",30;Q:Update();eq(row.face.creature,30)
     assert(row.macrotext1:find("/targetexact 旅店老板\n/tm",1,true))
     B.action.targetKind,B.action.targetId="object",30;Q:Update();eq(list.shown,false)

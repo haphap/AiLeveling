@@ -33,8 +33,7 @@ function Q:MarkPlate(unit,removed)
         self.plateBadges[unit]=badge
     end
     badge:ClearAllPoints();badge:SetPoint("LEFT",plate,"RIGHT",2,0)
-    badge.icon:SetTexture("Interface\\AddOns\\AiLeveling\\Media\\hud-"..icon..".tga")
-    badge.icon:SetVertexColor(unpack(A.UI.colors[icon] or A.UI.colors.gold))
+    badge.icon:SetTexture(A.UI.IconTexture(icon))
     badge:Show()
 end
 
@@ -148,12 +147,10 @@ function Q:LayoutTarget()
             local scale=A.UI.frame:GetEffectiveScale()/UIParent:GetEffectiveScale()
             local size=T.actionIcon:GetWidth()*scale
             button:ClearAllPoints();button:SetPoint("CENTER",UIParent,"BOTTOMLEFT",x*scale,y*scale)
-            button:SetSize(size+6*scale,size+6*scale);button.icon:SetSize(size,size)
-            button.icon:SetVertexColor(A.UI:Accent())
+            button:SetSize(size+6*scale,size+6*scale)
         end
         button:SetShown(visible)
     end
-    T.actionIcon:SetShown(not button:IsShown())
 end
 
 -- Forever's /tm ~N applies an icon only when the target has none.
@@ -537,8 +534,6 @@ function Q:Create()
     local target=CreateFrame("Button","AiLevelingTarget",UIParent,"SecureActionButtonTemplate")
     self.targetButton=target
     target:SetSize(24,24)
-    target.icon=target:CreateTexture(nil,"ARTWORK");target.icon:SetPoint("CENTER")
-    target.icon:SetTexture("Interface\\AddOns\\AiLeveling\\Media\\target.tga")
     target:RegisterForClicks("AnyUp","AnyDown")
     target:EnableMouseWheel(true)
     target:SetScript("OnMouseWheel",function(_,delta) self:CycleTarget(delta>0 and -1 or 1) end)

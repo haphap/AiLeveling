@@ -20,7 +20,9 @@ local function fixture(actions)
     B.Replan=function(self) self.replans=self.replans+1 end
     B.Message=function(self) self.messages=self.messages+1 end
     B.QuestAssist={Update=function() end}
-    B.UI={ClassColor=function() return 1,1,1 end,SetNavigation=function(_,distance) B.distance=distance end}
+    assert(loadfile("UI/Main.lua"))("AiLeveling",B)
+    B.UI.ClassColor=function() return 1,1,1 end
+    B.UI.SetNavigation=function(_,distance) B.distance=distance end
     B.State={Observe=A.State.Observe,Refresh=function(_,force)
         eq(force,true);B.refreshes=B.refreshes+1;B.state.onTaxi=flying
     end}
@@ -271,7 +273,7 @@ test("飞行保留手动目的地且不混入步行校准",function()
     local pickup={kind="accept",questId=44,title="顺路任务",position=position(0.8)}
     B.Navigation.plan.taskChoices={{questId=44,revisitLevel=29,pickupAction=pickup}}
     eq(B.Navigation:NavigateQuest(44),true);eq(B.Navigation:Current(),pickup)
-    eq(nav.flags,"AiLeveling");eq(nav.x,0.8);eq(B.distance,nil)
+    eq(nav.flags,"AiLeveling");eq(nav.iconType,"TEXTURE");eq(nav.iconTexture,B.UI.IconTexture("accept"));eq(nav.x,0.8);eq(B.distance,nil)
     B.state.position=position(0.8);B.Navigation:Update()
     eq(B.Navigation:Current(),pickup);eq(B.Navigation.index,index)
     B.state.quests[44]={ready=false};B.Navigation:Update()
