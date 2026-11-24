@@ -71,6 +71,12 @@ def main():
         table = name.split('-')[0]
         tables[table] = list(csv.DictReader(path.open()))
         sources.append({'url': f'https://wago.tools/db2/{table}/csv?build={BUILD}&locale=enUS', 'sha256': digest})
+    names_path = ROOT / '.dependencies' / f'TaxiNodes-{BUILD}-zhCN.csv'
+    names_hash = '31d33d135eb97b6b561f74fb3563b68fd163274ce9fbebd228f2161a1499ce09'
+    assert hashlib.sha256(names_path.read_bytes()).hexdigest() == names_hash
+    with names_path.open() as stream:
+        zh_names = {int(row['ID']): row['Name_lang'] for row in csv.DictReader(stream)}
+    sources.append({'url': f'https://wago.tools/db2/TaxiNodes/csv?build={BUILD}&locale=zhCN', 'sha256': names_hash})
     # SPELL_EFFECT_SEND_TAXI tracks belong to spells or gossip, not the regular taxi menu.
     effects_name = f'SpellEffect-{BUILD}-zhCN.csv'
     effects = ROOT / '.dependencies' / effects_name
@@ -134,7 +140,7 @@ def main():
     quote = lambda value: json.dumps(value, ensure_ascii=False)
     for node, row in sorted(nodes.items()):
         xyz = ','.join(row[f'Pos_{i}'] for i in range(3))
-        lines.append(f' [{node}]={{name={quote(row["Name_lang"])},world={{{xyz}}},instance={row["ContinentID"]},'
+        lines.append(f' [{node}]={{name={quote(row["Name_lang"])},zhCN={quote(zh_names[node])},world={{{xyz}}},instance={row["ContinentID"]},'
                      f'factionMask={int(row["Flags"]) & 3},condition={row["ConditionID"]},visibility={row["VisibilityConditionID"]}}},')
     lines += ['},paths={']
     for row in sorted(paths, key=lambda x: int(x['ID'])):

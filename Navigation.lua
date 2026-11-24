@@ -435,20 +435,39 @@ local function taxiMarker(parent)
     return mark
 end
 
+-- Map opening, building the buttons and producing a route can finish in any order.
+function N.TaxiMapDrawn()
+    if not A.Transport.taxiMapOpen then return end
+    local choices=A.Transport.taxiChoices
+    local flight=A.Transport:PlannedFlight()
+    local hadOffers=choices and next(choices.slots)
+    if not hadOffers or flight and flight.fromTaxi==choices.from and not A.Transport:TaxiDestination() then
+        A.Transport:CaptureTaxi(true)
+        if A.Transport:TaxiDestination() or not hadOffers and A.Transport.taxiChoices and next(A.Transport.taxiChoices.slots) then
+            A:RequestRefresh()
+        end
+    end
+    N:RefreshTaxiMarker()
+end
+
 function N:RefreshTaxiMarker()
+    if A.Transport.taxiMapOpen then
+        if TaxiFrame and self.hookedTaxiFrame~=TaxiFrame then
+            TaxiFrame:HookScript("OnShow",N.TaxiMapDrawn)
+            self.hookedTaxiFrame=TaxiFrame
+        end
+        if FlightMapFrame and self.hookedFlightMap~=FlightMapFrame then
+            hooksecurefunc(FlightMapFrame,"RefreshAllDataProviders",N.TaxiMapDrawn)
+            self.hookedFlightMap=FlightMapFrame
+        end
+    end
     local slot,node=A.Transport:TaxiDestination()
     local pin
     if slot and TaxiFrame and TaxiFrame:IsShown() then
         local button=_G["TaxiButton"..slot]
         if button and button:GetID()==slot and button:IsShown() and TaxiNodeGetType(slot)=="REACHABLE" then pin=button end
     elseif slot and FlightMapFrame and FlightMapFrame:IsShown() then
-        local map=FlightMapFrame
-        if self.hookedFlightMap~=map then
-            -- The map recycles these buttons when changing layers.
-            hooksecurefunc(map,"RefreshAllDataProviders",function() if A.Transport.taxiMapOpen then self:RefreshTaxiMarker() end end)
-            self.hookedFlightMap=map
-        end
-        for button in map:EnumeratePinsByTemplate("FlightMap_FlightPointPinTemplate") do
+        for button in FlightMapFrame:EnumeratePinsByTemplate("FlightMap_FlightPointPinTemplate") do
             local data=button.taxiNodeData
             if data and data.nodeID==node.id and data.state==1 and not data.isMapLayerTransition and button:IsShown() then pin=button;break end
         end
@@ -459,10 +478,12 @@ function N:RefreshTaxiMarker()
     if mark:GetParent()~=pin then mark:SetParent(pin) end
     mark:ClearAllPoints();mark:SetPoint("CENTER",pin,"CENTER")
     mark:SetFrameLevel(pin:GetFrameLevel()+2)
-    mark.label:SetText(node.name or (TaxiNodeName and TaxiNodeName(slot)) or "下一站")
+    local name=node.name or (TaxiNodeName and TaxiNodeName(slot))
+    mark.label:SetText(name and ("下一步 · "..name) or "下一步")
     local r,g,b=A.UI:Accent()
     mark.ring:SetVertexColor(r,g,b);mark.wave:SetVertexColor(r,g,b);mark.arrow:SetVertexColor(r,g,b)
     mark:Show()
+    A.Transport:PreviewTaxi(slot,node,mark)
     local reduce=C_CVar and C_CVar.GetCVarBool and C_CVar.GetCVarBool("cameraReduceUnexpectedMovement")
     mark.wave:SetShown(not reduce)
     if reduce then mark.pulse:Stop();mark.bob:Stop()

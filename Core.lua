@@ -490,12 +490,9 @@ frame:SetScript("OnEvent", function(_, event, ...)
         end
     elseif event=="TAXIMAP_OPENED" then
         A.Transport:CaptureTaxi(false,...);A:RequestRefresh()
+        A.Navigation:RefreshTaxiMarker()
         -- The game creates or repositions its node buttons during this same event.
-        C_Timer.After(0,function()
-            if not A.Transport.taxiMapOpen then return end
-            if not A.Transport.taxiChoices then A.Transport:CaptureTaxi(true);A:RequestRefresh() end
-            A.Navigation:RefreshTaxiMarker()
-        end)
+        C_Timer.After(0,A.Navigation.TaxiMapDrawn)
     elseif event=="TRAIT_CONFIG_UPDATED" or event=="ACTIVE_COMBAT_CONFIG_CHANGED" then
         A.Talents.treeDirty=true
         if A.Talents:MainTree()~=A.state.talentTree then A:RequestRefresh() end

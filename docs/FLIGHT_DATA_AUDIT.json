@@ -14,6 +14,10 @@
       "sha256": "f83f8d8e5bbeae889214f48af477dd51a4c1771ff3c3b53c3fa2cacf2cba7cdb"
     },
     {
+      "url": "https://wago.tools/db2/TaxiNodes/csv?build=1.60.1.70862&locale=zhCN",
+      "sha256": "31d33d135eb97b6b561f74fb3563b68fd163274ce9fbebd228f2161a1499ce09"
+    },
+    {
       "url": "https://wago.tools/db2/SpellEffect/csv?build=1.60.1.70862&locale=zhCN",
       "sha256": "cc8f167fe246b495294b560196f6c59439f703e8f937ddb6acd81157bd5f8b9c"
     },

@@ -47,7 +47,7 @@ end)
 
 -- Native API mocks are scoped to the final scenarios and restored afterwards.
 local saved={};local globals={"C_Map","C_TaxiMap","C_Container","GetBindLocation","GetTaxiMapID","TaxiNodeCost","GetTime","C_Item","C_PlayerInfo","CanDualWield",
-    "TakeTaxiNode","UnitOnTaxi","InCombatLockdown","IsShiftKeyDown"}
+    "TakeTaxiNode","UnitOnTaxi","InCombatLockdown","IsShiftKeyDown","C_Timer"}
 for _,key in ipairs(globals) do saved[key]=_G[key] end
 local B={char={},state={position={map=1}},Navigation={Distance=function() return 2 end},RequestRefresh=function(self) self.wakes=(self.wakes or 0)+1 end}
 assert(loadfile("Transport.lua"))("AiLeveling",B)
@@ -70,26 +70,35 @@ test("交通发现过滤阵营与未知节点并忽略费用",function()
     UnitOnTaxi=function() return flying end
     B.ready=true;B.settings={autoTaxi=true};B.Navigation.index=1
     B.Navigation.actions={{kind="move"},{kind="transit",mode="flight",fromTaxi=1,toTaxi=5}}
-    B.Transport:CaptureTaxi();eq(calls,1);eq(B.Navigation.index,1);eq(B.Transport.flight,nil)
+    local afterPreview
+    C_Timer={After=function(seconds,callback) eq(seconds,1);afterPreview=callback end}
+    local marker={IsVisible=function() return true end}
+    local function openMap()
+        B.Transport:CaptureTaxi()
+        local slot,node=B.Transport:TaxiDestination()
+        if slot then B.Transport:PreviewTaxi(slot,node,marker) end
+        if afterPreview then local callback=afterPreview;afterPreview=nil;callback() end
+    end
+    openMap();eq(calls,1);eq(B.Navigation.index,1);eq(B.Transport.flight,nil)
     eq(B.Transport.taxiRequest.to,5)
-    B.Transport:CaptureTaxi();eq(calls,1);B.Transport.taxiSelected=nil
+    openMap();eq(calls,1);B.Transport.taxiSelected=nil
     for _,flag in ipairs({"paused","manual","disabled","shift","combat","flying"}) do
         B.char.paused=flag=="paused";B.Navigation.manual=flag=="manual";B.settings.autoTaxi=flag~="disabled"
         shift,combat,flying=flag=="shift",flag=="combat",flag=="flying"
-        B.Transport:CaptureTaxi();eq(calls,1)
+        openMap();eq(calls,1)
     end
     B.char.paused=nil;B.Navigation.manual=nil;B.settings.autoTaxi=true;shift,combat,flying=false,false,false
-    B.Navigation.actions[1]={kind="objective"};B.Transport:CaptureTaxi();eq(calls,1)
-    B.Navigation.actions[1]={kind="move"};B.Navigation.actions[2].fromTaxi=2;B.Transport:CaptureTaxi();eq(calls,1)
+    B.Navigation.actions[1]={kind="objective"};openMap();eq(calls,1)
+    B.Navigation.actions[1]={kind="move"};B.Navigation.actions[2].fromTaxi=2;openMap();eq(calls,1)
     B.Navigation.actions[2].fromTaxi=1
     for _,node in ipairs({{nodeID=5,state=2,slotIndex=2},{nodeID=5,state=1,slotIndex=2,isMapLayerTransition=true}}) do
         C_TaxiMap.GetAllTaxiNodes=function() return {{nodeID=1,state=0,slotIndex=1},node} end
-        B.Transport:CaptureTaxi();eq(calls,1)
+        openMap();eq(calls,1)
     end
     C_TaxiMap.GetAllTaxiNodes=function() return {} end
-    B.Transport:CaptureTaxi();eq(B.Transport.taxiRequest,nil)
+    openMap();eq(B.Transport.taxiRequest,nil)
     C_TaxiMap.GetAllTaxiNodes=function() return {{nodeID=1,state=0,slotIndex=1},{nodeID=5,state=1,slotIndex=2}} end
-    B.Transport:CaptureTaxi();eq(calls,2);B.Transport:World();eq(B.Transport.taxiSelected,nil);eq(B.Transport.taxiRequest,nil)
+    openMap();eq(calls,2);B.Transport:World();eq(B.Transport.taxiSelected,nil);eq(B.Transport.taxiRequest,nil)
     B.ready,B.settings,B.Navigation.actions,B.Navigation.index=nil,nil,nil,nil
 end)
 test("飞行点已发现仍须尊重当前起点不可达",function()

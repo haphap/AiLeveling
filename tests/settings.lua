@@ -468,7 +468,7 @@ test("战斗中显示设置不改变受保护容器和按钮属性",function()
 end)
 test("凄凉之地的航段与飞行地图标记都只采用本站可点的落点",function()
     local B=setupMap()
-    local names={"GetTaxiMapID","C_TaxiMap","TaxiNodeGetType","TaxiFrame","TaxiButton2","FlightMapFrame","hooksecurefunc"}
+    local names={"GetTaxiMapID","C_TaxiMap","TaxiNodeGetType","NumTaxiNodes","TaxiNodeName","TaxiFrame","TaxiButton2","FlightMapFrame","hooksecurefunc","C_Timer","TakeTaxiNode"}
     local saved={};for _,key in ipairs(names) do saved[key]=_G[key] end
     assert(loadfile("Data/Flights.lua"))("AiLeveling",B)
     assert(loadfile("Transport.lua"))("AiLeveling",B)
@@ -503,13 +503,45 @@ test("凄凉之地的航段与飞行地图标记都只采用本站可点的落�
         nodes={{nodeID=from,state=0,slotIndex=1},{nodeID=to,state=1,slotIndex=2,name=name}}
         kind="REACHABLE";T:CaptureTaxi();N:RefreshTaxiMarker()
         local mark=N.taxiMarker
-        eq(mark.parent,TaxiButton2);eq(mark:IsShown(),true);eq(mark.label:GetText(),name);eq(B.char.flightRoutes[key],true)
+        eq(mark.parent,TaxiButton2);eq(mark:IsShown(),true);eq(mark.label:GetText(),"下一步 · "..name);eq(B.char.flightRoutes[key],true)
         kind="DISTANT";T:CaptureTaxi(true);N:RefreshTaxiMarker()
         eq(T:TaxiDestination(),nil);eq(mark:IsShown(),false);eq(B.char.flightRoutes[key],nil)
         nodes[2]=nil;T:CaptureTaxi(true);eq(B.char.flightRoutes[key],nil)
         eq(N.StaleAction(flight,{transportKnown=true,unlocked={["taxi:"..from]=true,["taxi:"..to]=true},
             taxiAvailability=T.availability}),true)
     end
+    -- The legacy map can draw selectable buttons without GetAllTaxiNodes reporting this menu.
+    T:CloseTaxiMap();TaxiFrame:Hide()
+    local station={"暴风城, 艾尔文森林","湖畔镇，赤脊山"}
+    local count=0
+    NumTaxiNodes=function() return count end
+    TaxiNodeName=function(slot) return station[slot] end
+    TaxiNodeGetType=function(slot) return slot==1 and "CURRENT" or kind end
+    GetTaxiMapID=function() return 0 end
+    N.actions={{kind="transit",mode="flight",fromTaxi=2,toTaxi=5}}
+    local timers,boarded={},0
+    C_Timer={After=function(delay,callback) timers[delay]=callback end}
+    TakeTaxiNode=function(slot) eq(slot,2);boarded=boarded+1 end
+    B.settings.autoTaxi=true
+    N.taxiMarker.IsVisible=N.taxiMarker.IsShown
+    B.frame.scripts.OnEvent(nil,"TAXIMAP_OPENED");timers[0]()
+    eq(T:TaxiDestination(),nil)
+    count,kind=2,"REACHABLE";TaxiFrame:Show();TaxiFrame.scripts.OnShow(TaxiFrame)
+    eq(T:TaxiDestination(),2);eq(N.taxiMarker.parent,TaxiButton2);eq(N.taxiMarker:IsShown(),true)
+    eq(N.taxiMarker.label:GetText(),"下一步 · 湖畔镇，赤脊山")
+    eq(B.char.flightRoutes["2:5"],true);eq(boarded,0)
+    timers[1]();eq(boarded,1)
+    B.frame.scripts.OnEvent(nil,"TAXIMAP_CLOSED")
+    B.frame.scripts.OnEvent(nil,"TAXIMAP_OPENED")
+    B.frame.scripts.OnEvent(nil,"TAXIMAP_CLOSED");timers[1]();eq(boarded,1)
+    B.settings.autoTaxi=false;B.frame.scripts.OnEvent(nil,"TAXIMAP_OPENED")
+    kind="UNREACHABLE";T:CaptureTaxi(true);N:RefreshTaxiMarker()
+    eq(T:TaxiDestination(),nil);eq(N.taxiMarker:IsShown(),false)
+    station[2],kind="从未见过的站名","REACHABLE";T:CaptureTaxi(true)
+    eq(T:TaxiDestination(),nil);eq(B.char.flightRoutes["2:5"],nil)
+    T:CloseTaxiMap()
+    GetTaxiMapID=function() return 1 end
+    N.actions={{kind="move"},{kind="transit",mode="flight",fromTaxi=22,toTaxi=38}}
     TaxiFrame:Hide();FlightMapFrame=widget()
     local pin=widget();pin.taxiNodeData={nodeID=38,state=1}
     FlightMapFrame.EnumeratePinsByTemplate=function() return coroutine.wrap(function() coroutine.yield(pin) end) end

@@ -93,7 +93,7 @@ function T:World()
 end
 
 function T:CloseTaxiMap()
-    self.taxiMapOpen,self.taxiSelected=nil,nil
+    self.taxiMapOpen,self.taxiSelected,self.autoTaxiLeg=nil,nil,nil
     if A.Navigation and A.Navigation.taxiMarker then A.Navigation.taxiMarker:Hide() end
 end
 
@@ -182,22 +182,31 @@ function T:TaxiDestination()
     end
 end
 
-function T:SelectTaxi()
-    if not A.settings or not A.settings.autoTaxi or self.taxiSelected or type(TakeTaxiNode)~="function" or
-        InCombatLockdown and InCombatLockdown() or IsShiftKeyDown and IsShiftKeyDown() then return end
-    local slot=self:TaxiDestination()
-    if not slot then return end
-    self.taxiSelected=true
-    self:RecordTaxi(slot)
-    local ok,result=pcall(TakeTaxiNode,slot)
-    if not ok then self.taxiRequest=nil end
-    return ok,result
+function T:PreviewTaxi(slot,node,mark)
+    local flight=self.autoTaxiLeg
+    if not flight or self.taxiSelected or flight.fromTaxi~=self.taxiChoices.from or flight.toTaxi~=node.id then return end
+    self.autoTaxiLeg=nil
+    local preview={}
+    self.taxiSelected=preview
+    -- Give the highlighted station a moment on screen before optional automatic boarding.
+    C_Timer.After(1,function()
+        if self.taxiSelected~=preview then return end
+        self.taxiSelected=nil
+        local liveSlot,liveNode=self:TaxiDestination()
+        if liveSlot~=slot or liveNode.id~=node.id or self.taxiChoices.from~=flight.fromTaxi or not mark:IsVisible() or
+            not A.settings.autoTaxi or type(TakeTaxiNode)~="function" or InCombatLockdown and InCombatLockdown() or
+            IsShiftKeyDown and IsShiftKeyDown() then return end
+        if self.legacyTaxi and TaxiNodeGetType and TaxiNodeGetType(slot)~="REACHABLE" then return end
+        self:RecordTaxi(slot)
+        if not pcall(TakeTaxiNode,slot) then self.taxiRequest=nil end
+    end)
 end
 
 function T:RecordTaxi(slot)
     local choices=self.taxiChoices
     if self.flight or not choices or canaccessvalue and not canaccessvalue(slot) or type(slot)~="number" then return end
     self.taxiRequest=nil
+    if self.taxiMapOpen then self.autoTaxiLeg=nil;self.taxiSelected=true end
     local node=choices.slots[slot]
     local now=GetTime()
     if node and now>=choices.at and now-choices.at<=120 then
@@ -205,9 +214,63 @@ function T:RecordTaxi(slot)
     end
 end
 
+-- TaxiFrame draws and selects numbered slots even when the map-ID API has no rows.
+-- Use the exact name printed by the open menu; a slot number alone is not a node ID.
+local function stationName(name)
+    if type(name)=="string" and name~="" then return (name:gsub("，",","):gsub("%s*,%s*",",")) end
+end
+
+local function menuNodes(self)
+    local map=GetTaxiMapID and GetTaxiMapID()
+    if not self.legacyTaxi and (not map or map<=0) and FlightMapFrame and FlightMapFrame:IsShown() then
+        map=FlightMapFrame:GetMapID()
+    end
+    local rows=map and map>0 and C_TaxiMap and C_TaxiMap.GetAllTaxiNodes and C_TaxiMap.GetAllTaxiNodes(map) or {}
+    local count=self.legacyTaxi and NumTaxiNodes and NumTaxiNodes()
+    if not count or not TaxiNodeName or not TaxiNodeGetType then return rows,count end
+    local bySlot,byName={},{}
+    local function remember(name,id)
+        name=stationName(name)
+        if name and id then
+            if byName[name]==nil then byName[name]=id
+            elseif byName[name]~=id then byName[name]=false end
+        end
+    end
+    local faction=A.state and A.state.faction
+    local side=faction=="Alliance" and 1 or faction=="Horde" and 2
+    for id,station in pairs(A.FlightData and A.FlightData.nodes or {}) do
+        if not side or math.floor(station.factionMask/side)%2==1 then
+            remember(station.name,id)
+            remember(station.zhCN,id)
+            remember(self.taxiNames and self.taxiNames[id],id)
+        end
+    end
+    for _,row in ipairs(rows) do
+        if row.slotIndex then
+            bySlot[row.slotIndex]=row
+            if not row.isMapLayerTransition then remember(row.name,row.nodeID) end
+        end
+    end
+    local nodes={}
+    for slot=1,count do
+        local kind=TaxiNodeGetType(slot)
+        if kind and kind~="NONE" then
+            local name=TaxiNodeName(slot)
+            local row=bySlot[slot]
+            local key=stationName(name)
+            local id=key and (row and stationName(row.name)==key and row.nodeID or byName[key])
+            if id and not (row and row.isMapLayerTransition) then
+                nodes[#nodes+1]={nodeID=id,slotIndex=slot,name=name,state=kind=="CURRENT" and 0 or kind=="REACHABLE" and 1 or 2}
+            end
+        end
+    end
+    return nodes,count
+end
+
 function T:CaptureTaxi(refreshOnly,system)
     self.taxiMapOpen=true
     if not refreshOnly then
+        self.autoTaxiLeg=A.settings and A.settings.autoTaxi and not (IsShiftKeyDown and IsShiftKeyDown()) and self:PlannedFlight() or nil
         self.legacyTaxi=system==nil and not (FlightMapFrame and FlightMapFrame:IsShown()) or
             system~=nil and Enum and Enum.UIMapSystem and system==Enum.UIMapSystem.Taxi
     end
@@ -215,9 +278,7 @@ function T:CaptureTaxi(refreshOnly,system)
     self.dirty=true
     self.taxiOrigin,self.taxiExpiry=nil,nil
     self.taxiChoices=nil
-    local map=GetTaxiMapID and GetTaxiMapID()
-    if not map or map<=0 or not C_TaxiMap or not C_TaxiMap.GetAllTaxiNodes then self.taxiRequest=nil;return end
-    local nodes=C_TaxiMap.GetAllTaxiNodes(map) or {}
+    local nodes,count=menuNodes(self)
     local from,slots=nil,{}
     for _,node in ipairs(nodes) do
         if not node.isMapLayerTransition then
@@ -244,7 +305,6 @@ function T:CaptureTaxi(refreshOnly,system)
         for key in pairs(self.availability) do
             if key:sub(1,#prefix)==prefix then self.availability[key]=nil;self.hops[key]=nil end
         end
-        local count=self.legacyTaxi and NumTaxiNodes and NumTaxiNodes()
         for _,node in ipairs(nodes) do
             local slot=node.slotIndex
             if type(node.name)=="string" then self.taxiNames[node.nodeID]=node.name end
@@ -255,10 +315,9 @@ function T:CaptureTaxi(refreshOnly,system)
                 self.taxiChoices.slots[slot]={id=node.nodeID,name=self.taxiNames[node.nodeID]}
                 self.known["taxi:"..node.nodeID]=true
                 self.availability[key]=true
-                self.hops[key]=taxiHops(from,node,slots,#nodes)
+                self.hops[key]=taxiHops(from,node,slots,count or #nodes)
             end
         end
-        if not refreshOnly then self:SelectTaxi() end
     else self.taxiRequest=nil
     end
 end
