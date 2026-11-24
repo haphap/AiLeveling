@@ -22,62 +22,90 @@ local function comparison(upgrade,label)
         if p~=0 and math.abs(p)<0.5 then text=p>0 and "+<1%" or "−<1%"
         else text=string.format("%+d%%",p<0 and math.ceil(p-0.5) or math.floor(p+0.5)) end
     end
-    return "|cff"..color..label..text.."|r",delta~=0
+    return "|cff"..color..label..text.."|r"
 end
 
-local function scoreRows(item,state)
-    local rows,changed={},false
+local function scoreRows(item,state,slot,compare)
+    local rows={}
     local view=setmetatable({},{__index=state})
     local paired=item.equipLoc=="INVTYPE_FINGER" or item.equipLoc=="INVTYPE_TRINKET"
+    local bothHands=not slot and A.Gear.Slots(item,state)[2]==17
     for _,spec in ipairs(A.GearSpecs[state.class] or {}) do
         view.gearSpec=spec
         view.role=spec.role=="tank" and "TANK" or spec.role=="healer" and "HEALER" or "DAMAGER"
-        local row,changes
-        if paired then
+        local row,scoreSlot=nil,slot
+        if compare and paired then
             local parts={}
             for index,slot in ipairs(A.Gear.Slots(item,view)) do
-                local text,different=comparison(A.Gear.Loadout({[slot]=item},view),"#"..index.." ")
+                local text=comparison(A.Gear.Loadout({[slot]=item},view),"#"..index.." ")
                 if text then parts[#parts+1]=text end
-                changes=changes or different
             end
             if #parts>0 then row=spec.label.."  "..table.concat(parts," · ") end
-        else
-            row,changes=comparison(A.Gear.Upgrade(item,view),spec.label.." ")
+        elseif compare then
+            local upgrade=A.Gear.Upgrade(item,view)
+            row=comparison(upgrade,spec.label.." ")
+            if upgrade then scoreSlot=upgrade.replacements[17]==item and 17 or slot end
         end
-        if row then rows[#rows+1]=row end
-        changed=changed or changes
+        local score,pending=A.Gear.Score(item,view,scoreSlot)
+        if pending then rows[#rows+1]=spec.label.."  武器伤害读取中"
+        elseif score then
+            local points=string.format("%.2f 分",score)
+            if bothHands and not scoreSlot and not row then
+                points=string.format("主手 %.2f / 副手 %.2f 分",score,(A.Gear.Score(item,view,17)))
+            end
+            rows[#rows+1]=(row and row.."  ·  " or spec.label.."  ")..points
+        end
     end
-    if changed then return rows end
+    if #rows>0 then return rows end
 end
 
 local lastBagItem,lastState,lastRows
 local function addScore(tip,data)
-    if tip~=GameTooltip then return end
+    if tip~=GameTooltip and tip~=ShoppingTooltip1 and tip~=ShoppingTooltip2 then return end
     local state=A.state
     if not (state and state.class and state.equipment and A.settings and A.settings.rewardAdvice~=false) or tip:IsForbidden() then return end
     local info=tip:GetPrimaryTooltipInfo()
     if not info or tip:GetProcessingTooltipInfo()~=info then return end
     local args=info.getterArgs
-    if info.getterName=="GetInventoryItem" and args and args[1]=="player" then return end
     if canaccessvalue and (not canaccessvalue(data.guid) or not canaccessvalue(data.hyperlink)) then return end
     local _,link=TooltipUtil.GetDisplayedItem(tip)
-    if (canaccessvalue and not canaccessvalue(link)) or type(link)~="string" then return end
+    if canaccessvalue and not canaccessvalue(link) then return end
+    if not link then link=data.hyperlink end
+    if type(link)~="string" then return end
     local id,_,_,loc=C_Item.GetItemInfoInstant(link)
-    if not loc or loc=="" then return end
-    local key=info.getterName=="GetBagItem" and args and args[1] and args[2] and (args[1]..":"..args[2])
+    if not id or not loc or loc=="" then return end
+    local key=tip==GameTooltip and info.getterName=="GetBagItem" and args and args[1] and args[2] and (args[1]..":"..args[2])
     local bag=key and bagItem(state,key,link)
-    local item=bag or A.Items:Read(id,link,data)
-    if item.pending or #A.Gear.Slots(item,state)==0 then return end
+    local wornSlot=info.getterName=="GetInventoryItem" and args and args[1]=="player" and args[2]
+    local equipped=wornSlot and state.equipment[wornSlot]
+    if not wornSlot and tip~=GameTooltip then
+        for slot,worn in pairs(state.equipment) do
+            if worn.link==link then
+                if equipped then wornSlot=nil;break end
+                wornSlot,equipped=slot,worn
+            end
+        end
+    end
+    local item=bag or (equipped and equipped.link==link and not equipped.pending and equipped)
+    if not item or (item.classID==2 and not (item.weaponDPS or item.stats.ITEM_MOD_DAMAGE_PER_SECOND_SHORT)) then
+        item=A.Items:Read(id,link,data)
+        bag=nil
+    end
+    local slots=A.Gear.Slots(item,state)
+    if not slots[1] or item.pending or item.quality==0 then return end
+    local future=item.requiredLevel and item.requiredLevel>(state.level or 0)
+    local compare=tip==GameTooltip and not wornSlot and not future
     local rows
     if bag and bag==lastBagItem and state==lastState then rows=lastRows
     else
         if key and not bag then item.instanceKey=key end
-        rows=scoreRows(item,state)
+        rows=scoreRows(item,state,wornSlot,compare)
         if bag then lastBagItem,lastState,lastRows=bag,state,rows end
     end
     if not rows then return end
     tip:AddLine(" ")
-    tip:AddLine("|TInterface\\AddOns\\AiLeveling\\Media\\gear:16:16|t AILeveling 评分",0.66,0.68,0.74)
+    local note=future and (" · 需"..item.requiredLevel.."级") or ""
+    tip:AddLine("|TInterface\\AddOns\\AiLeveling\\Media\\gear:16:16|t AILeveling 评分"..note,0.66,0.68,0.74)
     for _,row in ipairs(rows) do tip:AddLine("    "..row,0.66,0.68,0.74,true) end
 end
 

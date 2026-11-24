@@ -10,7 +10,7 @@ local function native(run)
     local saved={}
     local names={"C_Item","C_PlayerInfo","C_TooltipInfo","C_Spell","Enum","ITEM_SPELL_TRIGGER_ONEQUIP",
         "TOOLTIP_ITEM_STAT_SPELL_POWER_INCREASE","TOOLTIP_ITEM_STAT_HOLY_DAMAGE_INCREASE","C_ClassTalents","C_Traits",
-        "TooltipDataProcessor","TooltipUtil","GameTooltip","ShoppingTooltip1"}
+        "TooltipDataProcessor","TooltipUtil","GameTooltip","ShoppingTooltip1","ShoppingTooltip2"}
     for _,name in ipairs(names) do saved[name]=_G[name] end
     C_Item={GetItemInfo=function(id) return "物品",tostring(id),2,1,1,nil,nil,1,"INVTYPE_CHEST" end,
         GetItemStats=function() return {ITEM_MOD_STRENGTH_SHORT=5} end}
@@ -99,6 +99,7 @@ test("装备提示逐行显示各专精的换装百分比，双栏位分别比�
     GameTooltip={GetPrimaryTooltipInfo=function() return info end,GetProcessingTooltipInfo=function() return info end,
         IsForbidden=function() return false end,AddLine=function(_,text) lines[#lines+1]=text end}
     ShoppingTooltip1=setmetatable({},{__index=GameTooltip})
+    ShoppingTooltip2=setmetatable({},{__index=GameTooltip})
     C_Item.GetItemInfoInstant=function(value) return tonumber(value:match("%d+")),nil,nil,"INVTYPE_HEAD" end
     C_Item.GetItemInfo=function(value) return "激流堡兜帽",value,2,39,0,nil,nil,1,"INVTYPE_HEAD" end
     C_Item.GetItemStats=function() return hoodStats end
@@ -111,19 +112,37 @@ test("装备提示逐行显示各专精的换装百分比，双栏位分别比�
     assert(lines[3]:find("惩戒 +348%",1,true));assert(lines[4]:find("|cff78d973防骑 +79%",1,true))
     assert(lines[5]:find("奶骑 +157%",1,true));eq(s.role,"TANK")
     -- The bag slot changed before the next character snapshot.
-    link="item:278567";lines={};post(GameTooltip,data);eq(#lines,0);eq(scans,0)
+    link="item:278567";lines={};post(GameTooltip,data);assert(lines[4]:find("14.89 分",1,true));eq(scans,0)
     local function ring(id,stamina)
         return {id=id,link="item:"..id,equipLoc="INVTYPE_FINGER",usable=true,stats={ITEM_MOD_STAMINA_SHORT=stamina}}
     end
     local candidate=ring(3,15);candidate.instanceKey="0:2"
-    s.equipment={[11]=ring(1,10),[12]=ring(2,20)};s.bagEquipment={candidate};link=candidate.link
+    s.equipment={[11]=ring(1,10),[12]=ring(2,20)};s.bagEquipment={candidate};link=candidate.link;lines={}
     post(GameTooltip,data)
     assert(lines[4]:find("|cff78d973#1 +50%",1,true));assert(lines[4]:find("|cffeb6b61#2 -25%",1,true))
     s.equipment[11]=nil
     B.state=setmetatable({},{__index=s});lines={};post(GameTooltip,data)
     assert(lines[4]:find("#1 +15.00 分",1,true));assert(lines[4]:find("#2 -25%",1,true))
-    lines={};post(ShoppingTooltip1,data);eq(#lines,0)
-    B.settings.rewardAdvice=false;post(GameTooltip,data);eq(#lines,0)
+    -- The Daylight bag and comparison tooltips for Hand of Righteousness and Sword of Serenity.
+    s.level=38
+    local mace={id=7721,link="item:7721",instanceKey="0:2",equipLoc="INVTYPE_WEAPONMAINHAND",classID=2,
+        usable=false,requiredLevel=39,weaponDPS=19.8,stats={ITEM_MOD_STAMINA_SHORT=7,ITEM_MOD_SPIRIT_SHORT=8,
+        ITEM_MOD_SPELL_HEALING_DONE_SHORT=94,ITEM_MOD_SPELL_DAMAGE_DONE_SHORT=31}}
+    local sword={id=6829,link="item:6829",equipLoc="INVTYPE_WEAPON",classID=2,weaponDPS=30,
+        stats={ITEM_MOD_STAMINA_SHORT=9,ITEM_MOD_SPIRIT_SHORT=4}}
+    s.equipment={[16]=sword};s.bagEquipment={mace}
+    B.state=s;link=mace.link;lines={"BIS 评分"};post(GameTooltip,data)
+    eq(lines[1],"BIS 评分");assert(lines[3]:find("AILeveling 评分 · 需39级",1,true))
+    assert(lines[5]:find("防骑  143.93 分",1,true));assert(not lines[5]:find("%%"));eq(B.Gear.Upgrade(mace,s),nil)
+    info={getterName="GetInventoryItem",getterArgs={"player",16}}
+    link=sword.link;lines={};post(ShoppingTooltip1,data);assert(lines[4]:find("防骑  169.50 分",1,true))
+    lines={};post(GameTooltip,data);eq(#lines,5)
+    info={getterName="GetHyperlink"};link=nil;lines={};post(ShoppingTooltip2,{hyperlink=sword.link,lines=data.lines})
+    assert(lines[4]:find("防骑  169.50 分",1,true))
+    s.level=39;mace.usable=true;B.state=setmetatable({},{__index=s})
+    info={getterName="GetBagItem",getterArgs={0,2}};link=mace.link;lines={};post(GameTooltip,data)
+    assert(lines[4]:find("防骑 -15%",1,true));assert(lines[4]:find("143.93 分",1,true))
+    B.settings.rewardAdvice=false;lines={};post(GameTooltip,data);eq(#lines,0)
 end) end)
 
 test("自动评分采用已应用的防护天赋，切换配置及手动选择生效",function() native(function()

@@ -109,8 +109,13 @@ local function scoreItem(item,model,slot)
     return score
 end
 
+local function missingWeapon(item,model,slot)
+    return item and model and item.stats and weaponWeight(item,model,slot) and not (item.weaponDPS or item.stats.ITEM_MOD_DAMAGE_PER_SECOND_SHORT)
+end
+
 function G.Score(item,state,slot)
-    return scoreItem(item,G.Model(state),slot)
+    local model=G.Model(state)
+    return scoreItem(item,model,slot),missingWeapon(item,model,slot)
 end
 
 function G.Usable(item,state)
@@ -240,12 +245,9 @@ function G.Loadout(replacements,state)
             end
         end
     end
-    local function missingWeapon(item,slot)
-        return item and weaponWeight(item,model,slot) and not (item.weaponDPS or item.stats.ITEM_MOD_DAMAGE_PER_SECOND_SHORT)
-    end
     local missing
     for slot,item in pairs(replacements) do
-        if missingWeapon(state.equipment[slot],slot) or missingWeapon(item,slot) then missing=true;break end
+        if missingWeapon(state.equipment[slot],model,slot) or missingWeapon(item,model,slot) then missing=true;break end
     end
     if missing then notes[#notes+1]="武器伤害加载中" end
     return {delta=added-removed,oldScore=removed,newScore=added,replacements=replacements,provisional=missing,
