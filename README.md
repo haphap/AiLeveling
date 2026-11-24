@@ -36,7 +36,7 @@
 
    | 依赖 | 版本要求 |
    | --- | --- |
-   | [QuestieDB](https://github.com/Questie/QuestieDB/releases/tag/v1.0.13) | v1.0.13 Forever；兼容 v1.0.12 或公开 Contract 4 的兼容发行版 |
+   | [QuestieDB](https://github.com/Questie/QuestieDB/releases/tag/v1.1.5) | 推荐 v1.1.5 Forever。v1.0.12 和 v1.0.13 缺少河林「陆行鸟之歌」等任务的位置数据，已有安装也请更新。 |
    | [HereBeDragons](https://www.wowace.com/projects/herebedragons/files) | Forever 兼容包，包含 HBD 2.0 与 HBD-Pins 2.0 |
 
 2. 从 [Releases](https://github.com/haphap/AiLeveling/releases) 下载附件 **`AiLeveling-*.zip`**。将其中的 `AiLeveling` 文件夹解压到：

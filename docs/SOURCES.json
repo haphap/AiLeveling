@@ -26,6 +26,15 @@
           "installed": false,
           "client_verified": false,
           "scope": "Public API load and quest XP fallback in 18 faction/class contexts; 77 additional fixed-level 1-59 quest XP models versus AiLeveling 0.1.119-dev with the same provider."
+        },
+        {
+          "version": "v1.1.5",
+          "contract": 4,
+          "commit": "47a4756b775e8c73687fd3066d6c13f0bc43a55e",
+          "url": "https://github.com/Questie/QuestieDB/releases/tag/v1.1.5",
+          "archive_sha256": "1d2843cc8f6f3d074644142a8f79ab045224fc4f6b0ce4b213469c3002d9165b",
+          "client_verified": false,
+          "scope": "Riverglades quests 95984 and 96104: faction contacts, item 271778 from NPC 263348, hand-in after completion and adjacent quests, replayed through the public API."
         }
       ]
     },

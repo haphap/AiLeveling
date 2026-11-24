@@ -58,7 +58,7 @@ function D.ParseMap(source)
 end
 
 function D:Connect(db)
-    if not db or type(db.RequireContract) ~= "function" then return false, "请安装 QuestieDB v1.0.12 或兼容版本。" end
+    if not db or type(db.RequireContract) ~= "function" then return false, "请安装 QuestieDB v1.1.5 无限版或兼容版本。" end
     local ok, message = db.RequireContract(4)
     if not ok then return false, message end
     if not db.flavor or db.flavor.expansion~="Forever" then return false, "请安装无限版 QuestieDB。" end
