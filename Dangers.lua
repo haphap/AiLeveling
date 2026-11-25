@@ -52,9 +52,14 @@ function D:MapPin(index,row,map,x,y,patrol)
 end
 
 function D:UpdateMap()
-    if not A.settings.dangerMap or A.char.paused or not WorldMapFrame or not WorldMapFrame:IsShown() or not A.Navigation.hbdPins then
-        self:HideMap();return
-    end
+    if A.char.paused or not WorldMapFrame or not WorldMapFrame:IsShown() then self:HideMap();return end
+    local ambient=A.settings.dangerMap and A.Navigation.hbdPins
+    local focus=A.Navigation.mapAreaAction
+    local id=focus and focus.questId or QuestMapFrame_GetDetailQuestID and QuestMapFrame_GetDetailQuestID()
+    local active=A.settings.pins and A.settings.mapTaskScope~="off" and A.Data.db and id and A.state.quests[id]
+    if active and (active.ready or focus and focus.objectiveIndex and
+        ((active.objectives or {})[focus.objectiveIndex] or {}).finished) then active=nil end
+    if not ambient and not active then self:HideMap();return end
     local map,canvas=WorldMapFrame:GetMapID(),WorldMapFrame:GetCanvas()
     if not map or not canvas then self:HideMap();return end
     local width,height=canvas:GetSize()
@@ -63,12 +68,21 @@ function D:UpdateMap()
         self:HideMap();self.canvas=canvas;self.lines={}
         self.overlay=CreateFrame("Frame",nil,canvas);self.overlay:SetAllPoints(canvas)
     end
-    local key=table.concat({map,A.state.faction or "",A.state.level or 1,width,height},":")
+    local key=table.concat({map,ambient and (A.state.faction or "") or "-",A.state.level or 1,width,height},":")
+    if active then
+        local p=focus and focus.position
+        key=key..":"..id..":"..(focus and focus.objectiveIndex or "")..":"..(p and p.entityKind or "")..":"..(p and p.entityId or "")..":"..(p and p.sourceKind or "")
+        for i,o in ipairs(active.objectives or {}) do
+            if not o.finished then key=key..":"..i..":"..(o.targetId or o.text or "") end
+        end
+    end
     if self.mapKey~=key then
         self:HideMap();self.mapKey=key;self.segments={};self.cursor=1
         for _,line in ipairs(self.lines) do line:Hide() end
+        if active then A.Data:QuestPatrolSegments(id,A.state,map,focus,self.segments) end
+        self.questSegments=#self.segments
         local count=0
-        for _,row in ipairs(self:MapRows(map)) do
+        for _,row in ipairs(ambient and self:MapRows(map) or {}) do
             for i=1,#row.points,2 do count=count+1;self:MapPin(count,row,map,row.points[i],row.points[i+1]) end
             for _,path in ipairs(row.paths) do
                 count=count+1;self:MapPin(count,row,map,path[1],path[2],true)
@@ -84,7 +98,12 @@ function D:UpdateMap()
         if not line then line=self.overlay:CreateLine(nil,"OVERLAY");self.lines[i]=line end
         line:ClearAllPoints();line:SetStartPoint("TOPLEFT",self.overlay,segment[1]*width,-segment[2]*height)
         line:SetEndPoint("TOPLEFT",self.overlay,segment[3]*width,-segment[4]*height)
-        line:SetThickness(1.5);line:SetColorTexture(1,0.3,0.2,0.65);line:Show()
+        if i<=self.questSegments then
+            line:SetDrawLayer("OVERLAY");line:SetThickness(3);line:SetColorTexture(1,0.78,0.19,0.95)
+        else
+            line:SetDrawLayer("ARTWORK");line:SetThickness(1.5);line:SetColorTexture(1,0.3,0.2,0.65)
+        end
+        line:Show()
     end
     self.cursor=finish+1;self.overlay:Show()
 end

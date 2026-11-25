@@ -850,6 +850,22 @@ test("危险地图与急救提示随等级和实际生命呼吸变化，保留�
     local route=B.action
     B.state.level=60;D:UpdateMap();eq(#D.segments,0)
     B.settings.dangerMap=false;D:UpdateMap();eq(D.overlay.shown,false);eq(D.mapKey,nil);eq(B.action,route)
+    local oldDetail=QuestMapFrame_GetDetailQuestID
+    local selected=1
+    QuestMapFrame_GetDetailQuestID=function() return selected end
+    B.Data.db={}
+    local draws=0
+    B.Data.QuestPatrolSegments=function(_,id,_,map,focus,out)
+        eq(id,1);eq(map,1429);out[1]={0.2,0.3,0.4,0.5};draws=draws+1
+    end
+    B.state.quests[1]={objectives={{type="monster"}}}
+    D:UpdateMap();eq(D.overlay.shown,true);eq(D.questSegments,1);eq(D.lines[1].color[1],1)
+    D:UpdateMap();eq(draws,1)
+    selected=nil;D:UpdateMap();eq(D.overlay.shown,false)
+    B.Navigation.mapAreaAction={questId=1,kind="objective",objectiveIndex=1}
+    D:UpdateMap();eq(D.overlay.shown,true)
+    B.state.quests[1].objectives[1].finished=true;D:UpdateMap();eq(D.overlay.shown,false)
+    QuestMapFrame_GetDetailQuestID=oldDetail;B.Navigation.mapAreaAction=nil
     local health,breath,rate=10,nil,-1
     local secret={}
     UnitHealth=function() return health end;UnitHealthMax=function() return 100 end

@@ -12,7 +12,7 @@ local names={"DaylightUI","CreateFrame","UIParent","STANDARD_TEXT_FONT","GameFon
 local function widget()
     local w={scripts={},width=100,height=40,shown=true,attributeWrites=0}
     for _,key in ipairs({"SetResizable","SetClampedToScreen","SetHyperlinksEnabled","SetBackdrop","SetBackdropBorderColor","SetJustifyH","SetJustifyV","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag",
-        "RegisterForClicks","SetClampRectInsets","SetAllPoints","SetTexture","SetTexCoord","SetHorizTile","SetVertTile","SetBlendMode","SetMaxLines","SetNonSpaceWrap","SetSpacing","SetFontObject","SetMultiLine",
+        "RegisterForClicks","SetClampRectInsets","SetAllPoints","SetTexture","SetTexCoord","SetHorizTile","SetVertTile","SetBlendMode","SetMaxLines","SetNonSpaceWrap","SetSpacing","SetDrawLayer","SetFontObject","SetMultiLine",
         "SetMaxLetters","SetShadowColor","SetShadowOffset","SetAutoFocus","SetTextInsets","SetNumeric","ClearFocus","SetFocus","HighlightText","SetFrameStrata","SetCooldown","Clear"}) do w[key]=function() end end
     w.SetPoint=function(self,...) self.point={...} end
     w.GetPoint=function(self) return "CENTER",UIParent,"CENTER",25,-30 end

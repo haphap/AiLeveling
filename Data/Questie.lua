@@ -153,7 +153,7 @@ function D:BuildServices()
     self.amenitiesByMap,self.amenityCount={},0
     local npc,flags=self.db.Npc,self.db.Enum.npcFlags
     local innkeepers={}
-    self.dangerNames={}
+    self.dangerNames,self.dangerIDs={},{}
     for _,faction in ipairs({"Alliance","Horde"}) do
         for _,rows in pairs(A.DangerData and A.DangerData[faction] or {}) do
             for _,row in ipairs(rows) do self.dangerNames[row.name]=false end
@@ -162,7 +162,10 @@ function D:BuildServices()
     for index,id in ipairs(npc.GetAllIds()) do
         if npc.GetRaw then
             local name=npc.GetRaw(id,"name")
-            if self.dangerNames[name]~=nil then self.dangerNames[name]=npc.Get(id,"name") end
+            if self.dangerNames[name]~=nil then
+                self.dangerNames[name]=npc.Get(id,"name")
+                self.dangerIDs[name]=self.dangerIDs[name]==nil and id or false
+            end
         end
         local value=npc.Get(id,"npcFlags")
         local service=flag(value,flags.VENDOR) or flag(value,flags.REPAIR)
@@ -594,6 +597,25 @@ local function hasFriendlyRecipient(entity,sources,faction)
     return false
 end
 
+-- Ghostmaw's two Riverglades bounties share this NPC. The provider has sightings
+-- but no ordered path. These bends trace the reported river corridor on the zone map.
+local ghostmawRiver = { [16591] = {{
+    {63.4,37.2},{62.3,38.6},{62.3,40.1},{61.8,40.9},{60.3,42.1},{58.2,42.1},
+    {57.1,42.9},{55.9,44.2},{55.4,45.6},{55.3,47.2},{54.7,49.3},{54.1,50.9},
+    {53.1,52.1},{52.2,52.5},{50.3,52.4},{49.6,52.4},{48.8,53.4},{47.6,53.9},
+    {47.1,54.8},{46.7,56.4},{46.4,57.6},{45.4,58.5},{44.0,59.6},{43.0,61.0},
+    {42.4,62.5},{42.3,64.6},{42.6,66.0},{43.4,67.3},{44.5,68.2},{46.0,68.8},
+    {47.5,68.8},{49.2,68.3},{50.5,67.4},{51.5,66.8},{52.7,66.9},{53.6,67.6},
+    {53.8,68.9},{53.7,70.5},{53.2,71.7},{52.3,72.9},{51.2,73.5},{50.1,74.4},
+    {49.7,75.6},{49.5,77.4},{49.6,78.6},{50.1,79.8},
+}} }
+
+local function npcPatrols(self,id)
+    local paths=self.db.Npc.Get(id,"waypoints")
+    if id==263380 and not (paths and paths[16591] and #paths[16591]>0) then return ghostmawRiver end
+    return paths
+end
+
 -- Use a recorded passing point when the target patrols the player's current zone.
 local function patrolTarget(point,paths,origin,maps,phase,pin)
     if type(paths)~="table" then return end
@@ -913,6 +935,63 @@ function D:ObjectiveIdentities(q,state)
     return identities
 end
 
+-- Resolve only the selected, unfinished objectives. Spawn and kill locations have no travel order.
+function D:QuestPatrolSegments(id,state,map,focus,out)
+    local seen={}
+    local function add(npc)
+        if not npc or seen[npc] then return end
+        seen[npc]=true
+        local before=#out
+        for area,paths in pairs(npcPatrols(self,npc) or {}) do
+            if self.maps[area]==map then
+                for _,path in ipairs(paths) do
+                    local prev
+                    for _,p in ipairs(path) do
+                        if usableSpawn(p) then
+                            if prev and (prev[1]~=p[1] or prev[2]~=p[2]) then
+                                out[#out+1]={prev[1]/100,prev[2]/100,p[1]/100,p[2]/100}
+                            end
+                            prev=p
+                        else prev=nil end
+                    end
+                end
+            end
+        end
+        -- Some named outdoor mobs have an ordered route only in the danger map.
+        if #out==before and self.dangerIDs and self.db.Npc.GetRaw then
+            local name=self.db.Npc.GetRaw(npc,"name")
+            local zones=A.DangerData and A.DangerData[state.faction]
+            if self.dangerIDs[name]==npc then
+                for _,row in ipairs(zones and zones[map] or {}) do
+                    if row.name==name then
+                        for _,path in ipairs(row.paths) do
+                            for i=3,#path,2 do out[#out+1]={path[i-2],path[i-1],path[i],path[i+1]} end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    local point=focus and focus.position
+    if point and (point.sourceKind=="vendor" or point.entityKind=="object") then return end
+    if point and point.entityKind=="npc" and point.entityId then
+        add(point.entityId)
+        return
+    end
+    local quest=self:GetQuest(id,state) or {id=id}
+    for index,goal in pairs(self:ObjectiveIdentities(quest,state)) do
+        if not focus or not focus.objectiveIndex or focus.objectiveIndex==index then
+            if goal.kind=="npc" then add(goal.id)
+            elseif goal.kind=="killcredit" then
+                for _,npc in ipairs(goal.npcIds or {}) do add(npc) end
+            elseif goal.kind=="item" then
+                local drops=self.db.Item.Get(goal.id,"npcDrops")
+                if drops and #drops==1 then add(drops[1]) end
+            end
+        end
+    end
+end
+
 function D:ObjectiveExtras(q,state)
     local active=state.quests[q.id]
     local extras=self.db.Quest.Get(q.id,"extraObjectives") or {}
@@ -987,6 +1066,12 @@ function D:ObjectiveTargets(q,state)
     local areas=dungeonAreas(q,state)
     local outdoor=not state.inInstance and not (areas and areas.objective)
     local function consider(entity,id,label,index,kind,identity,sourceKind,points,spawns)
+        if outdoor and kind=="npc" and id==263380 and not sourceKind and self.maps[16591] then
+            local path=npcPatrols(self,id)[16591][1]
+            if path and path[1] and usableSpawn(path[1]) then
+                points={{map=self.maps[16591],sourceAreaId=16591,x=path[1][1]/100,y=path[1][2]/100}}
+            end
+        end
         if not points then
             local hunt=outdoor and kind=="npc" and not sourceKind and active.objectives[index].numRequired
             if hunt==1 and (identity.kind~="item" or (entity.Get(id,"rank") or 0)~=0 or next(entity.Get(id,"waypoints") or {})) then
@@ -995,10 +1080,11 @@ function D:ObjectiveTargets(q,state)
             points=self:EntityPoints(entity,id,true,spawns,hunt)
         end
         if outdoor and kind=="npc" and not sourceKind and #points==1 and not points[1].approximate and not points[1].spawnArea then
-            local paths=entity.Get(id,"waypoints")
+            local paths=npcPatrols(self,id)
             if paths and paths[points[1].sourceAreaId] then
                 points[1].entityName=entity.Get(id,"name")
                 patrolTarget(points[1],paths,state.position,self.maps,"objective")
+                if paths==ghostmawRiver then points[1].travelHint="沿洛格玛北侧瀑布至南部农场的河道寻找幽魂之颚。金线为巡逻参考河段。" end
             end
         end
         for _,point in ipairs(points) do

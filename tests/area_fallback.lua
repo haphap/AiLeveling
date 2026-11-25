@@ -58,6 +58,13 @@ test("野外群怪目标和掉落选有多处记录的活动区，接交和单�
     s.position={map=1,x=0.85,y=0.95}
     target=d:Target(q,s)
     eq(target.x,0.84);eq(target.sourceKind,"patrol");eq(target.approximate,true);eq(target.targetId,100)
+    d.cache[q.id]=q
+    npcs[6].waypoints[12][2]={{50,50},{-1,-1},{80,80},{90,90}}
+    local segments={}
+    d:QuestPatrolSegments(q.id,s,1,nil,segments)
+    eq(#segments,2);eq(segments[1][3],0.84);eq(segments[2][1],0.8);eq(segments[2][3],0.9)
+    d:QuestPatrolSegments(q.id,s,2,nil,segments);eq(#segments,2)
+    goal.finished=true;d:QuestPatrolSegments(q.id,s,1,nil,segments);eq(#segments,2);goal.finished=false
     npcs[7].spawns={[12]={{20,20}}}
     d.db.Item.Get=function(_,k) if k=="npcDrops" then return {7,6} elseif k=="name" then return "毛皮" end end
     eq(d:Target(q,s).entityId,6)

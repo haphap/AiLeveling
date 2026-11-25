@@ -22,6 +22,8 @@
 - **破碎的联盟（782）**。索格伦会巡逻。以玩家获得进度的荒芜之地（57.11，66.98）为起点，旧来源指向（12.62，75.49），新版指向附近的巡逻途经点（58.34，63.42），并提示沿路线寻找。[实服进度采样](https://github.com/JIVESCORP/eg-link-output-wowf/tree/d78a89020881ec338a4a7c1f2a89ee613f68554b/data/wowf)
 - **不和谐的烈焰（3906）及同一目标**。征服者派隆仅有一个东部王国全图坐标。以无限服击杀进度回报和任务正文核对，导航标明黑石深渊入口外的黑石山采石场。灼热峡谷（26.15，74.13）为搜索参考点。[该构建的进度记录](https://github.com/JIVESCORP/eg-link-output-wowf/blob/d78a89020881ec338a4a7c1f2a89ee613f68554b/data/wowf/1.60.1.71037/objectives.json) · [任务正文](https://www.wowhead.com/forever/quest=3906/disharmony-of-flame)
 
+河林两方的「通缉：幽魂之颚」（95991、95992）都需要牙齿 271828，由 NPC 263380 掉落。QuestieDB 1.1.5 的 610 个出现位置没有时间顺序。地图上的参考线按玩家观察到的往返河段沿无限版河道取点，从洛格玛北侧瀑布延伸至南部农场。数据库提供该 NPC 在河林的有序路径时优先使用记录。[玩家目击记录](https://www.wowhead.com/forever/npc=263380/ghostmaw#comments) · [河林地图](https://zephras.com/forever/enUS/zone/16591/)
+
 ## 实服对照范围
 
 七个无限服 1.60.1 构建的玩家记录可与 4,048 个阶段匹配。接交用任务、阶段和联系人 ID 匹配，执行仅比较单一目标且类型、需求数量一致的记录。将客户端地图坐标换算为世界距离后，对地图 ID 不同或距最近样本超过 500 码的 47 项再次回放，从玩家记录的位置出发。46 项找到 500 码内的候选。余下的「发条式什么什么仪」推荐工程供应商，玩家在荒芜之地获得物品的记录无法确定取得方式。500 码用于发现异常，不能验证某一只怪物的精确位置。[采样数据与构建](https://github.com/JIVESCORP/eg-link-output-wowf/tree/d78a89020881ec338a4a7c1f2a89ee613f68554b/data/wowf) · [发条式什么什么仪](https://www.wowhead.com/forever/quest=714/gyro-what)
