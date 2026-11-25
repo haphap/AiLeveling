@@ -280,6 +280,7 @@ test("原生难度变化事件已注册并触发状态重建",function()
     local offerEvent
     C.State={QuestOffersEvent=function(_,event) offerEvent=event end}
     scripts.OnEvent(nil,"GOSSIP_SHOW");eq(offerEvent,"GOSSIP_SHOW");eq(refreshes,3)
+    eq(events.QUEST_WATCH_UPDATE,true);scripts.OnEvent(nil,"QUEST_WATCH_UPDATE",42);eq(refreshes,4)
     eq(events.ENCOUNTER_START,true);eq(events.ENCOUNTER_END,true)
     local received
     C.Dungeon={EncounterEvent=function(_,...) received={...} end}

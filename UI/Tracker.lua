@@ -949,9 +949,7 @@ function UI:CreateTracker()
             local old=notice.ignored[key]
             notice.ignored[key]={count=(old and old.count or 0)+1,position={map=position.map,x=position.x,y=position.y}}
         else
-            local point=notice.action.position
-            A.Navigation.manual={map=point.map,x=point.x,y=point.y,title=notice.title}
-            A.Navigation:RefreshPins();A.dirty=true
+            A.Navigation:Navigate(notice.action)
         end
         GameTooltip:Hide();self:UpdateNearby()
     end)

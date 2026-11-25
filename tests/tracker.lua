@@ -373,13 +373,13 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.state.quests[4]={objectives={}};eq(B.Navigation:Current(),B.action)
     eq(B.Navigation.manual,nil);eq(B.QuestAssist.requirements[1].kind,"use")
     B.state.quests[4]=nil;B.Data.GetQuest=getQuest;B.char.locked=nil
-    starter.position=objectPoint;starter.text=nil;B.Navigation=originalNavigation
+    starter.position=objectPoint;starter.text=nil
     -- Nearby work and ready hand-ins share the optional section without changing the main action.
     starter.position.x=0.525;starter.kind="objective";starter.objectiveIndex=1
-    B.state.quests[4]={objectives={{type="item",text="物资：1/5",numRequired=5,numFulfilled=1}}}
-    B.UI:RenderTracker();eq(T.model.rows[1].along,true);eq(T.rows[1].objectives[1].count.value,"1/5");eq(T.rows[1].progress.shown,false)
+    B.state.quests[4]={objectives={{type="item",text="一捆木材：3/10",numRequired=10,numFulfilled=3}}}
+    B.UI:RenderTracker();eq(T.model.rows[1].along,true);eq(T.rows[1].objectives[1].count.value,"3/10");eq(T.rows[1].progress.shown,false)
     local notice=T.nearby
-    eq(notice.shown,true);eq(notice.body.value,"从 焦焚残骸 收集 物资，还差 4  ·  100 码")
+    eq(notice.shown,true);eq(notice.body.value,"从 焦焚残骸 收集 一捆木材，还差 7  ·  100 码")
     notice.scripts.OnClick(nil,"RightButton");B.UI:UpdateNearby();eq(notice.shown,false);eq(B.state.skipped[4],nil)
     local position,mainPoint=B.state.position,B.action.position
     B.state.position={map=1,x=0.56,y=0.5};starter.position.x=0.58;B.action.position={map=1,x=0.65,y=0.5}
@@ -389,12 +389,20 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.UI:UpdateNearby();eq(notice.shown,false)
     B.state.position.map=2;starter.position.map=2;B.action.position.map=2
     B.UI:UpdateNearby();eq(notice.shown,true)
-    notice.scripts.OnClick(nil,"LeftButton");eq(B.Navigation.manual.x,0.66);eq(B.Navigation.manual.title,"从 焦焚残骸 收集 物资，还差 4")
+    notice.scripts.OnClick(nil,"LeftButton");eq(B.Navigation:Current(),starter)
+    local goal=B.state.quests[4].objectives[1]
+    goal.numFulfilled,goal.text=8,"一捆木材：8/10"
+    B.UI:RenderTracker();eq(T.model.questId,4);eq(T.objectives[1].count.value,"8/10")
+    B.UI:SetTrackerNavigation(nil,nil,nil,B.Navigation:Current());eq(T.navDetail.value,goal.text)
     eq(B.char.locked,nil);eq(B.state.locked,1);eq(B.action.questId,1);eq(notice.shown,false)
-    B.Navigation.manual=nil;B.state.position=position;B.action.position=mainPoint;starter.position={map=1,x=0.525,y=0.5}
-    B.UI:UpdateNearby();eq(notice.shown,true)
+    B.Navigation:ClearManual(false)
+    B.state.position=position;B.action.position=mainPoint;starter.position={map=1,x=0.525,y=0.5}
+    B.UI:UpdateNearby();eq(notice.shown,true);assert(notice.body.value:find("还差 2",1,true))
     B.char.paused=true;B.UI:UpdateNearby();eq(notice.shown,false);B.char.paused=false
-    B.state.quests[4].objectives[1].finished=true;B.UI:RenderTracker();eq(T.alongLabel.shown,false);eq(notice.shown,false)
+    B.UI:UpdateNearby();notice.scripts.OnClick(nil,"LeftButton");eq(B.Navigation:Current(),starter)
+    goal.numFulfilled,goal.text,goal.finished=10,"一捆木材：10/10",true
+    eq(B.Navigation:Current(),B.action);eq(B.Navigation.manual,nil);B.Navigation=originalNavigation
+    B.UI:RenderTracker();eq(T.alongLabel.shown,false);eq(notice.shown,false)
     starter.kind="turnin";starter.objectiveIndex=nil;B.state.quests[4].ready=true
     B.UI:RenderTracker();eq(T.rows[1].status,"可交付");eq(T.rows[1].along,true);eq(B.action.questId,1)
     B.state.quests[4]=nil;starter.kind="accept"
