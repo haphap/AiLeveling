@@ -159,6 +159,7 @@ local function taxiHops(from,node,slots,total)
 end
 
 function T:PlannedFlight()
+    if A.ShortestPath and A.ShortestPath.owned then return A.ShortestPath:TaxiLeg(self.taxiChoices) end
     local nav=A.Navigation
     if not nav or nav.manual and (type(nav.manual)~="table" or not nav.manual.actions) then return end
     if not nav.manual and nav.RouteStatus and nav:RouteStatus(nav.plan,A.state) then return end
@@ -270,7 +271,6 @@ end
 function T:CaptureTaxi(refreshOnly,system)
     self.taxiMapOpen=true
     if not refreshOnly then
-        self.autoTaxiLeg=A.settings and A.settings.autoTaxi and not (IsShiftKeyDown and IsShiftKeyDown()) and self:PlannedFlight() or nil
         self.legacyTaxi=system==nil and not (FlightMapFrame and FlightMapFrame:IsShown()) or
             system~=nil and Enum and Enum.UIMapSystem and system==Enum.UIMapSystem.Taxi
     end
@@ -319,6 +319,9 @@ function T:CaptureTaxi(refreshOnly,system)
             end
         end
     else self.taxiRequest=nil
+    end
+    if not refreshOnly then
+        self.autoTaxiLeg=A.settings and A.settings.autoTaxi and not (IsShiftKeyDown and IsShiftKeyDown()) and self:PlannedFlight() or nil
     end
 end
 

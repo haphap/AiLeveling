@@ -4,9 +4,9 @@
 ## Notes-zhCN: 根据角色状态衔接任务、导航与任务物品。开发构建。
 ## Notes: Adaptive leveling assistant (development build).
 ## Author: AiLeveling
-## Version: 0.1.216-dev
+## Version: 0.1.217-dev
 ## Dependencies: QuestieDB, HereBeDragons
-## OptionalDeps: WaypointUI, DaylightUI
+## OptionalDeps: WaypointUI, DaylightUI, ShortestPathForever
 ## SavedVariables: AiLevelingDB
 ## SavedVariablesPerCharacter: AiLevelingCharDB
 
@@ -50,6 +50,7 @@ Planner/Dungeon.lua
 Planner/DungeonTasks.lua
 Planner/Planner.lua
 Planner/Selection.lua
+Planner/ShortestPath.lua
 Navigation.lua
 Routes.lua
 QuestAssist.lua

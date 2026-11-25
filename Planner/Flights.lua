@@ -372,7 +372,10 @@ function F.Actions(route,action,navigation)
         end
     end
     if action.questId then
-        for _,step in ipairs(actions) do step.questAction=action.questAction or action end
+        for _,step in ipairs(actions) do
+            step.questAction=action.questAction or action
+            step.travelGoal=action
+        end
     end
     actions[#actions+1]=action
     return actions
@@ -380,7 +383,7 @@ end
 
 function F.MissingCrossing(action,state,navigation)
     if not state.inInstance and A.Travel.Separated(state.position,action.position,navigation) then
-        return {kind="selectionBlocked",questId=action.questId,title=action.title,crossingFrom=state.position,
+        return {kind="selectionBlocked",questId=action.questId,title=action.title,crossingFrom=state.position,travelGoal=action,
             text="当前没有到达任务地点的可用路线。往返泰达希尔需搭船或飞行，鲁瑟兰村与达纳苏斯之间走传送门。"}
     end
 end
@@ -422,7 +425,7 @@ function F.Guide(action,state,navigation)
     local seconds,sourceLabel=F.Seconds(anchor.id,best.id,state)
     local name=(state.taxiNames or {})[best.id] or best.node.name
     local text="与当前飞行管理员交谈，飞往「"..name.."」，落地后继续任务。"
-    local transit={kind="transit",mode="flight",questAction=action.questAction or action,questId=action.questId,title="飞往 "..name,text=text,
+    local transit={kind="transit",mode="flight",travelGoal=action,questAction=action.questAction or action,questId=action.questId,title="飞往 "..name,text=text,
         departure=anchor.position,departureRadius=12,position=best.landing,toName=name,arrival=25,
         fromTaxi=anchor.id,toTaxi=best.id,travelSeconds=seconds,
         timeSampleKey=F.TimeKey(anchor.id,best.id,state.faction,(state.taxiHops or {})[anchor.id..":"..best.id],state.taxiSpeed),referenceFlight=true}

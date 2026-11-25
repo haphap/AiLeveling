@@ -3,48 +3,27 @@ A.UI = {fonts={},daylightFonts={},shells={}}
 local UI = A.UI
 local backgroundAlpha=0.40 -- 60% transparent
 UI.colors={
-    bg={0.07,0.085,0.14,backgroundAlpha}, sidebar={0.05,0.065,0.11,backgroundAlpha},
-    panel={0,0,0,0}, button={0.13,0.15,0.21,backgroundAlpha},
-    hover={0.20,0.24,0.32,backgroundAlpha}, selected={0.17,0.20,0.28,backgroundAlpha},
-    rowHover={0.50,0.60,0.85,backgroundAlpha}, hud={0.07,0.085,0.14,backgroundAlpha},
-    navigation={0.095,0.115,0.178,backgroundAlpha},
-    white={0.96,0.97,0.99}, muted={0.70,0.73,0.80},
-    gold={0.90,0.73,0.40}, green={0.42,0.85,0.60}, blue={0.58,0.79,1}, purple={0.78,0.68,1},
-    red={0.95,0.61,0.61}, line={0.65,0.70,0.82,0.18}, border={0.50,0.55,0.65,0.25},
+    bg={0.040,0.044,0.073,backgroundAlpha}, sidebar={0.032,0.035,0.055,backgroundAlpha},
+    panel={0,0,0,0}, button={0.095,0.102,0.145,backgroundAlpha},
+    hover={0.22,0.24,0.32,backgroundAlpha}, selected={0.19,0.22,0.30,backgroundAlpha},
+    rowHover={0.31,0.36,0.49,backgroundAlpha}, hud={0.042,0.046,0.067,backgroundAlpha},
+    navigation={0.045,0.049,0.078,backgroundAlpha},
+    white={0.96,0.96,0.99}, muted={0.71,0.75,0.84},
+    gold={1,0.84,0.32}, green={0.52,0.91,0.65}, blue={0.59,0.80,1}, purple={0.81,0.65,1},
+    focus={0.40,0.69,0.96}, red={0.95,0.61,0.61},
+    line={0.68,0.72,0.81,0.20}, border={0.55,0.59,0.69,0.28},
     gearText={0.765,0.793,0.868},
 }
 local colors=UI.colors
-colors.place={unpack(colors.blue)} -- Daylight's VALUE can be the same white as body text.
+colors.place=colors.blue
 UI.daylight=DaylightUI and DaylightUI.API and DaylightUI.API.major==1 and DaylightUI.API
-colors.accent={unpack(colors.gold)}
-colors.accept=colors.blue;colors.objective=colors.gold;colors.turnin=colors.green
-colors.collect={unpack(colors.purple)}
+colors.accent=colors.gold
+colors.accept=colors.gold;colors.objective=colors.white;colors.turnin=colors.green
+colors.collect=colors.purple
 UI.hex={}
-function UI:RefreshPalette()
-    local api=self.daylight
-    if api then
-        local ink=api.Colors()
-        -- Theme updates supply RGB; opacity belongs to each AILeveling surface.
-        local function set(key,value)
-            for i=1,3 do colors[key][i]=value[i] end
-        end
-        for key,role in pairs({white="TEXT",muted="LABEL",gold="WARN",green="GOOD",red="BAD",gearText="TEXT",blue="VALUE",purple="TEXT"}) do set(key,ink[role]) end
-        set("accent",{api.Accent()})
-        set("sidebar",{0.06,0.06,0.07});set("button",{0.13,0.13,0.15})
-        -- Mix the accent into the dark control color to keep labels legible.
-        for i=1,3 do
-            local base=colors.button[i]
-            local tint=colors.accent[i]-base
-            colors.hover[i]=base+tint*0.12
-            colors.selected[i]=base+tint*0.20
-        end
-        set("rowHover",colors.accent);set("line",ink.VALUE);set("border",ink.LABEL)
-    end
-    for name,color in pairs(colors) do
-        self.hex[name]=string.format("%02x%02x%02x",math.floor(color[1]*255+0.5),math.floor(color[2]*255+0.5),math.floor(color[3]*255+0.5))
-    end
+for name,color in pairs(colors) do
+    UI.hex[name]=string.format("%02x%02x%02x",math.floor(color[1]*255+0.5),math.floor(color[2]*255+0.5),math.floor(color[3]*255+0.5))
 end
-UI:RefreshPalette()
 UI.fontSizes={caption=12,body=14,task=15,heading=18,brand=18,title=20}
 local daylightRoles={caption="small",body="body",task="body",heading="head",brand="title",title="title"}
 UI.metrics={tight=4,gap=8,padding=12,section=16,indent=24,icon=16,smallIcon=12,
@@ -95,7 +74,7 @@ end
 local objectiveIcons={item="collect",monster="objective",talkto="talk",object="interact",spell="spell",
     areaTrigger="location",areaTriggerEnter="location",reputation="reputation"}
 local travelIcons={walk="location",move="location",approach="location",manual="location",zeppelin="boat",flight="flight",
-    boat="boat",tram="tram",hearth="hearth",hearthCast="hearth",portal="entry",dungeonEnter="entry",dungeonLeave="entry",dungeonRun="entry"}
+    boat="boat",tram="tram",lift="location",passage="entry",teleport="entry",hearth="hearth",hearthCast="hearth",portal="entry",dungeonEnter="entry",dungeonLeave="entry",dungeonRun="entry"}
 
 function UI.ObjectiveIcon(goal)
     if not goal then return end
@@ -431,6 +410,8 @@ function UI:Create()
     self.tabMark=side:CreateTexture(nil,"ARTWORK");self.tabMark:SetWidth(2)
     self.detailHeading=self:Text(self.details,"title",colors.white)
     self.detailHeading:SetPoint("TOPLEFT",194,-22);self.detailHeading:SetText("练级任务")
+    local underline=self.details:CreateTexture(nil,"ARTWORK")
+    underline:SetPoint("TOPLEFT",self.detailHeading,"BOTTOMLEFT",0,-3);underline:SetSize(52,2);underline:SetColorTexture(unpack(colors.gold))
     self.detailSubtitle=self:Text(self.details,"body",colors.muted)
     self.detailSubtitle:SetPoint("TOPLEFT",194,-54)
     self.scroll = CreateFrame("ScrollFrame", nil, self.details, "UIPanelScrollFrameTemplate")
@@ -465,7 +446,6 @@ end
 
 function UI:ApplyStyle()
     if not self.frame then return end
-    self:RefreshPalette()
     if self.daylight then
         for _,refresh in ipairs(self.shells) do refresh() end
     end
@@ -480,7 +460,6 @@ function UI:ApplyStyle()
     end
     if self.accent then local r,g,b=self:Accent();self.accent:SetColorTexture(r,g,b,1) end
     if self.detailMark then self.detailMark:SetVertexColor(unpack(colors.accent)) end
-    if self.tracker and self.tracker.headerLine then self.tracker.headerLine:SetColorTexture(unpack(colors.accent)) end
     if A.settings.lockWindow then self.frame:StopMovingOrSizing();self.details:StopMovingOrSizing() end
     if self.navFrame then
         self.tracker.navScale=nil
@@ -531,7 +510,7 @@ function UI:SelectTab(index,reuse)
     end
     local selected=self.tabs[index]
     self.tabMark:ClearAllPoints();self.tabMark:SetPoint("TOPLEFT",selected,"TOPLEFT");self.tabMark:SetPoint("BOTTOMLEFT",selected,"BOTTOMLEFT")
-    self.tabMark:SetColorTexture(self:Accent())
+    self.tabMark:SetColorTexture(unpack(colors.gold))
     local names={"练级任务","任务链","装备情况","地下城","设置","运行数据","附近服务","专业任务","职业任务","练级区域","坐骑任务"}
     self.detailHeading:SetText(names[index])
     self.detailSubtitle:SetText(({[1]="当前安排与可选任务",[3]="当前装备、背包提升与任务奖励",[4]="选择副本，查看等级和任务安排",

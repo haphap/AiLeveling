@@ -80,7 +80,7 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
         Input=function(parent) return nativeControl("EditBox",parent) end}
     B=setup(true,api);B.UI:Render();local choice=B.action
     assert(B.UI.frame.daylightOpts and B.UI.details.daylightOpts)
-    eq(B.UI.frame.daylightOpts.bgAlpha,0.4);eq(B.UI.title.fontFace,face);eq(B.UI.tracker.header.shown,false)
+    eq(B.UI.frame.daylightOpts.bgAlpha,0.4);eq(B.UI.title.fontFace,face);assert(B.UI.tracker.header:IsShown())
     eq(B.UI.navFrame.daylightOpts.panel,true);eq(B.UI.navFrame.daylightOpts.bgAlpha,0.40)
     windowAlpha=0.35;listeners.SettingChanged("general","windowAlpha");eq(B.UI.navFrame.daylightOpts.bgAlpha,0.40)
     questBox.boxAlphaOwn,questBox.boxAlpha,questBox.boxBorder=true,0.45,false
@@ -88,7 +88,7 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     eq(B.UI.navFrame.daylightOpts.noBorder,true);eq(B.UI.navFrame.daylightOpts.bgAlpha,0.40)
     B.settings.alpha=0.5;B.UI:ApplyStyle()
     eq(B.UI.details.alpha,1);eq(B.UI.tracker.navBearing.alpha,0.5);eq(B.UI.nav.alpha,0.5);eq(B.UI.navFrame.alpha or 1,1)
-    eq(B.UI.tracker.headerLine.shown,false);eq(B.UI.title.fontSize,13);eq(B.UI.tracker.location.fontSize,15)
+    eq(B.UI.tracker.headerLine.color[2],B.UI.colors.gold[2]);eq(B.UI.title.fontSize,13);eq(B.UI.tracker.location.fontSize,15)
     eq(B.UI.title.fontFlags,"");eq(B.UI.title.shadowColor[4],0.6)
     local before=B.UI.frame.skinCalls;B.UI.frame.scripts.OnSizeChanged();eq(B.UI.frame.skinCalls,before+1)
     face="UpdatedDaylightFont";scale=1.2

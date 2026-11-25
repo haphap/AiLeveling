@@ -97,14 +97,14 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     eq(#T.model.rows,2);eq(T.rows[1].title.value,"后续交付");eq(T.rows[1].status,"可交付")
     eq(T.queuePanel.width,T.card.width)
     eq(T.rows[1].title.shown,true);eq(T.rows[2].objectiveFrame.shown,true);eq(T.rows[2].progress.shown,false)
-    eq(T.objectives[1].check.value,"□");eq(T.progressRatio,0.3);eq(T.progress.shown,true)
+    eq(T.objectives[1].check.shown,false);eq(T.progressRatio,0.3);eq(T.progress.shown,true)
     assert(T.rows[1].title.color[2]>T.rows[1].title.color[1])
-    assert(T.rows[2].title.color[1]>T.rows[2].title.color[2])
+    eq(T.rows[2].title.color[2],B.UI.colors.white[2])
     assert(T.queueScroll.width+16<=T.queuePanel.width);assert(T.card.width<=300)
     assert(T.location.width+2*B.UI.metrics.hit<=T.card.width);eq(T.career.width,T.currentChild.width)
     local goal=T.objectives[1]
     eq(goal.count.width,math.ceil(goal.count:GetStringWidth())+6)
-    eq(goal.text.width,goal.width-goal.count.width-42)
+    eq(goal.text.width,goal.width-goal.count.width-20)
     assert(T.footer.value:find("经验 1250",1,true));assert(T.footer.value:find("路程 2分15秒",1,true))
     assert(T.rows[1].metrics:find("经验 0",1,true));assert(T.rows[1].metrics:find("路程 0秒",1,true))
     assert(T.rows[2].metrics:find("路程 1小时01分",1,true))
@@ -114,7 +114,7 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     eq(T.rows[2].objectives[1].text.value,"物品");eq(T.rows[2].objectives[1].count.value,"2/4");eq(T.rows[1].enabled,true)
     B.state.quests[3].objectives[1].text="收集物品";B.state.quests[3].objectives[1].type="item";B.UI:RenderTracker()
     eq(T.rows[2].objectives[1].text.value,"收集物品");eq(T.rows[2].objectives[1].count.value,"2/4")
-    eq(T.rows[2].objectives[1].check.value,"□");assert(T.rows[2].objectives[1].text.color[1]>T.rows[2].objectives[1].text.color[2])
+    eq(T.rows[2].objectives[1].check.shown,false);eq(T.rows[2].objectives[1].text.color[2],B.UI.colors.white[2])
     for _,id in ipairs({1,3}) do
         B.plan.taskChoices[id].stages={{kind="objective",objectiveIndex=1,purchase={npcId=8,name="任务商人",map=1}}}
     end
@@ -787,9 +787,9 @@ test("交错行程按任务数汇总并显示每个目标与交付步骤",functi
     eq(B.state.quests[3].ready,nil)
     local T=B.UI.tracker
     assert(T.thenText.value:find("已接取",1,true));eq(T.thenButton.title.value,"[9] 后续目标")
-    eq(T.thenButton.title.color[1],B.UI.colors.gold[1]);assert(T.thenButton.progress.value:find("林地",1,true))
+    eq(T.thenButton.title.color[1],B.UI.colors.white[1]);assert(T.thenButton.progress.value:find("林地",1,true))
     eq(T.thenButton.objectives[1].text.value,"物品");eq(T.thenButton.objectives[1].count.value,"2/4")
-    eq(T.thenButton.objectives[1].text.color[1],B.UI.colors.purple[1])
+    eq(T.thenButton.objectives[1].text.color[1],B.UI.colors.white[1])
     eq(T.thenText.shown,true);eq(T.thenButton.questId,3)
     assert(T.thenText.point[3]>T.queuePanel.point[3],"下一步应在其他任务之前")
     local steps=B.plan.taskQueue.steps
@@ -1042,6 +1042,40 @@ test("装备和奖励留在任务列表，一键忽略且右键换装只处理�
     T.gear.scripts.OnHyperlinkClick(T.gear,"item:201",one.link,"RightButton")
     B.menu["装备这件"].callback();eq(equips,2)
     B.finish()
+end)
+
+test("Shortest Path 的实走步骤跟随路段更新且保留玩家改道",function()
+    local B=ready()
+    assert(loadfile("Planner/ShortestPath.lua"))("AiLeveling",B)
+    local provider=B.ShortestPath
+    local old=ShortestPathForever
+    local calls,owner,listen,legs=0,nil,nil,{{mode="walk",text="走到地铁入口",seconds=42},{mode="tram",text="乘地铁前往铁炉堡",seconds=71}}
+    ShortestPathForever={API={
+        Subscribe=function(fn) listen=fn end,
+        CurrentStop=function(key) return owner==key and 1 or nil end,
+        JourneyState=function() return {owner=owner,busy=owner~=nil} end,
+        NavigateRoute=function(key,stops)
+            calls=calls+1;owner=key
+            eq(stops[1].map,B.action.position.map);eq(stops[1].kind,"objective");assert(stops[1].hold)
+            return true
+        end,
+        Journey=function() return {owner=owner,legs=legs,secondsLeft=113} end,
+        Cancel=function(key) eq(owner,key);owner=nil end}}
+    B.Navigation.Near=function() return false end
+    local legacy={kind="transit",questAction=B.action}
+    provider:Sync(legacy);provider:Sync(B.action)
+    eq(calls,1);eq(provider:For(legacy),B.action)
+    B.UI:RenderTracker()
+    local T=B.UI.tracker
+    eq(T.journeyRows[1].title.value,"走到地铁入口");eq(T.journeyRows[2].title.value,"乘地铁前往铁炉堡")
+    eq(T.model.journey.steps[3].action,B.action)
+    table.remove(legs,1);listen({leg=true});B.UI:RenderTracker()
+    eq(T.journeyRows[1].title.value,"乘地铁前往铁炉堡");eq(calls,1)
+    owner="玩家";listen({changed=true});provider:Sync(legacy);eq(provider.owned,nil);eq(calls,1)
+    provider:Sync(nil);provider:Sync(legacy);eq(owner,"玩家");eq(calls,1)
+    owner=nil;listen({ended=true});provider:Sync(legacy);eq(calls,2)
+    B.char.paused=true;provider:Sync(legacy);eq(owner,nil);eq(provider.journey,nil)
+    ShortestPathForever=old;B.finish()
 end)
 
 end

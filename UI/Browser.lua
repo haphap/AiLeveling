@@ -156,7 +156,7 @@ function B:TaskRows(mode)
         if complete then allowed,why,pre=false,nil,nil end
         if skipped then allowed,why,pre=false,skipped=="ignored" and "已忽略" or "已暂缓",nil
         elseif not allowed and status=="未接取" then status=why end
-        local c=status=="可交付" and green or state.quests[id] and gold or allowed and blue or muted
+        local c=status=="可交付" and green or state.quests[id] and A.UI.hex.white or allowed and gold or muted
         local meta={color(c,status)}
         if skipped then table.insert(meta,1,color(muted,why))
         elseif id==currentId then table.insert(meta,1,color(gold,currentLabel)) end
@@ -407,12 +407,12 @@ function B:DrawRows(offset)
             row.deferred=entry.questId and ((A.state.skipped or {})[entry.questId] or (A.state.chainDeferred or {})[entry.questId])
             local inset=metrics.gap+(metrics.icon+metrics.gap)*scale
             row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",inset,-metrics.gap);row.text:SetWidth(width-inset-metrics.gap)
-            row.text:SetText(entry.title);row.text:SetTextColor(unpack(colors.white))
+            row.text:SetText(entry.title);row.text:SetTextColor(unpack(entry.questId and entry.tone==green and colors.green or colors.white))
             row.icon:SetText(A.UI:Icon(entry.icon,metrics.icon));row.sub:SetText(entry.sub or "")
             row.sub:ClearAllPoints();row.sub:SetPoint("TOPLEFT",inset,-metrics.gap-23*scale);row.sub:SetWidth(width-inset-metrics.gap)
             row.line:ClearAllPoints();row.line:SetPoint("BOTTOMLEFT",inset,0);row.line:SetPoint("BOTTOMRIGHT",-metrics.gap,0)
             row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-(index-1)*pitch);row:SetSize(width,pitch-metrics.tight)
-            row.marker:SetColorTexture(unpack(colors.accent))
+            row.marker:SetColorTexture(unpack(entry.questId and colors.focus or colors.accent))
             markRow(row,entry==self.selected)
         elseif row.marker:IsShown()~=(entry==self.selected) then
             markRow(row,entry==self.selected)
@@ -783,7 +783,7 @@ function B:DungeonDetail(e)
         view:SetHeight(y);self.infoChild:SetHeight(top+y+8)
         return
     end
-    local tones={colors.turnin,colors.objective,colors.accept,colors.muted,colors.muted}
+    local tones={colors.turnin,colors.purple,colors.accept,colors.muted,colors.muted}
     local tasks,prep,inside,other={},{},{},{}
     for _,task in ipairs(e.tasks) do
         local group=other
@@ -849,7 +849,7 @@ function B:DungeonDetail(e)
         end
         row.deferred=(A.state.skipped or {})[task.id] or (A.state.chainDeferred or {})[task.id]
         row.revision=A.plan and A.plan.revision
-        row.text:SetWidth(292-64*(A.settings.fontScale or 1));row.text:SetText(task.title);row.text:SetTextColor(unpack(colors.blue))
+        row.text:SetWidth(292-64*(A.settings.fontScale or 1));row.text:SetText(task.title);row.text:SetTextColor(unpack(tones[task.group] or colors.muted))
         local active=(A.state.quests or {})[task.id]
         local icon=task.group==5 and "done" or A.UI.QuestIcon(task.group==1 and "turnin" or task.group==2 and "objective" or "accept",nil,active and active.objectives)
         row.icon:SetText(A.UI:Icon(icon,14))

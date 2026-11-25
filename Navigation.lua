@@ -130,10 +130,12 @@ function N:Navigate(action,keepWaypoint)
     end
     local approach=A.Dungeon and A.Dungeon.TaskApproach and A.Dungeon.TaskApproach(target,state,A.Data) or target
     if not approach.position and not (id and approach.text) then return false end
-    local routes=not (point and point.startItemId) and approach.position and A.Flights and A.Flights.Itinerary(state.position,{approach},state,self)
+    if A.ShortestPath then A.ShortestPath:Sync(approach) end
+    local external=A.ShortestPath and A.ShortestPath:For(approach)
+    local routes=not external and not (point and point.startItemId) and approach.position and A.Flights and A.Flights.Itinerary(state.position,{approach},state,self)
     local actions=routes and routes[1] and A.Flights.Actions(routes[1],approach,self)
-    if not actions then actions={A.Flights and A.Flights.MissingCrossing and A.Flights.MissingCrossing(approach,state,self) or approach} end
-    self.manual={title=action.title,action=target,actions=actions,index=1,
+    if not actions then actions={not external and A.Flights and A.Flights.MissingCrossing and A.Flights.MissingCrossing(approach,state,self) or approach} end
+    self.manual={title=action.title,action=target,actions=actions,index=1,externalRoute=external~=nil,
         instanceId=state.instanceId,inInstance=state.inInstance,plan={revision=-1,travelActions=actions,itemStock=self.plan and self.plan.itemStock}}
     self.upcomingQuest=nil
     self:RefreshPins(not keepWaypoint)
@@ -190,7 +192,7 @@ function N:TrackerPlan(plan,state)
     return plan or {}
 end
 
-function N:Current()
+function N:LocalAction()
     if A.Transport and A.Transport.tram and not A.state.dead then return A.Transport.tram end
     local flight=A.Transport and A.Transport:FlightGate()
     if flight then return flight end
@@ -263,6 +265,11 @@ function N:Current()
     return action or arrivedQuest
 end
 
+function N:Current()
+    local action=self:LocalAction()
+    return A.ShortestPath and A.ShortestPath:For(action) or action
+end
+
 function N:Near(position,target,radius)
     if not position or not target or position.map~=target.map then return false end
     local distance=self:Distance(position,target)
@@ -276,6 +283,7 @@ function N.Target(action)
 end
 
 function N:BeginFlight(origin)
+    if A.ShortestPath and A.ShortestPath.owned then return end
     local sequence=self:Sequence()
     for i=sequence.index,#(sequence.actions or {}) do
         local action=sequence.actions[i]
@@ -326,6 +334,7 @@ function N:MapPoints()
     local status=self:RouteStatus(self.plan,A.state)
     local upcoming=self.upcomingManual==self.manual and (self.manual or not status) and self.upcomingQuest or nil
     local function add(action,required,catalog)
+        if action and A.ShortestPath and A.ShortestPath:For(action) and action~=current then return end
         if N.StaleAction(action,A.state,sequence.plan) then return end
         local pos=N.Target(action)
         if not pos then return end
@@ -623,13 +632,16 @@ end
 
 function N:SyncWaypointUI(force)
     local api=WaypointUIAPI and WaypointUIAPI.Navigation
-    if not (api and api.GetUserNavigation and api.NewUserNavigation and api.ClearUserNavigation and api.IsUserNavigationTracked) then return end
+    local external=A.ShortestPath and A.ShortestPath.owned
+    if not (api and api.GetUserNavigation and api.NewUserNavigation and api.ClearUserNavigation and api.IsUserNavigationTracked) then
+        return external and "external" or nil
+    end
     -- WaypointUI tracks the pin but hides its world HUD inside dungeons.
-    local enabled=A.settings.waypointUI~=false and not A.state.inInstance
+    local enabled=A.settings.waypointUI~=false and not A.state.inInstance and not external
     local action=enabled and self:Current()
     local nav=api.GetUserNavigation()
     local owned=nav and nav.flags=="AiLeveling"
-    if not enabled and not owned then return end
+    if not enabled and not owned then return external and "external" or nil end
     local userTracked=api.IsUserNavigationTracked()
     local tracked=userTracked or api.IsPathStepWaypointTracked and api.IsPathStepWaypointTracked()
     local rawPin=not tracked and C_SuperTrack and C_SuperTrack.GetHighestPrioritySuperTrackingType and Enum and Enum.SuperTrackingType and
@@ -641,7 +653,7 @@ function N:SyncWaypointUI(force)
     if not target or A.char.paused or action.kind=="flight" or action.mode=="hearth" or action.publicTransit and action.atDeparture or
         C_Map and C_Map.CanSetUserWaypointOnMap and not C_Map.CanSetUserWaypointOnMap(target.map) then
         if owned then api.ClearUserNavigation(not userTracked,true) end
-        return
+        return external and "external" or nil
     end
     local q=action.questId and ((A.state.quests or {})[action.questId] or A.Data and A.Data:GetQuest(action.questId))
     local label=action.title or q and q.title or target.entityName or action.text or "任务目的地"
@@ -738,14 +750,33 @@ function N:DrawPins()
 end
 
 function N:Update()
+    local action
+    if A.ShortestPath and ShortestPathForever then
+        local current=self:LocalAction()
+        -- In transit the status action temporarily replaces the quest that owns the journey.
+        local riding=A.state.onTaxi or current and (current.kind=="flight" or current.kind=="hearthCast" or current.kind=="tram")
+        if not (riding and A.ShortestPath.owned) or A.char.paused or A.state.dead then A.ShortestPath:Sync(current) end
+        action=A.ShortestPath:For(current) or current
+    else action=self:Current() end
+    if self.manual and self.manual.externalRoute and not A.ShortestPath.owned and not (A.char.paused or A.state.dead or A.state.onTaxi) then
+        self.manual.externalRoute=nil
+        if self:Navigate(self.manual.action,true) then return end
+    end
     local display=self:SyncWaypointUI()
     if display~=self.waypointDisplay then
         self.waypointDisplay=display
         self:DrawPins()
     end
     updateEdge(self.edgePin,self.hbdPins)
-    local action, pos = self:Current(), A.state.position
+    local pos=A.state.position
     if A.char.paused or not action then A.UI:SetNavigation(nil);return end
+    if action.kind=="service" and A.Supplies and A.Supplies.Done(action,A.state) then
+        self:Advance();return
+    end
+    if A.ShortestPath and A.ShortestPath:For(action) then
+        if action.kind=="manual" and self:Near(pos,action.position,action.arrival) then self:ClearManual();return end
+        A.UI:SetNavigation(nil,nil,nil,action);return
+    end
     if action.kind=="flight" or action.kind=="hearthCast" or action.kind=="tram" then A.UI:SetNavigation(nil,nil,nil,action);return end
     local instanceGuide=A.state.inInstance and not A.state.dead and
         (action.kind=="accept" or action.kind=="objective" or action.kind=="turnin" or action.kind=="dungeonLeave")
@@ -758,9 +789,6 @@ function N:Update()
         if action.mode~="portal" and not action.atDeparture and self:Near(pos,action.departure,action.departureRadius) then
             action.atDeparture=true;self:RefreshPins();A.dirty=true
         end
-    end
-    if action.kind=="service" and A.Supplies and A.Supplies.Done(action,A.state) then
-        self:Advance();return
     end
     local target=N.Target(action)
     if not self.hbd or not target or not pos and not instanceGuide or action.publicTransit and action.atDeparture then
