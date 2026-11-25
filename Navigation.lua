@@ -328,7 +328,7 @@ end
 
 function N:MapPoints()
     if A.settings.mapTaskScope=="off" then return {} end
-    local points,seen,turnins,routeCount={},{},{},0
+    local points,seen,turnins,recipients,routeCount={},{},{},{},0
     local current=self:Current()
     local sequence=self:Sequence()
     local status=self:RouteStatus(self.plan,A.state)
@@ -340,11 +340,24 @@ function N:MapPoints()
         if not pos then return end
         local key=table.concat({pos.map,pos.x,pos.y},":")
         local point=seen[key]
+        local contacts,knownContact
+        if action.kind=="turnin" and pos.entityKind and pos.entityId then
+            local recipient=table.concat({pos.map,pos.entityKind,pos.entityId},":")
+            contacts=recipients[recipient] or {}
+            recipients[recipient]=contacts
+            for _,contact in ipairs(contacts) do
+                if point==contact or not point and self:Near(contact.position,pos) then
+                    point,knownContact=contact,true;break
+                end
+            end
+        end
         if not point then
             if routeCount>=6 and not required then return end
             point={position=pos,action=action,actions={},seen={}}
-            points[#points+1]=point;seen[key]=point
+            points[#points+1]=point
         end
+        if contacts and not knownContact then contacts[#contacts+1]=point end
+        seen[key]=point
         if not catalog and not point.order and routeCount<6 then
             routeCount=routeCount+1
             point.order,point.action=routeCount,action
@@ -589,8 +602,8 @@ end
 local function mapPin(mini)
     local pin=CreateFrame("Button",nil,UIParent)
     pin.mini=mini
-    local face=pin:CreateTexture(nil,"BACKGROUND")
-    cell(face,0);face:SetAllPoints();face:SetVertexColor(0.09,0.09,0.12)
+    pin.face=pin:CreateTexture(nil,"BACKGROUND")
+    cell(pin.face,0);pin.face:SetAllPoints();pin.face:SetVertexColor(0.09,0.09,0.12)
     pin.ring=pin:CreateTexture(nil,"BORDER")
     cell(pin.ring,1);pin.ring:SetPoint("CENTER")
     pin.texture=pin:CreateTexture(nil,"ARTWORK");pin.texture:SetPoint("CENTER")
@@ -669,8 +682,78 @@ function N:SyncWaypointUI(force)
     if owned then api.ClearUserNavigation(not userTracked,true) end
 end
 
+-- Keep the itinerary badge and group tooltip while the client draws the same hand-in.
+local function showGlyph(pin,shown)
+    pin.face:SetShown(shown);pin.ring:SetShown(shown);pin.texture:SetShown(shown)
+end
+
+local function screenCenter(frame)
+    local x,y=frame:GetCenter()
+    if x and y then
+        local scale=frame:GetEffectiveScale()
+        return x*scale,y*scale
+    end
+end
+
+local function syncHandinPins()
+    N.handinSyncQueued=nil
+    local map=WorldMapFrame
+    if not (N.hasHandinPins and map and map:IsShown() and map.EnumeratePinsByTemplate) then return end
+    local native={}
+    for pin in map:EnumeratePinsByTemplate("QuestPinTemplate") do
+        if not N.watchedQuestPins[pin] then
+            N.watchedQuestPins[pin]=true
+            pin:HookScript("OnShow",N.QueueHandinPins);pin:HookScript("OnHide",N.QueueHandinPins)
+        end
+        local id=pin:GetQuestID()
+        if pin:IsShown() and (not canaccessvalue or canaccessvalue(id)) and id and
+            (A.state.quests[id] or {}).ready then
+            local group=native[id] or {}
+            group[#group+1]=pin;native[id]=group
+        end
+    end
+    for _,pin in pairs(N.pins) do
+        if not pin.mini and pin:IsShown() and pin.action.kind=="turnin" then
+            local x,y=screenCenter(pin)
+            local radius=pin:GetWidth()*pin:GetEffectiveScale()*0.65
+            local covered=false
+            for _,action in ipairs(pin.point.actions) do
+                if x and action.kind=="turnin" then
+                    for _,other in ipairs(native[action.questId] or {}) do
+                        local ox,oy=screenCenter(other)
+                        if ox and (x-ox)^2+(y-oy)^2<=radius^2 then covered=true;break end
+                    end
+                end
+                if covered then break end
+            end
+            showGlyph(pin,not (covered or pin.spfHandin))
+        end
+    end
+end
+
+function N.QueueHandinPins()
+    if N.handinSyncQueued or not N.hasHandinPins or not WorldMapFrame:IsShown() then return end
+    N.handinSyncQueued=true
+    C_Timer.After(0,syncHandinPins)
+end
+
+local function watchHandinPins()
+    local map=WorldMapFrame
+    if not (map and map.EnumeratePinsByTemplate and hooksecurefunc and C_Timer) then return end
+    if not N.watchedQuestPins then
+        N.watchedQuestPins=setmetatable({},{__mode="k"})
+        map:HookScript("OnShow",N.QueueHandinPins)
+        hooksecurefunc(map,"AcquirePin",function(_,template)
+            if template=="QuestPinTemplate" then N.QueueHandinPins() end
+        end)
+        hooksecurefunc(map,"OnCanvasScaleChanged",N.QueueHandinPins)
+    end
+    N.QueueHandinPins()
+end
+
 local function stylePin(pin,point,action,r,g,b,hitOnly)
     pin.point,pin.action=point,action
+    if not pin.mini then showGlyph(pin,true) end
     pin:SetAlpha(hitOnly and 0 or 1)
     local size=(pin.mini and 19 or 24)+(point.current and 4 or 0)
     pin:SetSize(size,size)
@@ -705,6 +788,7 @@ end
 
 function N:DrawPins()
     if self.mapAreaAction and (not isAreaTarget(self.mapAreaAction) or A.char.paused or A.settings.mapTaskScope=="off") then clearMapArea() end
+    self.hasHandinPins=nil
     if not self.hbdPins then return end
     self.hbdPins:RemoveAllWorldMapIcons(self)
     self.hbdPins:RemoveAllMinimapIcons(self)
@@ -730,9 +814,13 @@ function N:DrawPins()
         local edge=point.current and action.mode~="hearth" and not self.waypointDisplay
         if A.settings.pins and (not delegated or areaHit) then
             local pin=self.pins[index+1] or mapPin(false);self.pins[index+1]=pin
+            local handin=action.kind=="turnin"
+            if handin then self.hasHandinPins=true end
+            pin.spfHandin=handin and point.current and A.ShortestPath and A.ShortestPath:For(point.action)
             stylePin(pin,point,action,r,g,b,areaHit)
+            if pin.spfHandin then showGlyph(pin,false) end
             self.hbdPins:AddWorldMapIconMap(self,pin,pos.map,pos.x,pos.y,1,
-                areaHit and "PIN_FRAME_LEVEL_WAYPOINT_LOCATION" or nil)
+                (areaHit or handin and (point.order or #point.actions>1)) and "PIN_FRAME_LEVEL_WAYPOINT_LOCATION" or nil)
         end
         if A.settings.minimapPins and (not delegated or areaHit) and (point.current or nearby) then
             local pin=self.pins[index+2] or mapPin(true);self.pins[index+2]=pin
@@ -747,6 +835,7 @@ function N:DrawPins()
             self.hbdPins:AddMinimapIconMap(self,pin,pos.map,pos.x,pos.y,false,edge or false)
         end
     end
+    if self.hasHandinPins then watchHandinPins() end
 end
 
 function N:Update()

@@ -19,6 +19,24 @@ local function sameGoal(a,b)
         p.map==q.map and p.x==q.x and p.y==q.y
 end
 
+-- Hand-ins affect SPF's map pins only. Its questIDs field also changes arrival detection.
+local function handins(goal,state)
+    if not (goal and goal.kind=="turnin" and goal.questId and (state.quests[goal.questId] or {}).ready) then return end
+    local ids={goal.questId}
+    local p=goal.position
+    if A.indexReady then
+        for id,step in pairs(A.TaskGuide.ReadyTurnIns(state,A.Data)) do
+            local q=step.position
+            if id~=goal.questId and p.map==q.map and (p.x==q.x and p.y==q.y or
+                p.entityId and p.entityId==q.entityId and p.entityKind==q.entityKind and A.Navigation:Near(p,q)) then
+                ids[#ids+1]=id
+            end
+        end
+    end
+    table.sort(ids)
+    return ids,table.concat(ids,",")
+end
+
 function P:Read()
     local api=self.api
     self.journey,self.flight=nil,nil
@@ -69,7 +87,11 @@ function P:Sync(action)
     end
     local state=A.state
     local goal=not (A.char.paused or state.dead or state.inInstance) and destination(action) or nil
-    if sameGoal(self.goal,goal) then
+    local same=sameGoal(self.goal,goal)
+    local ids,key=self.handinIDs,self.handinKey
+    if not same or goal and goal.kind=="turnin" and self.handinState~=state then ids,key=handins(goal,state) end
+    if same and key==self.handinKey then
+        self.handinState=state
         self.goal=goal
         if self.journey then
             self.journey.goal,self.journey.action=goal,goal
@@ -85,10 +107,13 @@ function P:Sync(action)
     local ours=status.owner==owner
     self.owned,self.journey,self.flight=nil,nil,nil
     self.goal=goal
+    self.handinState,self.handinIDs,self.handinKey=state,ids,key
     self.waiting=goal and status.busy and not ours
     if goal and not self.waiting then
         local p=goal.position
-        self.owned=api.NavigateRoute(owner,{{map=p.map,x=p.x,y=p.y,title=goal.title,kind=goal.kind=="accept" and "pickup" or goal.kind=="dungeonEnter" and "dungeon" or goal.kind,hold=true}})
+        local stop={map=p.map,x=p.x,y=p.y,title=goal.title,hold=true,handins=ids,
+            kind=goal.kind=="accept" and "pickup" or goal.kind=="dungeonEnter" and "dungeon" or goal.kind}
+        self.owned=api.NavigateRoute(owner,{stop})
         if self.owned then self:Read()
         elseif ours then api.Cancel(owner) end
     elseif ours then

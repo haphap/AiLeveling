@@ -95,6 +95,42 @@ test("点任务标记聚焦原生地图范围，保留导航和原生选择",fun
     OpenWorldMap,QuestMapFrame_GetDetailQuestID,GameTooltip=oldOpen,oldDetail,oldTooltip
     B.finish()
 end)
+test("同处交付与原生问号共用图标，保留行程序号和小地图",function()
+    local B=setupMap()
+    local nav=B.Navigation
+    local oldHook,oldTimer=hooksecurefunc,C_Timer
+    local queued,sourceID,sourceX=nil,2,300
+    local callbacks={}
+    hooksecurefunc=function(_,name,fn) callbacks[name]=fn end
+    C_Timer={After=function(_,fn) assert(not queued);queued=fn end}
+    local native={shown=true,GetQuestID=function() return sourceID end,IsShown=function(self) return self.shown end,
+        GetCenter=function() return sourceX,400 end,GetEffectiveScale=function() return 1 end,
+        HookScript=function(self,name,fn) self[name]=fn end}
+    WorldMapFrame={IsShown=function() return true end,HookScript=function() end,
+        EnumeratePinsByTemplate=function(_,which) eq(which,"QuestPinTemplate");return coroutine.wrap(function() coroutine.yield(native) end) end}
+    nav.hbd={GetZoneDistance=function(_,_,x,y,_,ox,oy) return 1000*math.sqrt((ox-x)^2+(oy-y)^2) end}
+    local function quest(id,x,npc)
+        B.state.quests[id]={ready=true}
+        return {kind="turnin",questId=id,position={map=1,x=x,y=.81,entityId=npc,entityKind="npc"}}
+    end
+    local first,second,far,neighbor=quest(1,.424,51),quest(2,.425,51),quest(3,.65,51),quest(4,.427,52)
+    nav.actions={first,second,far,neighbor};nav:DrawPins()
+    local pin=nav.pins[1]
+    eq(#pin.point.actions,2);eq(nav.pins[3].action,far);eq(nav.pins[5].action,neighbor)
+    local function flush() local fn=assert(queued);queued=nil;fn() end
+    callbacks.AcquirePin(WorldMapFrame,"QuestPinTemplate");flush()
+    eq(pin.texture.shown,false);eq(pin.face.shown,false);eq(pin.ring.shown,false)
+    eq(pin.badge.shown,true);eq(pin.number.value,"1");eq(nav.pins[2].texture.shown,true)
+    eq(nav.pins[3].texture.shown,true)
+    native.shown=false;native:OnHide();flush();eq(pin.texture.shown,true)
+    native.shown=true;native:OnShow();flush();eq(pin.texture.shown,false)
+    sourceX=500;callbacks.OnCanvasScaleChanged();flush();eq(pin.texture.shown,true)
+    sourceX=300;sourceID=4;callbacks.AcquirePin(WorldMapFrame,"QuestPinTemplate");flush()
+    eq(pin.texture.shown,true);eq(nav.pins[5].texture.shown,false)
+    nav.actions={{kind="move",position=point(.43,.81)}};nav:DrawPins()
+    eq(nav.pins[1].face.shown,true);eq(queued,nil)
+    hooksecurefunc,C_Timer=oldHook,oldTimer;B.finish()
+end)
 test("地图标记按任务阶段合并并移除失效的导航步骤",function()
     local B,adds=setupMap()
     for _,kind in ipairs({"accept","turnin","objective","transit","dungeonEnter"}) do

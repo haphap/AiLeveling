@@ -1057,6 +1057,7 @@ test("Shortest Path 的实走步骤跟随路段更新且保留玩家改道",func
     assert(loadfile("Planner/ShortestPath.lua"))("AiLeveling",B)
     local provider=B.ShortestPath
     local old=ShortestPathForever
+    local expectedHandins
     local calls,owner,listen,legs=0,nil,nil,{{mode="walk",text="走到地铁入口",seconds=42},{mode="tram",text="乘地铁前往铁炉堡",seconds=71}}
     ShortestPathForever={API={
         Subscribe=function(fn) listen=fn end,
@@ -1064,7 +1065,8 @@ test("Shortest Path 的实走步骤跟随路段更新且保留玩家改道",func
         JourneyState=function() return {owner=owner,busy=owner~=nil} end,
         NavigateRoute=function(key,stops)
             calls=calls+1;owner=key
-            eq(stops[1].map,B.action.position.map);eq(stops[1].kind,"objective");assert(stops[1].hold)
+            eq(stops[1].map,B.action.position.map);eq(stops[1].kind,B.action.kind);assert(stops[1].hold)
+            eq(stops[1].handins and table.concat(stops[1].handins,","),expectedHandins)
             return true
         end,
         Journey=function() return {owner=owner,legs=legs,secondsLeft=113} end,
@@ -1082,6 +1084,13 @@ test("Shortest Path 的实走步骤跟随路段更新且保留玩家改道",func
     owner="玩家";listen({changed=true});provider:Sync(legacy);eq(provider.owned,nil);eq(calls,1)
     provider:Sync(nil);provider:Sync(legacy);eq(owner,"玩家");eq(calls,1)
     owner=nil;listen({ended=true});provider:Sync(legacy);eq(calls,2)
+    B.action={kind="turnin",questId=1,position=B.action.position};B.state.quests[1].ready=true
+    local colocated={[2]={position=B.action.position},[3]={position={map=3,x=.6,y=.5}}}
+    B.TaskGuide={ReadyTurnIns=function() return colocated end}
+    expectedHandins="1,2";provider:Sync(B.action);eq(calls,3)
+    B.state=setmetatable({},{__index=B.state});provider:Sync(B.action);eq(calls,3)
+    colocated[2]=nil;B.state=setmetatable({},{__index=B.state});expectedHandins="1"
+    provider:Sync(B.action);eq(calls,4)
     B.char.paused=true;provider:Sync(legacy);eq(owner,nil);eq(provider.journey,nil)
     ShortestPathForever=old;B.finish()
 end)
