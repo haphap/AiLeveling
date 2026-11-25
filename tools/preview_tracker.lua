@@ -29,6 +29,8 @@ local function widget(kind,parent)
     function w:SetFont(_,size,flags) self.size,self.fontFlags=size,flags end
     function w:SetSpacing(value) self.spacing=value end
     function w:GetEffectiveScale() return 1 end
+    function w:GetFrameLevel() return self.frameLevel or 0 end
+    function w:SetFrameLevel(level) self.frameLevel=level end
     function w:GetCenter()
         boxes={};local r=box(self)
         return r.x+r.w/2,UIParent:GetHeight()-r.y-r.h/2
@@ -92,7 +94,7 @@ local function widget(kind,parent)
     function w:SetStartPoint(point,relative,x,y) self.start={point=point,relative=relative,x=x,y=y} end
     function w:SetEndPoint(point,relative,x,y) self.finish={point=point,relative=relative,x=x,y=y} end
     for _,name in ipairs({"RegisterEvent","SetResizable","SetResizeBounds","SetClampedToScreen","SetClampRectInsets","SetJustifyV","SetBackdrop","SetShadowColor","SetShadowOffset","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag","SetHyperlinksEnabled",
-        "SetFrameStrata","SetVerticalScroll","SetFontObject","SetMultiLine","SetAutoFocus","SetTextInsets","SetNumeric","SetMaxLetters","ClearFocus","SetFocus","HighlightText","RegisterForClicks","SetAttribute","SetScale","SetDesaturated","SetCooldown","Clear"}) do w[name]=function() end end
+        "SetFrameStrata","SetVerticalScroll","SetFontObject","SetMultiLine","SetAutoFocus","SetTextInsets","SetNumeric","SetMaxLetters","ClearFocus","SetFocus","HighlightText","RegisterForClicks","SetAttribute","SetScale","SetDesaturated","SetCooldown","ClearModel","SetCreature","Clear"}) do w[name]=function() end end
     return w
 end
 local dungeonPreview=arg[1]=="dungeon"
@@ -360,7 +362,7 @@ if arg[1]=="gear" or arg[1]=="class" then
     A.state.equipment={[5]=item(99,"旧链甲",4)};A.state.bagEquipment={};A.state.bags={}
     A.Gear:ScanBagOffers(A.state)
     A.state.bagEquipment={bag};A.state.bags[100]=1;A.Gear:ScanBagOffers(A.state)
-    A.QuestAssist={Requirements=function() return {} end,LayoutTarget=function() end}
+    A.QuestAssist={Requirements=function() return {} end,LayoutTarget=function() end,NavigationItems=function() return 0 end}
     A.plan.taskChoices[1].rewardPick={item=reward,upgrade=A.Gear.Upgrade(reward,A.state)}
     if arg[1]=="gear" then
         action.kind="accept";action.text="与治安官玛克布莱德交谈，接取任务。"
@@ -416,8 +418,9 @@ if arg[1]=="journey" then
     local place="|cff"..A.UI.hex.place
     assert(A.UI.navFrame:IsShown() and T.navTitle:GetText()=="走到 "..place.."暴风城地铁入口|r")
     assert(T.navNext:GetText()=="下一步  乘地铁前往"..place.."铁炉堡地铁入口|r")
-    assert(T.journey:IsShown() and T.alongLabel:IsShown() and T.thenText:IsShown() and T.queuePanel:IsShown())
+    assert(T.journey:IsShown() and T.alongLabel:IsShown() and T.thenText:IsShown() and not T.queuePanel:IsShown())
     assert(T.model.rows[1].questId==64 and T.model.rows[1].along and T.model.rows[1].status=="未接取")
+    assert(T.otherHeader:IsShown() and T.otherLabel:GetText()=="其他已接任务 · 2" and not T.otherChild:IsShown())
     assert(T.model.rows[2].questId==65 and T.model.rows[2].status=="已接取")
     assert(T.model.rows[3].questId==66 and T.model.rows[3].status=="可交付")
 end

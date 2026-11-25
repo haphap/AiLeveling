@@ -19,7 +19,7 @@ local function ready(fullUI)
     return B
 end
 test("同NPC交付建议保留真实进度并按行程显示后续任务",function()
-    local B=ready();assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
+    local B=ready();B.UI.tracker.otherHeader:Click();assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
     for _,id in ipairs({1,3}) do
         B.plan.taskChoices[id].stages={{kind="turnin",position={map=1,x=0,y=0,entityKind="npc",entityId=900,entityName="治安官"}}}
     end
@@ -78,7 +78,7 @@ test("受持有上限限制时仍按NPC归组并提示先交付已备齐任务",
     B.finish()
 end)
 test("步骤界面突出当前任务真实进度且后续列表去重可点击",function()
-    local B=ready();local T=B.UI.tracker
+    local B=ready();B.UI.tracker.otherHeader:Click();local T=B.UI.tracker
     B.plan.taskChoices[1].remainingXP=1250;B.plan.taskChoices[1].timing={seconds=135}
     B.plan.taskChoices[2].remainingXP=0;B.plan.taskChoices[2].timing={seconds=0}
     B.plan.taskChoices[3].remainingXP=900;B.plan.taskChoices[3].timing={seconds=3665}
@@ -192,7 +192,7 @@ test("未列入行程的任务链接打开对应详情并保留当前路线",fun
     B.finish()
 end)
 test("后续任务按真实日志区分已接和未接且接取后更新进度",function()
-    local B=ready(true);local T=B.UI.tracker
+    local B=ready(true);B.UI.tracker.otherHeader:Click();local T=B.UI.tracker
     B.plan.taskChoices[#B.plan.taskChoices+1]={id="task:4",questId=4,kind="task",title="未接任务",
         actions={{questId=4,kind="accept",title="未接任务"}}}
     B.UI:RenderTracker()
@@ -403,7 +403,7 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.UI:RenderTracker()
     eq(T.rows[3].status,"已接取");eq(T.rows[3].objectives[1].count.value,"1/5");eq(T.rows[3].objectiveFrame.shown,true)
     eq(T.model.acceptedCount,3);eq(T.model.unacceptedCount,0)
-    eq(T.rows[3].along,false);eq(T.rows[3].parent,T.queueChild);eq(T.alongScroll.shown,false)
+    eq(T.rows[3].along,false);eq(T.rows[3].parent,T.otherChild);eq(T.alongScroll.shown,false)
     B.state.quests[4].ready=true;B.UI:RenderTracker();eq(T.rows[3].status,"可交付")
     local suggestion={id="reference:3065",dungeonId="reference:3065",kind="dungeon",reference=true,requiresAcceptance=true,
         title="领主大厅",rewards={count=5,prepare=1},remainingXP=13300,timing={seconds=150}}
@@ -491,7 +491,7 @@ test("未来行动中的交付预期不能把未接任务显示成已接或可�
     B.finish()
 end)
 test("原生更新后清除旧目标和旧任务行且拒绝过期任务点击",function()
-    local B=ready();local T=B.UI.tracker
+    local B=ready();B.UI.tracker.otherHeader:Click();local T=B.UI.tracker
     B.state.revision=B.state.revision+1;T.rows[1].scripts.OnClick(nil,"RightButton")
     eq(B.menu["优先做此任务"].enabled,false);eq(B.char.locked,nil)
     B.state.quests[2]=nil;B.state.quests[3]=nil;B.plan.taskChoices={};B.plan.taskOrder={}
@@ -515,6 +515,7 @@ test("原生更新后清除旧目标和旧任务行且拒绝过期任务点击",
     B.state.unlocked["taxi:5"]=true;B.state.taxiAvailability["2:5"]=false
     B.UI:RenderTracker();eq(T.model.questId,nil)
     B.Navigation.actions=nil
+    T.otherOpen=false
     -- A first plan can still be running with a full quest log. Native empty font strings return nil.
     B.action=nil;B.plan=nil;B.jobs.plan=coroutine.create(function() coroutine.yield() end)
     for id=1,30 do
@@ -528,10 +529,25 @@ test("原生更新后清除旧目标和旧任务行且拒绝过期任务点击",
     eq(T.queueScroll.shown,true);eq(T.rows[1].status,"已接取");eq(T.rows[1].objectives[1].count.value,"2/5")
     eq(T.career.shown,false);eq(T.thenButton.shown,false);eq(T.location.value,"当前行程");eq(T.footer.shown,false)
     eq(T.reward.shown,false)
+    eq(T.otherLabel.value,"其他已接任务 · 29");eq(#T.displayRows,1);eq(T.otherChild.shown,false)
+    T.otherHeader:Click();eq(#T.displayRows,30);eq(T.otherChild.shown,true)
+    eq(T.rows[30].parent,T.otherChild);eq(T.rows[30].objectives[1].count.value,"2/5")
+    T.otherHeader:Click();eq(#T.displayRows,1);eq(T.rows[30].shown,false)
     B.planningResumeAt=10;B.UI:RenderTracker()
     eq(B.UI.title.value,"停下后更新行程");eq(#T.model.rows,30)
     eq(T.rows[1].objectives[1].count.value,"2/5")
     B.planningResumeAt=nil
+    local order={}
+    for id=1,30 do
+        local stage={kind="objective",questId=id,objectiveIndex=1}
+        order[id]={kind="task",questId=id,actions={stage},stages={stage}}
+    end
+    B.plan={taskOrder=order,taskChoices=order,revision=B.state.revision}
+    B.action=order[1].actions[1];B.UI:RenderTracker()
+    eq(T.model.questId,1);eq(T.thenButton.questId,2);eq(T.thenButton.shown,true)
+    eq(#T.displayRows,0);eq(T.otherLabel.value,"其他已接任务 · 28");eq(T.otherChild.shown,false)
+    B.state.quests[1]=nil;B.state.completed[1]=true;B.action=order[2].actions[1]
+    B.UI:RenderTracker();eq(T.model.questId,2);eq(T.thenButton.questId,3);eq(T.otherLabel.value,"其他已接任务 · 27")
     B.finish()
 end)
 test("暂停飞行手动导航保持真实当前类型且不自动跳过任务",function()
@@ -790,7 +806,7 @@ test("交错行程按任务数汇总并显示每个目标与交付步骤",functi
 end)
 
 test("分散交付点明确现在就近交和等同NPC任务一起交并跟随真实导航",function()
-    local B=ready();assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
+    local B=ready();B.UI.tracker.otherHeader:Click();assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
     local a,b,c=unpack(B.plan.taskChoices)
     local function finish(choice,npc,name,x)
         choice.stages={{kind="turnin",questId=choice.questId,position={map=1,x=x,y=0.5,entityKind="npc",entityId=npc,entityName=name}}}
@@ -816,7 +832,7 @@ test("分散交付点明确现在就近交和等同NPC任务一起交并跟随�
     B.state.locked=2;B.state.quests[3].ready=false;B.UI:RenderTracker()
     assert(T.model.deliverySummary:find("顺路先交：到闪金镇治安官",1,true))
     for _,row in ipairs(T.rows) do
-        if row.questId==3 then eq(row.atStop,false);eq(row.parent,T.queueChild);eq(row.progress.shown,false);eq(row.objectiveFrame.shown,true) end
+        if row.questId==3 then eq(row.atStop,false);eq(row.parent,T.otherChild);eq(row.progress.shown,false);eq(row.objectiveFrame.shown,true) end
     end
     B.state.locked=nil;B.action={kind="objective",questId=3,title=c.title};B.UI:RenderTracker()
     eq(T.model.deliverySummary,"同组还差 1 项，做完一起交")

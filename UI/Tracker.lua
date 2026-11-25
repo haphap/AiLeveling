@@ -659,6 +659,16 @@ function UI.TrackerModel(state,plan,action,paused,along)
         if a.planOrder~=b.planOrder then return (a.planOrder or math.huge)<(b.planOrder or math.huge) end
         return (a.questId or -a.serviceStop.taxiId)<(b.questId or -b.serviceStop.taxiId)
     end)
+    -- Only actionable stops belong between the current step and the end of this route.
+    local needsPreview=not model.nextStep
+    model.otherCount=0
+    for _,row in ipairs(visible) do
+        local other=row.accepted and row.questId~=model.questId and not (row.atStop or row.along or
+            row.deliveryPriority==1 or batchMembers and batchMembers[row.questId])
+        if other and needsPreview and (row.planOrder or not action) then other=false;needsPreview=false end
+        row.otherAccepted=other
+        if other then model.otherCount=model.otherCount+1 end
+    end
     model.rows=visible
     if not action then
         if plan.complete then model.title="已达到 60 级";model.instruction="本次升级目标已完成。"
@@ -1160,6 +1170,11 @@ function UI:CreateTracker()
     T.alongChild=CreateFrame("Frame",nil,T.alongScroll);T.alongChild:SetPoint("TOPLEFT")
     T.queueRule=T.currentChild:CreateTexture(nil,"BACKGROUND")
     T.alongRule=T.currentChild:CreateTexture(nil,"BACKGROUND")
+    T.otherHeader=CreateFrame("Button",nil,T.currentChild)
+    T.otherLabel=text(T.otherHeader,"caption",palette.muted);T.otherLabel:SetPoint("LEFT")
+    T.otherToggle=text(T.otherHeader,"caption",palette.muted);T.otherToggle:SetPoint("RIGHT")
+    T.otherHeader:SetScript("OnClick",function() T.otherOpen=not T.otherOpen;self:RenderTracker() end)
+    T.otherChild=CreateFrame("Frame",nil,T.currentChild)
     T.rows={}
     T.progress=CreateFrame("Frame",nil,f);T.progress:SetPoint("BOTTOMLEFT",spacing.padding,spacing.padding);T.progress:SetPoint("BOTTOMRIGHT",-28,spacing.padding)
     T.progress:SetHeight(14);T.progress:EnableMouse(true)
@@ -1670,7 +1685,12 @@ function UI:RenderTracker(along)
     T.progressRatio=goals>0 and progress/goals or nil
     T.progressText:SetText(T.progressRatio and string.format("%.0f%%",T.progressRatio*100) or "")
     self:RenderJourney(model.journey)
-    for i,item in ipairs(model.rows) do
+    local rows={}
+    for _,item in ipairs(model.rows) do
+        if not item.otherAccepted or T.otherOpen then rows[#rows+1]=item end
+    end
+    T.displayRows=rows
+    for i,item in ipairs(rows) do
         local row=self:TrackerRow(i)
         local isCurrent=item.questId and item.questId==model.questId
         local title=questTitle(item.questId,item.title,item.candidate)
@@ -1705,7 +1725,7 @@ function UI:RenderTracker(along)
         row.dungeonAction=item.dungeonAction
         row.turnInAction=item.turnInAction
         row.pickupAction=item.kind=="accept" and (item.dungeonAction or item.along and item.sideAction) or nil
-        row:SetParent(item.atStop and T.currentChild or item.along and T.alongChild or T.queueChild)
+        row:SetParent(item.atStop and T.currentChild or item.along and T.alongChild or item.otherAccepted and T.otherChild or T.queueChild)
         local native=(state.quests or {})[item.questId]
         local objectives=item.objectives or item.accepted and item.kind~="turnin" and not item.deferred and
             not (item.candidate and (item.candidate.lowValue or item.candidate.entryBlocked)) and native and native.objectives or {}
@@ -1719,7 +1739,7 @@ function UI:RenderTracker(along)
         if isCurrent then T.questTitle.candidate=item.candidate;T.questTitle.revision=plan.revision end
         row:SetEnabled(true);row:Show()
     end
-    for i=#model.rows+1,#T.rows do T.rows[i]:Hide() end
+    for i=#rows+1,#T.rows do T.rows[i]:Hide() end
     self:LayoutTracker()
 end
 
@@ -1847,8 +1867,8 @@ function UI:LayoutTracker()
     T.objectiveFrame:ClearAllPoints();T.objectiveFrame:SetPoint("TOPLEFT",indent,-childHeight);T.objectiveFrame:SetWidth(bodyWidth)
     local goals=layoutObjectives(T.objectives,bodyWidth,scale)
     T.objectiveFrame:SetHeight(math.max(1,goals));childHeight=childHeight+goals
-    local queueHeight,alongHeight,alongCount,pickups=0,0,0,0
-    for i,item in ipairs(T.model and T.model.rows or {}) do
+    local queueHeight,alongHeight,alongCount,pickups,otherHeight=0,0,0,0,0
+    for i,item in ipairs(T.displayRows or {}) do
         local row=T.rows[i]
         local current=item.questId and item.questId==T.model.questId
         row:SetShown(not current)
@@ -1857,6 +1877,7 @@ function UI:LayoutTracker()
             elseif row.along then
                 alongHeight=alongHeight+layoutRow(row,alongHeight);alongCount=alongCount+1
                 if item.kind=="accept" then pickups=pickups+1 end
+            elseif item.otherAccepted then otherHeight=otherHeight+layoutRow(row,otherHeight)
             else queueHeight=queueHeight+layoutRow(row,queueHeight) end
         end
     end
@@ -1959,6 +1980,17 @@ function UI:LayoutTracker()
             notice:ClearAllPoints();notice:SetPoint("TOPLEFT",0,-bottom)
             bottom=bottom+notice:GetHeight()+gap
         end
+    end
+    T.otherHeader:SetShown(not collapsed and T.model and (T.model.otherCount or 0)>0)
+    T.otherChild:SetShown(T.otherHeader:IsShown() and otherHeight>0)
+    if T.otherHeader:IsShown() then
+        T.otherLabel:SetText("其他已接任务 · "..T.model.otherCount)
+        T.otherToggle:SetText(T.otherOpen and "收起" or "展开")
+        T.otherHeader:ClearAllPoints();T.otherHeader:SetPoint("TOPLEFT",0,-bottom);T.otherHeader:SetSize(inner,spacing.hit*scale)
+        T.otherChild:ClearAllPoints();T.otherChild:SetPoint("TOPLEFT",T.otherHeader,"BOTTOMLEFT",0,0)
+        T.otherChild:SetSize(inner,math.max(1,otherHeight))
+        bottom=bottom+T.otherHeader:GetHeight()+otherHeight+gap
+        clipped=clipped+math.max(0,otherHeight-160*scale)
     end
     T.progress:SetShown(not collapsed and T.progressRatio~=nil)
     local labelWidth=40*scale
