@@ -687,8 +687,12 @@ function Q:Update(quiet)
     local targets={tostring(targetAction and targetAction.kind),tostring(targetAction and targetAction.questId),tostring(targetAction and targetAction.objectiveIndex)}
     for _,npc in ipairs(self.targetChoices) do targets[#targets+1]=npc.id..":"..npc.name end
     local targetKey=table.concat(targets,"\031")
-    local icon=A.settings.markTargets and #self.targetChoices>0 and A.UI.QuestIcon(targetAction.kind,targetAction)
-    if icon=="compass" then icon="target" end
+    -- The client draws the NPC's hand-in question mark in the world, independently of nameplates.
+    local icon
+    if A.settings.markTargets and #self.targetChoices>0 and targetAction.kind~="turnin" then
+        icon=A.UI.QuestIcon(targetAction.kind,targetAction)
+        if icon=="compass" then icon="target" end
+    end
     if self.targetKey~=targetKey or self.plateIcon~=icon then
         self.plateIcon=icon
         self.plateNPCs={}

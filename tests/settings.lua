@@ -757,8 +757,15 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     B.action={kind="turnin",questId=1}
     B.Data.Target=function(_,q,s) eq(s.quests[1].ready,true);return {entityKind="npc",entityId=10} end
     UnitGUID=function() return "Creature-0-1-2-3-10-0000" end
-    Q:Update();eq(Q.targetActive.id,10);eq(badge.shown,true);eq(Q.plateIcon,"pending")
-    B.state.quests[1].ready=true;Q:Update();eq(Q.plateIcon,"turnin");eq(badge.icon.texture,B.UI.IconTexture("turnin"))
+    -- The same NPC goes from a pickup to a hand-in. Only its native question mark should remain.
+    local handin=B.action;B.action=pickup;Q:Update();eq(badge.shown,true)
+    local selectAndMark=row.macrotext1
+    B.action=handin;Q:Update();eq(Q.targetActive.id,10);eq(badge.shown,false)
+    B.state.quests[1].ready=true;Q:Update()
+    Q.container.scripts.OnEvent(nil,"NAME_PLATE_UNIT_ADDED","nameplate1")
+    eq(badge.shown,false);eq(row.face.creature,10);eq(row.macrotext1,selectAndMark)
+    B.action={kind="accept",questId=2,position=pickup.position};Q:Update();eq(badge.shown,true)
+    B.action=handin;Q:Update();eq(badge.shown,false)
     B.state.quests[1].ready=nil
     B.action.targetKind,B.action.targetId="npc",30;Q:Update();eq(row.face.creature,30)
     assert(row.macrotext1:find("/targetexact 旅店老板\n/tm",1,true))
