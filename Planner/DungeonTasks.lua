@@ -355,6 +355,7 @@ function D.SuggestTaskBatch(state,data,options)
             local below=range and state.level<range[1]
             local above=range and state.level>range[2]
             local rows,current={},{}
+            local ongoing=false
             for _,row in ipairs(D.Tasks(d,state,data,targets)) do
                 if not row.lowValue and not row.requireCheck and row.group~=5 and D.CanContinueTask(row) then
                     local later=row.group~=1 and (row.questLevel or state.level)>state.level+2
@@ -362,12 +363,14 @@ function D.SuggestTaskBatch(state,data,options)
                     for _,id in ipairs(row.preparation or {}) do
                         local q=data:GetQuest(id,state)
                         if q and ((state.quests[id] or {}).ready or (q.questLevel or state.level)<=state.level+2) then
-                            prepare=true;break
+                            prepare=true
+                            if state.quests[id] then ongoing=true;break end
                         end
                     end
                     if prepare or (not later and not row.preparation) then
                         rows[#rows+1]=row
                         local insideDelivery=row.group==1 and row.allowed and D.TaskInstance(row.position,state,data,row.areaId)
+                        if row.group==2 or insideDelivery and insideDelivery.instanceId==d.instanceId then ongoing=true end
                         -- Rank only tasks ready to do inside; locked rewards and outdoor hand-ins do not justify a run.
                         if (not below or row.group==1) and not row.preparation and row.relation~="preparation" and
                             (row.group~=1 or insideDelivery and insideDelivery.instanceId==d.instanceId) then
@@ -390,10 +393,21 @@ function D.SuggestTaskBatch(state,data,options)
                 end
                 local preparationOnly=available.count==0
                 local xp=not preparationOnly and available.unknownXP==0 and available.xp or nil
+                local entryMap=entry.position and entry.position.map or data.maps and data.maps[d.entryArea]
+                local nearby=entryMap~=nil and state.position~=nil and entryMap==state.position.map
+                local priority,recommendation=1,"当前可做"
+                if below then
+                    priority=3
+                    recommendation=(preparationOnly and "先做准备" or "本内可交").." · 推荐"..range[1].."级起"
+                elseif above then priority,recommendation=4,"补做剩余任务"
+                elseif preparationOnly then
+                    if not (ongoing and nearby) then priority=2 end
+                    recommendation="先做准备"
+                elseif ongoing then recommendation="继续任务线"
+                end
                 candidates[#candidates+1]={id=d.id,kind="dungeon",reference=true,dungeonId=d.id,title=d.title,
                     requiresAcceptance=true,actions={entry},rewards=rewards,remainingXP=xp,
-                    priority=above and 3 or preparationOnly and 2 or 1,
-                    recommendation=preparationOnly and "先做准备" or above and "补做剩余任务" or "当前可做",
+                    priority=priority,ongoing=ongoing,nearby=nearby,recommendation=recommendation,
                     availableTasks=available.count,
                     timing={seconds=seconds},rate=xp and seconds and A.TaskGuide.MovementRate(seconds,xp)}
             end
@@ -402,6 +416,8 @@ function D.SuggestTaskBatch(state,data,options)
     end
     table.sort(candidates,function(a,b)
         if a.priority~=b.priority then return a.priority<b.priority end
+        if a.ongoing~=b.ongoing then return a.ongoing end
+        if a.nearby~=b.nearby then return a.nearby end
         if (a.rate or -1)~=(b.rate or -1) then return (a.rate or -1)>(b.rate or -1) end
         local aa,bb=a.timing.seconds or math.huge,b.timing.seconds or math.huge
         if aa~=bb then return aa<bb end

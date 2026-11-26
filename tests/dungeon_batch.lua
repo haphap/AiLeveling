@@ -271,6 +271,25 @@ run("副本整组先接齐可行任务，完成前置后入本，整组完成再
     B.State:Refresh();eq(B.char.samples[sampleKey].n,1)
     GetTime=clock
 end)
+run("本地副本已接前置优先，提前进本交付保留推荐等级",function()
+    local B,s,data,_,d=fixture()
+    d.entryArea,d.entrances=200,{}
+    data.maps[101]=4
+    B.DungeonCatalog.entries.later={id="later",title="下一等级副本",reference=true,instanceId=43,areas={101},
+        entrances={{200,1,1}},quests={Alliance={[4]="inside"}}}
+    B.DungeonCatalog.recommendedLevels={[42]={15,20},[43]={21,30}}
+    s.quests[3]={objectives={}};s.quests[4]={ready=true,objectives={}}
+    local target=data.Target
+    data.Target=function(self,q,state)
+        if q.id==4 then return {sourceAreaId=101,map=4,x=.5,y=.5} end
+        return target(self,q,state)
+    end
+    local choices=plan(s,data,B.settings,B).dungeonChoices
+    eq(choices[1].id,d.id);eq(choices[1].ongoing,true);eq(choices[1].nearby,true)
+    eq(choices[1].timing.seconds,nil);eq(choices[2].recommendation,"本内可交 · 推荐21级起")
+    s.level=21
+    eq(plan(s,data,B.settings,B).suggestedDungeon.id,"later")
+end)
 run("副本任务行程随前置、接取、本内完成和交付更新",function()
     local B,s,data,q,d=fixture()
     d.quests.Alliance[4]="preparation"
@@ -290,7 +309,7 @@ run("副本任务行程随前置、接取、本内完成和交付更新",functio
         entrances={{200,1,0}},quests={Alliance={[2]="inside"}}}
     local ranked=plan(s,data,B.settings,B).dungeonChoices
     eq(ranked[1].dungeonId,"ref");eq(ranked[1].remainingXP,1000);eq(ranked[1].availableTasks,1)
-    eq(ranked[2].dungeonId,"later");eq(ranked[2].recommendation,"先做准备");eq(ranked[2].remainingXP,nil)
+    eq(ranked[2].dungeonId,"later");eq(ranked[2].recommendation,"先做准备 · 推荐21级起");eq(ranked[2].remainingXP,nil)
     eq(ranked[3].dungeonId,"old");eq(ranked[3].recommendation,"补做剩余任务")
     q[2].questLevel=23
     local future
