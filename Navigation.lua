@@ -712,6 +712,19 @@ function N:SyncWaypointUI(force)
     local owned=nav and nav.flags=="AiLeveling"
     if not (A.char.paused or A.state.dead) then
         syncWaypointHeight(api,nav,external and A.ShortestPath.goal or action,external and A.ShortestPath)
+        -- SPF formats a single stop as a journey. At our quest destination use the log title on the same WUI pin.
+        local route=external and A.settings.waypointUI~=false and A.ShortestPath
+        local goal=route and route.goal
+        if goal and goal.questId and (goal.kind=="accept" or goal.kind=="objective" or goal.kind=="turnin") and
+            route.title and nav and nav.flags=="ShortestPathForever" and nav.name~=route.title and
+            sameMapSpot(nav.mapID,nav.x,nav.y,N.Target(goal)) and not InCombatLockdown() and
+            route.api.CurrentStop("AiLeveling") and api.IsUserNavigationTracked() then
+            local options={}
+            for key,value in pairs(nav) do options[key]=value end
+            options.name,options.x,options.y=route.title,nav.x*100,nav.y*100
+            options.suppressAudio,options.syncNativeWaypoint=true,false
+            api.NewUserNavigation(options)
+        end
     end
     if not enabled and not owned then return external and "external" or nil end
     local userTracked=api.IsUserNavigationTracked()
@@ -728,7 +741,8 @@ function N:SyncWaypointUI(force)
         return external and "external" or nil
     end
     local q=action.questId and ((A.state.quests or {})[action.questId] or A.Data and A.Data:GetQuest(action.questId))
-    local label=action.title or q and q.title or target.entityName or action.text or "任务目的地"
+    local questStep=action.kind=="accept" or action.kind=="objective" or action.kind=="turnin"
+    local label=questStep and q and q.title or action.title or q and q.title or target.entityName or action.text or "任务目的地"
     local texture=actionTexture(action)
     if owned and nav.mapID==target.map and math.abs(nav.x-target.x)<0.000001 and math.abs(nav.y-target.y)<0.000001 and
         nav.name==label and nav.iconTexture==texture and (tracked or not force) then

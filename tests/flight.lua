@@ -81,8 +81,8 @@ test("西部前线光柱使用对应路点的高度且不覆盖玩家标记",fun
     local action={kind="turnin",questId=94886,position=stop}
     assert(loadfile("Planner/ShortestPath.lua"))("AiLeveling",B)
     local route=B.ShortestPath
-    local reads,writes=0,{}
-    route.owned,route.goal=true,action
+    local reads,writes,renames=0,{},0
+    route.owned,route.goal,route.title=true,action,"西部前线"
     route.api={CurrentStop=function() return 1 end,Guidance=function()
         reads=reads+1;return {owner="AiLeveling",point=bend}
     end}
@@ -91,14 +91,20 @@ test("西部前线光柱使用对应路点的高度且不覆盖玩家标记",fun
     C_Map={GetUserWaypoint=function() return pin end,SetUserWaypoint=function(p) writes[#writes+1]=p end}
     UiMapPoint={CreateFromCoordinates=function(map,x,y,z) return {uiMapID=map,position={x=x,y=y},z=z} end}
     WaypointUIAPI={Navigation={GetUserNavigation=function() return nav end,IsUserNavigationTracked=function() return true end,
-        NewUserNavigation=function() error("replaced pin") end,ClearUserNavigation=function() error("cleared pin") end}}
+        NewUserNavigation=function(options)
+            eq(options.syncNativeWaypoint,false);eq(options.suppressAudio,true);eq(options.flags,nav.flags)
+            eq(options.x,nav.x*100);eq(options.y,nav.y*100)
+            renames=renames+1;nav.name=options.name
+        end,ClearUserNavigation=function() error("cleared pin") end}}
     local function sync() B.Navigation:SyncWaypointUI() end
-    sync();sync();eq(#writes,1);eq(writes[1].z,165.76);eq(reads,0)
+    sync();sync();eq(#writes,1);eq(writes[1].z,165.76);eq(reads,0);eq(nav.name,"西部前线");eq(renames,1)
+    nav.name="中途路点"
     nav.x,nav.y=bend.x,bend.y;sync();eq(#writes,1) -- SPF published the bend before the client moved its pin.
     pin.position.x,pin.position.y=bend.x,bend.y;sync();sync()
     eq(#writes,2);eq(writes[2].z,92);eq(reads,1)
     nav.flags="manual";sync();eq(#writes,2)
     nav.flags="ShortestPathForever";route.api.CurrentStop=function() end;sync();eq(#writes,2)
+    nav.x,nav.y=stop.x,stop.y;sync();eq(nav.name,"中途路点");eq(renames,1)
     WaypointUIAPI,C_Map,UiMapPoint,InCombatLockdown=oldAPI,oldMap,oldPoint,oldCombat
 end)
 test("飞行前导航出发点且飞越终点不算落地",function()

@@ -61,7 +61,7 @@ function P:Read()
             if #steps>0 then
                 local goal=self.goal
                 if verbs[goal.kind] then
-                    steps[#steps+1]={kind=goal.kind,title=verbs[goal.kind].." "..(goal.title or "任务"),action=goal,task=true}
+                    steps[#steps+1]={kind=goal.kind,title=verbs[goal.kind].." "..(self.title or "任务"),action=goal,task=true}
                 end
                 self.journey={steps=steps,seconds=trip.secondsLeft,goal=goal,action=goal}
             end
@@ -89,16 +89,31 @@ function P:Sync(action)
     end
     local state=A.state
     local goal=not (A.char.paused or state.dead or state.inInstance) and destination(action) or nil
+    local title=goal and goal.title
+    if goal and verbs[goal.kind] and goal.questId then
+        local quest=(state.quests or {})[goal.questId]
+        local cached=A.Data and A.Data.cache and A.Data.cache[goal.questId]
+        title=quest and quest.title or title or cached and cached.title
+    end
     local same=sameGoal(self.goal,goal)
     local ids,key=self.handinIDs,self.handinKey
     if not same or goal and goal.kind=="turnin" and self.handinState~=state then ids,key=handins(goal,state) end
     if same and key==self.handinKey then
+        local renamed=title~=self.title
+        self.title=title
+        if renamed and title and self.owned and api.RenameStop then
+            local index=api.CurrentStop(owner)
+            if index then api.RenameStop(owner,index,title) end
+        end
         self.handinState=state
         self.goal=goal
         if self.journey then
             self.journey.goal,self.journey.action=goal,goal
             local last=self.journey.steps[#self.journey.steps]
-            if last.task then last.action=goal end
+            if last.task then
+                last.action=goal
+                if renamed then last.title=verbs[goal.kind].." "..(title or "任务");A.dirty=true end
+            end
         end
         return
     end
@@ -108,12 +123,12 @@ function P:Sync(action)
     if not status then return end
     local ours=status.owner==owner
     self.owned,self.journey,self.flight=nil,nil,nil
-    self.goal=goal
+    self.goal,self.title=goal,title
     self.handinState,self.handinIDs,self.handinKey=state,ids,key
     self.waiting=goal and status.busy and not ours
     if goal and not self.waiting then
         local p=goal.position
-        local stop={map=p.map,x=p.x,y=p.y,z=p.z,title=goal.title,hold=true,handins=ids,
+        local stop={map=p.map,x=p.x,y=p.y,z=p.z,title=title,hold=true,handins=ids,
             kind=goal.kind=="accept" and "pickup" or goal.kind=="dungeonEnter" and "dungeon" or goal.kind}
         self.owned=api.NavigateRoute(owner,{stop})
         if self.owned then self:Read()

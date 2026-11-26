@@ -1057,7 +1057,7 @@ test("Shortest Path 的实走步骤跟随路段更新且保留玩家改道",func
     assert(loadfile("Planner/ShortestPath.lua"))("AiLeveling",B)
     local provider=B.ShortestPath
     local old=ShortestPathForever
-    local expectedHandins
+    local expectedHandins,submittedTitle,renames=nil,nil,0
     local calls,owner,listen,legs=0,nil,nil,{{mode="walk",text="走到地铁入口",seconds=42},{mode="tram",text="乘地铁前往铁炉堡",seconds=71}}
     ShortestPathForever={API={
         Subscribe=function(fn) listen=fn end,
@@ -1065,9 +1065,13 @@ test("Shortest Path 的实走步骤跟随路段更新且保留玩家改道",func
         JourneyState=function() return {owner=owner,busy=owner~=nil} end,
         NavigateRoute=function(key,stops)
             calls=calls+1;owner=key
+            submittedTitle=stops[1].title
             eq(stops[1].map,B.action.position.map);eq(stops[1].kind,B.action.kind);assert(stops[1].hold)
             eq(stops[1].handins and table.concat(stops[1].handins,","),expectedHandins)
             return true
+        end,
+        RenameStop=function(key,index,title)
+            eq(key,owner);eq(index,1);submittedTitle=title;renames=renames+1
         end,
         Journey=function() return {owner=owner,legs=legs,secondsLeft=113} end,
         Cancel=function(key) eq(owner,key);owner=nil end}}
@@ -1075,6 +1079,10 @@ test("Shortest Path 的实走步骤跟随路段更新且保留玩家改道",func
     local legacy={kind="transit",questAction=B.action}
     provider:Sync(legacy);provider:Sync(B.action)
     eq(calls,1);eq(provider:For(legacy),B.action)
+    B.state.quests[1].title="库尔森的秘密"
+    provider:Sync(legacy);provider:Sync(legacy)
+    eq(submittedTitle,"库尔森的秘密");eq(renames,1);eq(calls,1)
+    eq(provider.journey.steps[3].title,"完成 库尔森的秘密")
     B.UI:RenderTracker()
     local T=B.UI.tracker
     eq(T.journeyRows[1].title.value,"走到地铁入口");eq(T.journeyRows[2].title.value,"乘地铁前往铁炉堡")
