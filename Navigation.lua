@@ -838,7 +838,39 @@ function N:DrawPins()
     if self.hasHandinPins then watchHandinPins() end
 end
 
+local function hasWaypointText(label)
+    if not (label and label.GetText and label:IsVisible()) then return false end
+    local alpha=label:GetEffectiveAlpha()
+    if (issecretvalue and issecretvalue(alpha)) or alpha<=0 then return false end
+    local text=label:GetText()
+    return (issecretvalue and issecretvalue(text)) or (text~=nil and text~="")
+end
+
+-- Both world markers follow C_Navigation.GetFrame(). Let WaypointUI have the
+-- text below it while its caption is visible. DaylightUI still draws the trail.
+local hiddenDaylightDistance
+local function syncWorldMarkerText()
+    local marker=DaylightUIQuestMarker
+    local label=marker and marker.dist
+    local hide
+    if label and marker:IsVisible() then
+        local footer=WUIWaypointFrame and WUIWaypointFrame.Footer
+        local pinpoint=WUIPinpointFrame and WUIPinpointFrame.Foreground
+        hide=footer and (hasWaypointText(footer.DistanceText) or hasWaypointText(footer.InfoText) or
+            hasWaypointText(footer.ArrivalTimeText)) or pinpoint and hasWaypointText(pinpoint.Content)
+    end
+    if hiddenDaylightDistance and (not hide or hiddenDaylightDistance~=label) then
+        hiddenDaylightDistance:Show()
+        hiddenDaylightDistance=nil
+    end
+    if hide and label:IsShown() then
+        label:Hide()
+        hiddenDaylightDistance=label
+    end
+end
+
 function N:Update()
+    syncWorldMarkerText()
     local action
     if A.ShortestPath and ShortestPathForever then
         local current=self:LocalAction()

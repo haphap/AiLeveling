@@ -51,6 +51,27 @@ local function finish(B,pos)
     step(B,11,false,pos or position(1,1,"b"))
 end
 
+test("实景导航地点和距离交给可见的 WaypointUI，文字消失后恢复 Daylight 距离",function()
+    local B=fixture({})
+    local marker,waypoint,pinpoint=DaylightUIQuestMarker,WUIWaypointFrame,WUIPinpointFrame
+    local distance=widget()
+    DaylightUIQuestMarker={dist=distance,IsVisible=function() return true end}
+    local function caption(text)
+        return {text=text,shown=true,alpha=1,IsVisible=function(self) return self.shown end,
+            GetEffectiveAlpha=function(self) return self.alpha end,GetText=function(self) return self.text end}
+    end
+    local name,yards,near=caption("西部荒野"),caption("437 yds"),caption("")
+    WUIWaypointFrame={Footer={InfoText=name,DistanceText=yards}}
+    WUIPinpointFrame={Foreground={Content=near}}
+    local function refresh(shown) B.Navigation:Update();eq(distance:IsShown(),shown) end
+    refresh(false);refresh(false)
+    yards.shown=false;refresh(false)
+    name.alpha=0;refresh(true)
+    near.text="与任务发布者交谈";refresh(false)
+    WUIPinpointFrame=nil;refresh(true)
+    distance:Hide();yards.shown=true;refresh(false);WUIWaypointFrame=nil;refresh(false)
+    DaylightUIQuestMarker,WUIWaypointFrame,WUIPinpointFrame=marker,waypoint,pinpoint
+end)
 test("飞行前导航出发点且飞越终点不算落地",function()
     local B=fixture()
     B.Navigation:Update();eq(B.distance,0);eq(B.Navigation.index,1)
