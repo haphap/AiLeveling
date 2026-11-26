@@ -65,6 +65,35 @@ run("本次副本的野外交付跨过读图逐项接续，普通任务和新接
     B.Selection:Automatic();s.inInstance=false;B.Dungeon:TaskBatchSnapshot(s,previous)
     eq(B.char.taskBatch,nil)
 end)
+run("接齐本外任务才提醒返程炉石，绑定和入本后收起",function()
+    local B,s,data,quests=fixture()
+    assert(loadfile("Services.lua"))("AiLeveling",B)
+    quests[5].requiredLevel=1
+    local target=data.Target
+    data.Target=function(self,q,state)
+        if q.id==5 and not state.quests[5] then return {map=2,x=0.4,y=0.3} end
+        return target(self,q,state)
+    end
+    local inn={kind="bind",npcId=99,title="交付地旅店",position={map=1,x=0.1,y=0.3}}
+    data.AmenityPoints=function() return {inn} end
+    B.Navigation=setmetatable({Near=function(self,a,b,r)
+        local distance=self:Distance(a,b)
+        return distance~=nil and distance<=r
+    end},{__index=B.Navigation})
+    s.completed[3]=true;s.bags[6948]=1;s.quests[1]={objectives={}}
+    assert(B.Dungeon:StartTaskBatch("ref"))
+    local function reminder()
+        B.State:Refresh()
+        local p=plan(s,data,B.settings,B)
+        return B.UI.TrackerModel(s,p,p.fallback,false,{}).bindingReminder
+    end
+    eq(reminder(),nil)
+    s.quests[2]={objectives={}}
+    assert(reminder():find(inn.title,1,true))
+    s.hearthPoint=inn.position;eq(reminder(),nil)
+    s.hearthPoint=nil;s.inInstance,s.instanceId=true,42;eq(reminder(),nil)
+    s.inInstance,s.instanceId=false,0;eq(reminder(),nil)
+end)
 run("多入口副本按当前可用交通选择更快入口",function()
     local B,s,data,_,d=fixture()
     d.entrances={{200,20,30},{200,90,30}}

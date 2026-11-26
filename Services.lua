@@ -478,6 +478,43 @@ function S.AutomaticBinding(plan,state)
     end
 end
 
+-- Local objectives can still be next after the last outdoor pickup.
+function S.DungeonBindingReminder(plan,state)
+    local journey=plan.taskBatch and plan.taskBatch.journey
+    if not journey or state.inInstance or state.dead or state.serviceStop or plan.maintenance or state.taskBatch.entered or
+        (plan.taskBatch.rewards.active==0 and #journey.inside==0) or
+        (state.declinedBinding and state.declinedBinding==state.bindingTaskKey) then return end
+    for _,step in ipairs(journey.before) do
+        if step.action.kind=="accept" or step.action.kind=="turnin" or step.preparingQuest then return end
+    end
+    local hasReturn,nearest,bestDistance
+    for _,step in ipairs(journey.after) do
+        local action=step.action
+        if action.kind=="turnin" and state.quests[action.questId] then
+            hasReturn=true
+            if ((state.bags or {})[6948] or 0)<=0 then return "进本前检查背包：未找到炉石。" end
+            local point=action.position
+            if position(point) and not (point.areaOnly or point.approximate) then
+                if alreadyBound(state,point) then return end
+                for _,hub in pairs(plan.bindingChoices or {}) do
+                    local stop=hub.stop
+                    if A.Navigation:Near(stop.position,point,bindingRadius) then
+                        if alreadyBound(state,stop.position) then return end
+                        local distance=state.position and state.position.map==stop.position.map and A.Navigation:Distance(state.position,stop.position)
+                        if distance and distance<=bindingRadius and
+                            (not nearest or distance<bestDistance or distance==bestDistance and stop.npcId<nearest.npcId) then
+                            nearest,bestDistance=stop,distance
+                        end
+                    end
+                end
+            end
+        end
+    end
+    if not hasReturn then return end
+    if nearest then return "进本前可找「"..nearest.title.."」绑定炉石，出本后回这里交任务。" end
+    return state.bindName and state.bindName~="" and ("进本前确认炉石：当前绑定「"..state.bindName.."」。") or "进本前确认炉石的绑定地点，方便出本后交任务。"
+end
+
 function S.CurrentAutomatic()
     local plan=A.plan
     if plan and plan.revision==A.state.revision and not A.char.serviceStop and not A.refreshAt and not (A.jobs and A.jobs.plan) then

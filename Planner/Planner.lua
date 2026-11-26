@@ -639,6 +639,7 @@ function P.Build(state, data, options)
     end
     if A.Dungeon.TaskBatchWaitPlan then A.Dungeon.TaskBatchWaitPlan(result,state,data,options) end
     if A.Services then result.bindingChoices=A.Services.PlanBindings(result,state,data) end
+    if batch and A.Services then batch.bindingReminder=A.Services.DungeonBindingReminder(result,state) end
     if A.Services then result.automaticService=A.Services.AutomaticBinding(result,state) end
     if (state.serviceStop or result.automaticService) and A.Services and not result.maintenance then
         local stop=A.Services.Build(state,result,result.automaticService)

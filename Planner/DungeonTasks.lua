@@ -466,7 +466,8 @@ function D.ValidTaskBatch(batch)
     if type(batch)~="table" or (type(batch.id)~="string" and type(batch.id)~="number") or
         type(batch.baselines)~="table" or (batch.waiting~=nil and type(batch.waiting)~="boolean") or
         (batch.returning~=nil and type(batch.returning)~="boolean") or
-        (batch.handinsOnly~=nil and type(batch.handinsOnly)~="boolean") then return false end
+        (batch.handinsOnly~=nil and type(batch.handinsOnly)~="boolean") or
+        (batch.entered~=nil and type(batch.entered)~="boolean") then return false end
     if type(batch.id)=="string" and (#batch.id==0 or #batch.id>128) or
         type(batch.id)=="number" and (batch.id<=0 or batch.id>=math.huge or batch.id%1~=0) then return false end
     local count=0
@@ -619,9 +620,12 @@ function D:TaskBatchSnapshot(state,previous)
         else self:FinishTaskActivity();A.char.taskBatch=nil;return "" end
     end
     table.sort(ids)
-    if state.inInstance then batch.waiting=nil end
-    state.taskBatch={id=batch.id,baselines=baselines,waiting=batch.waiting,returning=batch.returning}
-    return "dungeonTasks:"..tostring(batch.id)..":"..tostring(batch.waiting)..":"..tostring(batch.returning)..":"..table.concat(ids,",")
+    if state.inInstance then
+        batch.waiting=nil
+        if d and state.instanceId==d.instanceId then batch.entered=true end
+    end
+    state.taskBatch={id=batch.id,baselines=baselines,waiting=batch.waiting,returning=batch.returning,entered=batch.entered}
+    return "dungeonTasks:"..tostring(batch.id)..":"..tostring(batch.waiting)..":"..tostring(batch.returning)..":"..tostring(batch.entered)..":"..table.concat(ids,",")
 end
 
 function D:StartTaskBatch(id)

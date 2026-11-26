@@ -678,6 +678,10 @@ function UI.TrackerModel(state,plan,action,paused,along)
         if other then model.otherCount=model.otherCount+1 end
     end
     model.rows=visible
+    if plan.taskBatch and state.taskBatch and plan.taskBatch.id==state.taskBatch.id and
+        not (paused or A.error or state.inInstance or state.dead) and plan.revision==state.revision then
+        model.bindingReminder=plan.taskBatch.bindingReminder
+    end
     if not action then
         if plan.complete then model.title="已达到 60 级";model.instruction="本次升级目标已完成。"
         elseif A.planningResumeAt then
@@ -1682,6 +1686,9 @@ function UI:RenderTracker(along)
         guidance=model.instruction or ""
         if model.feedback then guidance=model.feedback..(guidance~="" and ("\n"..guidance) or "") end
     end
+    local reminder=model.bindingReminder
+    if reminder then guidance=reminder..(guidance~="" and ("\n"..guidance) or "") end
+    self.body:SetMaxLines(reminder and 0 or 2)
     self.body:SetText(guidance)
     self.body:SetTextColor(unpack((model.feedback or model.kind=="turnin") and palette.green or palette.muted))
     T.questTitle.detail=model.dungeonName and "点击查看副本任务详情" or (place and (place.."\n") or "")..table.concat(lines,"\n")
