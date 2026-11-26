@@ -421,8 +421,8 @@ function D.SuggestTaskBatch(state,data,options)
                 candidates[#candidates+1]={id=d.id,kind="dungeon",reference=true,dungeonId=d.id,title=d.title,
                     requiresAcceptance=true,actions={entry},rewards=rewards,remainingXP=xp,
                     priority=priority,ongoing=ongoing or available.ready>0,nearby=nearby,recommendation=recommendation,
-                    availableTasks=available.count,lastRecommendedLevel=lastRecommendedLevel,
-                    timing={seconds=seconds},rate=xp and seconds and A.TaskGuide.MovementRate(seconds,xp)}
+                    availableRewards=available,availableTasks=available.count,lastRecommendedLevel=lastRecommendedLevel,
+                    timing={seconds=seconds}}
             end
         end
         coroutine.yield()
@@ -432,7 +432,8 @@ function D.SuggestTaskBatch(state,data,options)
         if a.ongoing~=b.ongoing then return a.ongoing end
         if a.nearby~=b.nearby then return a.nearby end
         if a.lastRecommendedLevel~=b.lastRecommendedLevel then return a.lastRecommendedLevel end
-        if (a.rate or -1)~=(b.rate or -1) then return (a.rate or -1)>(b.rate or -1) end
+        -- Entrance travel does not measure time spent completing tasks inside.
+        if a.availableRewards.xp~=b.availableRewards.xp then return a.availableRewards.xp>b.availableRewards.xp end
         local aa,bb=a.timing.seconds or math.huge,b.timing.seconds or math.huge
         if aa~=bb then return aa<bb end
         return tostring(a.id)<tostring(b.id)

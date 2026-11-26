@@ -301,7 +301,7 @@ run("本地副本已接前置优先，提前进本交付保留推荐等级",func
     eq(plan(s,data,B.settings,B).suggestedDungeon.id,"later")
 end)
 run("异地副本在推荐等级最后一级优先于仍有余裕的副本",function()
-    local B,s,data,_,d=fixture()
+    local B,s,data,q,d=fixture()
     d.entryArea,d.entrances,d.quests.Alliance=200,{}, {[2]="inside"}
     data.maps[200],data.maps[101]=3,4
     B.DungeonCatalog.entries.other={id="other",title="另一个副本",reference=true,instanceId=43,
@@ -312,6 +312,21 @@ run("异地副本在推荐等级最后一级优先于仍有余裕的副本",func
     s.level=20;eq(first().id,d.id)
     s.quests[4]={objectives={}};eq(first().id,"other")
     s.quests[4]=nil;s.level=21;eq(first().id,"other")
+
+    -- Same recommendation window, one unpriced entrance and one unknown quest reward.
+    s.level=19
+    d.quests.Alliance[3]="inside"
+    local target=data.Target
+    data.Target=function(self,quest,state)
+        if quest.id==2 then return {map=2,sourceAreaId=100,x=.1,y=.3} end
+        return target(self,quest,state)
+    end
+    q[2].questLevel=19;q[2].taskFacts={level=19,xp={{1,1000}}}
+    q[4].questLevel=19;q[4].taskFacts={level=19,xp={{1,400}}}
+    local pick=first()
+    eq(pick.id,d.id);eq(pick.timing.seconds,nil);eq(pick.remainingXP,nil)
+    eq(pick.availableRewards.count,2);eq(pick.availableRewards.xp,1000);eq(pick.availableRewards.unknownXP,1)
+    s.completed[2]=true;eq(first().id,"other")
 end)
 run("副本任务行程随前置、接取、本内完成和交付更新",function()
     local B,s,data,q,d=fixture()

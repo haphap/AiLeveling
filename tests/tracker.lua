@@ -422,11 +422,11 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     eq(T.rows[3].along,false);eq(T.rows[3].parent,T.otherChild);eq(T.alongScroll.shown,false)
     B.state.quests[4].ready=true;B.UI:RenderTracker();eq(T.rows[3].status,"可交付")
     local suggestion={id="reference:3065",dungeonId="reference:3065",kind="dungeon",reference=true,requiresAcceptance=true,
-        title="领主大厅",rewards={count=5,prepare=1},remainingXP=13300,timing={seconds=150}}
+        title="领主大厅",rewards={count=5,prepare=1},availableRewards={count=4,xp=13300,unknownXP=1},timing={seconds=150}}
     B.refreshAt=nil;B.plan.revision=B.state.revision;B.plan.suggestedDungeon=suggestion;B.UI:RenderTracker()
     eq(T.rows[1].dungeonId,nil);eq(T.model.questId,1)
     eq(T.dungeons.shown,true);eq(T.dungeons.heading.value,"副本建议 · 1处  ›")
-    assert(T.dungeons.text.value:find("领主大厅 · 5项任务",1,true));eq(T.dungeons.candidate.rewards.prepare,1)
+    assert(T.dungeons.text.value:find("领主大厅 · 4项任务 · 经验 至少 13300",1,true));eq(T.dungeons.candidate.rewards.prepare,1)
     -- The browser keeps the same current recommendation as navigation, ahead of dungeon options.
     B.UI.Plan.key=nil;B.UI:SelectTab(1)
     local browser=B.UI.Browser
@@ -454,7 +454,7 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     B.plan.dungeonChoices[2]=second;B.UI:RenderTracker()
     eq(T.dungeons.heading.value,"副本建议 · 2处  ›");eq(T.model.questId,1)
     T.dungeons.scripts.OnClick()
-    assert(B.menu["领主大厅 · 5项任务"]);B.menu["死亡矿井 · 6项任务"].callback()
+    assert(B.menu["领主大厅 · 4项任务 · 经验 至少 13300"]);B.menu["死亡矿井 · 6项任务"].callback()
     eq(B.UI.Dungeon.selected,second.dungeonId);eq(selectedTab,4);eq(B.char.taskBatch,nil)
     -- Recommendations stay visible while automatic planning waits for the player to stop.
     B.plan.revision=B.state.revision-1;B.UI:RenderTracker();eq(T.dungeons.shown,true)

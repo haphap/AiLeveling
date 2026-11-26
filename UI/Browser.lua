@@ -250,6 +250,7 @@ function B:DungeonRows()
             end
         end
         rows[#rows+1]={key=id,title=d.title,sub=sub,icon="entry",dungeon=d,tasks=tasks,rewards=rewards,levels=levels,low=low or math.huge,
+            availableRewards=ranks[id] and A.plan.dungeonChoices[ranks[id]].availableRewards,
             priority=priority,rank=ranks[id],levelGap=low and math.max(0,low-state.level,state.level-high) or math.huge}
     end
     table.sort(rows,function(a,b)
@@ -501,7 +502,9 @@ function B:Detail()
     elseif e.dungeonCandidate then
         local c=e.dungeonCandidate
         lines[#lines+1]=e.sub
-        if c.remainingXP or c.xp then lines[#lines+1]=color(gold,"当前可做任务："..(c.remainingXP or c.xp).." 经验") end
+        if c.availableRewards and c.availableRewards.count>0 then
+            lines[#lines+1]=color(gold,"本次任务经验  "..A.UI.DungeonXPText(c.availableRewards))
+        end
         local can,why=A.Selection.CanChoose(c,A.plan.revision)
         if why then lines[#lines+1]=why end
         self:Action(1,c.requiresAcceptance and "安排副本行程" or "继续当前行程",function()
@@ -739,7 +742,7 @@ function B:DungeonDetail(e)
         view.tasks=A.UI:Text(view,"title");view.tasks:SetWidth(154)
         view.xp=A.UI:Text(view,"title",colors.gold);view.xp:SetWidth(162)
         view.tasksLabel=A.UI:Text(view,"caption",colors.muted);view.tasksLabel:SetWidth(154)
-        view.xpLabel=A.UI:Text(view,"caption",colors.muted);view.xpLabel:SetWidth(162);view.xpLabel:SetText("任务经验")
+        view.xpLabel=A.UI:Text(view,"caption",colors.muted);view.xpLabel:SetWidth(162)
         view.hint=A.UI:Text(view,"body");view.hint:SetWidth(326)
         view.note=CreateFrame("Frame",nil,view);view.note:SetAllPoints(view.hint);view.note:EnableMouse(true)
         view.note:SetScript("OnEnter",function(f)
@@ -778,11 +781,14 @@ function B:DungeonDetail(e)
     view.levels:SetText(e.levels..(minimum and "  ·  "..minimum.."级可进入" or ""))
     local y=view.levels:GetStringHeight()+16
     view.tasks:ClearAllPoints();view.tasks:SetPoint("TOPLEFT",0,-y)
-    view.tasks:SetText(rewards.count.." 项")
+    local available=not current and e.availableRewards
+    local displayed=available or rewards
+    view.tasks:SetText(displayed.count.." 项")
     view.xp:ClearAllPoints();view.xp:SetPoint("TOPLEFT",164,-y)
-    view.xp:SetText(rewards.unknownXP==0 and rewards.xp or rewards.xp>0 and rewards.xp.."+" or "—")
+    view.xp:SetText(A.UI.DungeonXPText(displayed))
     y=y+math.max(view.tasks:GetStringHeight(),view.xp:GetStringHeight())+3
-    view.tasksLabel:ClearAllPoints();view.tasksLabel:SetPoint("TOPLEFT",0,-y);view.tasksLabel:SetText(current and "已安排任务" or "可安排任务")
+    view.tasksLabel:ClearAllPoints();view.tasksLabel:SetPoint("TOPLEFT",0,-y);view.tasksLabel:SetText(available and "本次可做任务" or current and "已安排任务" or "可安排任务")
+    view.xpLabel:SetText(available and "本次可做任务经验" or current and "已安排任务经验" or "关联任务经验")
     view.xpLabel:ClearAllPoints();view.xpLabel:SetPoint("TOPLEFT",164,-y)
     y=y+view.tasksLabel:GetStringHeight()+16
     local hint=not A.state.inInstance and A.state.instanceEntryError or current and

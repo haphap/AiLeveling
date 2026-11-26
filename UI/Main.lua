@@ -557,6 +557,12 @@ function UI:RefreshDetails()
     if self.details:IsShown() and self.selectedTab ~= 5 and not self.exporting then self:SelectTab(self.selectedTab,true) end
 end
 
+function UI.DungeonXPText(rewards)
+    if rewards.unknownXP==0 then return tostring(rewards.xp) end
+    if rewards.xp>0 then return "至少 "..rewards.xp end
+    return "待确认"
+end
+
 function UI.PurchaseText(purchase)
     if not purchase then return end
     local map=purchase.map and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(purchase.map)

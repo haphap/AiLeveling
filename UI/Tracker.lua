@@ -755,6 +755,12 @@ function UI.DungeonReminders(state,plan)
     return plan.dungeonChoices or (plan.suggestedDungeon and {plan.suggestedDungeon}) or {}
 end
 
+local function dungeonRewardSummary(candidate)
+    local rewards=candidate.availableRewards
+    if not rewards or rewards.count==0 then return candidate.rewards.count.."项任务" end
+    return rewards.count.."项任务 · 经验 "..UI.DungeonXPText(rewards)
+end
+
 function UI:DungeonReminderMenu(owner)
     GameTooltip:Hide()
     self:Menu(owner,function(_,menu)
@@ -762,7 +768,7 @@ function UI:DungeonReminderMenu(owner)
             local d=A.DungeonCatalog and A.DungeonCatalog.entries[candidate.dungeonId]
             local range=d and A.DungeonCatalog.recommendedLevels and A.DungeonCatalog.recommendedLevels[d.instanceId]
             local levels=range and string.format(" · %d—%d级",range[1],range[2]) or ""
-            menu:CreateButton(candidate.title..levels.." · "..candidate.rewards.count.."项任务"..
+            menu:CreateButton(candidate.title..levels.." · "..dungeonRewardSummary(candidate)..
                 (candidate.recommendation and " · "..candidate.recommendation or ""),function()
                 self.Dungeon.selected=candidate.dungeonId;self.details:Show();self:SelectTab(4)
             end)
@@ -1523,7 +1529,7 @@ function UI:RenderTracker(along)
     local dungeon=batch and A.DungeonCatalog and A.DungeonCatalog.entries[batch.id]
     T.dungeons.heading:SetText(batch and ("副本行程"..(dungeon and " · "..dungeon.title or "")) or ("副本建议 · "..#dungeons.."处  ›"))
     T.dungeons.text:SetText(batch and "返回正常练级  ›" or suggested and
-        (self:Icon("entry",16).." "..suggested.title.." · "..suggested.rewards.count.."项任务"..
+        (self:Icon("entry",16).." "..suggested.title.." · "..dungeonRewardSummary(suggested)..
         (suggested.recommendation and " · "..suggested.recommendation or "")) or "")
     local bag=A.settings.rewardAdvice~=false and A.Gear and A.Gear.BagUpgrade(state,A.char.ignoredGear) or nil
     T.gear.advice=bag
