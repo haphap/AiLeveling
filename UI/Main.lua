@@ -563,6 +563,43 @@ function UI.DungeonXPText(rewards)
     return "待确认"
 end
 
+function UI.DungeonPickupStatus(row,state)
+    if row.group==1 then return "可交付" end
+    if row.group==2 then return "已接取" end
+    if row.group==5 then return "已交付" end
+    if row.group==3 then
+        if state.completed[row.id] then return "可重复" end
+        return row.requireCheck and "待确认" or "未接取"
+    end
+    if row.preparation or row.reason=="前置未交付" or row.reason=="备选前置未交付" then return "需前置" end
+    return "不可接"
+end
+
+function UI.DungeonPickupSummary(rows,state)
+    if not A.indexReady or state.completionKnown==false then return "正在核对副本任务…" end
+    local counts={}
+    for _,row in ipairs(rows) do
+        if row.relation~="preparation" then
+            local status=UI.DungeonPickupStatus(row,state)
+            counts[status]=(counts[status] or 0)+1
+        end
+    end
+    local held=(counts["已接取"] or 0)+(counts["可交付"] or 0)
+    local missing=counts["未接取"] or 0
+    local parts={}
+    if held+missing>0 then
+        parts[1]=string.format("已接 %d/%d",held,held+missing)
+        if missing>0 then parts[2]="还差 "..missing.." 项"
+        elseif not counts["待确认"] then parts[2]="当前可接已接齐" end
+    else
+        parts[1]=counts["待确认"] and "接取资格待核实" or "当前无待接任务"
+    end
+    for _,status in ipairs({"需前置","待确认","可交付","已交付","可重复"}) do
+        if counts[status] then parts[#parts+1]=status.." "..counts[status] end
+    end
+    return table.concat(parts," · ")
+end
+
 function UI.PurchaseText(purchase)
     if not purchase then return end
     local map=purchase.map and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(purchase.map)

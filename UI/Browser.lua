@@ -751,9 +751,10 @@ function B:DungeonDetail(e)
             GameTooltip:Show()
         end)
         view.note:SetScript("OnLeave",function() GameTooltip:Hide() end)
-        view.questTab=A.UI:ListButton(view,"关联任务",158,function()
+        view.questTab=A.UI:ListButton(view,"任务接取清单",158,function()
             view.showLoot=false;self:DungeonDetail(self.selected)
         end)
+        view.pickups=A.UI:Text(view,"body",colors.white);view.pickups:SetWidth(326)
         view.loot=A.UI:ListButton(view,"装备掉落",158,function()
             view.showLoot=true;self:DungeonDetail(self.selected)
         end)
@@ -826,6 +827,7 @@ function B:DungeonDetail(e)
     for _,line in pairs({A.Dungeon.EncounterProgress(e.dungeon,A.state),A.Dungeon:TaskActivityText(e.key)}) do
         view.tip[#view.tip+1]=line
     end
+    view.pickups:SetShown(not view.showLoot)
     if view.showLoot then
         for _,row in ipairs(view.rows) do row:Hide() end
         y=self:DungeonLoot(view,A.DungeonCatalog.dropsByInstance[view.instance] or {},y)
@@ -833,17 +835,21 @@ function B:DungeonDetail(e)
         return
     end
     local tones={colors.turnin,colors.purple,colors.accept,colors.muted,colors.muted}
-    local tasks,prep,inside,other={},{},{},{}
+    view.pickups:ClearAllPoints();view.pickups:SetPoint("TOPLEFT",0,-y)
+    view.pickups:SetText(A.UI.DungeonPickupSummary(e.tasks,A.state))
+    y=y+view.pickups:GetStringHeight()+metrics.gap
+    local tasks,inside,other,preparation={},{},{},{}
     for _,task in ipairs(e.tasks) do
         local group=other
-        if task.group==3 then
+        if task.relation=="preparation" then group=preparation
+        elseif A.UI.DungeonPickupStatus(task,A.state)=="未接取" then
             local instance=A.Dungeon.TaskInstance and A.Dungeon.TaskInstance(task.position,A.state,A.Data,task.areaId)
-            group=instance and inside or tasks
-        elseif task.preparation then group=prep end
+            group=instance and instance.instanceId==e.dungeon.instanceId and inside or tasks
+        end
         group[#group+1]=task
     end
-    local insideFirst=#tasks+#prep+1
-    for _,group in ipairs({prep,inside,other}) do
+    local insideFirst=#tasks+1
+    for _,group in ipairs({inside,other,preparation}) do
         for _,task in ipairs(group) do tasks[#tasks+1]=task end
     end
     for i,task in ipairs(tasks) do
@@ -867,7 +873,7 @@ function B:DungeonDetail(e)
                 f:SetBackdropColor(unpack(colors.rowHover))
                 local task=f.task
                 GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(task.title)
-                GameTooltip:AddLine(task.status,unpack(tones[task.group]))
+                GameTooltip:AddLine(A.UI.DungeonPickupStatus(task,A.state),unpack(tones[task.group]))
                 if task.reason then GameTooltip:AddLine(task.reason,1,0.8,0.5,true) end
                 if task.requireCheck then GameTooltip:AddLine("向任务发布者查看任务",0.8,0.8,0.8,true) end
                 if task.relation=="preparation" then GameTooltip:AddLine("入本前准备",0.8,0.8,0.8,true) end
@@ -903,11 +909,12 @@ function B:DungeonDetail(e)
         local active=(A.state.quests or {})[task.id]
         local icon=task.group==5 and "done" or A.UI.QuestIcon(task.group==1 and "turnin" or task.group==2 and "objective" or "accept",nil,active and active.objectives)
         row.icon:SetText(A.UI:Icon(icon,14))
-        row.status:SetWidth(statusWidth);row.status:SetText(i>=insideFirst and i<insideFirst+#inside and "副本内接" or task.group==4 and (task.preparation and "需前置" or "未解锁") or task.status)
+        row.status:SetWidth(statusWidth);row.status:SetText(i>=insideFirst and i<insideFirst+#inside and "副本内接" or A.UI.DungeonPickupStatus(task,A.state))
         row.status:SetTextColor(unpack(tones[task.group]))
         local direction,seconds=d:TaskDirection(task)
         row.direction=direction
         local meta={}
+        if task.relation=="preparation" then meta[#meta+1]="入本前准备" end
         if task.xp then meta[#meta+1]=color(gold,task.xp.." 经验") end
         if seconds then meta[#meta+1]="路程 "..time(seconds) end
         if task.gear then meta[#meta+1]="装备提升" end

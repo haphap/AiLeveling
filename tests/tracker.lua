@@ -587,6 +587,41 @@ test("施法事件只为相关炉石状态请求刷新而不响应其他单位�
     event(nil,"UNIT_SPELLCAST_START","player","cast",8690);assert(B.refreshAt);eq(B.dirty,true)
     B.finish()
 end)
+test("副本接取清单在详情与跟踪框同步区分缺项、前置与交付",function()
+    local B=ready(true);local U,s=B.UI,B.state
+    local d={id="reference:2970",instanceId=2970,title="沉没之城"}
+    B.DungeonCatalog={entries={[d.id]=d}}
+    B.Travel={Walk=function() return 10 end}
+    local rows={}
+    for id=1,7 do
+        rows[id]={id=id,title="副本任务"..id,group=id<7 and 2 or 3,allowed=true}
+        if id<7 then s.quests[id]={title=rows[id].title,objectives={}} end
+    end
+    rows[7].position={entityName="接取人",map=1,x=.5,y=.5}
+    rows[8]={id=8,title="野外准备",group=3,allowed=true,relation="preparation"}
+    rows[9]={id=9,title="后续任务",group=4,reason="前置未交付"}
+    B.Dungeon={Catalog=function() return B.DungeonCatalog.entries end,Tasks=function() return rows end,
+        TaskInstance=function() return d end,TaskApproach=function(a) return a end,CanContinueTask=function() return false end,
+        TaskRewards=function() return {count=0,ready=0,active=0,unknownXP=0,xp=0} end,
+        GroupStatus=function() end,EncounterProgress=function() end,TaskActivityText=function() end}
+    U.details:Show();U:SelectTab(4)
+    local view=U.Browser.dungeonDetail
+    eq(view.pickups.value,"已接 6/7 · 还差 1 项 · 需前置 1")
+    eq(view.rows[1].questId,7);eq(view.rows[1].status.value,"副本内接")
+    s.inInstance,s.instanceId,s.instanceType=true,d.instanceId,"party"
+    local function refresh()
+        s.revision=s.revision+1;U:RefreshDetails();U:RenderTracker()
+        eq(U.tracker.model.queueLabel,view.pickups.value)
+    end
+    refresh();eq(U.tracker.rows[1].questId,7);assert(U.tracker.rows[1].progress.value:find("接取人",1,true))
+    rows[7].group=1;s.quests[7]={ready=true,objectives={}}
+    refresh();eq(view.pickups.value,"已接 7/7 · 当前可接已接齐 · 需前置 1 · 可交付 1")
+    s.quests[7]=nil;s.completed[7]=true;rows[7].group=5
+    rows[9].group,rows[9].allowed,rows[9].reason=3,true,nil
+    refresh();eq(view.pickups.value,"已接 6/7 · 还差 1 项 · 已交付 1");eq(view.rows[1].questId,9)
+    s.completionKnown=false;refresh();eq(view.pickups.value,"正在核对副本任务…")
+    B.finish()
+end)
 test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     local B=ready();local U=B.UI
     U:SetNavigation(100,0.7,true);eq(U.navFrame.shown,true);eq(U.tracker.navTitle.value,"当前任务")
@@ -627,25 +662,26 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
         end}
     B.indexReady=true;B.state.locked=1
     B.state.quests[1].objectives={{text="零件",targetKind="item",numRequired=6,numFulfilled=2},{text="调查图纸",type="object",numRequired=1,numFulfilled=0}}
-    U:RenderTracker();eq(T.rows[2].objectives[1].count.value,"2/6");eq(T.rows[2].objectives[2].count.value,"0/1")
-    assert(T.rows[2].icon.texture:find("collect.tga",1,true));eq(T.rows[2].objectives[1].icon.texture,T.rows[2].icon.texture)
-    eq(T.rows[3].status,"未接取");eq(T.rows[4].questId,5);eq(T.rows[3].parent,T.queueChild)
-    eq(T.rows[3].progress.value,"向「机器人」接取任务。")
-    eq(#T.model.rows,4);eq(T.queueLabel.value,"进行中 1 · 未接取 2 · 可交付 1")
+    U:RenderTracker();eq(T.rows[4].objectives[1].count.value,"2/6");eq(T.rows[4].objectives[2].count.value,"0/1")
+    assert(T.rows[4].icon.texture:find("collect.tga",1,true));eq(T.rows[4].objectives[1].icon.texture,T.rows[4].icon.texture)
+    eq(T.rows[2].status,"未接取");eq(T.rows[3].questId,5);eq(T.rows[2].parent,T.queueChild)
+    eq(T.rows[2].progress.value,"向「机器人」接取任务。")
+    eq(#T.model.rows,4);eq(T.queueLabel.value,"已接 2/4 · 还差 2 项 · 可交付 1 · 已交付 1")
     B.state.quests[1].objectives[1].numFulfilled=4;U:RenderTracker()
-    eq(T.rows[2].objectives[1].count.value,"4/6");eq(reads,1)
+    eq(T.rows[4].objectives[1].count.value,"4/6");eq(reads,1)
     local timers,oldTimer={},C_Timer
     C_Timer={After=function(_,fn) timers[#timers+1]=fn end}
     eq(T.model.feedback,nil)
     local savedQuests=B.state.quests
     B.state.quests={[1]={objectives={{text="零件",finished=true,numRequired=6,numFulfilled=6},{text="调查图纸",type="object",numRequired=1}}}}
     U:RenderTracker();eq(T.model.feedback,"目标完成 · 零件")
-    eq(T.rows[2].objectives[1].check.value,"✓");assert(T.rows[2].icon.texture:find("interact.tga",1,true))
-    assert(T.rows[2].objectives[1].icon.texture:find("done.tga",1,true));U:RenderTracker();eq(#timers,1)
+    eq(T.rows[4].objectives[1].check.value,"✓");assert(T.rows[4].icon.texture:find("interact.tga",1,true))
+    assert(T.rows[4].objectives[1].icon.texture:find("done.tga",1,true));U:RenderTracker();eq(#timers,1)
     B.Dungeon.Tasks=function() return {{id=1,title="收集零件",allowed=true,group=1,position={entityName="技师"}}} end
     B.state.quests={[1]={ready=true,title="收集零件"}};B.state.revision=(B.state.revision or 0)+1
     U:RenderTracker();eq(T.model.feedback,"任务完成 · 收集零件（本内可交）")
     eq(T.rows[1].status,"可交付");assert(T.rows[1].progress.value:find("技师",1,true))
+    eq(T.queueLabel.value,"已接 1/1 · 当前可接已接齐 · 可交付 1")
     timers[1]();assert(T.model.feedback)
     U:DungeonTurnedIn(1);B.state.quests={};U:RenderTracker();eq(T.model.feedback,"已交付 · 收集零件")
     timers[#timers]();U:RenderTracker();eq(T.model.feedback,nil)

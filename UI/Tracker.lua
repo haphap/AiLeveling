@@ -1709,7 +1709,7 @@ function UI:RenderTracker(along)
         row.title:SetText(group and (item.number..". "..title..(group=="focus" and "  |cff"..self.hex[tone]..item.status.."|r" or "")) or title);row.title:SetTextColor(unpack(color))
         if group and item.number==1 then
             if not row.section then row.section=text(row,"caption",palette.muted) end
-            row.section:SetText(({focus="当前追踪",objective="进行中",turnin="可交付",accept="待接取"})[group])
+            row.section:SetText(({focus="当前追踪",objective="进行中",turnin="可交付",accept="待接取",related="其他关联任务"})[group])
             row.section:SetTextColor(unpack(group=="focus" and palette.gold or palette[tone]));row.section:Show()
         elseif row.section then row.section:Hide() end
         if group=="focus" then
@@ -2067,16 +2067,21 @@ end
 -- Keep the catalog lookup off ordinary progress updates. Counts come from the live quest log.
 local function dungeonGuideSteps(d,state)
     local inside,other={},{}
-    for _,row in ipairs(A.Dungeon.Tasks(d,state,A.Data)) do
-        if row.group==4 and row.preparation and not row.requireCheck then
+    local rows=A.Dungeon.Tasks(d,state,A.Data)
+    for _,row in ipairs(rows) do
+        local status=UI.DungeonPickupStatus(row,state)
+        if status=="需前置" or status=="待确认" then
             local names={}
-            for _,id in ipairs(row.preparation) do
+            for _,id in ipairs(row.preparation or {}) do
                 local q=A.Data:GetQuest(id,state)
                 names[#names+1]=q and q.title or ("#"..id)
             end
-            other[#other+1]={kind="accept",questId=row.id,title=row.title,stageLabel="未接取",
-                text="前置任务 · "..table.concat(names,"、")}
-        elseif row.allowed and row.group<=3 and not row.requireCheck then
+            other[#other+1]={kind="accept",questId=row.id,title=row.title,stageLabel=status,related=status,
+                text=#names>0 and table.concat(names,"、") or row.reason}
+        elseif row.group<=2 and not row.allowed then
+            other[#other+1]={kind=row.group==1 and "turnin" or "objective",questId=row.id,title=row.title,
+                stageLabel=status,text=row.reason,related=row.relation=="preparation" and "入本前准备"}
+        elseif row.allowed and row.group<=3 then
             local point,item=row.position,row.pickupItem
             local area,index=row.areaId,row.objectiveIndex
             local hits=row.insideObjectives
@@ -2103,10 +2108,11 @@ local function dungeonGuideSteps(d,state)
                     action.text=item and item.text or "地点待确认"
                 end
             end
+            action.related=row.relation=="preparation" and "入本前准备" or status=="可重复" and status or nil
             group[#group+1]=action
         end
     end
-    return inside,other
+    return inside,other,UI.DungeonPickupSummary(rows,state)
 end
 
 local function questStepHint(action)
@@ -2191,25 +2197,27 @@ function UI:DungeonTrackerModel(state,action)
         tracker.currentScroll:SetVerticalScroll(0)
     end
     if not roster.inside or roster.dungeon~=dungeon or roster.revision~=state.revision or roster.indexReady~=A.indexReady then
-        if dungeon and A.indexReady then roster.inside,roster.other=dungeonGuideSteps(dungeon,state)
-        else roster.inside,roster.other={},{} end
+        if dungeon and A.indexReady then roster.inside,roster.other,roster.pickups=dungeonGuideSteps(dungeon,state)
+        else roster.inside,roster.other,roster.pickups={},{},nil end
         roster.dungeon,roster.revision,roster.indexReady=dungeon,state.revision,A.indexReady
     end
     local model={dungeonName=state.instanceName or dungeon and dungeon.title or "地下城",dungeonId=dungeon and dungeon.id,
         title="副本任务",rows={},objectives={},along={}}
-    local counts,seen={accept=0,objective=0,turnin=0},{}
+    local statuses={accept="未接取",objective="进行中",turnin="可交付"}
+    local seen={}
     local focus=not A.char.paused and not state.dead and (A.Navigation.manual or A.Navigation.planInstance==state.instanceId and state.instanceId) and action
     local function add(step,fallbackHint)
         local id=step.questId
-        if not id or seen[id] or counts[step.kind]==nil then return end
+        if not id or seen[id] or not statuses[step.kind] then return end
         local active=state.quests[id]
         local kind=active and (active.ready and "turnin" or "objective") or step.kind
-        local status=({accept="未接取",objective="进行中",turnin="可交付"})[kind]
+        local status=statuses[kind]
         local hint=questStepHint(step) or fallbackHint
         if step.stageLabel=="本外接取" or step.stageLabel=="本外目标" or step.stageLabel=="本外交付" then
             hint=step.stageLabel..(hint and (" · "..hint) or "")
         end
-        if kind=="accept" and state.questLimit and state.questCount and state.questCount>=state.questLimit then
+        if step.related then hint=step.related..(hint and (" · "..hint) or "") end
+        if kind=="accept" and not step.related and state.questLimit and state.questCount and state.questCount>=state.questLimit then
             hint=(hint and hint.." · " or "").."任务日志已满"
         end
         local goals={}
@@ -2218,11 +2226,10 @@ function UI:DungeonTrackerModel(state,action)
         end
         if #goals>0 and not step.stageLabel and not (step.position and step.position.travelHint) then hint=nil end
         seen[id]=step.title or ("任务 #"..id)
-        counts[kind]=counts[kind]+1
-        model.rows[#model.rows+1]={questId=id,title=seen[id],kind=kind,status=status,accepted=active~=nil,
+        model.rows[#model.rows+1]={questId=id,title=seen[id],kind=kind,status=status,accepted=active~=nil,related=step.related,
             progress=hint or "",objectives=goals,dungeonAction=(step.position or step.areaId or not step.stageLabel and step.text) and step or nil}
     end
-    if focus and counts[focus.kind]~=nil then
+    if focus and statuses[focus.kind] then
         local focusStep
         for _,list in ipairs({roster.inside,roster.other}) do
             for _,step in ipairs(list) do
@@ -2239,17 +2246,13 @@ function UI:DungeonTrackerModel(state,action)
     for _,step in ipairs(roster.inside) do add(step) end
     for _,step in ipairs(roster.other) do add(step) end
     dungeonFeedback(roster,state);roster.displayed=seen
-    local summary={}
-    if counts.objective>0 then summary[#summary+1]="进行中 "..counts.objective end
-    if counts.accept>0 then summary[#summary+1]="未接取 "..counts.accept end
-    if counts.turnin>0 then summary[#summary+1]="可交付 "..counts.turnin end
-    model.queueLabel=table.concat(summary," · ")
+    model.queueLabel=roster.pickups or ""
     -- Group the display only. Keep the guide's ordering within each section.
     local ordered={}
-    for _,kind in ipairs({"focus","objective","turnin","accept"}) do
+    for _,kind in ipairs({"focus","accept","objective","turnin","related"}) do
         local number=0
         for _,row in ipairs(model.rows) do
-            local group=focus and row.questId==focus.questId and "focus" or row.kind
+            local group=focus and row.questId==focus.questId and "focus" or row.related and "related" or row.kind
             if group==kind then
                 number=number+1
                 row.group,row.number=kind,number
