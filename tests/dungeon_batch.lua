@@ -290,6 +290,19 @@ run("本地副本已接前置优先，提前进本交付保留推荐等级",func
     s.level=21
     eq(plan(s,data,B.settings,B).suggestedDungeon.id,"later")
 end)
+run("异地副本在推荐等级最后一级优先于仍有余裕的副本",function()
+    local B,s,data,_,d=fixture()
+    d.entryArea,d.entrances,d.quests.Alliance=200,{}, {[2]="inside"}
+    data.maps[200],data.maps[101]=3,4
+    B.DungeonCatalog.entries.other={id="other",title="另一个副本",reference=true,instanceId=43,
+        areas={101},entryArea=200,quests={Alliance={[4]="inside"}}}
+    B.DungeonCatalog.recommendedLevels={[42]={15,20},[43]={18,25}}
+    local function first() return plan(s,data,B.settings,B).suggestedDungeon end
+    s.level=19;eq(first().id,"other")
+    s.level=20;eq(first().id,d.id)
+    s.quests[4]={objectives={}};eq(first().id,"other")
+    s.quests[4]=nil;s.level=21;eq(first().id,"other")
+end)
 run("副本任务行程随前置、接取、本内完成和交付更新",function()
     local B,s,data,q,d=fixture()
     d.quests.Alliance[4]="preparation"

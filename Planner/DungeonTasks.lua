@@ -395,6 +395,7 @@ function D.SuggestTaskBatch(state,data,options)
                 local xp=not preparationOnly and available.unknownXP==0 and available.xp or nil
                 local entryMap=entry.position and entry.position.map or data.maps and data.maps[d.entryArea]
                 local nearby=entryMap~=nil and state.position~=nil and entryMap==state.position.map
+                local lastRecommendedLevel=range~=nil and state.level==range[2] and state.level<60 and available.count>available.ready
                 local priority,recommendation=1,"当前可做"
                 if below then
                     priority=3
@@ -404,11 +405,12 @@ function D.SuggestTaskBatch(state,data,options)
                     if not (ongoing and nearby) then priority=2 end
                     recommendation="先做准备"
                 elseif ongoing then recommendation="继续任务线"
+                elseif lastRecommendedLevel then recommendation="推荐至"..range[2].."级"
                 end
                 candidates[#candidates+1]={id=d.id,kind="dungeon",reference=true,dungeonId=d.id,title=d.title,
                     requiresAcceptance=true,actions={entry},rewards=rewards,remainingXP=xp,
                     priority=priority,ongoing=ongoing,nearby=nearby,recommendation=recommendation,
-                    availableTasks=available.count,
+                    availableTasks=available.count,lastRecommendedLevel=lastRecommendedLevel,
                     timing={seconds=seconds},rate=xp and seconds and A.TaskGuide.MovementRate(seconds,xp)}
             end
         end
@@ -418,6 +420,7 @@ function D.SuggestTaskBatch(state,data,options)
         if a.priority~=b.priority then return a.priority<b.priority end
         if a.ongoing~=b.ongoing then return a.ongoing end
         if a.nearby~=b.nearby then return a.nearby end
+        if a.lastRecommendedLevel~=b.lastRecommendedLevel then return a.lastRecommendedLevel end
         if (a.rate or -1)~=(b.rate or -1) then return (a.rate or -1)>(b.rate or -1) end
         local aa,bb=a.timing.seconds or math.huge,b.timing.seconds or math.huge
         if aa~=bb then return aa<bb end
