@@ -267,7 +267,8 @@ function D:AmenityPoints(state,kind,maps)
             for _,position in ipairs(self:EntityPoints(npc,id)) do
                 if allowed[position.map] and not (A.Dungeon and A.Dungeon.TaskInstance and A.Dungeon.TaskInstance(position,state,self)) then
                     points[#points+1]={kind=kind,npcId=id,title=npc.Get(id,"name") or ("NPC #"..id),
-                        description=npc.Get(id,"subName"),position=position}
+                        description=npc.Get(id,"subName"),position=position,
+                        bindName=kind=="bind" and innAreas[id] and C_Map.GetAreaInfo and C_Map.GetAreaInfo(innAreas[id]) or nil}
                 end
             end
         end

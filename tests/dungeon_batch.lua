@@ -94,6 +94,33 @@ run("接齐本外任务才提醒返程炉石，绑定和入本后收起",functio
     s.hearthPoint=nil;s.inInstance,s.instanceId=true,42;eq(reminder(),nil)
     s.inInstance,s.instanceId=false,0;eq(reminder(),nil)
 end)
+run("接齐前经过远端交付旅店，比较保留和换绑的整段返程",function()
+    local B,s=fixture()
+    for _,file in ipairs({"Hearth.lua","Planner/Estimates.lua","Planner/Flights.lua","Services.lua"}) do
+        assert(loadfile(file))("AiLeveling",B)
+    end
+    local port={map=1,x=.1,y=.2,entityName="港口联系人"}
+    local town={map=3,x=.1,y=.2,entityName="镇内联系人"}
+    B.Navigation={Distance=function(_,a,b)
+        return math.abs(a.x-b.x)*1000+math.abs(a.map-b.map)*4000
+    end}
+    function B.Navigation:Near(a,b,r) return a and b and self:Distance(a,b)<=r end
+    s.position,s.hearthReady,s.now,s.bags[6948],s.taskBatch=town,0,0,1,{}
+    s.hearthPoint,s.hearthBindingKey={map=2,x=.1,y=.2},"旧旅店"
+    local inn={title="旅店老板",bindName="镇上",position=town,npcId=9}
+    local journey={entryMap=1,before={{action={kind="accept",questId=3}}},inside={},after={}}
+    for id,point in ipairs({port,port,town,town}) do
+        point.entityId=point.map
+        journey.after[id]={action={kind="turnin",questId=id,position=point}}
+    end
+    local plan={taskBatch={journey=journey,rewards={active=3}},bindingChoices={town={stop=inn}}}
+    local function hint() return B.Services.DungeonBindingReminder(plan,s) end
+    assert(hint():find("找港口联系人交2项 → 炉石回镇上，找镇内联系人交2项",1,true))
+    eq(s.hearthBindingKey,"旧旅店");eq(s.hearthPoint.map,2)
+    s.hearthReady=9999;eq(hint(),nil)
+    s.hearthReady=0;s.hearthPoint=town;eq(hint(),nil)
+    s.hearthPoint=nil;s.position=port;eq(hint(),nil)
+end)
 run("多入口副本按当前可用交通选择更快入口",function()
     local B,s,data,_,d=fixture()
     d.entrances={{200,20,30},{200,90,30}}

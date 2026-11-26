@@ -242,6 +242,13 @@ function S.TrainableSpells(state)
     return rows,count>0
 end
 
+local function nearbyInnDistance(state,stop)
+    if state.position and state.position.map==stop.position.map then
+        local yards=A.Navigation:Distance(state.position,stop.position)
+        if yards and yards<=bindingRadius then return yards end
+    end
+end
+
 function S:Snapshot(state)
     state.trainer=nil
     state.bindSubZone=text(GetSubZoneText and GetSubZoneText())
@@ -250,6 +257,12 @@ function S:Snapshot(state)
         A.char.serviceStop=nil;self.message="所选训练已确认完成，继续原任务。"
     end
     local key={"services",tostring(state.bindName~=nil and state.bindSubZone==state.bindName)}
+    if state.taskBatch and not state.taskBatch.entered and not state.inInstance then
+        for inn,hub in pairs(A.plan and A.plan.bindingChoices or {}) do
+            if nearbyInnDistance(state,hub.stop) then key[#key+1]=inn end
+        end
+        table.sort(key)
+    end
     local spellsReady
     state.trainableSpells,spellsReady=S.TrainableSpells(state)
     for _,spell in ipairs(state.trainableSpells) do key[#key+1]="learn:"..spell.id end
@@ -375,6 +388,10 @@ function S.ServiceMaps(plan,state)
         if action and position(action.position) then maps[action.position.map]=true end
     end
     add(S.TaskDestination(plan))
+    local journey=plan.taskBatch and plan.taskBatch.journey
+    for _,step in ipairs(journey and journey.after or {}) do
+        if step.action.kind=="turnin" then add(step.action) end
+    end
     for _,choice in ipairs(plan.taskOrder or {}) do
         if state.quests[choice.questId] and not choice.lowValue and not choice.entryBlocked and not choice.requireCheck and not choice.acceptBlocked then
             for _,stage in ipairs(choice.stages or {}) do add(stage) end
@@ -422,7 +439,7 @@ function S.PlanBindings(plan,state,data)
     local result={}
     for _,row in ipairs(data:AmenityPoints(state,"bind",S.ServiceMaps(plan,state))) do
         local hub={deliveryCount=0,acceptCount=0,pendingCount=0,deliveryDistance=0,
-            stop={kind="bind",npcId=row.npcId,title=row.title,position=copy(row.position)}}
+            stop={kind="bind",npcId=row.npcId,title=row.title,bindName=row.bindName,position=copy(row.position)}}
         local seen={}
         for _,choice in ipairs(plan.regionPlan and plan.regionPlan.choices or plan.taskOrder or plan.taskChoices or {}) do
             if not seen[choice.questId] and not choice.lowValue and not choice.entryBlocked and not choice.requireCheck and not choice.acceptBlocked then
@@ -478,39 +495,110 @@ function S.AutomaticBinding(plan,state)
     end
 end
 
--- Local objectives can still be next after the last outdoor pickup.
+-- Price the same return visits with the actual hearth and with the inn currently in reach.
+local function dungeonReturnBinding(journey,visits,state,inn,distance)
+    if not (A.TaskQueue and A.Flights and state.hearthReady and state.hearthPoint and state.runSpeed and state.runSpeed>0) then return end
+    local origin=journey.entry and journey.entry.position
+    if not origin then
+        -- When only the entrance zone is known, compare from its single local hand-in onward.
+        for _,visit in ipairs(visits) do
+            local p=visit.stages[1].position
+            if p.map==journey.entryMap then
+                if origin then return end
+                origin=p
+            end
+        end
+        if not origin or A.Navigation:Near(origin,inn.position,bindingRadius) then return end
+    end
+    local context={}
+    for k,v in pairs(state) do context[k]=v end
+    context.position,context.maxSeconds,context.currentTask=origin,nil,nil
+    local function solve()
+        -- Timing memoization depends on the binding. Only walking and transport geometry can be shared.
+        local geometry=state.travelCache or {}
+        context.travelCache={walks=geometry.walks or {},flights=geometry.flights or {},routes=geometry.routes or {}}
+        local _,route=A.TaskQueue.Solve(visits,context,A.Navigation)
+        if route and route.remaining==0 then return route end
+    end
+    local kept=solve()
+    context.hearthPoint,context.hearthBindingKey,context.bindName=inn.position,S.BindingKey(inn),inn.bindName or inn.title
+    local changed=solve()
+    if not changed or not kept then return end
+    if changed.seconds+2*distance/state.runSpeed>=kept.seconds then return false end
+    local labels,usesHearth={},false
+    for _,step in ipairs(changed.steps) do
+        local visit=step.choice
+        local label=visit.title.."交"..visit.count.."项"
+        if (step.timing.hearthCount or 0)>0 then
+            usesHearth=true
+            label=(inn.bindName and ("炉石回"..inn.bindName) or "炉石回此地").."，找"..label
+        else label=(visit.place and ("在"..visit.place.."找") or "找")..label end
+        labels[#labels+1]=label
+    end
+    if not usesHearth then return false end
+    return "顺路找「"..inn.title.."」绑定炉石。出本后"..table.concat(labels," → ").."。"
+end
+
 function S.DungeonBindingReminder(plan,state)
     local journey=plan.taskBatch and plan.taskBatch.journey
-    if not journey or state.inInstance or state.dead or state.serviceStop or plan.maintenance or state.taskBatch.entered or
+    if not journey or state.inInstance or state.dead or state.onTaxi or state.serviceStop or plan.maintenance or state.taskBatch.entered or
         (plan.taskBatch.rewards.active==0 and #journey.inside==0) or
         (state.declinedBinding and state.declinedBinding==state.bindingTaskKey) then return end
-    for _,step in ipairs(journey.before) do
-        if step.action.kind=="accept" or step.action.kind=="turnin" or step.preparingQuest then return end
+    local pending,blocked=false,{}
+    for _,phase in ipairs({journey.before,journey.inside}) do
+        for _,step in ipairs(phase) do
+            local action=step.action
+            if step.blocked then blocked[action.questId]=true end
+            if phase==journey.before and (action.kind=="accept" or action.kind=="turnin" or step.preparingQuest) then pending=true end
+        end
     end
-    local hasReturn,nearest,bestDistance
+    local visits,byPoint={},{}
+    local hasReturn,bound,nearest,bestDistance,incomplete
     for _,step in ipairs(journey.after) do
         local action=step.action
-        if action.kind=="turnin" and state.quests[action.questId] then
+        local point=action.position
+        if action.kind=="turnin" and not blocked[action.questId] then
             hasReturn=true
-            if ((state.bags or {})[6948] or 0)<=0 then return "进本前检查背包：未找到炉石。" end
-            local point=action.position
             if position(point) and not (point.areaOnly or point.approximate) then
-                if alreadyBound(state,point) then return end
-                for _,hub in pairs(plan.bindingChoices or {}) do
-                    local stop=hub.stop
-                    if A.Navigation:Near(stop.position,point,bindingRadius) then
-                        if alreadyBound(state,stop.position) then return end
-                        local distance=state.position and state.position.map==stop.position.map and A.Navigation:Distance(state.position,stop.position)
-                        if distance and distance<=bindingRadius and
-                            (not nearest or distance<bestDistance or distance==bestDistance and stop.npcId<nearest.npcId) then
-                            nearest,bestDistance=stop,distance
+                local key=string.format("%d:%.8f:%.8f:%s",point.map,point.x,point.y,point.entityId or point.entityName or action.questId)
+                local visit=byPoint[key]
+                if not visit then
+                    local stage={kind="turnin",questId=action.questId,position=point}
+                    visit={questId=action.questId,title=point.entityName or action.title,stagesComplete=true,stages={stage},count=0}
+                    visits[#visits+1]=visit;byPoint[key]=visit
+                    bound=bound or alreadyBound(state,point)
+                    for _,hub in pairs(plan.bindingChoices or {}) do
+                        local stop=hub.stop
+                        local offset=A.Navigation:Distance(stop.position,point)
+                        if offset and offset<=bindingRadius then
+                            if stop.bindName and (not visit.innDistance or offset<visit.innDistance or
+                                offset==visit.innDistance and stop.bindName<visit.place) then
+                                visit.place,visit.innDistance=stop.bindName,offset
+                            end
+                            bound=bound or alreadyBound(state,stop.position)
+                            local distance=nearbyInnDistance(state,stop)
+                            if distance and
+                                (not nearest or distance<bestDistance or distance==bestDistance and stop.npcId<nearest.npcId) then
+                                nearest,bestDistance=stop,distance
+                            end
                         end
                     end
                 end
-            end
-        end
+                visit.count=visit.count+1
+            else incomplete=true end
+        elseif action.kind~="turnin" then incomplete=true end
     end
     if not hasReturn then return end
+    if ((state.bags or {})[6948] or 0)<=0 then
+        if not pending then return "进本前检查背包：未找到炉石。" end
+        return
+    end
+    if nearest and alreadyBound(state,nearest.position) then return end
+    if nearest and not incomplete then
+        local hint=dungeonReturnBinding(journey,visits,state,nearest,bestDistance)
+        if hint~=nil then return hint or nil end
+    end
+    if pending or bound then return end
     if nearest then return "进本前可找「"..nearest.title.."」绑定炉石，出本后回这里交任务。" end
     return state.bindName and state.bindName~="" and ("进本前确认炉石：当前绑定「"..state.bindName.."」。") or "进本前确认炉石的绑定地点，方便出本后交任务。"
 end

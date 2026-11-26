@@ -748,7 +748,7 @@ end
 
 -- Show the remaining executable frontier; future prerequisites unlock only after real turn-ins.
 function D.TaskJourney(d,choices,state,data)
-    local journey={before={},inside={},after={}}
+    local journey={before={},inside={},after={},entryMap=data.maps and data.maps[d.entryArea]}
     local here=state.inInstance and state.instanceId==d.instanceId
     for _,choice in ipairs(choices) do
         if not choice.lowValue and not choice.entryBlocked and not choice.requireCheck then
