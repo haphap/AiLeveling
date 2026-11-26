@@ -225,6 +225,10 @@ function B:DungeonRows()
     local rows,targets={},{}
     local entries=A.Dungeon.Catalog()
     local state,batch=A.state,A.char and A.char.taskBatch
+    local ranks={}
+    if A.plan and A.plan.revision==state.revision and A.settings.dungeons~=false then
+        for rank,candidate in ipairs(A.plan.dungeonChoices or {}) do ranks[candidate.dungeonId]=rank end
+    end
     for id,d in pairs(entries) do
         local tasks=A.Dungeon.Tasks(d,state,A.Data,targets)
         local rewards=A.Dungeon.TaskRewards(tasks)
@@ -234,22 +238,23 @@ function B:DungeonRows()
         local sub=levels.." · "..color(gold,rewards.count.."项任务")
         local here=state.inInstance and state.instanceId==d.instanceId
         local selected=batch and batch.id==id
-        local priority=here and 1 or selected and 2 or 4
+        local priority=here and 1 or selected and 2 or ranks[id] and 3 or 5
         if here or selected then sub=color(green,here and "当前副本" or "整组指引中").." · "..sub
-        else
+        elseif not ranks[id] then
             for _,task in ipairs(tasks) do
-                if state.quests[task.id] then priority=3;break end
+                if state.quests[task.id] then priority=4;break end
                 for _,id in ipairs(task.preparation or {}) do
-                    if state.quests[id] then priority=3;break end
+                    if state.quests[id] then priority=4;break end
                 end
-                if priority==3 then break end
+                if priority==4 then break end
             end
         end
         rows[#rows+1]={key=id,title=d.title,sub=sub,icon="entry",dungeon=d,tasks=tasks,rewards=rewards,levels=levels,low=low or math.huge,
-            priority=priority,levelGap=low and math.max(0,low-state.level,state.level-high) or math.huge}
+            priority=priority,rank=ranks[id],levelGap=low and math.max(0,low-state.level,state.level-high) or math.huge}
     end
     table.sort(rows,function(a,b)
         if a.priority~=b.priority then return a.priority<b.priority end
+        if a.rank and b.rank and a.rank~=b.rank then return a.rank<b.rank end
         if a.levelGap~=b.levelGap then return a.levelGap<b.levelGap end
         local av,bv=a.rewards.count>0,b.rewards.count>0
         if av~=bv then return av end

@@ -281,13 +281,23 @@ run("本地副本已接前置优先，提前进本交付保留推荐等级",func
     s.quests[3]={objectives={}};s.quests[4]={ready=true,objectives={}}
     local target=data.Target
     data.Target=function(self,q,state)
+        if q.id==2 and state.quests[2] and state.quests[2].ready then return {sourceAreaId=100,map=2,x=.5,y=.5} end
         if q.id==4 then return {sourceAreaId=101,map=4,x=.5,y=.5} end
         return target(self,q,state)
     end
     local choices=plan(s,data,B.settings,B).dungeonChoices
     eq(choices[1].id,d.id);eq(choices[1].ongoing,true);eq(choices[1].nearby,true)
     eq(choices[1].timing.seconds,nil);eq(choices[2].recommendation,"本内可交 · 推荐21级起")
+    B.DungeonCatalog.entryLevels={[43]=21}
+    eq(#plan(s,data,B.settings,B).dungeonChoices,1)
+    d.minLevel=21;B.DungeonCatalog.recommendedLevels[42]={21,25}
+    eq(plan(s,data,B.settings,B).suggestedDungeon.recommendation,"先做准备 · 推荐21级起")
     s.level=21
+    local ranked=plan(s,data,B.settings,B).dungeonChoices
+    eq(ranked[1].id,d.id);eq(ranked[2].recommendation,"顺路进本交付")
+    s.quests[2]={ready=true,objectives={}}
+    eq(plan(s,data,B.settings,B).suggestedDungeon.recommendation,"继续任务线")
+    s.level=26
     eq(plan(s,data,B.settings,B).suggestedDungeon.id,"later")
 end)
 run("异地副本在推荐等级最后一级优先于仍有余裕的副本",function()

@@ -350,10 +350,13 @@ function D.SuggestTaskBatch(state,data,options)
     if not options.dungeons or state.inInstance or state.taskBatch or state.gearTarget then return end
     local candidates,targets={},{}
     for _,d in pairs(D.Catalog()) do
-        if d.reference and (not d.minLevel or state.level>=d.minLevel) then
+        if d.reference then
             local range=A.DungeonCatalog.recommendedLevels and A.DungeonCatalog.recommendedLevels[d.instanceId]
             local below=range and state.level<range[1]
             local above=range and state.level>range[2]
+            local entryLevel=A.DungeonCatalog.entryLevels and A.DungeonCatalog.entryLevels[d.instanceId] or d.minLevel
+            local entryLocked=entryLevel and state.level<entryLevel
+            local early=below or entryLocked
             local rows,current={},{}
             local ongoing=false
             for _,row in ipairs(D.Tasks(d,state,data,targets)) do
@@ -363,17 +366,22 @@ function D.SuggestTaskBatch(state,data,options)
                     for _,id in ipairs(row.preparation or {}) do
                         local q=data:GetQuest(id,state)
                         if q and ((state.quests[id] or {}).ready or (q.questLevel or state.level)<=state.level+2) then
-                            prepare=true
-                            if state.quests[id] then ongoing=true;break end
+                            local point=early and data:Target(q,state)
+                            if not early or point and not D.TaskInstance(point,state,data) then
+                                prepare=true
+                                if state.quests[id] then ongoing=true;break end
+                            end
                         end
                     end
-                    if prepare or (not later and not row.preparation) then
+                    local destination=(early or row.group==1) and D.TaskInstance(row.position,state,data,row.areaId)
+                    local insideDelivery=row.group==1 and destination and destination.instanceId==d.instanceId
+                    if prepare or (not later and not row.preparation and
+                        (not early or not destination or insideDelivery and not entryLocked)) then
                         rows[#rows+1]=row
-                        local insideDelivery=row.group==1 and row.allowed and D.TaskInstance(row.position,state,data,row.areaId)
-                        if row.group==2 or insideDelivery and insideDelivery.instanceId==d.instanceId then ongoing=true end
+                        if row.group==2 then ongoing=true end
                         -- Rank only tasks ready to do inside; locked rewards and outdoor hand-ins do not justify a run.
-                        if (not below or row.group==1) and not row.preparation and row.relation~="preparation" and
-                            (row.group~=1 or insideDelivery and insideDelivery.instanceId==d.instanceId) then
+                        if (not early or insideDelivery) and not row.preparation and row.relation~="preparation" and
+                            (row.group~=1 or insideDelivery) then
                             current[#current+1]=row
                         end
                     end
@@ -397,19 +405,22 @@ function D.SuggestTaskBatch(state,data,options)
                 local nearby=entryMap~=nil and state.position~=nil and entryMap==state.position.map
                 local lastRecommendedLevel=range~=nil and state.level==range[2] and state.level<60 and available.count>available.ready
                 local priority,recommendation=1,"当前可做"
-                if below then
+                if early then
                     priority=3
-                    recommendation=(preparationOnly and "先做准备" or "本内可交").." · 推荐"..range[1].."级起"
+                    recommendation=(preparationOnly and "先做准备" or "本内可交")..
+                        (below and " · 推荐"..range[1].."级起" or " · "..entryLevel.."级可进入")
                 elseif above then priority,recommendation=4,"补做剩余任务"
                 elseif preparationOnly then
                     if not (ongoing and nearby) then priority=2 end
                     recommendation="先做准备"
-                elseif ongoing then recommendation="继续任务线"
+                elseif available.count==available.ready and not (ongoing and nearby) then
+                    priority,recommendation=2,"顺路进本交付"
+                elseif ongoing or available.ready>0 then recommendation="继续任务线"
                 elseif lastRecommendedLevel then recommendation="推荐至"..range[2].."级"
                 end
                 candidates[#candidates+1]={id=d.id,kind="dungeon",reference=true,dungeonId=d.id,title=d.title,
                     requiresAcceptance=true,actions={entry},rewards=rewards,remainingXP=xp,
-                    priority=priority,ongoing=ongoing,nearby=nearby,recommendation=recommendation,
+                    priority=priority,ongoing=ongoing or available.ready>0,nearby=nearby,recommendation=recommendation,
                     availableTasks=available.count,lastRecommendedLevel=lastRecommendedLevel,
                     timing={seconds=seconds},rate=xp and seconds and A.TaskGuide.MovementRate(seconds,xp)}
             end

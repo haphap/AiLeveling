@@ -143,6 +143,11 @@ return function(test,eq,F,plan)
         s.level=40
         local browser=B.UI.Browser
         eq(browser:DungeonRows()[1].levelGap,0)
+        B.plan={revision=s.revision,dungeonChoices={{dungeonId="reference:3039"},{dungeonId="reference:2970"}}}
+        local ranked=browser:DungeonRows()
+        eq(ranked[1].title,"克罗多克要塞");eq(ranked[2].title,"沉没之城")
+        B.plan.revision=s.revision-1;assert(browser:DungeonRows()[1].key~="reference:3039")
+        B.plan.revision=s.revision
         B.char.taskBatch={id="reference:2970"}
         eq(browser:DungeonRows()[1].title,"沉没之城")
         s.inInstance,s.instanceId=true,36
