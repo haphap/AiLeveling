@@ -447,7 +447,7 @@ run("任务组清理暂缓前置和已关闭分支，保留可替代前置及临
     eq(s.taskBatch.baselines[2],nil);eq(s.taskBatch.baselines[3],nil);eq(s.completed[2],nil)
     s.quests[1]=nil;s.completed[1]=true;B.State:Refresh();eq(s.taskBatch,nil)
 end)
-run("整组选择不会保护远处低收益任务或拖住同NPC交付",function()
+run("副本行程先交同NPC任务，随后继续已选的低收益步骤",function()
     local B,s,data,q,d=fixture();q[1].preQuestGroup=nil
     data.chainIndex=B.Chains.NewIndex()
     for _,quest in pairs(q) do B.Chains.IndexQuest(data.chainIndex,quest,data) end
@@ -460,14 +460,28 @@ run("整组选择不会保护远处低收益任务或拖住同NPC交付",functio
     assert(B.Dungeon:StartTaskBatch("ref"))
     local p=plan(s,data,B.settings,B);eq(p.fallback.questId,2);eq(p.fallback.kind,"turnin")
     local low;for _,c in ipairs(p.taskChoices) do if c.questId==1 then low=c.lowValue end end;assert(low and low.distant)
-    s.quests[2]=nil;s.completed[2]=true;B.State:Refresh();p=plan(s,data,B.settings,B);eq(p.fallback.kind,"taskReview")
+    B.State:TurnedIn(2);s.quests[2]=nil;B.State:Refresh();p=plan(s,data,B.settings,B)
+    eq(p.taskBatch.id,"ref");eq(p.fallback.questId,1)
     eq(B.char.skipped[1],nil);eq(s.completed[1],nil)
-    -- Obsolete members never become mandatory; old saved batches are cleaned as well.
+    -- A fresh trip omits obsolete quests; a saved selection survives a change in level.
     s.completed[2]=nil;s.quests[2]={ready=true};q[1].questLevel=5;q[1].taskFacts.level=5
     q[1].taskFacts.xp={{1,1000},{20,100}}
     assert(B.Dungeon:StartTaskBatch("ref"));eq(s.taskBatch.baselines[1],nil)
-    B.char.taskBatch.baselines[1]=0;B.State:Refresh();eq(s.taskBatch.baselines[1],nil)
-    s.quests[2]=nil;s.completed[2]=true;B.State:Refresh();eq(s.taskBatch,nil);eq(s.completed[1],nil)
+    B.char.taskBatch.baselines[1]=0;B.State:Refresh();eq(s.taskBatch.baselines[1],0)
+    s.quests[2]=nil;s.completed[2]=true;B.State:Refresh();p=plan(s,data,B.settings,B);eq(p.fallback.questId,1)
+    eq(p.taskBatch.rewards.count,1)
+    B.Selection:Skip(1);eq(s.taskBatch,nil);eq(s.completed[1],nil)
+end)
+run("交付升级后续接刚能准备的副本分支",function()
+    local B,s,data,q=fixture()
+    s.completed[1]=true
+    s.quests[2]={ready=true,objectives={}}
+    q[5].preQuestSingle={3}
+    assert(B.Dungeon:StartTaskBatch("ref"));eq(s.taskBatch.baselines[5],nil)
+    B.State:TurnedIn(2);s.quests[2]=nil;s.level=40;B.State:Refresh()
+    eq(s.taskBatch.baselines[2],nil);eq(s.taskBatch.baselines[5],0)
+    local p=plan(s,data,B.settings,B);eq(p.fallback.questId,3)
+    B.State:TurnedIn(3);B.State:Refresh();p=plan(s,data,B.settings,B);eq(p.fallback.questId,5)
 end)
 run("任务安排重载保留进度，重复任务按本次交付计数收尾",function()
     local B,s,data,q=fixture();q[2].repeatable=true;s.completed[2]=true;B.char.turnIns[2]=7

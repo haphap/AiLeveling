@@ -139,20 +139,20 @@ A.DungeonCatalog={version="1.60.1",build="70862",entries={
         Horde={[98]="category"},
     }},
     ["reference:2970"]={id="reference:2970",reference=true,minLevel=35,maxLevel=40,instanceId=2970,title="沉没之城",areas={16550},entrances={},entryArea=33,entryHint="前往荆棘谷格罗姆高营地以西的海域，从水下洞口进入沉没之城。",quests={
-        Alliance={[95775]="category",[95776]="category",[95787]="category",[95789]="category",[95791]="category",[96774]="category",[97130]="category"},
-        Horde={[95775]="category",[95776]="category",[95787]="category",[95789]="category",[95791]="category",[96774]="category",[97130]="category"},
+        Alliance={[95775]="category",[95776]="category",[95787]="category",[95788]="category",[95789]="category",[95791]="category",[96774]="category",[97130]="category"},
+        Horde={[95775]="category",[95776]="category",[95787]="category",[95788]="category",[95789]="category",[95791]="category",[96774]="category",[97130]="category"},
     }},
     ["reference:3039"]={id="reference:3039",reference=true,minLevel=40,maxLevel=45,instanceId=3039,title="克罗多克要塞",areas={16842},entrances={},entryArea=16591,entryHint="前往河谷林地北部的克罗多克要塞，从山间洞口进入。",quests={
-        Alliance={[94968]="category",[94972]="category",[94973]="category",[94974]="category",[94980]="category",[94981]="category",[94982]="category",[94983]="category",[94984]="category",[94997]="category",[94998]="category",[96771]="category"},
-        Horde={[94968]="category",[94972]="category",[94973]="category",[94974]="category",[94980]="category",[94981]="category",[94982]="category",[94983]="category",[94984]="category",[94997]="category",[94998]="category",[96771]="category"},
+        Alliance={[94968]="category",[94972]="category",[94973]="category",[94974]="category",[94975]="category",[94980]="category",[94981]="category",[94982]="category",[94983]="category",[94984]="category",[94997]="category",[94998]="category",[96771]="category"},
+        Horde={[94968]="category",[94972]="category",[94973]="category",[94974]="category",[94975]="category",[94980]="category",[94981]="category",[94982]="category",[94983]="category",[94984]="category",[94997]="category",[94998]="category",[96771]="category"},
     }},
     ["reference:2994"]={id="reference:2994",reference=true,minLevel=48,maxLevel=53,instanceId=2994,title="奥卡兹监狱",areas={16620},entrances={},entryArea=15,entryHint="前往尘泥沼泽东北方的奥卡兹岛，进入岛下的奥卡兹监狱。",quests={
-        Alliance={[96337]="category",[96377]="category",[96772]="category"},
-        Horde={[96337]="category",[96377]="category",[96772]="category"},
+        Alliance={[95262]="category",[95263]="category",[95483]="category",[96332]="category",[96334]="category",[96335]="category",[96337]="category",[96377]="category",[96772]="category"},
+        Horde={[95262]="category",[95263]="category",[95483]="category",[96332]="category",[96334]="category",[96335]="category",[96337]="category",[96377]="category",[96772]="category"},
     }},
     ["reference:2974"]={id="reference:2974",reference=true,minLevel=55,maxLevel=60,instanceId=2974,title="黑喉要塞",areas={16554},entrances={},entryArea=16,entryHint="前往艾萨拉北部的熊怪城门，沿隧道进入黑喉要塞。",quests={
-        Alliance={[97173]="category"},
-        Horde={[97173]="category"},
+        Alliance={[92069]="category",[92344]="category",[97173]="category"},
+        Horde={[92069]="category",[92344]="category",[97173]="category"},
     }},
     ["reference:3001"]={id="reference:3001",reference=true,minLevel=58,maxLevel=60,instanceId=3001,title="塑造者之台",areas={16667},entrances={},entryArea=490,entryHint="前往安戈洛环形山北部山地，进入塑造者之台。",quests={
         Alliance={[95928]="category"},
@@ -204,6 +204,7 @@ A.DungeonCatalog.objectiveAreas={
     [95775]={["item:270308"]=16550,["item:270309"]=16550,["item:270310"]=16550,["item:270311"]=16550},
     [95776]={["npc:258924"]=16550},
     [95787]={["item:270308"]=16550,["item:270309"]=16550,["item:270310"]=16550,["item:270311"]=16550},
+    [95788]={["item:270343"]=16550},
     [95789]={["item:270333"]=16550},
     [95791]={["npc:260042"]=16550,["npc:260353"]=16550},
     [96774]={["item:276894"]=16550},

@@ -129,17 +129,13 @@ test("异步规划位置与交付快照独立于当前状态原地变化",functi
     eq(B.plan,published);assert(run~=running)
     running=run;B.state.locked=2;B.state.revision=B.state.revision+1;B:Replan(true);assert(run~=running)
     running=run;B.state.position.map=2;B:Replan();assert(run~=running)
-    -- A completed calculation with only low-value dungeon detours restores automatic mode.
+    -- A route review cannot cancel the player's selected dungeon.
     local review={taskBatch={blocked={}},taskChoices={{questId=1,lowValue={distant=true}}},fallback={kind="taskReview"}}
     B.Planner.Build=function(snapshot) review.revision=snapshot.revision;return review end
     B.char.taskBatch={id="ref",baselines={[1]=0}}
     local refreshes=B.refreshes;B:Replan(true)
     local ok,why=coroutine.resume(run);assert(ok,why)
-    eq(B.char.taskBatch,nil);eq(B.refreshes,refreshes+1);eq(B.state.completed[1],nil)
-    review.taskBatch.blocked={"等级不足"};B.char.taskBatch={id="ref",baselines={[1]=0,[2]=0}}
-    refreshes=B.refreshes;B:Replan(true)
-    local ok,why=coroutine.resume(run);assert(ok,why)
-    assert(B.char.taskBatch);eq(B.refreshes,refreshes)
+    eq(B.char.taskBatch.baselines[1],0);eq(B.plan,review);eq(B.refreshes,refreshes);eq(B.state.completed[1],nil)
     CreateFrame,SlashCmdList=oldCreate,oldSlash
 end)
 end

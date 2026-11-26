@@ -20,10 +20,10 @@
 
 补充地图身份来源及目标资料：
 
-- [沉没之城](https://wowforevertalents.com/dungeons/the-drowned-city/)：实例 2970，原生首领 6 项，关联任务 7 项。
-- [克罗多克要塞](https://wowforevertalents.com/dungeons/krol-dok-stronghold/)：实例 3039，原生首领 5 项，关联任务 12 项。
-- [奥卡兹监狱](https://wowforevertalents.com/dungeons/alcaz-prison/)：实例 2994，原生首领 5 项，关联任务 3 项。
-- [黑喉要塞](https://wowforevertalents.com/dungeons/blackmaw-hold/)：实例 2974，原生首领 7 项，关联任务 1 项。
+- [沉没之城](https://wowforevertalents.com/dungeons/the-drowned-city/)：实例 2970，原生首领 6 项，关联任务 8 项。
+- [克罗多克要塞](https://wowforevertalents.com/dungeons/krol-dok-stronghold/)：实例 3039，原生首领 5 项，关联任务 13 项。
+- [奥卡兹监狱](https://wowforevertalents.com/dungeons/alcaz-prison/)：实例 2994，原生首领 5 项，关联任务 9 项。
+- [黑喉要塞](https://wowforevertalents.com/dungeons/blackmaw-hold/)：实例 2974，原生首领 7 项，关联任务 3 项。
 - [塑造者之台](https://wowforevertalents.com/dungeons/the-shaper-s-terrace/)：实例 3001，原生首领 11 项，关联任务 1 项。
 
 补充目录的入口使用官方所在地区中心及入口方向说明；已确认本内目标来自同构建服务器任务原文和已核对任务事实，其他分类任务保持普通关联。任务接交者仍从 QuestieDB 查询，缺少的任务以实际提供及日志接入。塑造者之台关联95928的四种水晶目标，来源见TASK_XP_AUDIT.json；其余两项已报告任务缺实际ID，尚未补入。

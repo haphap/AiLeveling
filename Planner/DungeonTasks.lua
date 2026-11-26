@@ -316,6 +316,10 @@ local function belongsInTrip(row,state)
         (row.allowed and state.quests[row.id]~=nil or D.CanContinueTask(row))
 end
 
+local function levelingPenalty(low)
+    return low and (low.obsolete or low.distant)
+end
+
 -- Report task rewards separately from dungeon kills and future prerequisite rewards.
 function D.TaskRewards(rows,baselines,choices)
     local result={count=0,xp=0,unknownXP=0,ready=0,active=0,prepare=0,blocked=0,excluded=0,upgrades=0}
@@ -325,7 +329,9 @@ function D.TaskRewards(rows,baselines,choices)
         if not seen[row.id] and row.group~=5 and (not baselines or baselines[row.id]~=nil) then
             seen[row.id]=true
             local choice=byId[row.id]
-            if row.lowValue or choice and choice.lowValue then result.excluded=result.excluded+1
+            local low=row.lowValue
+            if baselines and levelingPenalty(low) then low=nil end
+            if low or choice and choice.lowValue then result.excluded=result.excluded+1
             elseif not row.requireCheck and (D.CanContinueTask(row) or baselines and row.allowed and row.group<=2) then
                 result.count=result.count+1
                 if row.xp==nil then result.unknownXP=result.unknownXP+1 else result.xp=result.xp+row.xp end
@@ -496,8 +502,11 @@ function D:TaskBatchSnapshot(state)
         local q=A.Data:GetQuest(id)
         local done=(A.char.turnIns[id] or 0)>n or
             (not state.quests[id] and state.completed[id] and q and not q.repeatable)
-        local excluded=(state.skipped or {})[id] or (state.chainDeferred or {})[id] or
-            q and (A.Eligibility.Closed(q,state) or A.TaskGuide.LowValue(q,state,A.Data))
+        local excluded=(state.skipped or {})[id] or (state.chainDeferred or {})[id] or q and A.Eligibility.Closed(q,state)
+        if not done and not excluded and q then
+            local low=A.TaskGuide.LowValue(q,state,A.Data)
+            excluded=low and not levelingPenalty(low)
+        end
         -- Drop a deferred branch only when no alternative preparation remains executable.
         if not done and not excluded and q and not A.Eligibility.Check(q,state,A.Data) then
             local frontier,closed=A.Chains.Preparation(id,A.Data,state)
@@ -512,7 +521,7 @@ function D:TaskBatchSnapshot(state)
     for _,row in ipairs(d and D.Tasks(d,state,A.Data) or {}) do
         if baselines[row.id]==nil and not (A.State.confirmed and A.State.confirmed[row.id]) and
             belongsInTrip(row,state) and (state.quests[row.id] or
-                not batch.returning and row.group==3 and not state.completed[row.id] and (A.char.turnIns[row.id] or 0)==0) then
+                not batch.returning and (row.group==3 or row.preparation) and not state.completed[row.id] and (A.char.turnIns[row.id] or 0)==0) then
             local n=(A.char.turnIns or {})[row.id] or 0
             batch.baselines[row.id],baselines[row.id]=n,n;ids[#ids+1]=row.id
             batch.returning=nil
@@ -627,9 +636,19 @@ function D.TaskBatchChoices(state,data)
     local context={};for k,v in pairs(state) do context[k]=v end
     context.preparingQuest=true
     local choices=A.Planner.TaskChoices(context,data,ids,true)
+    local detours,hasStep={},false
     for _,choice in ipairs(choices) do
         choice.preparingQuest=roots[choice.questId]
         choice.dungeonPreparation=members[choice.questId] and members[choice.questId].relation=="preparation"
+        if levelingPenalty(choice.lowValue) then
+            if choice.preparingQuest or choice.dungeonPreparation then choice.lowValue=nil
+            else detours[#detours+1]=choice end
+        end
+        if not (choice.lowValue or choice.entryBlocked or choice.acceptBlocked or choice.requireCheck) then hasStep=true end
+    end
+    -- Do nearby work first, then resume the selected trip even if the remaining journey is long.
+    if not hasStep then
+        for _,choice in ipairs(detours) do choice.lowValue=nil end
     end
     info.rewards=D.TaskRewards(rows,batch.baselines,choices)
     info.journey=d and D.TaskJourney(d,choices,state,data) or nil

@@ -225,13 +225,6 @@ function A:Replan(force, manual)
             snapshot.dead==self.state.dead and snapshot.inInstance==self.state.inInstance and snapshot.instanceId==self.state.instanceId and
             (not self.Transport or not self.Transport.Key or self.Transport.Key(snapshot)==self.Transport.Key(self.state))
         if fresh or usable then
-            -- A dungeon trip with only rejected detours left returns to normal leveling.
-            if fresh and result.taskBatch and #(result.taskBatch.blocked or {})==0 and
-                result.fallback and result.fallback.kind=="taskReview" and #result.taskChoices>0 then
-                local excluded=true
-                for _,choice in ipairs(result.taskChoices) do if not choice.lowValue then excluded=false;break end end
-                if excluded then self.Selection:Automatic();return end
-            end
             self.plan = result
             self.dirty = true
             self.Navigation:SetPlan(self.plan)

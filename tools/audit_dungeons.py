@@ -35,7 +35,7 @@ ANNOUNCED = [
     {'name':'The Drowned City','levels':[35,40],'location':'Stranglethorn Vale, west of Grom\'gol','mapId':2970,
      'identitySource':'https://wowforevertalents.com/dungeons/the-drowned-city/','lfgId':3270,'areaId':16550,'entryArea':33,
      'entryHint':'前往荆棘谷格罗姆高营地以西的海域，从水下洞口进入沉没之城。',
-     'objectiveQuestIds':[95775,95776,95787,95789,95791,96774,97130]},
+     'objectiveQuestIds':[95775,95776,95787,95788,95789,95791,96774,97130]},
     {'name':"Krol'dok Stronghold",'levels':[40,45],'location':'Riverglades','mapId':3039,
      'identitySource':'https://wowforevertalents.com/dungeons/krol-dok-stronghold/','lfgId':3275,'areaId':16842,'entryArea':16591,
      'entryHint':'前往河谷林地北部的克罗多克要塞，从山间洞口进入。',
@@ -132,12 +132,12 @@ def build():
     extra_sources = {
         '.dependencies/LFGDungeons-1.60.1.70862-zhCN.csv':'5005d79edb52a8c75d642174c475fa2a81c728f8b0ed0f5b9e4575a1e53cbfb6',
         '.dependencies/DungeonEncounter-1.60.1.70862-zhCN.csv':'13c1a984836ccd90fc0adb56d7a52aeacab794b7276e836f30e18a80725e8677',
-        '.dependencies/eg-link-156f29c9/1.60.1.70862/quests.enUS.json':'0f8b890bbedc79f6c80b99511a88ff5f699048f4a34303bd6d0a0281cfde4b7a',
+        '.dependencies/eg-link-30c3bb9c/1.60.1.70862/quests.enUS.json':'7b96a1e976a6746492f8a17e8de9ab1b014f236ebfb01e5f03dbe81880777877',
     }
     for name,expected in extra_sources.items(): assert digest(ROOT/name)==expected, name
     lfg = {int(r['ID']):r for r in csv.DictReader(io.StringIO((ROOT / '.dependencies/LFGDungeons-1.60.1.70862-zhCN.csv').read_text()))}
     encounters = list(csv.DictReader(io.StringIO((ROOT / '.dependencies/DungeonEncounter-1.60.1.70862-zhCN.csv').read_text())))
-    cached = json.loads((ROOT / '.dependencies/eg-link-156f29c9/1.60.1.70862/quests.enUS.json').read_text())['quests']
+    cached = json.loads((ROOT / '.dependencies/eg-link-30c3bb9c/1.60.1.70862/quests.enUS.json').read_text())['quests']
     checked_path = ROOT / 'docs/TASK_XP_AUDIT.json'
     checked = {q['id']:q for q in json.loads(checked_path.read_text())['objectiveSupplements'] if q.get('dungeonMapId')}
     supplemental=[]
@@ -146,13 +146,13 @@ def build():
         mid,area=announced['mapId'],announced.get('areaId')
         encounter_ids=sorted(int(r['ID']) for r in encounters if int(r['MapID'])==mid)
         assert encounter_ids and mid not in {r['mapId'] for r in rows}
-        quests=sorted(int(id) for id,q in cached.items() if area and q.get('zoneAreaId')==area)
+        quests={int(id) for id,q in cached.items() if area and q.get('zoneAreaId')==area}
         targets={}
         for id in announced.get('objectiveQuestIds',[]):
             if id in checked:
                 quest=checked[id]
                 assert quest['dungeonMapId']==mid and quest['areaId']==area
-                quests.append(id)
+                quests.add(id)
                 targets[str(id)]={f'{o["kind"]}:{o["id"]}':area for o in quest['objectives']}
                 continue
             quest=cached[str(id)]
@@ -164,7 +164,7 @@ def build():
         supplemental.append({'mapId':mid,'name':lfg[announced['lfgId']]['Name_lang'],'classification':'party',
             'mapRecordDecoded':False,'identitySource':announced['identitySource'],'encounterIds':encounter_ids,
             'aliases':[area] if area else [],'entrances':[],'entryArea':announced['entryArea'],
-            'entryHint':announced['entryHint'],'categoryQuestIds':quests,'objectiveAreas':targets,
+            'entryHint':announced['entryHint'],'categoryQuestIds':sorted(quests),'objectiveAreas':targets,
             'clientVerified':False,'itineraryReady':False})
     counts = dict(sorted(Counter(r['classification'] for r in rows).items()))
     return {'schema':1,'build':'1.60.1.70862','clientVerified':False,'coverageLocked':False,
