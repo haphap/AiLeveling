@@ -24,6 +24,7 @@ local function widget()
     w.GetFrameLevel=function(self) return self.frameLevel or 1 end;w.SetFrameLevel=function(self,v) self.frameLevel=v end
     w.GetCenter=function(self) return self.centerX or 300,self.centerY or 400 end
     w.SetParent=function(self,parent) self.parent=parent end
+    w.GetParent=function(self) return self.parent end
     w.GetWidth=function(self) return self.width or 18 end;w.GetHeight=function(self) return self.height end
     w.SetText=function(self,v) self.value=v end;w.GetText=function(self) return self.value or "" end
     w.GetStringHeight=function(self) return self.measuredHeight or 30 end
@@ -69,7 +70,8 @@ local function widget()
     w.SetScrollChild=function(self,child) self.child=child end
     w.SetVerticalScroll=function(self,v) self.offset=v end
     w.GetVerticalScroll=function(self) return self.offset or 0 end
-    w.CreateTexture=function() return widget() end;w.CreateFontString=function() return widget() end
+    w.CreateTexture=function() return widget() end
+    w.CreateFontString=function(self) local text=widget();text.parent=self;return text end
     w.CreateLine=function() local line=widget();line.SetThickness=function() end;line.SetStartPoint=function() end;line.SetEndPoint=function() end;return line end
     return w
 end

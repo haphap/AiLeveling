@@ -220,16 +220,33 @@ end
 function B:DungeonRows()
     local rows,targets={},{}
     local entries=A.Dungeon.Catalog()
+    local state,batch=A.state,A.char and A.char.taskBatch
     for id,d in pairs(entries) do
-        local tasks=A.Dungeon.Tasks(d,A.state,A.Data,targets)
+        local tasks=A.Dungeon.Tasks(d,state,A.Data,targets)
         local rewards=A.Dungeon.TaskRewards(tasks)
         local range=A.DungeonCatalog.recommendedLevels and A.DungeonCatalog.recommendedLevels[d.instanceId]
         local low,high=range and range[1],range and range[2]
         local levels=low and string.format("推荐 %d—%d级",low,high) or "查看任务"
         local sub=levels.." · "..color(gold,rewards.count.."项任务")
-        rows[#rows+1]={key=id,title=d.title,sub=sub,icon="entry",dungeon=d,tasks=tasks,rewards=rewards,levels=levels,low=low or math.huge}
+        local here=state.inInstance and state.instanceId==d.instanceId
+        local selected=batch and batch.id==id
+        local priority=here and 1 or selected and 2 or 4
+        if here or selected then sub=color(green,here and "当前副本" or "整组指引中").." · "..sub
+        else
+            for _,task in ipairs(tasks) do
+                if state.quests[task.id] then priority=3;break end
+                for _,id in ipairs(task.preparation or {}) do
+                    if state.quests[id] then priority=3;break end
+                end
+                if priority==3 then break end
+            end
+        end
+        rows[#rows+1]={key=id,title=d.title,sub=sub,icon="entry",dungeon=d,tasks=tasks,rewards=rewards,levels=levels,low=low or math.huge,
+            priority=priority,levelGap=low and math.max(0,low-state.level,state.level-high) or math.huge}
     end
     table.sort(rows,function(a,b)
+        if a.priority~=b.priority then return a.priority<b.priority end
+        if a.levelGap~=b.levelGap then return a.levelGap<b.levelGap end
         local av,bv=a.rewards.count>0,b.rewards.count>0
         if av~=bv then return av end
         if a.low~=b.low then return a.low<b.low end
@@ -274,7 +291,7 @@ function B:ClearSearch()
     end
 end
 
-function B:Refresh(mode,reuse)
+function B:Refresh(mode,reuse,opening)
     gold,blue,green,muted=A.UI.hex.gold,A.UI.hex.blue,A.UI.hex.green,A.UI.hex.muted
     reuse=reuse and self.mode==mode and self.entriesRevision==A.state.revision and self.entriesPlan==A.plan
     if self.mode~=mode then
@@ -287,6 +304,7 @@ function B:Refresh(mode,reuse)
         self.summary:ClearAllPoints();self.summary:SetPoint("TOPLEFT",tasks and 106 or 0,tasks and -5 or 0)
         self.summary:SetWidth(listWidth-(tasks and 96 or 0));self.summary:SetJustifyH(tasks and "RIGHT" or "LEFT")
         self.search:SetWidth(listWidth+10)
+        self.searchHint:SetText(mode==4 and "搜索地下城名称" or "搜索名称或任务编号")
         self.list:SetSize(listWidth,tasks and 482 or 420);self.child:SetWidth(listWidth)
         self.divider:ClearAllPoints();self.divider:SetPoint("TOPLEFT",split,0);self.divider:SetPoint("BOTTOMLEFT",split,0)
         self.info:ClearAllPoints();self.info:SetPoint("TOPLEFT",split+24,tasks and 0 or -14)
@@ -296,6 +314,12 @@ function B:Refresh(mode,reuse)
         self.list:SetVerticalScroll(0);self.info:SetVerticalScroll(0)
     end
     self.mode=mode
+    local requested=mode==4 and A.UI.Dungeon.selected
+    if mode==4 and (requested or opening) then
+        A.UI.Dungeon.selected=nil
+        self.selection[4]=requested
+        self:ClearSearch()
+    end
     local rows
     if reuse then rows=self.entries
     elseif mode==4 then rows=self:DungeonRows()
@@ -324,11 +348,11 @@ function B:Refresh(mode,reuse)
         key=A.UI.Plan.key
         if not key then for _,row in ipairs(rows) do if row.current then key=row.key;break end end end
     end
-    if mode==4 and A.UI.Dungeon.selected then key=A.UI.Dungeon.selected end
-    local selected
-    for _,row in ipairs(rows) do if row.key==key then selected=row;break end end
-    self.selected=selected or rows[1]
-    self.selection[mode]=self.selected and self.selected.key
+    local selectedIndex=1
+    for i,row in ipairs(rows) do if row.key==key then selectedIndex=i;break end end
+    local previousKey=self.selected and self.selected.key
+    self.selected=rows[selectedIndex]
+    if mode~=4 then self.selection[mode]=self.selected and self.selected.key end
     if mode==1 then A.UI.Plan.preview=self.selected and self.selected.choice end
     local summary=#rows..(mode==10 and " 个练级区域" or mode==4 and " 个地下城" or mode==3 and " 件装备" or " 项任务")
     if mode==1 then
@@ -347,6 +371,11 @@ function B:Refresh(mode,reuse)
     local height=math.max(1,#rows*self.rowPitch)
     self.child:SetHeight(height)
     local offset=math.min(self.list:GetVerticalScroll(),math.max(0,height-self.list:GetHeight()))
+    if mode==4 and self.selected and (opening or requested or previousKey~=self.selected.key) then
+        offset=math.max(0,math.min(offset,(selectedIndex-1)*self.rowPitch))
+        offset=math.max(offset,selectedIndex*self.rowPitch-self.list:GetHeight())
+        self.info:SetVerticalScroll(0)
+    end
     if offset~=self.list:GetVerticalScroll() then self.list:SetVerticalScroll(offset) end
     self:DrawRows(offset)
     self:Detail()
@@ -387,7 +416,6 @@ function B:DrawRows(offset)
                     A.UI.Plan.key=f.entry.key
                     A.UI.Plan.preview=f.entry.choice
                 end
-                if self.mode==4 then A.UI.Dungeon.selected=f.entry.key end
                 for _,r in ipairs(self.rows) do
                     if r.entry==previous or r==f then markRow(r,r==f) end
                 end
@@ -543,7 +571,6 @@ function B:Detail()
             self:Action(3,"恢复练级导航",function() A.Selection:Automatic();self:Refresh(self.mode) end)
         end
     elseif e.dungeon then
-        A.UI.Dungeon.selected=e.key
         local batch=A.char.taskBatch
         local current=batch and batch.id==e.key
         local preparable=current or false
@@ -849,11 +876,12 @@ function B:DungeonDetail(e)
         end
         row.deferred=(A.state.skipped or {})[task.id] or (A.state.chainDeferred or {})[task.id]
         row.revision=A.plan and A.plan.revision
-        row.text:SetWidth(292-64*(A.settings.fontScale or 1));row.text:SetText(task.title);row.text:SetTextColor(unpack(tones[task.group] or colors.muted))
+        local statusWidth=64*A.UI:FontScale()
+        row.text:SetWidth(292-statusWidth);row.text:SetText(task.title);row.text:SetTextColor(unpack(tones[task.group] or colors.muted))
         local active=(A.state.quests or {})[task.id]
         local icon=task.group==5 and "done" or A.UI.QuestIcon(task.group==1 and "turnin" or task.group==2 and "objective" or "accept",nil,active and active.objectives)
         row.icon:SetText(A.UI:Icon(icon,14))
-        row.status:SetWidth(64*(A.settings.fontScale or 1));row.status:SetText(i>=insideFirst and i<insideFirst+#inside and "副本内接" or task.group==4 and (task.preparation and "需前置" or "未解锁") or task.status)
+        row.status:SetWidth(statusWidth);row.status:SetText(i>=insideFirst and i<insideFirst+#inside and "副本内接" or task.group==4 and (task.preparation and "需前置" or "未解锁") or task.status)
         row.status:SetTextColor(unpack(tones[task.group]))
         local direction,seconds=d:TaskDirection(task)
         row.direction=direction

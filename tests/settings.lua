@@ -97,7 +97,8 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     eq(B.UI.title.fontSize,13*1.2);eq(B.UI.title.shadowColor[4],0)
     B.settings.fontScale=1.1;listeners.Login();eq(B.UI.title.fontSize,13*1.2*1.1)
     B.UI.details.scripts.OnSizeChanged()
-    eq(B.UI.details.daylightOpts.window,true);eq(B.UI.details.daylightOpts.bgAlpha,0.40)
+    eq(B.UI.details.daylightOpts.window,true);eq(B.UI.details.daylightOpts.bgAlpha,0.90)
+    eq(B.UI.Browser.detail.fontSize,16*1.2*1.1);eq(B.UI.Browser.detail.fontFace,face)
     eq(B.UI.frame.daylightOpts.bgAlpha,0.4);eq(B.UI.tracker.nearby.daylightOpts.bgAlpha,0.4)
     local link=B.UI.tracker.career.view
     eq(link.hiddenLayer,"BACKGROUND");eq(link.fill.color[4],0)

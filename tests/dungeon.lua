@@ -140,6 +140,13 @@ return function(test,eq,F,plan)
         eq(rows["reference:3065"].levels,"推荐 13—20级")
         eq(rows["reference:3109"].levels,"查看任务")
         eq(rows["reference:36"].tasks[1].id,7938)
+        s.level=40
+        local browser=B.UI.Browser
+        eq(browser:DungeonRows()[1].levelGap,0)
+        B.char.taskBatch={id="reference:2970"}
+        eq(browser:DungeonRows()[1].title,"沉没之城")
+        s.inInstance,s.instanceId=true,36
+        eq(browser:DungeonRows()[1].title,"死亡矿井")
         eq(entries["reference:36"].minLevel,nil)
         eq(B.DungeonCatalog.entryLevels[36],10)
     end)

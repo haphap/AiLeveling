@@ -4,6 +4,7 @@ local UI = A.UI
 local backgroundAlpha=0.40 -- 60% transparent
 UI.colors={
     bg={0.040,0.044,0.073,backgroundAlpha}, sidebar={0.032,0.035,0.055,backgroundAlpha},
+    detailBg={0.040,0.044,0.073,0.90},
     panel={0,0,0,0}, button={0.095,0.102,0.145,backgroundAlpha},
     hover={0.22,0.24,0.32,backgroundAlpha}, selected={0.19,0.22,0.30,backgroundAlpha},
     rowHover={0.31,0.36,0.49,backgroundAlpha}, hud={0.042,0.046,0.067,backgroundAlpha},
@@ -61,13 +62,21 @@ function UI:StyleFont(entry)
         entry.text:SetShadowOffset(sample:GetShadowOffset())
         entry.text:SetShadowColor(sample:GetShadowColor())
     end
+    if entry.detail then
+        size=math.max(size,(entry.size+2)*(api and api.GetSetting("general","fontScale") or 1))
+        flags=entry.flags or ""
+        entry.text:SetShadowOffset(1,-1)
+        entry.text:SetShadowColor(0,0,0,0.8)
+    end
     entry.text:SetFont(face,size*(A.settings.fontScale or 1),flags or "")
 end
 
 function UI:RegisterFont(text,size,role,flags)
     local daylightRole=daylightRoles[size] or (type(size)=="number" and size<=12 and "small" or "body")
     size=type(size)=="string" and self.fontSizes[size] or size
-    self.fonts[#self.fonts+1]={text=text,size=size,role=role,flags=flags,daylightRole=daylightRole}
+    local parent=self.details and text
+    while parent and parent~=self.details do parent=parent:GetParent() end
+    self.fonts[#self.fonts+1]={text=text,size=size,role=role,flags=flags,daylightRole=daylightRole,detail=parent~=nil}
     self:StyleFont(self.fonts[#self.fonts])
 end
 
@@ -180,10 +189,10 @@ function UI:Rounded(frame,radius,border)
     end
 end
 
-function UI:DaylightShell(frame,alpha)
+function UI:DaylightShell(frame,alpha,windowColor)
     local api=self.daylight
     if not api then return end
-    local opts=alpha and {panel=true,bgAlpha=alpha} or {window=true,bgAlpha=colors.bg[4]}
+    local opts=alpha and {panel=true,bgAlpha=alpha} or {window=true,bgAlpha=(windowColor or colors.bg)[4],bgColor=windowColor}
     local function paint() api.Skin(frame,opts) end
     local refresh=paint
     if frame==self.navFrame then
@@ -200,11 +209,11 @@ function UI:DaylightShell(frame,alpha)
     frame:HookScript("OnSizeChanged",paint)
 end
 
-function UI:Panel(name, parent, width, height)
+function UI:Panel(name, parent, width, height,background)
     local f = CreateFrame("Frame", name, parent or UIParent, "BackdropTemplate")
     f:SetSize(width, height)
-    if self.daylight then self:DaylightShell(f)
-    else self:Rounded(f,metrics.radius,colors.border);f:SetBackdropColor(unpack(colors.bg)) end
+    if self.daylight then self:DaylightShell(f,nil,background)
+    else self:Rounded(f,metrics.radius,colors.border);f:SetBackdropColor(unpack(background or colors.bg)) end
     return f
 end
 
@@ -375,7 +384,7 @@ end
 
 function UI:Create()
     self:CreateTracker()
-    self.details = self:Panel("AiLevelingDetails", UIParent, 1000, 600)
+    self.details = self:Panel("AiLevelingDetails", UIParent, 1000, 600,colors.detailBg)
     self.details:SetPoint("CENTER")
     local p=A.settings.detailPosition
     if p then self.details:ClearAllPoints();self.details:SetPoint(p[1],UIParent,p[2],p[3],p[4]) end
@@ -437,7 +446,7 @@ function UI:Create()
     if self.daylight then
         local function refresh()
             self:ApplyStyle();self:RenderTracker()
-            if self.details:IsShown() then self:SelectTab(self.selectedTab or 1) end
+            if self.details:IsShown() then self:SelectTab(self.selectedTab or 1,true) end
         end
         self.daylight.On("StyleChanged",refresh,"AiLeveling")
         self.daylight.On("Login",refresh,"AiLeveling")
@@ -529,7 +538,7 @@ function UI:SelectTab(index,reuse)
     self.Browser.frame:SetShown(browse)
     self.scroll:SetShown(not browse and index~=5 and index~=2)
     self.scroll:SetPoint("TOPLEFT",194,index==7 and -178 or -96)
-    if browse then self.Browser:Refresh(index,reuse);return end
+    if browse then self.Browser:Refresh(index,reuse,not reuse);return end
     if index == 5 then self.Settings:Refresh(); return end
     if index == 2 then self.Chains:Refresh();return end
     local lines={}
