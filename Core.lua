@@ -418,7 +418,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
         for _, name in ipairs({"PLAYER_ENTERING_WORLD", "QUEST_LOG_UPDATE", "QUEST_WATCH_UPDATE", "QUEST_ACCEPTED",
             "QUEST_DATA_LOAD_RESULT", "QUEST_REMOVED", "QUEST_TURNED_IN", "QUEST_COMPLETE", "QUEST_PROGRESS", "QUEST_FINISHED", "GOSSIP_SHOW", "GOSSIP_CLOSED", "QUEST_DETAIL", "PLAYER_LEVEL_UP", "PLAYER_XP_UPDATE",
             "PLAYER_EQUIPMENT_CHANGED", "BAG_UPDATE_DELAYED", "GROUP_ROSTER_UPDATE", "CHAT_MSG_ADDON", "PARTY_LEADER_CHANGED", "UNIT_CONNECTION", "UNIT_NAME_UPDATE", "PLAYER_ROLES_ASSIGNED", "UNIT_SPEED", "PLAYER_TARGET_CHANGED", "PLAYER_FLAGS_CHANGED", "PLAYER_LOGOUT",
-            "ZONE_CHANGED_NEW_AREA", "PLAYER_DIFFICULTY_CHANGED", "PLAYER_ALIVE", "PLAYER_DEAD", "PLAYER_UNGHOST", "PLAYER_REGEN_ENABLED",
+            "ZONE_CHANGED_NEW_AREA", "MINIMAP_UPDATE_TRACKING", "PLAYER_DIFFICULTY_CHANGED", "PLAYER_ALIVE", "PLAYER_DEAD", "PLAYER_UNGHOST", "PLAYER_REGEN_ENABLED",
             "PLAYER_REGEN_DISABLED", "GET_ITEM_INFO_RECEIVED", "BAG_UPDATE_COOLDOWN", "BAG_OPEN", "BAG_CLOSED", "UPDATE_INVENTORY_DURABILITY", "MERCHANT_SHOW", "MERCHANT_CLOSED"}) do
             frame:RegisterEvent(name)
         end
@@ -434,6 +434,8 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if C_TooltipInfo and (C_TooltipInfo.GetHyperlink or C_TooltipInfo.GetTrainerService) then frame:RegisterEvent("TOOLTIP_DATA_UPDATE") end
         if C_Spell and C_Spell.GetSpellDescription then frame:RegisterEvent("SPELL_TEXT_UPDATE") end
         A.Instances:Request()
+    elseif event=="MINIMAP_UPDATE_TRACKING" then
+        A.Navigation:DrawPins()
     elseif event=="CHAT_MSG_ADDON" then
         return
     elseif event=="QUEST_COMPLETE" then

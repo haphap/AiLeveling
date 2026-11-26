@@ -243,6 +243,36 @@ test("地图标记按任务阶段合并并移除失效的导航步骤",function(
     eq(B.state.quests[1].objectives[1].finished,true);eq(B.state.completed[1],nil)
     B.finish()
 end)
+test("低等级接取跟随追踪开关，同站适级任务和手动目标保持可见",function()
+    local B=setupMap()
+    local oldMinimap,oldLog,oldRange=C_Minimap,C_QuestLog,UnitQuestTrivialLevelRange
+    local trackLow=false
+    C_Minimap={IsTrackingHiddenQuests=function() return trackLow end}
+    C_QuestLog={IsQuestTrivial=function(id) return id==203 end, GetQuestDifficultyLevel=function(id) return id==204 and 34 or 0 end}
+    UnitQuestTrivialLevelRange=function() return 8 end
+    B.state.level=34
+    local function offer(id,level,x)
+        return {questId=id,level=level,actions={{kind="accept",questId=id,position={map=1433,x=x,y=.46}}}}
+    end
+    local low,normal,other,scaled=offer(201,18,.30),offer(202,26,.30),offer(203,nil,.32),offer(204,18,.35)
+    B.Navigation:SetPlan({revision=B.state.revision,taskChoices={low,normal,other,scaled}})
+    local points=B.Navigation:MapPoints()
+    eq(#points,2);eq(points[1].action.questId,202);eq(#points[1].actions,1)
+    trackLow=true;B.frame.scripts.OnEvent(B.frame,"MINIMAP_UPDATE_TRACKING")
+    local pins=B.Navigation.pins
+    eq(#B.Navigation:MapPoints(),3)
+    for _,i in ipairs({1,2}) do
+        eq(pins[i].action.questId,202);eq(#pins[i].point.actions,2);eq(pins[i].texture:IsDesaturated(),false)
+        eq(pins[i+2].action.questId,203);eq(pins[i+2].texture:IsDesaturated(),true)
+        assert(pins[i+2]:GetWidth()<pins[i]:GetWidth())
+    end
+    trackLow=false;B.Navigation:DrawPins()
+    eq(pins[3].action.questId,204);eq(pins[3].texture:IsDesaturated(),false)
+    assert(B.Navigation:Navigate(other.actions[1]))
+    eq(pins[1].action.questId,203);eq(pins[1].number.value,"1");eq(pins[1].texture:IsDesaturated(),false)
+    C_Minimap,C_QuestLog,UnitQuestTrivialLevelRange=oldMinimap,oldLog,oldRange
+    B.finish()
+end)
 test("普通任务地图点只显示可执行的接取、目标和交付",function()
     local B=setupMap()
     local choices={}

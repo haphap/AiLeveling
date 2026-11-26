@@ -333,7 +333,7 @@ function N:MapPoints()
     local sequence=self:Sequence()
     local status=self:RouteStatus(self.plan,A.state)
     local upcoming=self.upcomingManual==self.manual and (self.manual or not status) and self.upcomingQuest or nil
-    local function add(action,required,catalog)
+    local function add(action,required,catalog,lowOffer)
         if action and A.ShortestPath and A.ShortestPath:For(action) and action~=current then return end
         if N.StaleAction(action,A.state,sequence.plan) then return end
         local pos=N.Target(action)
@@ -353,8 +353,14 @@ function N:MapPoints()
         end
         if not point then
             if routeCount>=6 and not required then return end
-            point={position=pos,action=action,actions={},seen={}}
+            point={position=pos,action=action,actions={},seen={},lowOnly=lowOffer}
             points[#points+1]=point
+        elseif point.lowOnly and not lowOffer then
+            point.lowOnly,point.action=nil,action
+        end
+        if lowOffer then
+            point.lowOffers=point.lowOffers or {}
+            point.lowOffers[action.questId]=true
         end
         if contacts and not knownContact then contacts[#contacts+1]=point end
         seen[key]=point
@@ -403,6 +409,10 @@ function N:MapPoints()
     if A.settings.mapTaskScope=="route" then return points end
     -- Reuse resolved candidates; map coverage must not depend on the six-stop route preview.
     local choices=status~="replaced" and self.plan and self.plan.taskChoices
+    local trackLow=not (C_Minimap and C_Minimap.IsTrackingHiddenQuests) or C_Minimap.IsTrackingHiddenQuests()
+    local range=UnitQuestTrivialLevelRange and UnitQuestTrivialLevelRange("player") or
+        C_QuestLog and C_QuestLog.GetTrivialRange and C_QuestLog.GetTrivialRange()
+    local cutoff=range and A.state.level and A.state.level-range
     for _,choice in ipairs(choices or {}) do
         local id=choice.questId
         local active=(A.state.quests or {})[id]
@@ -410,7 +420,15 @@ function N:MapPoints()
             not (A.state.completed or {})[id] and not (A.state.skipped or {})[id] and not (A.state.chainDeferred or {})[id] then
             if not active then
                 local pickup=choice.pickupAction or not choice.revisitLevel and choice.actions and choice.actions[1]
-                if pickup and pickup.kind=="accept" then add(pickup,true,true) end
+                if pickup and pickup.kind=="accept" then
+                    local low=C_QuestLog and C_QuestLog.IsQuestTrivial and C_QuestLog.IsQuestTrivial(id)
+                    if not low and cutoff and choice.level and choice.level>0 and choice.level<cutoff then
+                        -- Off-log offers can lack client data. Prefer a live scaled level when available.
+                        local live=C_QuestLog and C_QuestLog.GetQuestDifficultyLevel and C_QuestLog.GetQuestDifficultyLevel(id)
+                        low=not live or live<=0 or live<cutoff
+                    end
+                    if trackLow or not low then add(pickup,true,true,low) end
+                end
             elseif not choice.revisitLevel then
                 local kind=active.ready and "turnin" or "objective"
                 for _,stage in ipairs(choice.stages or choice.actions or {}) do
@@ -570,6 +588,7 @@ local function showPinTip(pin)
             local label=action.kind=="accept" and (action.position and action.position.pickupLoot and "拾取任务物品" or "接取任务") or action.kind=="turnin" and
                 (active and active.ready and "交付任务" or "完成后交付") or action.kind=="objective" and
                 (not active and "接取后目标" or action.targetKind=="item" and "收集目标" or "任务目标") or "前往"
+            if action.kind=="accept" and point.lowOffers and point.lowOffers[action.questId] then label=label.."（低等级）" end
             local objective=active and active.objectives and active.objectives[action.objectiveIndex]
             local detail=action.kind=="objective" and (objective and objective.text or action.text)
             if detail and objective and objective.numRequired and objective.numRequired>0 then
@@ -791,11 +810,42 @@ local function watchHandinPins()
     N.QueueHandinPins()
 end
 
+-- Native offers reset desaturation for their floor on every acquisition, including pooled pins.
+local function styleNativeOffer(_,pin)
+    if pin.pinTemplate~="QuestOfferPinTemplate" then return end
+    pin.aiLevelingLowOffer=nil
+    if N.nativeOffersEnabled and pin.questIcon=="QuestNormal" and
+        (pin.isHidden or C_QuestLog and C_QuestLog.IsQuestTrivial and C_QuestLog.IsQuestTrivial(pin.questID)) and
+        not pin.Texture:IsDesaturated() then
+        pin.Texture:SetDesaturated(true)
+        pin.aiLevelingLowOffer=true
+    end
+end
+
+local function syncNativeOffers()
+    local map=WorldMapFrame
+    if not (map and map.RegisterPin and map.EnumeratePinsByTemplate and hooksecurefunc) then return end
+    local enabled=A.settings.pins and A.settings.mapTaskScope~="off" and not A.char.paused
+    if N.nativeOffersEnabled==enabled then return end
+    N.nativeOffersEnabled=enabled
+    if enabled and not N.nativeOfferHook then
+        hooksecurefunc(map,"RegisterPin",styleNativeOffer)
+        N.nativeOfferHook=true
+    end
+    for pin in map:EnumeratePinsByTemplate("QuestOfferPinTemplate") do
+        if enabled then styleNativeOffer(map,pin)
+        elseif pin.aiLevelingLowOffer then
+            pin.Texture:SetDesaturated(false)
+            pin.aiLevelingLowOffer=nil
+        end
+    end
+end
+
 local function stylePin(pin,point,action,r,g,b,hitOnly)
     pin.point,pin.action=point,action
     if not pin.mini then showGlyph(pin,true) end
     pin:SetAlpha(hitOnly and 0 or 1)
-    local size=(pin.mini and 19 or 24)+(point.current and 4 or 0)
+    local size=(pin.mini and 19 or 24)+(point.current and 4 or point.lowOnly and -4 or 0)
     pin:SetSize(size,size)
     pin.texture:SetSize(size-4,size-4)
     pin.ring:SetSize(size+(point.current and 5 or 0),size+(point.current and 5 or 0))
@@ -806,6 +856,7 @@ local function stylePin(pin,point,action,r,g,b,hitOnly)
         else pin.badge:SetVertexColor(0.16,0.16,0.19);pin.number:SetTextColor(1,1,1) end
     end
     pin.texture:SetTexture(actionTexture(action))
+    pin.texture:SetDesaturated(point.lowOnly==true)
 end
 
 local function updateEdge(pin,pins)
@@ -827,6 +878,7 @@ function N:RefreshPins(force)
 end
 
 function N:DrawPins()
+    syncNativeOffers()
     if self.mapAreaAction and (not isAreaTarget(self.mapAreaAction) or A.char.paused or A.settings.mapTaskScope=="off") then clearMapArea() end
     self.hasHandinPins=nil
     if not self.hbdPins then return end
@@ -841,7 +893,10 @@ function N:DrawPins()
         local nearby=availableAction(action) and action
         if not nearby then
             for _,other in ipairs(point.actions) do
-                if availableAction(other) then nearby=other;break end
+                if availableAction(other) then
+                    nearby=other
+                    if other.kind~="accept" or not (point.lowOffers and point.lowOffers[other.questId]) then break end
+                end
             end
         end
         -- A walk ending at the quest pin should show what to do on arrival.

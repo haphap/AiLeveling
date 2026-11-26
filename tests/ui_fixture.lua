@@ -64,7 +64,8 @@ local function widget()
     w.GetChecked=function(self) return self.checked end;w.SetChecked=function(self,v) self.checked=v end
     w.SetAttribute=function(self,k,v) assert(not InCombatLockdown(),"战斗中修改了受保护按钮");self.attributeWrites=self.attributeWrites+1;self[k]=v end
     w.SetRotation=function(self,value) self.rotation=value end
-    w.SetDesaturated=function() end
+    w.SetDesaturated=function(self,v) self.desaturated=v end
+    w.IsDesaturated=function(self) return self.desaturated or false end
     w.SetScrollChild=function(self,child) self.child=child end
     w.SetVerticalScroll=function(self,v) self.offset=v end
     w.GetVerticalScroll=function(self) return self.offset or 0 end
