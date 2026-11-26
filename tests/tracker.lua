@@ -172,12 +172,18 @@ test("未列入行程的任务链接打开对应详情并保留当前路线",fun
     local B=ready(true);local browser=B.UI.Browser
     assert(loadfile("Planner/Eligibility.lua"))("AiLeveling",B)
     B.state.quests[1]=nil;B.plan.taskChoices={};B.plan.taskOrder={}
+    for id=10,32 do B.state.quests[id]={title="日志任务 "..id,objectives={}} end
     B.Data.db={Quest={Get=function(id,key)
         if id==1 and key=="objectivesText" then return {"把包裹送到旅店。"} end
     end}}
     C_QuestLog.GetLogIndexForQuestID=function() return 0 end
     browser.infoChild.scripts.OnHyperlinkClick(browser.infoChild,"quest:1:0","测试任务","LeftButton")
     eq(browser.selected.questId,1);assert(browser.detail.value:find("把包裹送到旅店。",1,true))
+    assert(browser.list:GetVerticalScroll()>0)
+    local visible=false
+    for _,r in ipairs(browser.rows) do if r:IsShown() and r.entry==browser.selected then visible=r.marker:IsShown() end end
+    eq(visible,true)
+    browser.info:SetVerticalScroll(80);B.UI:RefreshDetails();eq(browser.info:GetVerticalScroll(),80)
     eq(B.UI.selectedTab,1);eq(B.Navigation.manual,nil);eq(B.char.locked,nil);eq(#B.plan.taskChoices,0)
     eq(browser.buttons[2].text.value,"暂时不做");browser.buttons[2]:Click()
     B.UI.Plan.key=nil
@@ -243,6 +249,8 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     eq(rows[2].value.value,"下一站 · 接 未接任务");assert(rows[3].value.value:find("22级",1,true))
     eq(T.region.shown,true)
     T.region.scripts.OnClick();eq(browser.selection[10],"map:2")
+    browser.search:SetText("其他地方");browser.search.scripts.OnTextChanged(browser.search)
+    eq(#browser.filtered,0);T.region:Click();eq(browser.selected.region.map,2);eq(browser.search:GetText(),"")
     assert(browser.detail.value:find("出发前交付",1,true))
     assert(browser.detail.value:find("到达后接取",1,true))
     assert(browser.detail.value:find("22级回访",1,true))
@@ -643,11 +651,11 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     timers[#timers]();U:RenderTracker();eq(T.model.feedback,nil)
     B.state.quests=savedQuests;C_Timer=oldTimer
     B.Dungeon=previous;B.state.locked=nil
-    local browser,dungeon,selectTab=U.Browser,U.Dungeon,U.SelectTab
-    U.Browser={ClearSearch=function(b) b.cleared=true end,dungeonDetail={showLoot=true}};U.Dungeon={}
+    local dungeon,selectTab=U.Dungeon,U.SelectTab
+    U.Dungeon={}
     U.SelectTab=function(_,i) eq(i,4) end
-    T.questTitle:Click();eq(U.Dungeon.selected,"reference:90");eq(U.Browser.cleared,true);eq(U.Browser.dungeonDetail.showLoot,false)
-    U.Browser,U.Dungeon,U.SelectTab=browser,dungeon,selectTab;U.details:Hide()
+    T.questTitle:Click();eq(U.Dungeon.selected,"reference:90")
+    U.Dungeon,U.SelectTab=dungeon,selectTab;U.details:Hide()
     B.state.inInstance=false;U:RenderTracker();eq(U.frame,originalFrame);eq(T.instanceRoster,nil);eq(T.model.dungeonName,nil);assert(#T.model.rows>0)
     B.indexReady=indexReady
     B.settings.arrow=true

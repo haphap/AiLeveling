@@ -1070,10 +1070,7 @@ function UI:CreateTracker()
         if mouse=="RightButton" then self:TrackerMenu(T.questTitle)
         elseif T.questTitle.questId then self:QuestClick(T.questTitle.questId,mouse)
         elseif T.model and T.model.dungeonName then
-            if T.model.dungeonId then
-                self.Dungeon.selected=T.model.dungeonId;self.Browser:ClearSearch()
-                if self.Browser.dungeonDetail then self.Browser.dungeonDetail.showLoot=false end
-            end
+            self.Dungeon.selected=T.model.dungeonId
             self.details:Show();self:SelectTab(T.model.dungeonId and 4 or 1)
         end
     end)
@@ -1163,7 +1160,7 @@ function UI:CreateTracker()
     T.region:SetScript("OnLeave",function() T.region.more:SetVertexColor(unpack(palette.muted)) end)
     T.region:SetScript("OnClick",function()
         local region=T.region.region
-        if region then self.Browser.selection[10]="map:"..region.map end
+        if region then self.Browser.selection[10]="map:"..region.map;self.Browser:ClearSearch() end
         self.details:Show();self:SelectTab(10)
     end)
     T.queuePanel=CreateFrame("Frame",nil,T.currentChild)

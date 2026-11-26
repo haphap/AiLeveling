@@ -108,6 +108,11 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     eq(B.UI.colors.sidebar[4],0.40);eq(B.UI.colors.selected[4],0.40)
     B.UI:TrackerMenu(B.UI.frame);assert(menuItems["详细面板"]);menuItems["详细面板"]()
     assert(B.UI.Browser.frame:IsShown());assert(B.UI.details:IsShown())
+    local book=B.UI.Browser
+    local button=book.buttons[1]
+    button.text:SetText(string.rep("长任务名",10));button.text.measuredHeight=60;button:Show()
+    book:PlaceActions(0)
+    eq(button.text.wordWrap,true);eq(button:GetWidth(),book.info:GetWidth());assert(button:GetHeight()>=68)
     local toggle=control(B,"quantity").button;toggle.scripts.OnClick();eq(B.settings.quantity,false);eq(toggle.checked,false)
     B.finish()
 

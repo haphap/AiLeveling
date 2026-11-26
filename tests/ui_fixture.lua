@@ -29,6 +29,7 @@ local function widget()
     w.SetText=function(self,v) self.value=v end;w.GetText=function(self) return self.value or "" end
     w.GetStringHeight=function(self) return self.measuredHeight or 30 end
     w.GetStringWidth=function(self) return #(self.value or "")/3*(self.fontSize or 12) end
+    w.SetWordWrap=function(self,enabled) self.wordWrap=enabled end
     w.SetFont=function(self,face,size,flags)
         assert(self.kind~="EditBox" or type(flags)=="string","bad argument #3 to SetFont: EditBox requires flags")
         self.fontFace,self.fontSize,self.fontFlags=face,size,flags

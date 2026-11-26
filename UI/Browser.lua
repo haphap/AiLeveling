@@ -58,6 +58,7 @@ function B:Create(parent)
         local query=box:GetText():lower()
         if self.query==query then return end
         self.query=query;self.searchHint:SetShown(query=="")
+        self.selected=nil
         if self.mode then self.list:SetVerticalScroll(0);self:Refresh(self.mode,true) end
     end
     if A.UI.daylight then self.search:HookScript("OnTextChanged",onTextChanged)
@@ -93,6 +94,7 @@ function B:Create(parent)
     for i=1,5 do
         local create=i==1 and A.UI.Button or A.UI.ListButton
         local b=create(A.UI,self.infoChild,"",330,function() local f=self.buttons[i].run;if f then f() end end,"body")
+        b.text:SetWordWrap(true)
         self.buttons[i]=b
     end
     self.rows={};self.frame:Hide()
@@ -208,6 +210,8 @@ function B:TaskRows(mode)
         end
         table.sort(rows,function(a,b)
             if a.allowed~=b.allowed then return a.allowed end
+            local heldA,heldB=state.quests[a.questId]~=nil,state.quests[b.questId]~=nil
+            if heldA~=heldB then return heldA end
             if (a.choice.unlock~=nil)~=(b.choice.unlock~=nil) then return a.choice.unlock~=nil end
             local al,bl=a.q.requiredLevel or 0,b.q.requiredLevel or 0
             if al~=bl then return al<bl end
@@ -304,7 +308,7 @@ function B:Refresh(mode,reuse,opening)
         self.summary:ClearAllPoints();self.summary:SetPoint("TOPLEFT",tasks and 106 or 0,tasks and -5 or 0)
         self.summary:SetWidth(listWidth-(tasks and 96 or 0));self.summary:SetJustifyH(tasks and "RIGHT" or "LEFT")
         self.search:SetWidth(listWidth+10)
-        self.searchHint:SetText(mode==4 and "搜索地下城名称" or "搜索名称或任务编号")
+        self.searchHint:SetText(({[3]="搜索装备名称或物品编号",[4]="搜索地下城名称",[10]="搜索区域名称"})[mode] or "搜索任务名称或编号")
         self.list:SetSize(listWidth,tasks and 482 or 420);self.child:SetWidth(listWidth)
         self.divider:ClearAllPoints();self.divider:SetPoint("TOPLEFT",split,0);self.divider:SetPoint("BOTTOMLEFT",split,0)
         self.info:ClearAllPoints();self.info:SetPoint("TOPLEFT",split+24,tasks and 0 or -14)
@@ -319,6 +323,7 @@ function B:Refresh(mode,reuse,opening)
         A.UI.Dungeon.selected=nil
         self.selection[4]=requested
         self:ClearSearch()
+        if requested and self.dungeonDetail then self.dungeonDetail.showLoot=false end
     end
     local rows
     if reuse then rows=self.entries
@@ -339,7 +344,8 @@ function B:Refresh(mode,reuse,opening)
     if self.query and self.query~="" then
         local filtered={}
         for _,row in ipairs(rows) do
-            if row.title:lower():find(self.query,1,true) or tostring(row.questId or ""):find(self.query,1,true) then filtered[#filtered+1]=row end
+            local id=row.questId or row.item and row.item.id
+            if row.title:lower():find(self.query,1,true) or id and tostring(id):find(self.query,1,true) then filtered[#filtered+1]=row end
         end
         rows=filtered
     end
@@ -347,12 +353,13 @@ function B:Refresh(mode,reuse,opening)
     if mode==1 then
         key=A.UI.Plan.key
         if not key then for _,row in ipairs(rows) do if row.current then key=row.key;break end end end
+    elseif mode==3 and not key and A.char.gearTarget then
+        key="source:"..A.char.gearTarget
     end
     local selectedIndex=1
     for i,row in ipairs(rows) do if row.key==key then selectedIndex=i;break end end
     local previousKey=self.selected and self.selected.key
     self.selected=rows[selectedIndex]
-    if mode~=4 then self.selection[mode]=self.selected and self.selected.key end
     if mode==1 then A.UI.Plan.preview=self.selected and self.selected.choice end
     local summary=#rows..(mode==10 and " 个练级区域" or mode==4 and " 个地下城" or mode==3 and " 件装备" or " 项任务")
     if mode==1 then
@@ -371,7 +378,7 @@ function B:Refresh(mode,reuse,opening)
     local height=math.max(1,#rows*self.rowPitch)
     self.child:SetHeight(height)
     local offset=math.min(self.list:GetVerticalScroll(),math.max(0,height-self.list:GetHeight()))
-    if mode==4 and self.selected and (opening or requested or previousKey~=self.selected.key) then
+    if self.selected and (opening or requested or previousKey~=self.selected.key) then
         offset=math.max(0,math.min(offset,(selectedIndex-1)*self.rowPitch))
         offset=math.max(offset,selectedIndex*self.rowPitch-self.list:GetHeight())
         self.info:SetVerticalScroll(0)
@@ -460,14 +467,17 @@ function B:PlaceActions(y)
     local x,bottom=0,y
     for i,button in ipairs(self.buttons) do
         if button:IsShown() then
+            button.text:SetWidth(0)
             local w=math.min(self.info:GetWidth(),math.ceil(button.text:GetStringWidth())+24)
+            button.text:SetWidth(w-24)
             if x>0 and x+w>self.info:GetWidth() then x=0;y=bottom end
-            button:ClearAllPoints();button:SetPoint("TOPLEFT",x,-y);button:SetWidth(w)
+            button:ClearAllPoints();button:SetPoint("TOPLEFT",x,-y)
+            button:SetSize(w,math.max(metrics.button,math.ceil(button.text:GetStringHeight())+8))
             if i>1 then
                 button.baseColor=colors.panel;button:SetBackdropColor(unpack(colors.panel))
                 button.text:SetTextColor(unpack(button:IsEnabled() and colors.blue or colors.muted))
             end
-            x=x+w+metrics.gap;bottom=y+button:GetHeight()+metrics.gap
+            x=x+w+metrics.gap;bottom=math.max(bottom,y+button:GetHeight()+metrics.gap)
         end
     end
     return bottom
@@ -676,13 +686,14 @@ function B:DungeonLoot(view,groups,y)
                 view.boss=view.boss==i and 0 or i
                 self:DungeonDetail(self.selected)
             end,"body")
-            button.text:ClearAllPoints();button.text:SetPoint("LEFT",6,0)
+            button.text:ClearAllPoints();button.text:SetPoint("LEFT",6,0);button.text:SetWidth(314);button.text:SetJustifyH("LEFT")
             view.bosses[i]=button
         end
         local expanded=view.boss==i
         local name=group.npc and db and db.Npc.Get(group.npc,"name") or group.name
         button.text:SetText((expanded and "−  " or "+  ")..name..
             (group.wing and " · "..group.wing or "")..color(muted,"  "..#group.items.." 件"))
+        button:SetHeight(math.max(metrics.button,math.ceil(button.text:GetStringHeight())+8))
         button:ClearAllPoints();button:SetPoint("TOPLEFT",0,-y);button:Show()
         y=y+button:GetHeight()+metrics.gap
         if expanded then
@@ -724,7 +735,7 @@ function B:DungeonDetail(e)
         view.xp=A.UI:Text(view,"title",colors.gold);view.xp:SetWidth(162)
         view.tasksLabel=A.UI:Text(view,"caption",colors.muted);view.tasksLabel:SetWidth(154)
         view.xpLabel=A.UI:Text(view,"caption",colors.muted);view.xpLabel:SetWidth(162);view.xpLabel:SetText("任务经验")
-        view.hint=A.UI:Text(view,"body");view.hint:SetWidth(326);view.hint:SetMaxLines(2)
+        view.hint=A.UI:Text(view,"body");view.hint:SetWidth(326)
         view.note=CreateFrame("Frame",nil,view);view.note:SetAllPoints(view.hint);view.note:EnableMouse(true)
         view.note:SetScript("OnEnter",function(f)
             GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText("当前安排")
@@ -829,7 +840,7 @@ function B:DungeonDetail(e)
         if not row then
             row=A.UI:Button(view,"",326,function() end,"body")
             row.baseColor=colors.panel;row:SetBackdropColor(0,0,0,0)
-            row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",metrics.indent,-metrics.gap);row.text:SetMaxLines(2)
+            row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",metrics.indent,-metrics.gap);row.text:SetWordWrap(true)
             row.icon=A.UI:Text(row,"body");row.icon:SetPoint("TOPLEFT",0,-metrics.gap)
             row.status=A.UI:Text(row,"caption");row.status:SetPoint("TOPRIGHT",0,-metrics.gap);row.status:SetJustifyH("RIGHT")
             row.meta=A.UI:Text(row,"caption",colors.muted);row.meta:SetWidth(302)
@@ -867,7 +878,7 @@ function B:DungeonDetail(e)
             end,"caption")
             row.route.baseColor=colors.panel;row.route:SetBackdropColor(0,0,0,0)
             row.route.text:ClearAllPoints();row.route.text:SetPoint("TOPLEFT");row.route.text:SetWidth(302)
-            row.route.text:SetMaxLines(2);row.route.text:SetJustifyH("LEFT");row.route.text:SetTextColor(unpack(colors.blue))
+            row.route.text:SetWordWrap(true);row.route.text:SetJustifyH("LEFT");row.route.text:SetTextColor(unpack(colors.blue))
             row.route:SetScript("OnEnter",function(f)
                 GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(row.direction or "任务指引")
                 GameTooltip:AddLine("点击单独导航；接取后继续引导任务目标。",0.9,0.85,0.8,true);GameTooltip:Show()
