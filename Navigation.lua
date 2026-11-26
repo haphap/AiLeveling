@@ -643,6 +643,43 @@ local function actionTexture(action)
     return A.UI.IconTexture(icon=="compass" and "location" or icon)
 end
 
+local function sameMapSpot(map,x,y,p)
+    return p and p.map==map and math.abs(p.x-x)<.00001 and math.abs(p.y-y)<.00001
+end
+
+-- WaypointUI writes a 2D user waypoint, including when SPF hands it a route.
+-- Restore the height only on that same, still tracked pin. A bend can be on
+-- another floor from the destination, even on a short walk.
+local function syncWaypointHeight(api,nav,goal,route)
+    if not (nav and nav.flags==(route and "ShortestPathForever" or "AiLeveling") and
+        C_Map and C_Map.GetUserWaypoint and C_Map.SetUserWaypoint and UiMapPoint) then
+        N.heightPin=nil
+        return
+    end
+    local p=goal and N.Target(goal)
+    if not (sameMapSpot(nav.mapID,nav.x,nav.y,p) and p.z) then
+        p=route and route:GuidancePoint()
+    end
+    if not (p and p.z and sameMapSpot(nav.mapID,nav.x,nav.y,p) and api.IsUserNavigationTracked()) then
+        N.heightPin=nil
+        return
+    end
+    local pin=C_Map.GetUserWaypoint()
+    if not (pin and pin.position and sameMapSpot(pin.uiMapID,pin.position.x,pin.position.y,p)) then
+        N.heightPin=nil
+        return
+    end
+    if pin.z and math.abs(pin.z-p.z)<.01 then
+        N.heightPin=nil
+        return
+    end
+    -- Some clients omit z on readback. One write per marker also bounds synchronous waypoint events.
+    if sameMapSpot(nav.mapID,nav.x,nav.y,N.heightPin) and N.heightPin.z==p.z then return end
+    if InCombatLockdown() or route and not route.api.CurrentStop("AiLeveling") then return end
+    N.heightPin={map=pin.uiMapID,x=pin.position.x,y=pin.position.y,z=p.z}
+    C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(pin.uiMapID,pin.position.x,pin.position.y,p.z))
+end
+
 function N:SyncWaypointUI(force)
     local api=WaypointUIAPI and WaypointUIAPI.Navigation
     local external=A.ShortestPath and A.ShortestPath.owned
@@ -654,6 +691,9 @@ function N:SyncWaypointUI(force)
     local action=enabled and self:Current()
     local nav=api.GetUserNavigation()
     local owned=nav and nav.flags=="AiLeveling"
+    if not (A.char.paused or A.state.dead) then
+        syncWaypointHeight(api,nav,external and A.ShortestPath.goal or action,external and A.ShortestPath)
+    end
     if not enabled and not owned then return external and "external" or nil end
     local userTracked=api.IsUserNavigationTracked()
     local tracked=userTracked or api.IsPathStepWaypointTracked and api.IsPathStepWaypointTracked()

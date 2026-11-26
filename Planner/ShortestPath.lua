@@ -16,7 +16,7 @@ local function sameGoal(a,b)
     if not a or not b then return a==b end
     local p,q=a.position,b.position
     return a.kind==b.kind and a.questId==b.questId and a.objectiveIndex==b.objectiveIndex and
-        p.map==q.map and p.x==q.x and p.y==q.y
+        p.map==q.map and p.x==q.x and p.y==q.y and p.z==q.z
 end
 
 -- Hand-ins affect SPF's map pins only. Its questIDs field also changes arrival detection.
@@ -39,6 +39,7 @@ end
 
 function P:Read()
     local api=self.api
+    self.guidancePoint=nil
     self.journey,self.flight=nil,nil
     if self.owned and api.CurrentStop(owner) then
         local state=api.JourneyState()
@@ -78,6 +79,7 @@ function P:Sync(action)
     if not self.api then
         self.api=api
         api.Subscribe(function(changes)
+            if changes.guidance then self.guidancePoint=nil end
             if self.owned and (changes.leg or changes.replan or changes.ended or changes.stop or changes.changed or changes.active) then
                 self:Read()
             elseif self.waiting and changes.ended then
@@ -111,7 +113,7 @@ function P:Sync(action)
     self.waiting=goal and status.busy and not ours
     if goal and not self.waiting then
         local p=goal.position
-        local stop={map=p.map,x=p.x,y=p.y,title=goal.title,hold=true,handins=ids,
+        local stop={map=p.map,x=p.x,y=p.y,z=p.z,title=goal.title,hold=true,handins=ids,
             kind=goal.kind=="accept" and "pickup" or goal.kind=="dungeonEnter" and "dungeon" or goal.kind}
         self.owned=api.NavigateRoute(owner,{stop})
         if self.owned then self:Read()
@@ -119,6 +121,15 @@ function P:Sync(action)
     elseif ours then
         api.Cancel(owner)
     end
+end
+
+-- Guidance copies the whole walk. Read it only when a displayed bend needs its height.
+function P:GuidancePoint()
+    if self.guidancePoint==nil and self.owned and self.api.Guidance then
+        local guide=self.api.Guidance()
+        self.guidancePoint=guide and guide.owner==owner and guide.point or false
+    end
+    return self.guidancePoint
 end
 
 function P:For(action)

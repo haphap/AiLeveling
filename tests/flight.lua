@@ -72,6 +72,35 @@ test("实景导航地点和距离交给可见的 WaypointUI，文字消失后恢
     distance:Hide();yards.shown=true;refresh(false);WUIWaypointFrame=nil;refresh(false)
     DaylightUIQuestMarker,WUIWaypointFrame,WUIPinpointFrame=marker,waypoint,pinpoint
 end)
+test("西部前线光柱使用对应路点的高度且不覆盖玩家标记",function()
+    local B=fixture()
+    local oldAPI,oldMap,oldPoint,oldCombat=WaypointUIAPI,C_Map,UiMapPoint,InCombatLockdown
+    InCombatLockdown=function() return false end
+    local stop={map=2548,x=.3071,y=.4906,z=165.76}
+    local bend={map=2548,x=.41,y=.64,z=92}
+    local action={kind="turnin",questId=94886,position=stop}
+    assert(loadfile("Planner/ShortestPath.lua"))("AiLeveling",B)
+    local route=B.ShortestPath
+    local reads,writes=0,{}
+    route.owned,route.goal=true,action
+    route.api={CurrentStop=function() return 1 end,Guidance=function()
+        reads=reads+1;return {owner="AiLeveling",point=bend}
+    end}
+    local nav={flags="ShortestPathForever",mapID=2548,x=stop.x,y=stop.y}
+    local pin={uiMapID=2548,position={x=stop.x,y=stop.y}}
+    C_Map={GetUserWaypoint=function() return pin end,SetUserWaypoint=function(p) writes[#writes+1]=p end}
+    UiMapPoint={CreateFromCoordinates=function(map,x,y,z) return {uiMapID=map,position={x=x,y=y},z=z} end}
+    WaypointUIAPI={Navigation={GetUserNavigation=function() return nav end,IsUserNavigationTracked=function() return true end,
+        NewUserNavigation=function() error("replaced pin") end,ClearUserNavigation=function() error("cleared pin") end}}
+    local function sync() B.Navigation:SyncWaypointUI() end
+    sync();sync();eq(#writes,1);eq(writes[1].z,165.76);eq(reads,0)
+    nav.x,nav.y=bend.x,bend.y;sync();eq(#writes,1) -- SPF published the bend before the client moved its pin.
+    pin.position.x,pin.position.y=bend.x,bend.y;sync();sync()
+    eq(#writes,2);eq(writes[2].z,92);eq(reads,1)
+    nav.flags="manual";sync();eq(#writes,2)
+    nav.flags="ShortestPathForever";route.api.CurrentStop=function() end;sync();eq(#writes,2)
+    WaypointUIAPI,C_Map,UiMapPoint,InCombatLockdown=oldAPI,oldMap,oldPoint,oldCombat
+end)
 test("飞行前导航出发点且飞越终点不算落地",function()
     local B=fixture()
     B.Navigation:Update();eq(B.distance,0);eq(B.Navigation.index,1)

@@ -441,6 +441,13 @@ end
 function D:EntityPoints(entity, id, allowArea, spawns, huntCount)
     spawns=spawns or entity.Get(id,"spawns")
     local points=self:SpawnPoints(spawns,allowArea,huntCount)
+    -- Sergeant Riftan's fixed camp. The Riverglades terrain here is 165.76 yd
+    -- (1.60.1 build 70862); the walking mesh has a single surface at 166 yd.
+    if entity==self.db.Npc and id==258023 then
+        for _,p in ipairs(points) do
+            if p.map==2548 and math.abs(p.x-.3071)<.00001 and math.abs(p.y-.4906)<.00001 then p.z=165.76 end
+        end
+    end
     -- Pyron's synthetic continent pin misses the quarry. Forever kill credit locates
     -- the search area near the BRD portal, not a fixed spawn for this patrol.
     if entity==self.db.Npc and id==9026 and #points==1 and points[1].sourceAreaId==10074 and C_Map.GetMapInfo(1427) then
@@ -770,6 +777,9 @@ function D:Target(q, state)
     end
     if pin and (matchesRecipient or not best or best.areaOnly) and waypointFitsTarget(self,q,state,pin,best,true) then
         local point={map=pin.map,x=pin.x,y=pin.y,label="任务交付点"}
+        -- A nearby quest POI confirms the recipient. Keep the surveyed 3D spawn
+        -- instead of transplanting its height to the POI's slightly different XY.
+        if bestPriority==4 and best.z then return contactHint(best,true,true) end
         local recipient=matchesRecipient and best or self:Recipient(q)
         if recipient then point.entityKind,point.entityId,point.entityName=recipient.entityKind,recipient.entityId,recipient.entityName end
         return contactHint(point,false,true)
