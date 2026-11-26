@@ -117,6 +117,14 @@ run("接齐前经过远端交付旅店，比较保留和换绑的整段返程",f
     local function hint() return B.Services.DungeonBindingReminder(plan,s) end
     assert(hint():find("找港口联系人交2项 → 炉石回镇上，找镇内联系人交2项",1,true))
     eq(s.hearthBindingKey,"旧旅店");eq(s.hearthPoint.map,2)
+    -- A reachable inn can shorten the trip even when the recipient is outside town.
+    local outpost={map=3,x=.8,y=.2,entityName="哨站联系人"}
+    for index=3,4 do journey.after[index].action.position=outpost end
+    local detour=assert(hint());assert(detour:find("炉石回镇上，再去任务区域找哨站联系人",1,true))
+    journey.after[5]={action={kind="turnin",questId=5}}
+    journey.before={};assert((hint() or ""):find("进本前确认炉石",1,true))
+    journey.after[5]=nil;journey.before={{action={kind="accept",questId=3}}}
+    for index=3,4 do journey.after[index].action.position=town end
     s.hearthReady=9999;eq(hint(),nil)
     s.hearthReady=0;s.hearthPoint=town;eq(hint(),nil)
     s.hearthPoint=nil;s.position=port;eq(hint(),nil)

@@ -495,8 +495,8 @@ function S.AutomaticBinding(plan,state)
     end
 end
 
--- Price the same return visits with the actual hearth and with the inn currently in reach.
-local function dungeonReturnBinding(journey,visits,state,inn,distance)
+-- Price the same return visits with the actual hearth and with the inns currently in reach.
+local function dungeonReturnBinding(journey,visits,state,nearby)
     if not (A.TaskQueue and A.Flights and state.hearthReady and state.hearthPoint and state.runSpeed and state.runSpeed>0) then return end
     local origin=journey.entry and journey.entry.position
     if not origin then
@@ -508,7 +508,7 @@ local function dungeonReturnBinding(journey,visits,state,inn,distance)
                 origin=p
             end
         end
-        if not origin or A.Navigation:Near(origin,inn.position,bindingRadius) then return end
+        if not origin then return end
     end
     local context={}
     for k,v in pairs(state) do context[k]=v end
@@ -521,18 +521,37 @@ local function dungeonReturnBinding(journey,visits,state,inn,distance)
         if route and route.remaining==0 then return route end
     end
     local kept=solve()
-    context.hearthPoint,context.hearthBindingKey,context.bindName=inn.position,S.BindingKey(inn),inn.bindName or inn.title
-    local changed=solve()
-    if not changed or not kept then return end
-    if changed.seconds+2*distance/state.runSpeed>=kept.seconds then return false end
+    if not kept then return end
+    local bestSeconds,route,inn=kept.seconds
+    for _,candidate in ipairs(nearby) do
+        local stop=candidate.stop
+        context.hearthPoint,context.hearthBindingKey,context.bindName=stop.position,S.BindingKey(stop),stop.bindName or stop.title
+        local changed=solve()
+        if changed then
+            local seconds=changed.seconds+2*candidate.distance/state.runSpeed
+            if seconds<bestSeconds or inn and seconds==bestSeconds and S.BindingKey(stop)<S.BindingKey(inn) then
+                bestSeconds,route,inn=seconds,changed,stop
+            end
+        end
+    end
+    if not route then return false end
     local labels,usesHearth={},false
-    for _,step in ipairs(changed.steps) do
+    for _,step in ipairs(route.steps) do
         local visit=step.choice
-        local label=visit.title.."交"..visit.count.."项"
+        local point=visit.stages[1].position
+        local place=visit.place
+        local label=(place and ("在"..place.."找") or "找")..visit.title.."交"..visit.count.."项"
         if (step.timing.hearthCount or 0)>0 then
             usesHearth=true
-            label=(inn.bindName and ("炉石回"..inn.bindName) or "炉石回此地").."，找"..label
-        else label=(visit.place and ("在"..visit.place.."找") or "找")..label end
+            if A.Navigation:Near(inn.position,point,bindingRadius) then
+                label="找"..visit.title.."交"..visit.count.."项"
+            else
+                local map=C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
+                local destination=place or map and map.name
+                label=(destination and ("再去"..destination.."找") or "再前往")..visit.title.."交"..visit.count.."项"
+            end
+            label=(inn.bindName and ("炉石回"..inn.bindName) or "炉石回此地").."，"..label
+        end
         labels[#labels+1]=label
     end
     if not usesHearth then return false end
@@ -553,7 +572,7 @@ function S.DungeonBindingReminder(plan,state)
         end
     end
     local visits,byPoint={},{}
-    local hasReturn,bound,nearest,bestDistance,incomplete
+    local hasReturn,bound,missingRecipient,outdoorWork
     for _,step in ipairs(journey.after) do
         local action=step.action
         local point=action.position
@@ -567,39 +586,46 @@ function S.DungeonBindingReminder(plan,state)
                     visit={questId=action.questId,title=point.entityName or action.title,stagesComplete=true,stages={stage},count=0}
                     visits[#visits+1]=visit;byPoint[key]=visit
                     bound=bound or alreadyBound(state,point)
-                    for _,hub in pairs(plan.bindingChoices or {}) do
-                        local stop=hub.stop
-                        local offset=A.Navigation:Distance(stop.position,point)
-                        if offset and offset<=bindingRadius then
-                            if stop.bindName and (not visit.innDistance or offset<visit.innDistance or
-                                offset==visit.innDistance and stop.bindName<visit.place) then
-                                visit.place,visit.innDistance=stop.bindName,offset
-                            end
-                            bound=bound or alreadyBound(state,stop.position)
-                            local distance=nearbyInnDistance(state,stop)
-                            if distance and
-                                (not nearest or distance<bestDistance or distance==bestDistance and stop.npcId<nearest.npcId) then
-                                nearest,bestDistance=stop,distance
-                            end
-                        end
-                    end
                 end
                 visit.count=visit.count+1
-            else incomplete=true end
-        elseif action.kind~="turnin" then incomplete=true end
+            else missingRecipient=true end
+        elseif action.kind~="turnin" and not blocked[action.questId] then outdoorWork=true end
     end
     if not hasReturn then return end
     if ((state.bags or {})[6948] or 0)<=0 then
         if not pending then return "进本前检查背包：未找到炉石。" end
         return
     end
-    if nearest and alreadyBound(state,nearest.position) then return end
-    if nearest and not incomplete then
-        local hint=dungeonReturnBinding(journey,visits,state,nearest,bestDistance)
+    local nearby,localInn={},nil
+    for _,hub in pairs(plan.bindingChoices or {}) do
+        local stop=hub.stop
+        local distance=nearbyInnDistance(state,stop)
+        local closeCount=0
+        for _,visit in ipairs(visits) do
+            local point=visit.stages[1].position
+            local offset=A.Navigation:Distance(stop.position,point)
+            if offset and offset<=bindingRadius then
+                closeCount=closeCount+1
+                bound=bound or alreadyBound(state,stop.position)
+                if stop.bindName and (not visit.innDistance or offset<visit.innDistance or
+                    offset==visit.innDistance and stop.bindName<visit.place) then
+                    visit.place,visit.innDistance=stop.bindName,offset
+                end
+            end
+        end
+        if distance then
+            if alreadyBound(state,stop.position) or stop.bindName and stop.bindName==state.bindName then return end
+            nearby[#nearby+1]={stop=stop,distance=distance}
+            if not missingRecipient and closeCount==#visits and closeCount>0 and (not localInn or distance<localInn.distance or
+                distance==localInn.distance and S.BindingKey(stop)<S.BindingKey(localInn.stop)) then localInn=nearby[#nearby] end
+        end
+    end
+    if #nearby>0 and not missingRecipient and not outdoorWork then
+        local hint=dungeonReturnBinding(journey,visits,state,nearby)
         if hint~=nil then return hint or nil end
     end
     if pending or bound then return end
-    if nearest then return "进本前可找「"..nearest.title.."」绑定炉石，出本后回这里交任务。" end
+    if localInn then return "本次任务都在附近交付，进本前可找「"..localInn.stop.title.."」绑定炉石。" end
     return state.bindName and state.bindName~="" and ("进本前确认炉石：当前绑定「"..state.bindName.."」。") or "进本前确认炉石的绑定地点，方便出本后交任务。"
 end
 
