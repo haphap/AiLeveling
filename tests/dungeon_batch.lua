@@ -38,6 +38,33 @@ local function run(name,fn)
         fn();C_Map=old;UnitIsAFK=afk
     end)
 end
+run("本次副本的野外交付跨过读图逐项接续，普通任务和新接取点不插队",function()
+    local B,s,data,_,d=fixture()
+    B.DungeonCatalog.entries.ref=nil;d.id="reference:42";B.DungeonCatalog.entries[d.id]=d
+    s.completed[3]=true
+    s.quests[1]={ready=true};s.quests[2]={ready=true};s.quests[4]={ready=true}
+    s.inInstance,s.instanceId,s.position=true,42,nil
+    local p=plan(s,data,B.settings,B)
+    eq(p.fallback.kind,"dungeonLeave");assert(d.quests.Alliance[p.fallback.questId])
+    local previous={}
+    for key,value in pairs(s) do previous[key]=value end
+    s.inInstance,s.instanceId,s.position=false,0,{map=1,x=0,y=0}
+    B.indexReady=true;s.quests,s.questCount={},0
+    B.Dungeon:TaskBatchSnapshot(s,previous)
+    assert(B.char.taskBatch.handinsOnly);eq(B.char.taskBatch.baselines[4],nil)
+    s.quests,s.questCount=previous.quests,3
+    -- The same snapshot is rebuilt on reload with another pickup available.
+    s.level=40;B.State:Refresh();eq(s.taskBatch.baselines[5],nil)
+    for i=1,2 do
+        p=plan(s,data,B.settings,B)
+        local id=p.fallback.questId;eq(p.fallback.kind,"turnin");assert(s.quests[id] and id~=4)
+        B.State:TurnedIn(id);s.quests[id]=nil;B.State:Refresh()
+    end
+    eq(B.char.taskBatch,nil);assert(s.quests[4])
+    s.inInstance,s.instanceId=true,42;s.quests[2]={ready=true}
+    B.Selection:Automatic();s.inInstance=false;B.Dungeon:TaskBatchSnapshot(s,previous)
+    eq(B.char.taskBatch,nil)
+end)
 run("多入口副本按当前可用交通选择更快入口",function()
     local B,s,data,_,d=fixture()
     d.entrances={{200,20,30},{200,90,30}}

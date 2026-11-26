@@ -49,6 +49,7 @@ function S:Lock(candidate,revision)
 end
 
 function S:Automatic()
+    if A.state.inInstance and A.Dungeon then A.Dungeon.dismissedHandins=A.state.instanceId end
     self:Clear()
     A.char.serviceStop=nil
     if A.Services then A.Services.binding=nil end

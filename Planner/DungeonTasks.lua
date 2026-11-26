@@ -100,6 +100,10 @@ function D.OrderTaskObjectives(stages,state,data)
     return stages[1]
 end
 
+local function outdoorPoint(point,info)
+    return point and (not point.areaOnly or point.sourceAreaId) and info and (info.mapType==2 or info.mapType==3)
+end
+
 function D.TaskApproach(action,state,data)
     if not action or action.startItemId or action.position and action.position.startItemId then return action end
     local questAction=action.questId and action
@@ -133,8 +137,9 @@ function D.TaskApproach(action,state,data)
     end
     if not A.DungeonCatalog then return action end
     local instance=D.TaskInstance(action.position,state,data,action.areaId)
-    if not instance and state.inInstance and knownOutdoor and info and (info.mapType==2 or info.mapType==3) then
+    if not instance and state.inInstance and outdoorPoint(point,info) then
         local destination=point.entityName or info.name or "任务目的地"
+        if point.entityName and info.name then destination=info.name.."的"..point.entityName end
         return {kind="dungeonLeave",questAction=questAction,questId=action.questId,title=action.title,siteName=info.name,
             text="离开当前副本后，前往"..destination..(action.kind=="turnin" and "交付任务。" or "继续任务。")}
     end
@@ -460,7 +465,8 @@ end
 function D.ValidTaskBatch(batch)
     if type(batch)~="table" or (type(batch.id)~="string" and type(batch.id)~="number") or
         type(batch.baselines)~="table" or (batch.waiting~=nil and type(batch.waiting)~="boolean") or
-        (batch.returning~=nil and type(batch.returning)~="boolean") then return false end
+        (batch.returning~=nil and type(batch.returning)~="boolean") or
+        (batch.handinsOnly~=nil and type(batch.handinsOnly)~="boolean") then return false end
     if type(batch.id)=="string" and (#batch.id==0 or #batch.id>128) or
         type(batch.id)=="number" and (batch.id<=0 or batch.id>=math.huge or batch.id%1~=0) then return false end
     local count=0
@@ -522,18 +528,68 @@ function D:TaskActivityText(id)
     end
 end
 
-function D:TaskBatchSnapshot(state)
+local function visitHandin(d,id,state,data,point)
+    local active=state.quests[id]
+    if not (active and active.ready) then return end
+    local q=data:GetQuest(id,state)
+    if not q or not A.Eligibility.Check(q,state,data) then return end
+    local relation=(d.quests[state.faction] or {})[id]
+    if not relation then
+        for _,area in ipairs(d.areas or {}) do if area==q.zoneOrSort then relation="category";break end end
+    end
+    if not relation or relation=="preparation" then return end
+    point=point or data:Target(q,state)
+    local info=point and C_Map.GetMapInfo(point.map)
+    return outdoorPoint(point,info) and not D.TaskInstance(point,state,data)
+end
+
+-- Finish work in the instance first. Once it is done, guide to this run's recipients.
+function D.InstanceHandins(choices,state,data)
+    local d=D.Catalog()["reference:"..tostring(state.instanceId)]
+    if not d or D.dismissedHandins==d.instanceId then return end
+    for _,choice in ipairs(choices) do
+        if choice.currentInstance and state.quests[choice.questId] and not (choice.lowValue or choice.entryBlocked) then return end
+    end
+    local handins={}
+    for _,choice in ipairs(choices) do
+        if choice.status=="turnin" and visitHandin(d,choice.questId,state,data,choice.actions[1].position) then
+            handins[#handins+1]=choice
+        end
+    end
+    if #handins>0 then return handins end
+end
+
+local function exitHandins(d,state)
+    local baselines={}
+    for id in pairs(state.quests) do
+        if visitHandin(d,id,state,A.Data) then baselines[id]=(A.char.turnIns or {})[id] or 0 end
+    end
+    if next(baselines) then return {id=d.id,baselines=baselines,handinsOnly=true} end
+end
+
+function D:TaskBatchSnapshot(state,previous)
     state.taskBatch=nil
     self:UpdateTaskActivity(state)
     local batch=A.char.taskBatch
+    if previous and previous.inInstance and not state.inInstance then
+        local d=D.Catalog()["reference:"..tostring(previous.instanceId)]
+        if d and not batch and not (self.dismissedHandins==d.instanceId or A.char.paused or A.char.locked or
+            A.char.serviceStop or A.char.gearTarget or A.char.itinerary or A.Navigation.manual or state.dead) then
+            batch=exitHandins(d,next(state.quests) and state or previous)
+            A.char.taskBatch=batch
+        end
+        self.dismissedHandins=nil
+    end
     if not batch then return "" end
-    if not D.ValidTaskBatch(batch) or A.char.locked then A.char.taskBatch=nil;return "" end
+    if not D.ValidTaskBatch(batch) or A.char.locked or batch.handinsOnly and state.inInstance then A.char.taskBatch=nil;return "" end
+    if batch.handinsOnly and state.questCount==0 and (not A.indexReady or previous and previous.inInstance) then return "" end
     local ids,baselines={},{}
     for id,n in pairs(batch.baselines) do
         local q=A.Data:GetQuest(id)
         local done=(A.char.turnIns[id] or 0)>n or
             (not state.quests[id] and state.completed[id] and q and not q.repeatable)
         local excluded=(state.skipped or {})[id] or (state.chainDeferred or {})[id] or q and A.Eligibility.Closed(q,state)
+        if batch.handinsOnly and not (state.quests[id] and state.quests[id].ready) then excluded=true end
         if not done and not excluded and q then
             local low=A.TaskGuide.LowValue(q,state,A.Data)
             excluded=low and not levelingPenalty(low)
@@ -549,7 +605,7 @@ function D:TaskBatchSnapshot(state)
     end
     -- Reconcile the saved trip with the log and newly available pickups after each turn-in.
     local d=D.Catalog()[batch.id]
-    for _,row in ipairs(d and D.Tasks(d,state,A.Data) or {}) do
+    for _,row in ipairs(not batch.handinsOnly and d and D.Tasks(d,state,A.Data) or {}) do
         if baselines[row.id]==nil and not (A.State.confirmed and A.State.confirmed[row.id]) and
             belongsInTrip(row,state) and (state.quests[row.id] or
                 not batch.returning and (row.group==3 or row.preparation) and not state.completed[row.id] and (A.char.turnIns[row.id] or 0)==0) then
@@ -774,6 +830,7 @@ end
 
 function D.TaskBatchStage(choices,state,data)
     local preferred,here,pickups,preparation={},{},{},{}
+    local handins,insideHandins,unfinished={},{},false
     local groups={}
     if A.TaskGuide then local list;list,groups=A.TaskGuide.DeliveryGroups(choices,state) end
     for _,choice in ipairs(choices) do
@@ -783,9 +840,16 @@ function D.TaskBatchStage(choices,state,data)
             not state.inInstance and position and not instance
         local group=groups[choice.questId]
         local waiting=choice.status=="turnin" and group and not group.splitDelivery and group.ready<#group.choices
+        if choice.status=="objective" and not choice.preparingQuest and not choice.dungeonPreparation and not choice.entryBlocked then
+            unfinished=true
+        end
+        if choice.status=="turnin" and position and not (instance or choice.preparingQuest or choice.dungeonPreparation or waiting or choice.lowValue) then
+            if outdoorPoint(position,C_Map.GetMapInfo(position.map)) then handins[#handins+1]=choice end
+        end
         if localStep and not waiting and not choice.lowValue and not choice.requireCheck and not choice.acceptBlocked then
             preferred[#preferred+1]=choice
             local kind=choice.actions[1].kind
+            if kind=="turnin" and state.inInstance then insideHandins[#insideHandins+1]=choice end
             local distance=position and state.position and A.Navigation:Distance(state.position,position,true)
             if (kind=="turnin" or kind=="accept") and distance and distance<=40 then here[#here+1]=choice end
             -- Collect this region's dungeon quests before leaving to work on already accepted ones.
@@ -797,6 +861,10 @@ function D.TaskBatchStage(choices,state,data)
                 preparation[#preparation+1]=choice
             end
         end
+    end
+    -- After finishing the run, collect its rewards before starting another set of pickups.
+    if #handins>0 and not unfinished then
+        return #insideHandins>0 and insideHandins or handins
     end
     if #here>0 then return here end
     if #pickups>0 then return pickups end

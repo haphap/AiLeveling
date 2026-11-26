@@ -426,7 +426,7 @@ function State:Refresh(force, manual)
             end
         end
     end
-    if A.Dungeon.TaskBatchSnapshot then fingerprint[#fingerprint+1]=A.Dungeon:TaskBatchSnapshot(s) end
+    if A.Dungeon.TaskBatchSnapshot then fingerprint[#fingerprint+1]=A.Dungeon:TaskBatchSnapshot(s,previous) end
     fingerprint[#fingerprint+1]="map:"..tostring(s.position and s.position.map)
     if A.Services then fingerprint[#fingerprint+1]=A.Services:Snapshot(s) end
     local stop=s.serviceStop

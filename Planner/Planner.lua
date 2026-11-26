@@ -513,6 +513,9 @@ function P.Build(state, data, options)
     if not state.inInstance then result.regions,result.regionPlan=P.TaskRegions(state,result,data) end
     local choices=batch and A.Dungeon.TaskBatchStage(result.taskChoices,state,data) or
         result.regionPlan and result.regionPlan.choices or result.taskChoices
+    if state.inInstance and not (batch or state.locked or state.gearTarget) and A.Dungeon.InstanceHandins then
+        choices=A.Dungeon.InstanceHandins(choices,state,data) or choices
+    end
     result.taskPool=result.regionPlan and choices or nil
     if batch and batch.returning then
         result.unverified=true
@@ -559,7 +562,7 @@ function P.Build(state, data, options)
         for _,choice in ipairs(result.taskOrder) do automatic[#automatic+1]=choice end
         for _,choice in ipairs(choices) do automatic[#automatic+1]=choice end
         local deliveryGroups={}
-        if A.TaskGuide then local groups;groups,deliveryGroups=A.TaskGuide.DeliveryGroups(result.taskPool or result.taskChoices,state,result.taskOrder) end
+        if A.TaskGuide then local groups;groups,deliveryGroups=A.TaskGuide.DeliveryGroups(choices,state,result.taskOrder) end
         local entryBlocked
         local itemBlockedQuests={}
         for _,choice in ipairs(automatic) do
