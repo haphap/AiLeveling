@@ -6,8 +6,8 @@ local media="Interface\\AddOns\\AiLeveling\\Media\\"
 
 local function trackerDivider(parent)
     local rule=parent:CreateTexture(nil,"BACKGROUND")
-    rule:SetColorTexture(unpack(palette.trackerDivider))
-    rule:SetHeight(2)
+    rule:SetColorTexture(unpack(palette.line))
+    rule:SetHeight(1)
     return rule
 end
 
@@ -1025,7 +1025,7 @@ function UI:CreateTracker()
     end
     T.divider=trackerDivider(T.content)
     T.headerLine=T.content:CreateTexture(nil,"ARTWORK");T.headerLine:SetColorTexture(unpack(palette.gold))
-    T.headerLine:SetPoint("LEFT",T.divider,"LEFT")
+    T.headerLine:SetPoint("TOPLEFT",T.divider,"TOPLEFT")
     T.career=noticeLine(T.content,"body",palette.white)
     T.career.heading=text(T.career,"caption",palette.gold)
     T.career.view=self:Button(T.career,"查看",48,function() self:ClassReminderMenu(T.career) end,"caption")
@@ -1746,14 +1746,11 @@ function UI:RenderTracker(along)
             if not row.section then
                 row.section=text(row,"caption",palette.muted)
                 row.section:SetPoint("TOPLEFT")
-                row.sectionRule=trackerDivider(row)
             end
             row.section:SetText(({focus="当前追踪",objective="进行中",turnin="可交付",accept="待接取",related="其他关联任务"})[group])
             row.section:SetTextColor(unpack(group=="focus" and palette.gold or palette[tone]));row.section:Show()
-            row.sectionRule:Show()
         elseif row.section then
             row.section:Hide()
-            row.sectionRule:Hide()
         end
         if group=="focus" then
             if not row.focusMark then
@@ -1875,6 +1872,7 @@ function UI:LayoutTracker()
         T.area:SetShown((T.area:GetText() or "")~="")
         cardTop=areaY+(T.area:IsShown() and T.area:GetStringHeight() or 0)+gap
         T.divider:SetPoint("TOPLEFT",0,-toolbar+gap/2)
+        T.headerLine:SetSize(math.min(width,T.chapter:GetStringWidth()+gap),2)
     else
         T.menu:SetPoint("TOPRIGHT",-(spacing.hit+spacing.tight)*scale,2)
         T.collapse:SetPoint("TOPRIGHT",0,2)
@@ -1888,14 +1886,13 @@ function UI:LayoutTracker()
         T.experience:SetWidth(math.max(1,countWidth));T.experience:SetShown(used+gap+countWidth<=headerRoom)
         cardTop=math.max(36*scale,T.location:GetStringHeight()+spacing.padding*scale)
         T.divider:SetPoint("TOPLEFT",0,-cardTop+7)
+        T.headerLine:SetSize(T.model and T.model.dungeonName and width or 38*scale,2)
     end
     local function layoutRow(row,y,lead)
         row:SetWidth(inner)
         local top=0
         if row.section and row.section:IsShown() then
-            row.sectionRule:ClearAllPoints()
-            row.sectionRule:SetPoint("LEFT",row.section,"RIGHT",gap,0)
-            row.sectionRule:SetWidth(math.max(1,inner-math.ceil(row.section:GetStringWidth())-gap))
+            row.section:SetWidth(inner)
             top=row.section:GetStringHeight()+spacing.tight*scale
         end
         local inset=lead or (row.focusMark and row.focusMark:IsShown() and gap or 0)
@@ -1917,7 +1914,6 @@ function UI:LayoutTracker()
         return height
     end
     T.divider:SetWidth(width)
-    T.headerLine:SetSize(guide and math.min(width,T.chapter:GetStringWidth()+gap) or 38*scale,2)
     T.career:SetWidth(inner)
     T.career.heading:ClearAllPoints();T.career.heading:SetPoint("TOPLEFT");T.career.heading:SetWidth(inner)
     local noticeHeight=T.career.heading:GetStringHeight()+spacing.tight*scale
