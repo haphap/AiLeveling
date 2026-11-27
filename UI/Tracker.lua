@@ -993,10 +993,13 @@ function UI:CreateTracker()
     end)
     T.resize:SetScript("OnLeave",function() GameTooltip:Hide() end)
     T.content=CreateFrame("Frame",nil,f);T.content:SetPoint("TOPLEFT",spacing.padding,-spacing.padding)
+    T.chapter=text(T.content,"body",palette.white);T.chapter:SetMaxLines(1)
+    T.chapterRule=T.content:CreateTexture(nil,"BACKGROUND");T.chapterRule:SetColorTexture(unpack(palette.line))
+    T.pace=text(f,"caption",palette.muted);T.pace:SetMaxLines(1)
     T.location=text(T.content,self.daylight and "heading" or "title",palette.white)
     T.location:SetPoint("TOPLEFT");T.location:SetMaxLines(2)
     T.area=text(T.content,"caption",palette.muted);T.area:SetMaxLines(1)
-    T.experience=text(T.content,"caption",palette.muted);T.experience:SetJustifyH("RIGHT")
+    T.experience=text(T.content,"caption",palette.muted);T.experience:SetJustifyH("RIGHT");T.experience:SetMaxLines(1)
     T.collapse=self:Button(T.content,"−",20,function() self.folded=not self.folded;self:LayoutTracker() end,"body")
     T.menu=self:Button(T.content,"≡",22,function() self:TrackerMenu(f) end,"body")
     for _,button in ipairs({T.collapse,T.menu}) do
@@ -1137,11 +1140,13 @@ function UI:CreateTracker()
     T.objectives={}
     T.footer=text(T.currentChild,"caption",palette.muted)
     T.journey=CreateFrame("Frame",nil,T.currentChild)
+    T.journeyRule=T.journey:CreateTexture(nil,"BACKGROUND");T.journeyRule:SetColorTexture(unpack(palette.line))
+    T.journeyRule:SetPoint("TOPLEFT");T.journeyRule:SetPoint("TOPRIGHT");T.journeyRule:SetHeight(1)
     T.journeyHeader=CreateFrame("Button",nil,T.journey)
     T.journeyLabel=text(T.journeyHeader,"caption",palette.muted);T.journeyLabel:SetPoint("LEFT");T.journeyLabel:SetText("行程")
     T.journeySummary=text(T.journeyHeader,"caption",palette.white);T.journeySummary:SetPoint("RIGHT");T.journeySummary:SetJustifyH("RIGHT")
     T.journeyHeader:SetScript("OnClick",function() T.journeyClosed=not T.journeyClosed;self:LayoutTracker() end)
-    T.journeyClosed=true
+    T.journeyClosed=false
     T.journeyRows={}
     T.questTitle.progress=self.body
     T.thenText=text(T.currentChild,"caption",palette.gold)
@@ -1218,13 +1223,14 @@ function UI:CreateTracker()
     else self:Rounded(nav,spacing.radius);self:BindBackground(nav,palette.navigation,"hudTransparency");nav.material:Hide() end
     T.navIcon=nav:CreateTexture(nil,"ARTWORK")
     T.navTitle=text(nav,"task",palette.white)
+    T.navETA=text(nav,"caption",palette.muted);T.navETA:SetJustifyH("CENTER")
     T.navDetail=text(nav,"body",palette.white)
     T.navRule=nav:CreateTexture(nil,"ARTWORK")
     T.navNextIcon=nav:CreateTexture(nil,"ARTWORK")
     T.navNext=text(nav,"caption",palette.muted)
     self.nav=text(nav,"caption","accent");self.nav:SetJustifyH("RIGHT")
     T.navBearing=nav:CreateTexture(nil,"ARTWORK")
-    T.navBearing:SetTexture(media.."hud-chevron-up.tga")
+    T.navBearing:SetTexture(media.."bearing.tga")
     nav:Hide()
 end
 
@@ -1434,7 +1440,7 @@ function UI:RenderJourney(journey,dynamic)
             setHUDIcon(row.icon,icon)
             row.title:SetText(placeText(step.title,step.place));row.title:SetTextColor(unpack(i==1 and palette.gold or palette.white))
             row.detail:SetText(step.detail or "")
-            row:SetShown(i==1 or not T.journeyClosed)
+            row:SetShown(i==1 or not T.journeyClosed and not step.task)
         end
         row.time:SetText(step.task and "" or clockText(step.seconds))
     end
@@ -1549,10 +1555,24 @@ function UI:RenderTracker(along)
     T.questTitle.activeObjective=action and action.objectiveIndex
     T.questTitle.candidate,T.questTitle.revision=model.choice,plan.revision
     T.questTitle.deferred=model.questId and ((state.skipped or {})[model.questId] or (state.chainDeferred or {})[model.questId])
+    local guide=model.action and not model.dungeonName and not A.char.paused and not A.error
+    T.guide=guide
     local current=(state.quests or {})[model.questId]
     local count=0;for _ in pairs(state.quests or {}) do count=count+1 end
     T.experience:SetText(A.char.paused and "已暂停" or model.dungeonName and (#model.rows.." 项") or "已接 "..count.." 项")
-    T.currentMark:SetColorTexture(unpack(palette.focus))
+    local sequence=guide and routeSequence(state)
+    if sequence and sequence.actions and sequence.actions[sequence.index]==T.action and #sequence.actions>1 then
+        T.experience:SetText(("步骤 %d / %d"):format(sequence.index,#sequence.actions))
+    end
+    local position=state.position
+    local map=guide and position and position.map and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(position.map)
+    T.chapter:SetText(dungeon and dungeon.title or map and map.name or "练级行程")
+    local stats=A.settings.levelingStats and A.LevelingTracker
+    local rate=guide and stats and (stats.sessionSeconds or 0)>0 and (stats.sessionXP or 0)>0 and
+        stats.sessionXP*3600/stats.sessionSeconds
+    local remaining=(state.maxXP or 0)-(state.xp or 0)
+    T.pace:SetText(rate and (("%.0f 经验/小时"):format(rate)..(remaining>0 and ("  ·  约 %d 分钟升级"):format(math.ceil(remaining*60/rate)) or "")) or "")
+    T.currentMark:SetColorTexture(unpack(guide and palette.gold or palette.focus))
     T.currentMark:SetShown(model.questId~=nil)
     local currentIcon=model.dungeonName and not model.questId and "entry" or UI.QuestIcon(model.kind,action,model.objectives)
     self.title:SetText(questTitle(model.questId,model.title))
@@ -1564,6 +1584,7 @@ function UI:RenderTracker(along)
     setHUDIcon(T.actionIcon,currentIcon)
     T.area:SetText(area or "")
     local nextStep,nextId,nextTitle=model.nextStep,model.nextId,model.nextTitle
+    T.focusLabel:SetText(guide and (({accept="接取",turnin="交付",objective="完成"})[model.kind] or "当前步骤") or "当前追踪")
     T.primaryLabel:SetText(model.questId and (model.kind=="objective" and current and not current.ready and "进行中" or self.QuestStatus(state,model.questId,plan)) or "")
     T.primaryLabel:SetTextColor(unpack(model.kind=="turnin" and palette.green or model.kind=="accept" and palette.gold or palette.muted))
     local nextRow=T.thenButton
@@ -1597,7 +1618,9 @@ function UI:RenderTracker(along)
         if sameQuest then
             following="接下来"
             if nextStep.kind=="objective" then
-                title=nextStep.text or "完成任务目标"
+                local site=nextStep.position and (nextStep.position.siteName or nextStep.position.entityName)
+                title=nextStep.text or site and ("前往"..site) or "完成任务目标"
+                if site and instruction==("前往 · "..site) and title:find(site,1,true) then instruction="" end
                 local instance=A.Dungeon and A.Dungeon.TaskInstance and A.Dungeon.TaskInstance(nextStep.position,state,A.Data,nextStep.areaId)
                 instruction=instance and ("副本 · "..placeLabel(instance.title)) or instruction
                 if model.kind=="accept" then following="接取后" end
@@ -1653,7 +1676,7 @@ function UI:RenderTracker(along)
         not (lines[1] and lines[1]:find(model.destination,1,true)) then lines[#lines+1]=model.destination end
     local location=(model.kind=="turnin" or contact and contact.sourceKind=="escortStart") and mapLocation(contact)
     local footer=location and (location..(model.metrics and ("\n"..model.metrics) or "")) or model.metrics
-    T.footer:SetText(footer or "");T.footer:SetMaxLines(location and 0 or 1);T.questTitle.metrics=footer
+    T.footer:SetText(guide and model.journey and not location and footer and ("当前任务 · "..footer) or footer or "");T.footer:SetMaxLines(location and 0 or 1);T.questTitle.metrics=footer
     if #lines==0 and model.hint and not A.char.paused and state.locked~=model.questId then lines[#lines+1]=model.hint end
     if plan.selectionBlocked then lines[#lines+1]=plan.selectionBlocked end
     if plan.gearTargetBlocked then lines[#lines+1]=plan.gearTargetBlocked end
@@ -1789,6 +1812,10 @@ function UI:LayoutTracker()
             if center then available=(center-minimap:GetHeight()/2)*minimap:GetEffectiveScale()/frameScale-12 end
         else available=available-260 end
     end
+    if T.guide then
+        local screen=UIParent:GetWidth()*UIParent:GetEffectiveScale()/frameScale
+        width=math.max(width,math.min(360,screen*0.45))
+    end
     local requestedWidth=T.resizing and self.frame:GetWidth() or A.settings.trackerWidth or 0
     if requestedWidth>0 then width=math.max(260,math.min(800,requestedWidth)) end
     local requestedHeight=T.resizing and self.frame:GetHeight() or A.settings.trackerHeight or 0
@@ -1802,33 +1829,60 @@ function UI:LayoutTracker()
     local density=A.settings.density or "normal"
     T.resize:SetShown(not collapsed and not A.settings.lockWindow and not InCombatLockdown())
     T.content:SetWidth(width);T.card:SetWidth(width);T.queuePanel:SetWidth(width)
-    T.menu:ClearAllPoints();T.menu:SetPoint("TOPRIGHT",-(spacing.hit+spacing.tight)*scale,2);T.menu:SetSize(spacing.hit*scale,spacing.hit*scale)
-    T.collapse:ClearAllPoints();T.collapse:SetPoint("TOPRIGHT",0,2);T.collapse:SetSize(spacing.hit*scale,spacing.hit*scale)
+    T.menu:ClearAllPoints();T.menu:SetSize(spacing.hit*scale,spacing.hit*scale)
+    T.collapse:ClearAllPoints();T.collapse:SetSize(spacing.hit*scale,spacing.hit*scale)
     T.collapse.text:SetText(collapsed and "+" or "−")
+    local guide=T.guide and not collapsed
     local headerRoom=width-(2*spacing.hit+2*spacing.tight)*scale
     T.location:SetWidth(0);T.area:SetWidth(0);T.experience:SetWidth(0)
     local placeWidth=math.ceil(T.location:GetStringWidth())
     local areaWidth=math.ceil(T.area:GetStringWidth())
     local gap=spacing.gap*scale
-    local showArea=(T.area:GetText() or "")~="" and placeWidth+gap+areaWidth<=headerRoom
-    local used=math.min(headerRoom,placeWidth)+(showArea and gap+areaWidth or 0)
-    T.location:SetWidth(math.max(1,math.min(headerRoom,placeWidth)))
-    T.area:ClearAllPoints();T.area:SetPoint("TOPLEFT",placeWidth+gap,-3*scale);T.area:SetWidth(math.max(1,areaWidth));T.area:SetShown(showArea)
-    T.experience:ClearAllPoints();T.experience:SetPoint("TOPRIGHT",headerRoom-width,-3*scale)
-    local countWidth=math.ceil(T.experience:GetStringWidth())
-    T.experience:SetWidth(math.max(1,countWidth));T.experience:SetShown(used+gap+countWidth<=headerRoom)
-    local function layoutRow(row,y)
+    local cardTop
+    T.chapter:SetShown(guide==true);T.chapterRule:SetShown(guide==true)
+    T.chapter:ClearAllPoints();T.chapterRule:ClearAllPoints();T.divider:ClearAllPoints()
+    T.location:ClearAllPoints();T.area:ClearAllPoints();T.experience:ClearAllPoints()
+    if guide then
+        T.chapter:SetPoint("TOPLEFT");T.chapter:SetWidth(width)
+        local toolbar=T.chapter:GetStringHeight()+gap
+        T.menu:SetPoint("TOPRIGHT",-(spacing.hit+spacing.tight)*scale,-toolbar)
+        T.collapse:SetPoint("TOPRIGHT",0,-toolbar)
+        T.experience:SetPoint("TOPLEFT",0,-toolbar-3*scale);T.experience:SetWidth(headerRoom/2);T.experience:SetJustifyH("LEFT");T.experience:Show()
+        T.toolbarY=toolbar
+        local placeY=toolbar+spacing.hit*scale+gap
+        T.chapterRule:SetPoint("TOPLEFT",0,-placeY+gap/2);T.chapterRule:SetSize(width,1)
+        T.location:SetPoint("TOPLEFT",0,-placeY);T.location:SetWidth(width)
+        local areaY=placeY+T.location:GetStringHeight()
+        T.area:SetPoint("TOPLEFT",indent,-areaY);T.area:SetWidth(width-indent)
+        T.area:SetShown((T.area:GetText() or "")~="")
+        cardTop=areaY+(T.area:IsShown() and T.area:GetStringHeight() or 0)+gap
+        T.divider:SetPoint("TOPLEFT",0,-toolbar+gap/2)
+    else
+        T.menu:SetPoint("TOPRIGHT",-(spacing.hit+spacing.tight)*scale,2)
+        T.collapse:SetPoint("TOPRIGHT",0,2)
+        T.location:SetPoint("TOPLEFT")
+        local showArea=(T.area:GetText() or "")~="" and placeWidth+gap+areaWidth<=headerRoom
+        local used=math.min(headerRoom,placeWidth)+(showArea and gap+areaWidth or 0)
+        T.location:SetWidth(math.max(1,math.min(headerRoom,placeWidth)))
+        T.area:SetPoint("TOPLEFT",placeWidth+gap,-3*scale);T.area:SetWidth(math.max(1,areaWidth));T.area:SetShown(showArea)
+        T.experience:SetPoint("TOPRIGHT",headerRoom-width,-3*scale);T.experience:SetJustifyH("RIGHT")
+        local countWidth=math.ceil(T.experience:GetStringWidth())
+        T.experience:SetWidth(math.max(1,countWidth));T.experience:SetShown(used+gap+countWidth<=headerRoom)
+        cardTop=math.max(36*scale,T.location:GetStringHeight()+spacing.padding*scale)
+        T.divider:SetPoint("TOPLEFT",0,-cardTop+7)
+    end
+    local function layoutRow(row,y,lead)
         row:SetWidth(inner)
         local top=0
         if row.section and row.section:IsShown() then
             row.section:ClearAllPoints();row.section:SetPoint("TOPLEFT");row.section:SetWidth(inner)
             top=row.section:GetStringHeight()+spacing.tight*scale
         end
-        local inset=row.focusMark and row.focusMark:IsShown() and gap or 0
+        local inset=lead or (row.focusMark and row.focusMark:IsShown() and gap or 0)
         row.icon:ClearAllPoints();row.icon:SetPoint("TOPLEFT",inset,-top-2);row.icon:SetSize(16*scale,16*scale)
         row.title:ClearAllPoints();row.title:SetPoint("TOPLEFT",indent+inset,-top);row.title:SetWidth(bodyWidth-inset);row.title:SetMaxLines(2)
         local height=top+math.max(20*scale,row.title:GetStringHeight())+spacing.tight*scale
-        if inset>0 then
+        if row.focusMark and row.focusMark:IsShown() then
             row.focusMark:ClearAllPoints();row.focusMark:SetPoint("TOPLEFT",0,-top);row.focusMark:SetSize(3*scale,height-top)
         end
         row.objectiveFrame:ClearAllPoints();row.objectiveFrame:SetPoint("TOPLEFT",indent,-height);row.objectiveFrame:SetWidth(bodyWidth)
@@ -1842,8 +1896,8 @@ function UI:LayoutTracker()
         row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y);row:SetHeight(height)
         return height
     end
-    local cardTop=math.max(36*scale,T.location:GetStringHeight()+spacing.padding*scale)
-    T.divider:ClearAllPoints();T.divider:SetPoint("TOPLEFT",0,-cardTop+7);T.divider:SetSize(width,1);T.headerLine:SetSize(38*scale,2)
+    T.divider:SetSize(width,1)
+    T.headerLine:SetSize(guide and math.min(width,T.chapter:GetStringWidth()+gap) or 38*scale,2)
     T.career:SetWidth(inner)
     T.career.heading:ClearAllPoints();T.career.heading:SetPoint("TOPLEFT");T.career.heading:SetWidth(inner)
     local noticeHeight=T.career.heading:GetStringHeight()+spacing.tight*scale
@@ -1870,18 +1924,24 @@ function UI:LayoutTracker()
         cardTop=cardTop+T.dungeons:GetHeight()+gap
     end
     T.card:ClearAllPoints();T.card:SetPoint("TOPLEFT",0,-cardTop)
-    T.primaryLabel:SetShown((T.primaryLabel:GetText() or "")~="")
+    T.primaryLabel:SetShown(not guide and (T.primaryLabel:GetText() or "")~="")
     T.focusLabel:SetShown(not collapsed and T.model and T.model.questId~=nil)
-    T.focusLabel:ClearAllPoints();T.focusLabel:SetPoint("TOPLEFT",gap,0)
-    local titleY=T.focusLabel:IsShown() and T.focusLabel:GetStringHeight()+spacing.tight*scale or 0
+    T.focusLabel:ClearAllPoints();T.focusLabel:SetPoint("TOPLEFT",guide and indent+gap or gap,0)
+    local titleY=not guide and T.focusLabel:IsShown() and T.focusLabel:GetStringHeight()+spacing.tight*scale or 0
     T.actionIcon:ClearAllPoints();T.actionIcon:SetPoint("TOPLEFT",gap,-titleY-2);T.actionIcon:SetSize(16*scale,16*scale)
-    self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT",indent+gap,-titleY)
-    local titleWidth=width-indent-gap
+    local titleX=indent+gap+(guide and T.focusLabel:IsShown() and T.focusLabel:GetStringWidth()+gap or 0)
+    self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT",titleX,-titleY)
+    local titleWidth=width-titleX
+    local skipParent=guide and T.content or T.card
+    if T.skipParent~=skipParent then T.skip:SetParent(skipParent);T.skipParent=skipParent end
     T.skip:SetShown(self.QuestDeferral(T.questTitle.questId)=="暂时不做")
     if T.skip:IsShown() then
         local w=math.ceil(T.skip.text:GetStringWidth())+2*gap
-        T.skip:ClearAllPoints();T.skip:SetPoint("TOPRIGHT",0,0);T.skip:SetSize(w,20*scale)
-        if not T.focusLabel:IsShown() then titleWidth=titleWidth-w-gap end
+        T.skip:ClearAllPoints()
+        if guide then T.skip:SetPoint("TOPRIGHT",T.content,"TOPLEFT",headerRoom,-T.toolbarY)
+        else T.skip:SetPoint("TOPRIGHT",0,0) end
+        T.skip:SetSize(w,20*scale)
+        if not guide and not T.focusLabel:IsShown() then titleWidth=titleWidth-w-gap end
     end
     if T.primaryLabel:IsShown() then
         self.title:SetWidth(0)
@@ -1900,14 +1960,66 @@ function UI:LayoutTracker()
         top=top+T.queueLabel:GetStringHeight()+gap
     end
     T.header:ClearAllPoints();T.header:SetPoint("TOPLEFT",0,spacing.tight*scale);T.header:SetSize(width,top)
-    T.header:SetShown(not collapsed)
+    T.header:SetShown(not collapsed and not guide)
     T.currentScroll:SetWidth(inner);T.currentChild:SetWidth(inner)
-    T.reward:ClearAllPoints();T.reward:SetPoint("TOPLEFT",indent,0);T.reward:SetWidth(bodyWidth)
+    local function layoutItinerary(childHeight)
+        T.journey:ClearAllPoints();T.journey:SetPoint("TOPLEFT",0,-childHeight-spacing.gap*scale);T.journey:SetWidth(inner)
+        T.journey:SetShown(not collapsed and T.model~=nil and T.model.journey~=nil)
+        T.journeyHeader:ClearAllPoints();T.journeyHeader:SetPoint("TOPLEFT");T.journeyHeader:SetSize(inner,24*scale)
+        T.journeySummary:SetWidth(inner-36*scale);T.journeySummary:SetMaxLines(1)
+        T.journeySummary:SetText((T.journeyTime or "")..(T.journeyClosed and "  +" or "  −"))
+        local journeyHeight=28*scale
+        for i,row in ipairs(T.journeyRows) do
+            local step=T.model and T.model.journey and T.model.journey.steps[i]
+            local shown=step and (i==1 or not T.journeyClosed and not step.task)
+            row:SetShown(shown==true)
+            if shown then
+                row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-journeyHeight);row:SetWidth(inner)
+                row.number:ClearAllPoints();row.number:SetPoint("TOPLEFT",0,-2);row.number:SetWidth(16*scale)
+                row.icon:ClearAllPoints();row.icon:SetPoint("TOPLEFT",18*scale,-2);row.icon:SetSize(14*scale,14*scale)
+                local timeWidth=math.ceil(row.time:GetStringWidth())
+                row.title:ClearAllPoints();row.title:SetPoint("TOPLEFT",38*scale,0);row.title:SetWidth(inner-44*scale-timeWidth)
+                row.time:ClearAllPoints();row.time:SetPoint("TOPRIGHT",0,0);row.time:SetWidth(timeWidth)
+                local height=math.max(18*scale,row.title:GetStringHeight())
+                row.detail:ClearAllPoints();row.detail:SetPoint("TOPLEFT",38*scale,-height);row.detail:SetWidth(inner-38*scale)
+                row.detail:SetShown((row.detail:GetText() or "")~="")
+                if row.detail:IsShown() then height=height+row.detail:GetStringHeight() end
+                height=height+spacing.gap*scale;row:SetHeight(height);journeyHeight=journeyHeight+height
+            end
+        end
+        T.journey:SetHeight(journeyHeight)
+        if T.journey:IsShown() then childHeight=childHeight+journeyHeight+spacing.section*scale end
+        local bottom=childHeight+spacing.gap*scale
+        T.thenDivider:ClearAllPoints();T.thenDivider:SetPoint("TOPLEFT",0,-bottom);T.thenDivider:SetSize(inner,1)
+        T.thenText:ClearAllPoints();T.thenText:SetPoint("TOPLEFT",0,-bottom-spacing.gap*scale);T.thenText:SetWidth(inner)
+        T.thenText:SetShown(not collapsed and (T.thenText:GetText() or "")~="");T.thenButton:SetShown(T.thenText:IsShown())
+        T.thenDivider:SetShown(T.thenText:IsShown())
+        if T.thenText:IsShown() then
+            bottom=bottom+gap
+            local lead=math.ceil(T.thenText:GetStringWidth())+gap
+            if guide and inner-lead-indent>=110*scale then
+                T.thenText:SetWidth(lead)
+                bottom=bottom+layoutRow(T.thenButton,bottom,lead)+gap
+            else
+                bottom=bottom+math.max(spacing.hit*scale,T.thenText:GetStringHeight()+spacing.tight*scale)
+                bottom=bottom+layoutRow(T.thenButton,bottom)+gap
+            end
+        end
+        return bottom
+    end
+    local travelling=guide and T.model.journey~=nil
+    local function placeBody(y)
+        self.body:ClearAllPoints();self.body:SetPoint("TOPLEFT",indent,-y);self.body:SetWidth(bodyWidth)
+        self.body:SetShown((self.body:GetText() or "")~="")
+        return self.body:IsShown() and y+self.body:GetStringHeight()+5 or y
+    end
+    local preceding=travelling and layoutItinerary(placeBody(0)) or 0
+    T.reward:ClearAllPoints();T.reward:SetPoint("TOPLEFT",indent,-preceding);T.reward:SetWidth(bodyWidth)
     local rewardInset=T.reward.icon:IsShown() and 14*scale or 0
     T.reward.icon:ClearAllPoints();T.reward.icon:SetPoint("TOPLEFT",0,-2*scale);T.reward.icon:SetSize(11*scale,11*scale)
     T.reward.text:ClearAllPoints();T.reward.text:SetPoint("TOPLEFT",rewardInset,0);T.reward.text:SetWidth(bodyWidth-rewardInset)
     T.reward:SetHeight(T.reward.text:GetStringHeight()+8*scale);T.reward:SetShown((T.reward.text:GetText() or "")~="")
-    local childHeight=T.reward:IsShown() and T.reward:GetHeight() or 0
+    local childHeight=preceding+(T.reward:IsShown() and T.reward:GetHeight() or 0)
     T.objectiveFrame:ClearAllPoints();T.objectiveFrame:SetPoint("TOPLEFT",indent,-childHeight);T.objectiveFrame:SetWidth(bodyWidth)
     local goals=layoutObjectives(T.objectives,bodyWidth,scale)
     T.objectiveFrame:SetHeight(math.max(1,goals));childHeight=childHeight+goals
@@ -1925,9 +2037,7 @@ function UI:LayoutTracker()
             else queueHeight=queueHeight+layoutRow(row,queueHeight) end
         end
     end
-    self.body:ClearAllPoints();self.body:SetPoint("TOPLEFT",indent,-childHeight);self.body:SetWidth(bodyWidth)
-    self.body:SetShown((self.body:GetText() or "")~="")
-    if self.body:IsShown() then childHeight=childHeight+self.body:GetStringHeight()+5 end
+    if not travelling then childHeight=placeBody(childHeight) end
     T.footer:ClearAllPoints();T.footer:SetPoint("TOPLEFT",indent,-childHeight);T.footer:SetWidth(bodyWidth)
     T.footer:SetShown((T.footer:GetText() or "")~="")
     if T.footer:IsShown() then childHeight=childHeight+math.max(18*scale,T.footer:GetStringHeight()+spacing.gap*scale) end
@@ -1939,41 +2049,8 @@ function UI:LayoutTracker()
     T.gear.close.icon:SetSize(spacing.smallIcon*scale,spacing.smallIcon*scale)
     T.gear:SetShown(T.gear.advice~=nil)
     if T.gear:IsShown() then childHeight=childHeight+T.gear:GetHeight()+spacing.tight*scale end
-    local clipped=math.max(0,childHeight-({compact=100,normal=200,expanded=280})[density]*scale)
-    T.journey:ClearAllPoints();T.journey:SetPoint("TOPLEFT",0,-childHeight-spacing.gap*scale);T.journey:SetWidth(inner)
-    T.journey:SetShown(not collapsed and T.model~=nil and T.model.journey~=nil)
-    T.journeyHeader:ClearAllPoints();T.journeyHeader:SetPoint("TOPLEFT");T.journeyHeader:SetSize(inner,24*scale)
-    T.journeySummary:SetWidth(inner-36*scale);T.journeySummary:SetMaxLines(1)
-    T.journeySummary:SetText((T.journeyTime or "")..(T.journeyClosed and "  +" or "  −"))
-    local journeyHeight=28*scale
-    for i,row in ipairs(T.journeyRows) do
-        local shown=(i==1 or not T.journeyClosed) and T.model and T.model.journey and T.model.journey.steps[i]~=nil
-        row:SetShown(shown==true)
-        if shown then
-            row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-journeyHeight);row:SetWidth(inner)
-            row.number:ClearAllPoints();row.number:SetPoint("TOPLEFT",0,-2);row.number:SetWidth(16*scale)
-            row.icon:ClearAllPoints();row.icon:SetPoint("TOPLEFT",18*scale,-2);row.icon:SetSize(14*scale,14*scale)
-            local timeWidth=math.ceil(row.time:GetStringWidth())
-            row.title:ClearAllPoints();row.title:SetPoint("TOPLEFT",38*scale,0);row.title:SetWidth(inner-44*scale-timeWidth)
-            row.time:ClearAllPoints();row.time:SetPoint("TOPRIGHT",0,0);row.time:SetWidth(timeWidth)
-            local height=math.max(18*scale,row.title:GetStringHeight())
-            row.detail:ClearAllPoints();row.detail:SetPoint("TOPLEFT",38*scale,-height);row.detail:SetWidth(inner-38*scale)
-            row.detail:SetShown((row.detail:GetText() or "")~="")
-            if row.detail:IsShown() then height=height+row.detail:GetStringHeight() end
-            height=height+spacing.gap*scale;row:SetHeight(height);journeyHeight=journeyHeight+height
-        end
-    end
-    T.journey:SetHeight(journeyHeight)
-    if T.journey:IsShown() then childHeight=childHeight+journeyHeight+spacing.section*scale end
-    local bottom=childHeight+spacing.gap*scale
-    T.thenDivider:ClearAllPoints();T.thenDivider:SetPoint("TOPLEFT",0,-bottom);T.thenDivider:SetSize(inner,1)
-    T.thenText:ClearAllPoints();T.thenText:SetPoint("TOPLEFT",0,-bottom-spacing.gap*scale);T.thenText:SetWidth(inner)
-    T.thenText:SetShown(not collapsed and (T.thenText:GetText() or "")~="");T.thenButton:SetShown(T.thenText:IsShown())
-    T.thenDivider:SetShown(T.thenText:IsShown())
-    if T.thenText:IsShown() then
-        bottom=bottom+spacing.gap*scale+math.max(spacing.hit*scale,T.thenText:GetStringHeight()+spacing.tight*scale)
-        bottom=bottom+layoutRow(T.thenButton,bottom)+spacing.gap*scale
-    end
+    local clipped=math.max(0,childHeight-preceding-({compact=100,normal=200,expanded=280})[density]*scale)
+    local bottom=travelling and childHeight+gap or layoutItinerary(childHeight)
     if not dungeonSummary then
         T.queueLabel:ClearAllPoints();T.queueLabel:SetPoint("TOPLEFT",0,-bottom);T.queueLabel:SetWidth(inner)
         T.queueLabel:SetText(T.model and T.model.queueLabel or T.model and T.model.action and "后续行程" or "已接任务")
@@ -2051,7 +2128,10 @@ function UI:LayoutTracker()
         T.progressBar:ClearAllPoints();T.progressBar:SetPoint("LEFT",barStart,0);T.progressBar:SetSize(progressWidth,4)
         T.progressBar:SetStatusBarColor(unpack(palette.gold));T.progressBar:SetValue(T.progressRatio or 0)
     end
-    local fixed=cardTop+top+24+(T.progress:IsShown() and 24*scale or 0)
+    T.pace:SetShown(guide==true and T.pace:GetText()~="")
+    T.pace:ClearAllPoints();T.pace:SetPoint("BOTTOMLEFT",spacing.padding,(T.progress:IsShown() and 30 or 10)*scale)
+    T.pace:SetWidth(inner)
+    local fixed=cardTop+top+24+(T.pace:IsShown() and T.pace:GetStringHeight()+gap or 0)+(T.progress:IsShown() and 24*scale or 0)
     available=math.max(fixed+1,math.floor(available))
     local minHeight=math.min(available,math.max(200,fixed+40*scale))
     self.frame:SetResizeBounds(260,collapsed and fixed or minHeight,800,math.max(1200,minHeight))
@@ -2346,12 +2426,20 @@ function UI:SetTrackerNavigation(distance,angle,unverified,action)
     local title,detail,following,icon,nextIcon,meta
     if guide then title,detail,following,icon,nextIcon,meta=navigationInstruction(action,T.model and T.model.journey)
     else title,icon="任务物品","collect" end
+    angle=A.settings.arrow and angle or nil
+    local bearing=angle~=nil and distance~=nil and not A.state.inInstance
+    local trip=bearing and T.model and T.model.journey
+    local eta=trip and trip.action==action and trip.seconds
+    local showETA=not not eta
+    if T.navSeconds~=eta then
+        T.navSeconds=eta
+        T.navETA:SetText(eta and ("全程 "..clockText(eta)) or "")
+    end
     if A.settings.arrow and distance then
         local meters=A.settings.distanceUnits=="meters"
         local value=string.format("%.0f %s",meters and distance*0.9144 or distance,meters and "米" or "码")
-        meta=meta and meta.." · "..value or value
+        meta=not bearing and meta and meta.." · "..value or value
     end
-    angle=A.settings.arrow and angle or nil
     local scale=self:FontScale()
     if T.navScale~=scale or (self.nav:GetText() or "")~=(meta or "") then
         self.nav:SetText(meta or "")
@@ -2360,27 +2448,45 @@ function UI:SetTrackerNavigation(distance,angle,unverified,action)
     local nextText=following and ("下一步  "..following) or ""
     local inset=spacing.padding*scale
     local metaRight=angle and inset+20*scale or inset
-    local reserved=T.navMetaWidth+metaRight
+    local reserved=bearing and inset or T.navMetaWidth+metaRight
     local width=self.navAnchor:GetWidth()
-    if T.navScale~=scale or T.navReserved~=reserved or T.navWidth~=width or T.navItemHeight~=itemHeight or T.navTitle:GetText()~=title or
+    if T.navCentered~=bearing or T.navHasETA~=showETA or T.navScale~=scale or T.navReserved~=reserved or T.navWidth~=width or T.navItemHeight~=itemHeight or T.navTitle:GetText()~=title or
         (T.navDetail:GetText() or "")~=(detail or "") or (T.navNext:GetText() or "")~=nextText or T.navKind~=icon or T.navNextKind~=nextIcon then
         T.navScale,T.navReserved,T.navKind,T.navNextKind=scale,reserved,icon,nextIcon
         T.navWidth,T.navItemHeight=width,itemHeight
-        local left=inset+spacing.indent*scale
+        T.navCentered,T.navHasETA=bearing,showETA
+        local left=bearing and inset or inset+spacing.indent*scale
         local textWidth=width-left-inset
         local function place(widget,x,y)
             widget:ClearAllPoints();widget:SetPoint("TOPLEFT",self.navFrame,"TOPLEFT",x,-y)
         end
         setHUDIcon(T.navIcon,icon)
-        T.navIcon:SetSize(spacing.icon*scale,spacing.icon*scale);place(T.navIcon,inset,inset)
-        T.navTitle:SetWidth(width-left-reserved);T.navTitle:SetText(title);place(T.navTitle,left,inset)
-        self.nav:ClearAllPoints();self.nav:SetPoint("TOPRIGHT",self.navFrame,"TOPRIGHT",-metaRight,-inset)
-        T.navBearing:SetSize(spacing.icon*scale,spacing.icon*scale)
-        T.navBearing:ClearAllPoints();T.navBearing:SetPoint("TOPRIGHT",self.navFrame,"TOPRIGHT",-inset,-inset)
-        T.navBearing:SetVertexColor(self:Accent())
-        local y=inset+math.max(spacing.icon*scale,T.navTitle:GetStringHeight())
+        T.navIcon:SetShown(not bearing)
+        T.navBearing:ClearAllPoints();self.nav:ClearAllPoints()
+        local y=inset
+        if bearing then
+            T.navBearing:SetSize(28*scale,28*scale);T.navBearing:SetPoint("TOP",self.navFrame,"TOP",0,-y)
+            T.navBearing:SetVertexColor(unpack(palette.gold))
+            y=y+32*scale
+            self.nav:SetPoint("TOP",self.navFrame,"TOP",0,-y);self.nav:SetJustifyH("CENTER")
+            y=y+self.nav:GetStringHeight()+spacing.tight*scale
+        else
+            T.navIcon:SetSize(spacing.icon*scale,spacing.icon*scale);place(T.navIcon,inset,inset)
+            self.nav:SetPoint("TOPRIGHT",self.navFrame,"TOPRIGHT",-metaRight,-inset);self.nav:SetJustifyH("RIGHT")
+            T.navBearing:SetSize(spacing.icon*scale,spacing.icon*scale)
+            T.navBearing:SetPoint("TOPRIGHT",self.navFrame,"TOPRIGHT",-inset,-inset)
+            T.navBearing:SetVertexColor(self:Accent())
+        end
+        T.navTitle:SetJustifyH(bearing and "CENTER" or "LEFT")
+        T.navTitle:SetWidth(width-left-reserved);T.navTitle:SetText(title);place(T.navTitle,left,y)
+        y=y+math.max(spacing.icon*scale,T.navTitle:GetStringHeight())
+        T.navETA:SetShown(showETA)
+        if eta then
+            T.navETA:SetWidth(textWidth);place(T.navETA,left,y);y=y+T.navETA:GetStringHeight()
+        end
         T.navDetail:SetText(detail or "");T.navDetail:SetShown(detail~=nil and detail~="")
         if T.navDetail:IsShown() then
+            T.navDetail:SetJustifyH(bearing and "CENTER" or "LEFT")
             y=y+spacing.tight*scale
             T.navDetail:SetWidth(textWidth);place(T.navDetail,left,y);y=y+T.navDetail:GetStringHeight()
         end
@@ -2392,7 +2498,8 @@ function UI:SetTrackerNavigation(distance,angle,unverified,action)
             y=y+1+spacing.gap*scale
             setHUDIcon(T.navNextIcon,nextIcon,true);T.navNextIcon:SetSize(spacing.smallIcon*scale,spacing.smallIcon*scale)
             place(T.navNextIcon,inset+2*scale,y+scale)
-            T.navNext:SetWidth(textWidth);place(T.navNext,left,y);y=y+math.max(spacing.smallIcon*scale,T.navNext:GetStringHeight())
+            local nextLeft=inset+spacing.indent*scale
+            T.navNext:SetWidth(width-nextLeft-inset);place(T.navNext,nextLeft,y);y=y+math.max(spacing.smallIcon*scale,T.navNext:GetStringHeight())
         end
         local height=y+inset+itemHeight
         if self.navFrame:GetWidth()~=width or self.navFrame:GetHeight()~=height then

@@ -90,7 +90,7 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     B=setup(true,api);B.UI:Render();local choice=B.action
     assert(B.UI.frame.daylightOpts and B.UI.details.daylightOpts)
     eq(B.UI.frame.daylightOpts.noBorder,true);eq(B.UI.navFrame.daylightOpts.noBorder,false)
-    eq(B.UI.frame.daylightOpts.bgAlpha,0.4);eq(B.UI.title.fontFace,face);assert(B.UI.tracker.header:IsShown())
+    eq(B.UI.frame.daylightOpts.bgAlpha,0.4);eq(B.UI.title.fontFace,face);assert(B.UI.tracker.chapter:IsShown());eq(B.UI.tracker.header:IsShown(),false)
     eq(B.UI.navFrame.daylightOpts.panel,true);eq(B.UI.navFrame.daylightOpts.bgAlpha,0.40)
     windowAlpha=0.35;listeners.SettingChanged("general","windowAlpha");eq(B.UI.navFrame.daylightOpts.bgAlpha,0.40)
     questBox.boxAlphaOwn,questBox.boxAlpha,questBox.boxBorder=true,0.45,false
@@ -442,7 +442,7 @@ test("窗口锁定阻止拖动且主详情分别保存位置并恢复",function(
     U.folded=false;U:LayoutTracker();eq(U.frame.height,400);eq(T.resize.shown,true)
     B:NormalizeSettings(B.settings);eq(B.settings.trackerWidth,420);eq(B.settings.trackerHeight,400)
     U.frame.scripts.OnMouseUp(nil,"RightButton");B.menu["恢复自动尺寸"].callback()
-    eq(B.settings.trackerWidth,0);eq(B.settings.trackerHeight,0);eq(U.frame.width,280)
+    eq(B.settings.trackerWidth,0);eq(B.settings.trackerHeight,0);eq(U.frame.width,360)
     U.frame.scripts.OnMouseUp(nil,"RightButton");B.menu["缩小字体 · 85%"].callback()
     U:TrackerMenu(U.frame);eq(B.menu["缩小字体"].enabled,false)
     B.menu["放大字体 · 100%"].callback();eq(B.settings.fontScale,1)

@@ -103,6 +103,13 @@ def hand(polygon, oval, line, base, shade, light):
     polygon([(27,17),(29,15),(28,23),(24,29),(13,29),(12,26),(22,26),(25,22)],shade)
     line([(14,5),(14,14)],1.4,light)
 
+def bearing(polygon, oval, line, base, shade, light):
+    polygon([(16,2),(29,28),(16,22),(3,28)])
+    polygon([(16,2),(16,22),(29,28)],shade)
+    line([(4,26),(16,3)],1,light)
+
+glyph('bearing', '#FDFDFD #ADADAD #FFFFFF', bearing)
+
 def lightning(polygon, oval, line, base, shade, light):
     polygon([(16,2),(27,2),(20,12),(28,12),(9,30),(13,18),(5,18)])
     polygon([(25,13),(9,30),(16,16)],shade)
