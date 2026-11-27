@@ -1082,6 +1082,10 @@ function D:ObjectiveTargets(q,state)
             if path and path[1] and usableSpawn(path[1]) then
                 points={{map=self.maps[16591],sourceAreaId=16591,x=path[1][1]/100,y=path[1][2]/100}}
             end
+        elseif outdoor and kind=="npc" and id==257001 and not sourceKind and self.maps[16591] then
+            -- Old Rot-Chum: the 55 unordered sightings include open water. Players found him by this islet.
+            points={{map=self.maps[16591],sourceAreaId=16591,x=.77,y=.73,spawnArea=true,
+                siteName="鱼人小岛",label="老腐块出没区域",travelHint="在河林东南的鱼人小岛及周围水域寻找老腐块。"}}
         end
         if not points then
             local hunt=outdoor and kind=="npc" and not sourceKind and active.objectives[index].numRequired

@@ -16,6 +16,7 @@
 
 ## 可重现的问题
 
+- **悬赏：老腐块（95120）**。覆盖着腐肉的鱼叉由老腐块掉落。QuestieDB 1.1.5 在河林收录了它的 55 个位置，从南侧接近时会选到（77.27，75.60）。任务正文将搜索范围限定在港口南面的鱼人群岛附近。两名玩家分别在（77，72）和（77，73）遇到它，地图和导航采用（77，73）作为寻找小岛及周围水域的参考点。[任务正文](https://www.wowhead.com/forever/quest=95120/) · [玩家目击记录](https://www.wowhead.com/forever/npc=257001/old-rot-chum#comments)
 - **猎杀猎手（94924）**。从守望者科尼利厄斯的塔出发，旧版选了紧邻接交点的单条记录（59.49，63.87）。新版指向塔北平原的偷猎者出没区域（58.73，60.99）。猎杀 12 名后回塔交付（59.53，63.97）。[任务正文](https://www.wowhead.com/forever/quest=94924/hunting-the-hunters) · [路线说明](https://polestar.guide/guides/alliance/40-50/01b-riverglades) · [实服记录](https://foreverdb.net/quest/94924-hunting-the-hunters)
 - **陆行鸟之歌（95984、96104）**。只需要一个完整的鸟喙，也可能需要击杀多只游荡的陆行鸟。野外普通怪有大量分布记录时，标记优先放在附近有多处记录的草地。两阵营各自的接交 NPC 仍独立解析。[实服掉落与地图记录](https://foreverdb.net/quest/95984-song-of-the-strider)
 - **苍牙野猪狩猎（95162）**。任务库里野猪肉的来源缺少河林的成年苍牙野猪。补入实服掉落后，从纳佐克出发由艾尔文森林改为河林（70.94，29.12）。[任务地点](https://foreverdb.net/quest/95162-paletusk-harvesting) · [成年苍牙野猪的掉落记录](https://zephras.com/forever/enUS/npc/255851/)
