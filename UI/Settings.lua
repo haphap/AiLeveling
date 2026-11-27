@@ -29,7 +29,7 @@ function S:Create(parent)
             b.SetChecked=function(_,on) b.SetOn(on) end
         end
         b:SetPoint("TOPLEFT",position(row,group==3 and 9 or 8));b.Text:SetText(label);b.Text:SetWidth(238)
-        if not api then A.UI:RegisterFont(b.Text,"caption") end
+        if not api then A.UI:RegisterFont(b.Text,"body");b.Text:SetTextColor(unpack(A.UI.colors.white)) end
         b:SetScript("OnClick",function()
             local on=api and A.settings[key]~=true or not api and b:GetChecked()==true
             b:SetChecked(on);A:SetOption(key,on)

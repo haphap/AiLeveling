@@ -3,8 +3,7 @@ A.UI = {fonts={},daylightFonts={},shells={}}
 local UI = A.UI
 local backgroundAlpha=0.40 -- 60% transparent
 UI.colors={
-    bg={0.078,0.094,0.145,backgroundAlpha}, sidebar={0.065,0.078,0.122,backgroundAlpha},
-    detailBg={0.090,0.106,0.161,0.90},
+    bg={0.078,0.094,0.145,backgroundAlpha},
     panel={0,0,0,0}, button={0.095,0.102,0.145,backgroundAlpha},
     primary={0.91,0.72,0.41,1}, primaryHover={1,0.82,0.52,1}, ink={0.085,0.075,0.10},
     hover={0.22,0.24,0.32,backgroundAlpha}, selected={0.19,0.22,0.30,backgroundAlpha},
@@ -28,6 +27,12 @@ for name,color in pairs(colors) do
 end
 UI.fontSizes={caption=12,body=14,task=15,heading=18,brand=18,title=20}
 local guideSizes={guideName=15,guideAction=14,guideBody=13,guideLabel=12,guideNote=11}
+local detailRoles={title="guideName",heading="guideName",task="guideAction",body="guideBody",caption="guideLabel"}
+local function inDetails(frame)
+    if not UI.details then return false end
+    while frame and frame~=UI.details do frame=frame:GetParent() end
+    return frame~=nil
+end
 local daylightRoles={caption="small",body="body",task="body",heading="head",brand="title",title="title"}
 UI.metrics={tight=4,gap=8,padding=12,section=16,indent=24,icon=16,smallIcon=12,
     guidePadding=14,guideIndent=25,detailInset=100,button=28,hit=24,scrollbar=16,radius=6,controlRadius=4}
@@ -67,25 +72,23 @@ function UI:StyleFont(entry)
     if entry.guide then
         size=entry.size*(api and api.GetSetting("general","fontScale") or 1)
         flags=""
-        entry.text:SetSpacing(0)
+        if entry.text.SetSpacing then entry.text:SetSpacing(0) end
         entry.text:SetShadowOffset(1,-1)
         entry.text:SetShadowColor(0,0,0,0.6)
-    elseif entry.detail or entry.flags=="OUTLINE" then
+    elseif entry.flags=="OUTLINE" then
         size=math.max(size,(entry.size+2)*(api and api.GetSetting("general","fontScale") or 1))
         flags=entry.flags or ""
         entry.text:SetShadowOffset(1,-1)
-        entry.text:SetShadowColor(0,0,0,entry.detail and 0.8 or 1)
+        entry.text:SetShadowColor(0,0,0,1)
     end
     entry.text:SetFont(face,size*(A.settings.fontScale or 1),flags or "")
 end
 
 function UI:RegisterFont(text,size,role,flags)
     local daylightRole=daylightRoles[size] or (type(size)=="number" and size<=12 and "small" or "body")
-    local guide=guideSizes[size]
+    local guide=guideSizes[size] or (inDetails(text) and guideSizes[detailRoles[size]])
     size=guide or self.fontSizes[size] or size
-    local parent=self.details and text
-    while parent and parent~=self.details do parent=parent:GetParent() end
-    self.fonts[#self.fonts+1]={text=text,size=size,role=role,flags=flags,daylightRole=daylightRole,detail=parent~=nil,guide=guide}
+    self.fonts[#self.fonts+1]={text=text,size=size,role=role,flags=flags,daylightRole=daylightRole,guide=guide}
     self:StyleFont(self.fonts[#self.fonts])
 end
 
@@ -285,6 +288,12 @@ function UI:Input(parent,opts,color)
 end
 
 function UI:Button(parent, label, width, callback, fontSize)
+    if inDetails(parent) then
+        local button=self:ListButton(parent,label,width,callback,fontSize or "guideLabel")
+        button.baseColor=colors.button
+        button:SetBackdropColor(unpack(button.baseColor))
+        return button
+    end
     if self.daylight then
         local b=self.daylight.Button(parent,label,metrics.button)
         b:SetWidth(width);b:SetScript("OnClick",callback)
@@ -329,7 +338,7 @@ function UI:ListButton(parent,label,width,callback,role)
     b.baseColor=colors.panel;b:SetBackdropColor(unpack(colors.panel))
     b.text=self:Text(b,role or "body");b.text:SetPoint("CENTER");b.text:SetText(label)
     b:SetScript("OnClick",callback)
-    b:SetScript("OnEnter",function() b:SetBackdropColor(unpack(colors.rowHover)) end)
+    b:SetScript("OnEnter",function() b:SetBackdropColor(unpack(b.baseColor==colors.primary and colors.primaryHover or colors.rowHover)) end)
     b:SetScript("OnLeave",function() b:SetBackdropColor(unpack(b.baseColor)) end)
     return b
 end
@@ -435,27 +444,23 @@ end
 
 function UI:Create()
     self:CreateTracker()
-    self.details = self:Panel("AiLevelingDetails", UIParent, 1000, 600,colors.detailBg,"detailTransparency")
+    self.details=CreateFrame("Frame","AiLevelingDetails",UIParent)
+    self.details:SetSize(1000,600)
+    self.detailBackground=self:FlatBackground(self.details,colors.hud,"detailTransparency")
     self.details:SetPoint("CENTER")
     local p=A.settings.detailPosition
     if p then self.details:ClearAllPoints();self.details:SetPoint(p[1],UIParent,p[2],p[3],p[4]) end
     self:Movable(self.details,"detailPosition")
     self.details:SetFrameStrata("DIALOG")
     self.details:Hide()
-    local close = self.daylight and self.daylight.Close(self.details,function() self.details:Hide() end,26) or
-        self:Button(self.details, "×", 26, function() self.details:Hide() end,"title")
-    close:SetPoint("TOPRIGHT", -14, -14)
+    local close=self:ListButton(self.details,"×",26,function() self.details:Hide() end,"guideName")
+    close:SetPoint("TOPRIGHT",-metrics.guidePadding,-metrics.guidePadding)
     self.tabs = {}
     local side=CreateFrame("Frame",nil,self.details);side:SetSize(76,584)
     side:SetPoint("TOPLEFT",8,-8)
-    self:Rounded(side,metrics.radius)
-    self:BindBackground(side,colors.sidebar,"detailTransparency")
     local divider=self.details:CreateTexture(nil,"BACKGROUND")
     divider:SetPoint("TOPLEFT",88,-14);divider:SetPoint("BOTTOMLEFT",88,14);divider:SetWidth(1)
     divider:SetColorTexture(unpack(colors.line))
-    local header=self.details:CreateTexture(nil,"BACKGROUND")
-    header:SetPoint("TOPLEFT",metrics.detailInset,-74);header:SetPoint("TOPRIGHT",-22,-74);header:SetHeight(1)
-    header:SetColorTexture(unpack(colors.line));self.detailRule=header
     self.detailMark=side:CreateTexture(nil,"ARTWORK")
     self.detailMark:SetTexture(media.."compass.tga");self.detailMark:SetSize(26,26);self.detailMark:SetPoint("TOP",0,-10)
     local labels={"练级任务","任务链","装备","地下城","设置","数据","服务","专业任务","职业任务","练级区域","坐骑任务"}
@@ -470,11 +475,12 @@ function UI:Create()
     end
     self.tabMark=side:CreateTexture(nil,"ARTWORK");self.tabMark:SetWidth(2)
     self.detailHeading=self:Text(self.details,"title",colors.white)
-    self.detailHeading:SetPoint("TOPLEFT",metrics.detailInset,-22);self.detailHeading:SetText("练级任务")
-    local underline=self.details:CreateTexture(nil,"ARTWORK")
-    underline:SetPoint("TOPLEFT",self.detailHeading,"BOTTOMLEFT",0,-3);underline:SetSize(52,2);underline:SetColorTexture(unpack(colors.gold))
-    self.detailSubtitle=self:Text(self.details,"body",colors.muted)
-    self.detailSubtitle:SetPoint("TOPLEFT",metrics.detailInset,-54)
+    self.detailHeading:SetPoint("TOPLEFT",metrics.detailInset,-metrics.guidePadding);self.detailHeading:SetText("练级任务")
+    self.detailRule=self.details:CreateTexture(nil,"ARTWORK")
+    self.detailRule:SetPoint("TOPLEFT",self.detailHeading,"BOTTOMLEFT",0,-metrics.tight)
+    self.detailRule:SetHeight(1);self.detailRule:SetColorTexture(unpack(colors.line))
+    local underline=self.details:CreateTexture(nil,"ARTWORK",nil,1)
+    underline:SetPoint("LEFT",self.detailRule,"LEFT");underline:SetSize(42,2);underline:SetColorTexture(unpack(colors.gold))
     self.scroll = CreateFrame("ScrollFrame", nil, self.details, "UIPanelScrollFrameTemplate")
     self.scroll:SetPoint("TOPLEFT", 18, -96); self.scroll:SetPoint("BOTTOMRIGHT", -36, 18)
     self.scrollChild = CreateFrame("Frame", nil, self.scroll)
@@ -557,10 +563,10 @@ function UI:ShowText(text,heading)
     self.details:SetSize(1000,600)
     self.Browser.frame:Hide()
     self.scroll:SetPoint("BOTTOMRIGHT",-36,18)
-    self.detailHeading:SetText(heading or "报告");self.detailSubtitle:Hide();self.detailRule:Show()
+    self.detailHeading:SetText(heading or "报告");self.detailRule:SetWidth(self.details:GetWidth()-metrics.detailInset-2*metrics.guidePadding)
     self.Chains.frame:Hide()
     self.Services.frame:Hide()
-    self.scroll:SetPoint("TOPLEFT",metrics.detailInset,-96)
+    self.scroll:SetPoint("TOPLEFT",self.detailRule,"BOTTOMLEFT",0,-metrics.guidePadding)
     self.exporting = true
     self.detailText:SetText(text)
     self:SizeReport();self.detailText:Hide()
@@ -584,23 +590,24 @@ function UI:SelectTab(index,reuse)
     self.tabMark:SetColorTexture(unpack(colors.gold))
     local names={"练级任务","任务链","装备情况","地下城","设置","运行数据","附近服务","专业任务","职业任务","练级区域","坐骑任务"}
     self.detailHeading:SetText(names[index])
-    self.detailSubtitle:SetText(({[1]="当前安排与可选任务",[3]="当前装备、背包提升与任务奖励",[4]="选择副本，查看等级和任务安排",
-        [8]="按专业查看条件、奖励与前置",[9]="当前职业的任务与解锁奖励",[10]="比较适合当前等级的任务区域",[11]="坐骑奖励及其前置任务"})[index] or "")
     local browse=index==1 or index==3 or index==4 or index>=8
-    self.detailSubtitle:SetShown(not browse)
-    self.detailRule:SetShown(not browse)
+    self.detailRule:SetWidth(self.details:GetWidth()-metrics.detailInset-2*metrics.guidePadding)
     self.details:SetSize(1000,600)
     self.scroll:SetPoint("BOTTOMRIGHT",-36,18);self.scrollChild:SetWidth(1000-metrics.detailInset-40);self.detailText:SetWidth(self.scrollChild:GetWidth())
     self.Settings.frame:SetShown(index==5)
     self.Chains.frame:SetShown(index==2)
     self.Services.frame:SetShown(index==7)
     for _,panel in ipairs({self.Settings.frame,self.Chains.frame,self.Services.frame}) do
-        panel:ClearAllPoints();panel:SetPoint("TOPLEFT",metrics.detailInset,-94);panel:SetPoint("BOTTOMRIGHT",-18,18)
+        panel:ClearAllPoints();panel:SetPoint("TOPLEFT",self.detailRule,"BOTTOMLEFT",0,-metrics.guidePadding);panel:SetPoint("BOTTOMRIGHT",-18,18)
     end
     self.Browser.frame:SetShown(browse)
     self.scroll:SetShown(not browse and index~=5 and index~=2)
-    self.scroll:SetPoint("TOPLEFT",metrics.detailInset,index==7 and -178 or -96)
-    if browse then self.Browser:Refresh(index,reuse,not reuse);return end
+    self.scroll:SetPoint("TOPLEFT",self.detailRule,"BOTTOMLEFT",0,-metrics.guidePadding-(index==7 and 84 or 0))
+    if browse then
+        self.Browser:Refresh(index,reuse,not reuse)
+        self.detailRule:SetWidth(self.Browser.list:GetWidth())
+        return
+    end
     if index == 5 then self.Settings:Refresh(); return end
     if index == 2 then self.Chains:Refresh();return end
     local lines={}

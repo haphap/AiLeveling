@@ -318,26 +318,36 @@ end
 function B:Refresh(mode,reuse,opening)
     gold,blue,green,muted=A.UI.hex.gold,A.UI.hex.blue,A.UI.hex.green,A.UI.hex.muted
     reuse=reuse and self.mode==mode and self.entriesRevision==A.state.revision and self.entriesPlan==A.plan
-    if self.mode~=mode then
-        self.message=nil
+    local scale=A.UI:FontScale()
+    local modeChanged=self.mode~=mode
+    if modeChanged then self.message=nil end
+    if modeChanged or self.layoutScale~=scale then
+        self.layoutScale=scale
         local listWidth=mode==4 and 204 or 232
         local split=listWidth+24
-        self.frame:ClearAllPoints();self.frame:SetPoint("TOPLEFT",metrics.detailInset,-22);self.frame:SetSize(1000-metrics.detailInset-22,554)
-        self.summary:ClearAllPoints();self.summary:SetPoint("TOPLEFT",0,-77)
+        self.frame:ClearAllPoints();self.frame:SetPoint("TOPLEFT",metrics.detailInset,-metrics.guidePadding);self.frame:SetSize(1000-metrics.detailInset-metrics.guidePadding,600-2*metrics.guidePadding)
+        local searchY=math.ceil(A.UI.detailHeading:GetStringHeight())+metrics.guidePadding
+        local searchHeight=math.max(metrics.button,math.ceil(metrics.hit*scale))
+        local summaryY=searchY+searchHeight+metrics.gap
+        self.summary:ClearAllPoints();self.summary:SetPoint("TOPLEFT",0,-summaryY)
         self.summary:SetWidth(listWidth);self.summary:SetJustifyH("LEFT")
-        self.search:ClearAllPoints();self.search:SetPoint("TOPLEFT",0,-39);self.search:SetWidth(listWidth+4)
-        self.searchHint:ClearAllPoints();self.searchHint:SetPoint("TOPLEFT",A.UI.daylight and 26 or 10,-45)
+        self.search:ClearAllPoints();self.search:SetPoint("TOPLEFT",0,-searchY);self.search:SetSize(listWidth,searchHeight)
+        self.searchHint:ClearAllPoints();self.searchHint:SetPoint("LEFT",self.search,"LEFT",A.UI.daylight and 26 or 10,0)
         self.searchHint:SetText(({[3]="搜索装备名称或物品编号",[4]="搜索地下城名称",[10]="搜索区域名称"})[mode] or "搜索任务名称或编号")
         self.levelFilter:SetShown(mode==4)
-        local listY=mode==4 and 137 or 105
+        local listY=summaryY+math.ceil(metrics.hit*scale)
+        if mode==4 then
+            self.levelFilter:ClearAllPoints();self.levelFilter:SetPoint("TOPLEFT",0,-listY)
+            self.levelFilter:SetHeight(searchHeight);listY=listY+searchHeight+metrics.tight
+        end
         self.list:ClearAllPoints();self.list:SetPoint("TOPLEFT",0,-listY)
         self.list:SetSize(listWidth,self.frame:GetHeight()-listY);self.child:SetWidth(listWidth)
         self.divider:ClearAllPoints();self.divider:SetPoint("TOPLEFT",split,0);self.divider:SetPoint("BOTTOMLEFT",split,0)
-        self.questHeader:ClearAllPoints();self.questHeader:SetPoint("TOPLEFT",split+16,0)
-        local right=self.frame:GetWidth()-split-16-40
+        self.questHeader:ClearAllPoints();self.questHeader:SetPoint("TOPLEFT",split+metrics.guidePadding,0)
+        local right=self.frame:GetWidth()-split-metrics.guidePadding-40
         self.questHeader:SetWidth(right);self.info:SetWidth(right);self.infoChild:SetWidth(right)
         self.title:SetWidth(right-28);self.detail:SetWidth(right)
-        self.list:SetVerticalScroll(0);self.info:SetVerticalScroll(0)
+        if modeChanged then self.list:SetVerticalScroll(0);self.info:SetVerticalScroll(0) end
     end
     self.mode=mode
     local requested=mode==4 and A.UI.Dungeon.selected
@@ -404,8 +414,7 @@ function B:Refresh(mode,reuse,opening)
     end
     self.summary:SetText(summary)
     self.filtered=rows
-    local scale=A.UI:FontScale()
-    self.rowPitch=math.ceil(40*scale)+2*metrics.gap+metrics.tight
+    self.rowPitch=math.ceil((metrics.hit+18+metrics.tight)*scale)
     local height=math.max(1,#rows*self.rowPitch)
     self.child:SetHeight(height)
     local offset=math.min(self.list:GetVerticalScroll(),math.max(0,height-self.list:GetHeight()))
@@ -438,8 +447,8 @@ function B:DrawRows(offset)
         if not row then
             row=A.UI:ListButton(self.child,"",width,function() end,"task")
             row.text:SetMaxLines(1)
-            row.icon=A.UI:Text(row,"body");row.icon:SetPoint("TOPLEFT",metrics.gap,-metrics.gap)
-            row.sub=A.UI:Text(row,"caption",colors.muted);row.sub:SetMaxLines(1)
+            row.icon=A.UI:Text(row,"body")
+            row.sub=A.UI:Text(row,"guideNote",colors.muted);row.sub:SetMaxLines(1)
             row.line=row:CreateTexture(nil,"ARTWORK");row.line:SetPoint("BOTTOMLEFT",metrics.indent+metrics.gap,0);row.line:SetPoint("BOTTOMRIGHT",-8,0);row.line:SetHeight(1)
             row.line:SetColorTexture(unpack(colors.line))
             row.marker=row:CreateTexture(nil,"ARTWORK");row.marker:SetPoint("TOPLEFT");row.marker:SetPoint("BOTTOMLEFT");row.marker:SetWidth(2)
@@ -471,13 +480,16 @@ function B:DrawRows(offset)
             row.entry,row.pitch,row.index=entry,pitch,index
             row.questId,row.candidate,row.revision=entry.questId,entry.choice,A.plan and A.plan.revision
             row.deferred=entry.questId and ((A.state.skipped or {})[entry.questId] or (A.state.chainDeferred or {})[entry.questId])
-            local inset=metrics.gap+(metrics.icon+metrics.gap)*scale
-            row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",inset,-metrics.gap);row.text:SetWidth(width-inset-metrics.gap)
+            local pad=metrics.guidePadding*scale
+            local inset=pad+metrics.guideIndent*scale
+            local top=metrics.tight*scale
+            row.icon:ClearAllPoints();row.icon:SetPoint("TOPLEFT",pad,-top)
+            row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",inset,-top);row.text:SetWidth(width-inset-pad)
             row.text:SetText(entry.title);row.text:SetTextColor(unpack(entry.questId and entry.tone==green and colors.green or colors.white))
             row.icon:SetText(A.UI:Icon(entry.icon,metrics.icon));row.sub:SetText(entry.sub or "")
-            row.sub:ClearAllPoints();row.sub:SetPoint("TOPLEFT",inset,-metrics.gap-23*scale);row.sub:SetWidth(width-inset-metrics.gap)
-            row.line:ClearAllPoints();row.line:SetPoint("BOTTOMLEFT",inset,0);row.line:SetPoint("BOTTOMRIGHT",-metrics.gap,0)
-            row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-(index-1)*pitch);row:SetSize(width,pitch-metrics.tight)
+            row.sub:ClearAllPoints();row.sub:SetPoint("TOPLEFT",row.text,"BOTTOMLEFT",0,-2*scale);row.sub:SetWidth(width-inset-pad)
+            row.line:ClearAllPoints();row.line:SetPoint("BOTTOMLEFT",pad,0);row.line:SetPoint("BOTTOMRIGHT",-pad,0)
+            row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-(index-1)*pitch);row:SetSize(width,pitch)
             row.marker:SetColorTexture(unpack(entry.questId and colors.focus or colors.accent))
             markRow(row,entry==self.selected)
         elseif row.marker:IsShown()~=(entry==self.selected) then
@@ -528,11 +540,9 @@ function B:Detail()
         for _,button in ipairs(self.buttons) do button:SetParent(parent) end
     end
     self.questHeader:SetShown(quest and true or false)
-    self.info:ClearAllPoints();self.info:SetPoint("TOPLEFT",self.questHeader,"TOPLEFT")
-    self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT",e and e.dungeon and 12 or 0,e and e.dungeon and -8 or 0)
+    self.info:ClearAllPoints();self.info:SetPoint("TOPLEFT",self.questHeader,quest and "BOTTOMLEFT" or "TOPLEFT")
+    self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT")
     self.title:SetText(e and e.title or "暂无项目")
-    if self.dungeonBanner then self.dungeonBanner:Hide() end
-    if self.dungeonArt then self.dungeonArt:Hide() end
     self.detail:SetWidth(self.info:GetWidth())
     local lines={}
     local detailTop=self.title:GetStringHeight()+18
@@ -642,7 +652,6 @@ function B:Detail()
         end
         local headerHeight=self:PlaceActions(headerTop)+metrics.gap
         self.questHeader:SetHeight(headerHeight)
-        self.info:SetPoint("TOPLEFT",self.questHeader,"BOTTOMLEFT")
         self.info:SetHeight(self.frame:GetHeight()-18-headerHeight)
     elseif e.dungeon then
         local batch=A.char.taskBatch
@@ -849,15 +858,6 @@ function B:DungeonDetail(e)
     if not view then
         view=CreateFrame("Frame",nil,self.infoChild);view:SetWidth(width)
         self.dungeonDetail=view;view.rows={};view.bosses={}
-        self.dungeonBanner=self.infoChild:CreateTexture(nil,"BACKGROUND")
-        self.dungeonBanner:SetPoint("TOPLEFT");self.dungeonBanner:SetTexture("Interface\\AddOns\\AiLeveling\\Media\\hud-header.tga")
-        self.dungeonArt=self.infoChild:CreateTexture(nil,"BACKGROUND",nil,1)
-        self.dungeonArt:SetPoint("TOPRIGHT",self.dungeonBanner,"TOPRIGHT")
-        self.dungeonArt:SetVertexColor(0.55,0.52,0.49,0.48)
-        A.UI:BindBackground(self.dungeonBanner,colors.detailBg,"detailTransparency",function(banner,_,_,_,alpha)
-            banner:SetAlpha(alpha)
-            self.dungeonArt:SetAlpha(alpha)
-        end)
         view.levels=A.UI:Text(view,"body",colors.muted)
         view.tasks=A.UI:Text(view,"caption",colors.white)
         view.xp=A.UI:Text(view,"caption",colors.gold)
@@ -905,29 +905,14 @@ function B:DungeonDetail(e)
     local mapId=entry and A.Data.maps and A.Data.maps[entry[1]]
     local map=mapId and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(mapId)
     view.levels:SetText(e.levels..(minimum and "  ·  "..minimum.."级可进入" or "")..(map and map.name and "  ·  "..map.name or ""))
-    view.levels:ClearAllPoints();view.levels:SetPoint("TOPLEFT",12,0);view.levels:SetWidth(width-24)
+    view.levels:ClearAllPoints();view.levels:SetPoint("TOPLEFT");view.levels:SetWidth(width)
     local y=view.levels:GetStringHeight()+metrics.gap
     y=self:PlaceActions(top+y,true)-top+metrics.gap
-    self.dungeonBanner:SetSize(width,top+y);self.dungeonBanner:Show()
-    if view.artEntry~=entry then
-        view.artEntry=entry;view.artFile=nil
-        local layers=mapId and C_Map and C_Map.GetMapArtLayers and C_Map.GetMapArtLayers(mapId)
-        local layer=layers and layers[1]
-        if layer and C_Map.GetMapArtLayerTextures then
-            local files=C_Map.GetMapArtLayerTextures(mapId,1)
-            local cols=math.ceil(layer.layerWidth/layer.tileWidth)
-            local col=math.min(cols-1,math.floor(entry[2]*0.01*layer.layerWidth/layer.tileWidth))
-            local row=math.min(math.ceil(layer.layerHeight/layer.tileHeight)-1,math.floor(entry[3]*0.01*layer.layerHeight/layer.tileHeight))
-            view.artFile=files and files[row*cols+col+1]
-            if view.artFile then self.dungeonArt:SetTexture(view.artFile);self.dungeonArt:SetTexCoord(0,1,0.30,0.70) end
-        end
-    end
-    self.dungeonArt:SetSize(width,top+y);self.dungeonArt:SetShown(view.artFile~=nil)
     local available=not current and e.availableRewards
     local displayed=available or rewards
-    view.tasks:ClearAllPoints();view.tasks:SetPoint("TOPLEFT",12,-y)
+    view.tasks:ClearAllPoints();view.tasks:SetPoint("TOPLEFT",0,-y)
     view.tasks:SetText((available and "本次可做 " or current and "已安排 " or "可安排 ")..displayed.count.." 项")
-    local split=math.ceil(view.tasks:GetStringWidth())+28
+    local split=math.ceil(view.tasks:GetStringWidth())+metrics.guidePadding
     view.xp:ClearAllPoints();view.xp:SetPoint("TOPLEFT",split,-y);view.xp:SetWidth(width-split)
     view.xp:SetText("任务经验  "..A.UI.DungeonXPText(displayed))
     y=y+math.max(view.tasks:GetStringHeight(),view.xp:GetStringHeight())+metrics.gap
@@ -1063,7 +1048,7 @@ function B:DungeonDetail(e)
         row.deferred=(A.state.skipped or {})[task.id] or (A.state.chainDeferred or {})[task.id]
         row.revision=A.plan and A.plan.revision
         local expanded=view.expanded==task.id
-        row.baseColor=expanded and colors.selected or colors.button;row:SetBackdropColor(unpack(row.baseColor))
+        row.baseColor=expanded and colors.selected or colors.panel;row:SetBackdropColor(unpack(row.baseColor))
         local statusWidth=90*A.UI:FontScale()
         row.text:SetWidth(width-36-statusWidth);row.text:SetText(task.title);row.text:SetTextColor(unpack(tones[task.group] or colors.muted))
         local active=(A.state.quests or {})[task.id]
@@ -1086,7 +1071,7 @@ function B:DungeonDetail(e)
         row.meta:ClearAllPoints();row.meta:SetPoint("TOPLEFT",24,-h)
         h=h+(#meta>0 and row.meta:GetStringHeight() or 0)+4
         if expanded then
-            if not row.facts then row.facts=A.UI:Text(row,"body",colors.white);row.facts:SetSpacing(4) end
+            if not row.facts then row.facts=A.UI:Text(row,"body",colors.white) end
             row.facts:SetWidth(width-40);row.facts:ClearAllPoints();row.facts:SetPoint("TOPLEFT",24,-h)
             row.facts:SetText(dungeonQuestText(task));row.facts:Show()
             h=h+row.facts:GetStringHeight()+metrics.gap
