@@ -1059,6 +1059,13 @@ local centaurHunts={
     [93]={camp="吉尔吉斯村",hint="击败吉尔吉斯半人马，提升玛格拉姆声望。",npcs={4646,4647,4648,4649,4651,4652,4653}},
 }
 
+-- Recorded hunting sites in Riverglades. The nearest coastal sighting can be outside the quest area.
+local rivergladesHunts={
+    [257001]={x=.77,y=.73,siteName="鱼人小岛",label="老腐块出没区域",hint="在河林东南的鱼人小岛及周围水域寻找老腐块。"},
+    [257901]={x=.8633,y=.3860,siteName="爆破引线港北侧海盗营地"}, -- Eastsea Buccaneer
+    [257910]={x=.8695,y=.3914,siteName="爆破引线港北侧海盗营地"}, -- Eastsea Musketeer
+}
+
 function D:ObjectiveTargets(q,state)
     local active=state.quests[q.id]
     if not active then return {} end
@@ -1077,15 +1084,15 @@ function D:ObjectiveTargets(q,state)
     local areas=dungeonAreas(q,state)
     local outdoor=not state.inInstance and not (areas and areas.objective)
     local function consider(entity,id,label,index,kind,identity,sourceKind,points,spawns)
+        local site=outdoor and kind=="npc" and not sourceKind and self.maps[16591] and rivergladesHunts[id]
         if outdoor and kind=="npc" and id==263380 and not sourceKind and self.maps[16591] then
             local path=npcPatrols(self,id)[16591][1]
             if path and path[1] and usableSpawn(path[1]) then
                 points={{map=self.maps[16591],sourceAreaId=16591,x=path[1][1]/100,y=path[1][2]/100}}
             end
-        elseif outdoor and kind=="npc" and id==257001 and not sourceKind and self.maps[16591] then
-            -- Old Rot-Chum: the 55 unordered sightings include open water. Players found him by this islet.
-            points={{map=self.maps[16591],sourceAreaId=16591,x=.77,y=.73,spawnArea=true,
-                siteName="鱼人小岛",label="老腐块出没区域",travelHint="在河林东南的鱼人小岛及周围水域寻找老腐块。"}}
+        elseif site then
+            points={{map=self.maps[16591],sourceAreaId=16591,x=site.x,y=site.y,spawnArea=true,
+                siteName=site.siteName,label=site.label,travelHint=site.hint}}
         end
         if not points then
             local hunt=outdoor and kind=="npc" and not sourceKind and active.objectives[index].numRequired
