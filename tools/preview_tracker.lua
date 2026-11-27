@@ -153,7 +153,7 @@ if os.getenv("AILEVELING_PREVIEW_DAYLIGHT")=="1" then
     DaylightUI={API=api}
 end
 
-local A={settings={fontScale=1,density="normal",arrow=true,distanceUnits="meters",trackerTransparency=100,hudTransparency=60,detailTransparency=10},char={},indexReady=true,
+local A={settings={fontScale=1,density="normal",arrow=true,distanceUnits="meters",trackerTransparency=100,trackerButtonTransparency=100,hudTransparency=60,detailTransparency=10},char={},indexReady=true,
     state={completed={},class="PALADIN",level=8,xp=3200,maxXP=5040,runSpeed=7,position={map=1429,x=0.46,y=0.42},quests={
         [7]={title="狗头人的威胁",level=8,objectives={{text="消灭狗头人歹徒",type="monster",numFulfilled=6,numRequired=10},{text="消灭狗头人苦力",type="monster",numFulfilled=4,numRequired=4,finished=true}}},
         [33]={title="林中的群狼",level=9,objectives={{type="item",text="收集狼肉",numFulfilled=3,numRequired=8}}},

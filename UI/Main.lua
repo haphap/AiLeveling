@@ -204,7 +204,7 @@ function UI:BindBackground(frame,base,key,setColor)
         local rgb=tint or base
         setColor(frame,rgb[1],rgb[2],rgb[3],alpha)
     end
-    self.shells[#self.shells+1]=paint
+    self.shells[#self.shells+1]={key=key,refresh=paint}
     paint()
 end
 
@@ -229,7 +229,7 @@ function UI:DaylightShell(frame,alpha,windowColor,key)
             if scope=="Quests" and key=="boxBorder" then refresh() end
         end,"AiLeveling")
     end
-    self.shells[#self.shells+1]=refresh
+    self.shells[#self.shells+1]={key=key,refresh=refresh}
     refresh()
     frame:HookScript("OnSizeChanged",paint)
 end
@@ -490,8 +490,10 @@ function UI:Create()
     end
 end
 
-function UI:ApplyBackgrounds()
-    for _,refresh in ipairs(self.shells) do refresh() end
+function UI:ApplyBackgrounds(key)
+    for _,shell in ipairs(self.shells) do
+        if not key or shell.key==key then shell.refresh() end
+    end
 end
 
 function UI:ApplyStyle()

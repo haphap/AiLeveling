@@ -84,6 +84,14 @@ local function setup(fullUI,daylight,nameplates)
     MinimapCluster=widget();MinimapCluster:SetSize(280,280);ObjectiveTrackerFrame=widget()
     CreateFrame=function(kind,_,parent,template)
         local w=widget();w.kind,w.template,w.parent=kind,template,parent
+        if kind=="Slider" then
+            for _,method in ipairs({"SetOrientation","SetValueStep","SetObeyStepOnDrag","SetThumbTexture"}) do w[method]=function() end end
+            w.SetValue=function(self,value)
+                if self.value==value then return end
+                self.value=value
+                if self.scripts.OnValueChanged then self.scripts.OnValueChanged(self,value) end
+            end
+        end
         if kind=="CheckButton" then w.Text=widget() end
         if kind=="PlayerModel" then
             w.ClearModel=function(self) self.creature=nil end

@@ -25,6 +25,14 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     eq(B.UI.details.surface[1].color[4],0.9)
     detail.scripts.OnClick(detail);B.menu["0%"].callback()
     eq(B.UI.details.surface[1].color[4],1);eq(B.UI.details.alpha,1)
+    local slider=B.UI.Settings.buttonTransparency
+    for _,percent in ipairs({0,63,100}) do
+        slider:SetValue(percent)
+        eq(B.settings.trackerButtonTransparency,percent);eq(slider.percent:GetText(),percent.."%")
+        eq(B.UI.tracker.menu.trackerBackground.color[4],(100-percent)/100)
+        eq(B.UI.tracker.collapse.trackerBackground.color[4],(100-percent)/100)
+        eq(B.UI.tracker.background.color[4],0.6)
+    end
     eq(B.refreshes,before);eq(B.settings.alpha,0.94)
     B.UI.frame.scripts.OnMouseUp(nil,"RightButton");B.menu["详细面板"].callback()
     eq(B.UI.details:IsShown(),false)
@@ -128,7 +136,9 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     eq(link.hiddenLayer,"BACKGROUND");eq(link.fill.color[4],0)
     link.scripts.OnEnter(link);eq(link.fill.color[4],0.40)
     link.scripts.OnLeave(link);eq(link.fill.color[4],0)
+    B.UI.Settings.buttonTransparency:SetValue(50)
     for _,button in ipairs({B.UI.tracker.menu,B.UI.tracker.collapse}) do
+        eq(button.trackerBackground.color[4],0.5)
         eq(button.fill.color[4],0)
         button.scripts.OnLeave(button);eq(button.fill.color[4],0)
     end
