@@ -4,6 +4,13 @@ local palette=UI.colors
 local spacing=UI.metrics
 local media="Interface\\AddOns\\AiLeveling\\Media\\"
 
+local function trackerDivider(parent)
+    local rule=parent:CreateTexture(nil,"BACKGROUND")
+    rule:SetColorTexture(unpack(palette.trackerDivider))
+    rule:SetHeight(2)
+    return rule
+end
+
 local function setHUDIcon(texture,icon,muted)
     texture:SetTexture(UI.IconTexture(icon))
     texture:SetAlpha(muted and 0.72 or 1)
@@ -997,7 +1004,7 @@ function UI:CreateTracker()
     T.resize:SetScript("OnLeave",function() GameTooltip:Hide() end)
     T.content=CreateFrame("Frame",nil,f);T.content:SetPoint("TOPLEFT",spacing.padding,-spacing.padding)
     T.chapter=text(T.content,"body",palette.white);T.chapter:SetMaxLines(1)
-    T.chapterRule=T.content:CreateTexture(nil,"BACKGROUND");T.chapterRule:SetColorTexture(unpack(palette.line))
+    T.chapterRule=trackerDivider(T.content)
     T.pace=text(f,"caption",palette.muted);T.pace:SetMaxLines(1)
     T.location=text(T.content,self.daylight and "heading" or "title",palette.white)
     T.location:SetPoint("TOPLEFT");T.location:SetMaxLines(2)
@@ -1014,7 +1021,7 @@ function UI:CreateTracker()
         end)
         button:HookScript("OnLeave",function() button:SetBackdropColor(0,0,0,0);GameTooltip:Hide() end)
     end
-    T.divider=T.content:CreateTexture(nil,"BACKGROUND");T.divider:SetColorTexture(unpack(palette.border))
+    T.divider=trackerDivider(T.content)
     T.headerLine=T.content:CreateTexture(nil,"ARTWORK");T.headerLine:SetColorTexture(unpack(palette.gold))
     T.headerLine:SetPoint("LEFT",T.divider,"LEFT")
     T.career=noticeLine(T.content,"body",palette.white)
@@ -1141,8 +1148,8 @@ function UI:CreateTracker()
     T.objectives={}
     T.footer=text(T.currentChild,"caption",palette.muted)
     T.journey=CreateFrame("Frame",nil,T.currentChild)
-    T.journeyRule=T.journey:CreateTexture(nil,"BACKGROUND");T.journeyRule:SetColorTexture(unpack(palette.line))
-    T.journeyRule:SetPoint("TOPLEFT");T.journeyRule:SetPoint("TOPRIGHT");T.journeyRule:SetHeight(1)
+    T.journeyRule=trackerDivider(T.journey)
+    T.journeyRule:SetPoint("TOPLEFT");T.journeyRule:SetPoint("TOPRIGHT")
     T.journeyHeader=CreateFrame("Button",nil,T.journey)
     T.journeyLabel=text(T.journeyHeader,"caption",palette.muted);T.journeyLabel:SetPoint("LEFT");T.journeyLabel:SetText("行程")
     T.journeySummary=text(T.journeyHeader,"caption",palette.white);T.journeySummary:SetPoint("RIGHT");T.journeySummary:SetJustifyH("RIGHT")
@@ -1151,13 +1158,12 @@ function UI:CreateTracker()
     T.journeyRows={}
     T.questTitle.progress=self.body
     T.thenText=text(T.currentChild,"caption",palette.gold)
-    T.thenDivider=T.currentChild:CreateTexture(nil,"BACKGROUND");T.thenDivider:SetColorTexture(unpack(palette.line))
+    T.thenDivider=trackerDivider(T.currentChild)
     T.thenButton=self:TrackerRow(nil,T.currentChild)
     T.region=CreateFrame("Button",nil,T.currentChild)
     T.region.heading=text(T.region,"caption",palette.muted)
     T.region.heading:SetText("本轮收尾")
-    T.region.rule=T.region:CreateTexture(nil,"BACKGROUND")
-    T.region.rule:SetColorTexture(unpack(palette.line))
+    T.region.rule=trackerDivider(T.region)
     T.region.more=T.region:CreateTexture(nil,"ARTWORK")
     T.region.more:SetTexture(media.."hud-chevron-right.tga")
     T.region.more:SetVertexColor(unpack(palette.muted))
@@ -1182,8 +1188,8 @@ function UI:CreateTracker()
     T.alongLabel=text(T.currentChild,"caption",palette.blue)
     T.alongScroll=CreateFrame("Frame",nil,T.currentChild)
     T.alongChild=CreateFrame("Frame",nil,T.alongScroll);T.alongChild:SetPoint("TOPLEFT")
-    T.queueRule=T.currentChild:CreateTexture(nil,"BACKGROUND")
-    T.alongRule=T.currentChild:CreateTexture(nil,"BACKGROUND")
+    T.queueRule=trackerDivider(T.currentChild)
+    T.alongRule=trackerDivider(T.currentChild)
     T.otherHeader=CreateFrame("Button",nil,T.currentChild)
     T.otherLabel=text(T.otherHeader,"caption",palette.muted);T.otherLabel:SetPoint("LEFT")
     T.otherToggle=text(T.otherHeader,"caption",palette.muted);T.otherToggle:SetPoint("RIGHT")
@@ -1735,10 +1741,18 @@ function UI:RenderTracker(along)
         local color=(item.deferred or item.candidate and item.candidate.lowValue) and palette.muted or palette[tone]
         row.title:SetText(group and (item.number..". "..title..(group=="focus" and "  |cff"..self.hex[tone]..item.status.."|r" or "")) or title);row.title:SetTextColor(unpack(color))
         if group and item.number==1 then
-            if not row.section then row.section=text(row,"caption",palette.muted) end
+            if not row.section then
+                row.section=text(row,"caption",palette.muted)
+                row.section:SetPoint("TOPLEFT")
+                row.sectionRule=trackerDivider(row)
+            end
             row.section:SetText(({focus="当前追踪",objective="进行中",turnin="可交付",accept="待接取",related="其他关联任务"})[group])
             row.section:SetTextColor(unpack(group=="focus" and palette.gold or palette[tone]));row.section:Show()
-        elseif row.section then row.section:Hide() end
+            row.sectionRule:Show()
+        elseif row.section then
+            row.section:Hide()
+            row.sectionRule:Hide()
+        end
         if group=="focus" then
             if not row.focusMark then
                 row.focusMark=row:CreateTexture(nil,"ARTWORK");row.focusMark:SetColorTexture(unpack(palette.focus))
@@ -1852,7 +1866,7 @@ function UI:LayoutTracker()
         T.experience:SetPoint("TOPLEFT",0,-toolbar-3*scale);T.experience:SetWidth(headerRoom/2);T.experience:SetJustifyH("LEFT");T.experience:Show()
         T.toolbarY=toolbar
         local placeY=toolbar+spacing.hit*scale+gap
-        T.chapterRule:SetPoint("TOPLEFT",0,-placeY+gap/2);T.chapterRule:SetSize(width,1)
+        T.chapterRule:SetPoint("TOPLEFT",0,-placeY+gap/2);T.chapterRule:SetWidth(width)
         T.location:SetPoint("TOPLEFT",0,-placeY);T.location:SetWidth(width)
         local areaY=placeY+T.location:GetStringHeight()
         T.area:SetPoint("TOPLEFT",indent,-areaY);T.area:SetWidth(width-indent)
@@ -1877,7 +1891,9 @@ function UI:LayoutTracker()
         row:SetWidth(inner)
         local top=0
         if row.section and row.section:IsShown() then
-            row.section:ClearAllPoints();row.section:SetPoint("TOPLEFT");row.section:SetWidth(inner)
+            row.sectionRule:ClearAllPoints()
+            row.sectionRule:SetPoint("LEFT",row.section,"RIGHT",gap,0)
+            row.sectionRule:SetWidth(math.max(1,inner-math.ceil(row.section:GetStringWidth())-gap))
             top=row.section:GetStringHeight()+spacing.tight*scale
         end
         local inset=lead or (row.focusMark and row.focusMark:IsShown() and gap or 0)
@@ -1898,7 +1914,7 @@ function UI:LayoutTracker()
         row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y);row:SetHeight(height)
         return height
     end
-    T.divider:SetSize(width,1)
+    T.divider:SetWidth(width)
     T.headerLine:SetSize(guide and math.min(width,T.chapter:GetStringWidth()+gap) or 38*scale,2)
     T.career:SetWidth(inner)
     T.career.heading:ClearAllPoints();T.career.heading:SetPoint("TOPLEFT");T.career.heading:SetWidth(inner)
@@ -1990,7 +2006,7 @@ function UI:LayoutTracker()
         T.journey:SetHeight(journeyHeight)
         if T.journey:IsShown() then childHeight=childHeight+journeyHeight+spacing.section*scale end
         local bottom=childHeight+spacing.gap*scale
-        T.thenDivider:ClearAllPoints();T.thenDivider:SetPoint("TOPLEFT",0,-bottom);T.thenDivider:SetSize(inner,1)
+        T.thenDivider:ClearAllPoints();T.thenDivider:SetPoint("TOPLEFT",0,-bottom);T.thenDivider:SetWidth(inner)
         T.thenText:ClearAllPoints();T.thenText:SetPoint("TOPLEFT",0,-bottom-spacing.gap*scale);T.thenText:SetWidth(inner)
         T.thenText:SetShown(not collapsed and (T.thenText:GetText() or "")~="");T.thenButton:SetShown(T.thenText:IsShown())
         T.thenDivider:SetShown(T.thenText:IsShown())
@@ -2076,12 +2092,12 @@ function UI:LayoutTracker()
     if T.alongScroll:IsShown() then bottom=bottom+alongVisible+spacing.gap*scale end
     for rule,label in pairs({[T.queueRule]=T.queueLabel,[T.alongRule]=T.alongLabel}) do
         rule:ClearAllPoints();rule:SetPoint("BOTTOMLEFT",label,"TOPLEFT",0,2*scale)
-        rule:SetSize(inner,1);rule:SetColorTexture(unpack(palette.line));rule:SetShown(label:IsShown() and not (dungeonSummary and rule==T.queueRule))
+        rule:SetWidth(inner);rule:SetShown(label:IsShown() and not (dungeonSummary and rule==T.queueRule))
     end
     T.region:SetShown(not collapsed and T.region.region~=nil)
     if T.region:IsShown() then
         T.region:ClearAllPoints();T.region:SetPoint("TOPLEFT",0,-bottom);T.region:SetWidth(inner)
-        T.region.rule:ClearAllPoints();T.region.rule:SetPoint("TOPLEFT");T.region.rule:SetSize(inner,1)
+        T.region.rule:ClearAllPoints();T.region.rule:SetPoint("TOPLEFT");T.region.rule:SetWidth(inner)
         T.region.heading:ClearAllPoints();T.region.heading:SetPoint("TOPLEFT",0,-gap)
         T.region.more:ClearAllPoints();T.region.more:SetPoint("TOPRIGHT",0,-gap);T.region.more:SetSize(spacing.smallIcon*scale,spacing.smallIcon*scale)
         local height=gap+T.region.heading:GetStringHeight()+gap
