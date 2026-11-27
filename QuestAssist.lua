@@ -192,7 +192,6 @@ local function createTargetRow(self,index)
     end)
     A.UI:Movable(row,"navigationPosition",A.UI.navAnchor,"RightButton")
     row.fallback=row:CreateTexture(nil,"ARTWORK")
-    row.fallback:SetPoint("LEFT",5,0)
     row.fallback:SetTexture("Interface\\AddOns\\AiLeveling\\Media\\target.tga")
     row.face=CreateFrame("PlayerModel",nil,row)
     row.face:EnableMouse(false);row.face:SetAllPoints(row.fallback)
@@ -200,8 +199,7 @@ local function createTargetRow(self,index)
         face:SetPortraitZoom(1)
         row.fallback:Hide()
     end)
-    row.label=A.UI:Text(row,13)
-    row.label:SetPoint("LEFT",row.face,"RIGHT",7,0);row.label:SetPoint("RIGHT",row,"RIGHT",-5,0)
+    row.label=A.UI:Text(row,"guideBody")
     row.label:SetMaxLines(1)
     row:SetScript("OnEnter",function()
         GameTooltip:SetOwner(row,"ANCHOR_RIGHT");GameTooltip:SetText(row.npcName)
@@ -217,34 +215,50 @@ function Q:LayoutTargetList(mark)
     local choices=self.targetActiveChoices or {}
     local list=self.targetList
     if #choices==0 then
-        if list and list:IsShown() then list:Hide() end
+        if list and list:IsShown() then
+            list:Hide();list.rule:Hide();A.UI:ClampNavigation()
+        end
         return
     end
     if not list then
-        list=A.UI:Panel(nil,A.UI.navAnchor,200,34,nil,"hudTransparency")
-        list:SetPoint("TOPLEFT",A.UI.navAnchor,"BOTTOMLEFT",0,-4);list:SetClampedToScreen(true)
+        -- Secure rows share the card's fixed lower edge while the guide above resizes in combat.
+        list=CreateFrame("Frame",nil,A.UI.navAnchor)
+        list:SetPoint("TOPLEFT",A.UI.navAnchor,"BOTTOMLEFT",0,0)
+        list.fill=A.UI:FlatBackground(list,A.UI.colors.navigation,"hudTransparency")
+        list.rule=A.UI.navFrame:CreateTexture(nil,"ARTWORK")
+        list.rule:SetColorTexture(unpack(A.UI.colors.line));list.rule:SetHeight(1)
         list.rows={};self.targetList=list
-        list.page=A.UI:Text(list,11)
-        list.page:SetPoint("BOTTOMRIGHT",-6,3)
+        list.page=A.UI:Text(list,"guideNote",A.UI.colors.muted)
     end
     local first=1+math.floor((self.targetActiveIndex-1)/rowsPerPage)*rowsPerPage
     local count=math.min(rowsPerPage,#choices-first+1)
     local scale=A.UI:FontScale()
+    local width=A.UI.navAnchor:GetWidth()
     local visible=list:IsShown()
-    if visible and list.key==self.targetActiveKey and list.first==first and list.scaleUsed==scale and list.mark==mark then return end
+    if visible and list:GetWidth()==width and list.key==self.targetActiveKey and list.first==first and list.scaleUsed==scale and list.mark==mark then return end
     list.key,list.first,list.scaleUsed,list.mark=self.targetActiveKey,first,scale,mark
     local height=32*scale
     local paged=#choices>rowsPerPage
-    list:SetSize(208*scale,height*count+4+(paged and 16*scale or 0));list:Show()
+    local inset=A.UI.metrics.guidePadding*scale
+    local labelLeft=inset+A.UI.metrics.guideIndent*scale
+    list:SetSize(width,height*count+(paged and 16*scale or 0));list:Show()
+    list.rule:ClearAllPoints()
+    list.rule:SetPoint("BOTTOMLEFT",A.UI.navFrame,"BOTTOMLEFT",inset,0)
+    list.rule:SetPoint("BOTTOMRIGHT",A.UI.navFrame,"BOTTOMRIGHT",-inset,0)
+    list.rule:Show();A.UI:ClampNavigation()
+    list.page:ClearAllPoints();list.page:SetPoint("BOTTOMRIGHT",-inset,3*scale)
     list.page:SetShown(paged)
     if paged then list.page:SetText(string.format("%d–%d / %d · 滚轮翻页",first,first+count-1,#choices)) end
     for i=1,math.max(count,#list.rows) do
         local npc=i<=count and choices[first+i-1]
         local row=list.rows[i] or createTargetRow(self,i)
         if npc then
-            row:SetSize(list:GetWidth()-4,height)
-            row:ClearAllPoints();row:SetPoint("TOPLEFT",list,"TOPLEFT",2,-2-(i-1)*height)
-            row.fallback:SetSize(26*scale,26*scale)
+            row:SetSize(width,height)
+            row:ClearAllPoints();row:SetPoint("TOPLEFT",list,"TOPLEFT",0,-(i-1)*height)
+            row.fallback:SetSize(22*scale,22*scale)
+            row.fallback:ClearAllPoints();row.fallback:SetPoint("LEFT",row,"LEFT",inset-3*scale,0)
+            row.label:ClearAllPoints();row.label:SetPoint("LEFT",row,"LEFT",labelLeft,0)
+            row.label:SetPoint("RIGHT",row,"RIGHT",-inset,0)
             local macro,marked=rowMacro(npc.name,mark)
             row.npcName,row.mark=npc.name,marked
             row.label:SetText(npc.name)
@@ -509,7 +523,7 @@ function Q:Create()
     self.info = CreateFrame("Frame",nil,nav)
     self.info:SetPoint("BOTTOMLEFT",nav,"BOTTOMLEFT",10,6)
     self.info:SetPoint("BOTTOMRIGHT",nav,"BOTTOMRIGHT",-10,6);self.info:SetHeight(26)
-    self.info.text = A.UI:Text(self.info,"caption")
+    self.info.text = A.UI:Text(self.info,"guideLabel")
     self.info.text:SetMaxLines(1);self.info.text:SetJustifyH("LEFT")
     self.info.rule=self.info:CreateTexture(nil,"ARTWORK");self.info.rule:SetHeight(1)
     self.info.rule:SetPoint("BOTTOMLEFT",self.info,"TOPLEFT",0,3)

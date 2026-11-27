@@ -30,7 +30,7 @@ UI.fontSizes={caption=12,body=14,task=15,heading=18,brand=18,title=20}
 local guideSizes={guideName=15,guideAction=14,guideBody=13,guideLabel=12,guideNote=11}
 local daylightRoles={caption="small",body="body",task="body",heading="head",brand="title",title="title"}
 UI.metrics={tight=4,gap=8,padding=12,section=16,indent=24,icon=16,smallIcon=12,
-    detailInset=100,button=28,hit=24,scrollbar=16,radius=6,controlRadius=4}
+    guidePadding=14,guideIndent=25,detailInset=100,button=28,hit=24,scrollbar=16,radius=6,controlRadius=4}
 local metrics=UI.metrics
 local media="Interface\\AddOns\\AiLeveling\\Media\\"
 function UI:ClassColor()
@@ -216,6 +216,13 @@ function UI:BindBackground(frame,base,key,setColor)
     paint()
 end
 
+function UI:FlatBackground(frame,base,key)
+    local fill=frame:CreateTexture(nil,"BACKGROUND")
+    fill:SetAllPoints(frame)
+    self:BindBackground(fill,base,key,fill.SetColorTexture)
+    return fill
+end
+
 function UI:DaylightShell(frame,alpha,windowColor,key)
     local api=self.daylight
     if not api then return end
@@ -227,18 +234,8 @@ function UI:DaylightShell(frame,alpha,windowColor,key)
         end
         api.Skin(frame,opts)
     end
-    local refresh=paint
-    if frame==self.navFrame then
-        refresh=function()
-            opts.noBorder=api.GetSetting("Quests","boxBorder")==false
-            paint()
-        end
-        api.On("SettingChanged",function(scope,key)
-            if scope=="Quests" and key=="boxBorder" then refresh() end
-        end,"AiLeveling")
-    end
-    self.shells[#self.shells+1]={key=key,refresh=refresh}
-    refresh()
+    self.shells[#self.shells+1]={key=key,refresh=paint}
+    paint()
     frame:HookScript("OnSizeChanged",paint)
 end
 
@@ -365,6 +362,14 @@ function UI:Movable(handle,key,frame,button)
     end)
 end
 
+function UI:ClampNavigation()
+    if not self.navFrame or InCombatLockdown() then return end
+    local list=A.QuestAssist and A.QuestAssist.targetList
+    local top=self.navFrame:IsShown() and math.max(0,self.navFrame:GetHeight()-self.navAnchor:GetHeight()) or 0
+    local bottom=list and list:IsShown() and list:GetHeight() or 0
+    self.navAnchor:SetClampRectInsets(0,0,top,-bottom)
+end
+
 function UI:PlaceNavigation(restore)
     local anchor=self.navAnchor
     if not anchor then return end
@@ -378,6 +383,9 @@ function UI:PlaceNavigation(restore)
     end
     self.navDragDeferred=nil
     anchor:SetScale(A.settings.scale);anchor:SetWidth(268*self:FontScale())
+    local list=A.QuestAssist and A.QuestAssist.targetList
+    if list then A.QuestAssist:LayoutTargetList(list.mark) end
+    self:ClampNavigation()
     if self.restoreNavPosition then
         self.restoreNavPosition=nil
         anchor:ClearAllPoints()

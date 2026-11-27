@@ -27,7 +27,7 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
         B:NormalizeSettings(B.settings);B.UI.Settings:Refresh()
         eq(slider.percent:GetText(),percent.."%")
         local alpha=(100-percent)/100
-        eq(B.UI.tracker.background.color[4],alpha);eq(B.UI.navFrame.surface[1].color[4],alpha)
+        eq(B.UI.tracker.background.color[4],alpha);eq(B.UI.tracker.navBackground.color[4],alpha)
         eq(B.UI.tracker.nearby.color[4],alpha);eq(B.UI.details.surface[1].color[4],alpha)
         eq(side.surface[1].color[4],alpha);eq(B.UI.details.alpha,1)
         eq(B.UI.tracker.menu.surface[1].color[4],0)
@@ -65,7 +65,6 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     B.finish()
     -- The optional skin uses the public controls and reacts to style changes without rebuilding tasks.
     local listeners,face,scale,texts,menuItems={},"DaylightFont",1,{},{}
-    local questBox,windowAlpha={}
     local function nativeControl(kind,parent)
         local f=CreateFrame(kind,nil,parent)
         f.DisableDrawLayer=function(self,layer) self.hiddenLayer=layer end
@@ -81,8 +80,6 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     local api={major=1,Colors=function() return {TEXT={1,1,1},VALUE={1,1,1},LABEL={0.8,0.7,0.6},WARN={1,0.8,0.3},GOOD={0.5,0.9,0.5},BAD={1,0.3,0.3}} end,
         Accent=function() return 0.8,0.4,0.6 end,Font=function() return face end,
         GetSetting=function(scope,key)
-            if scope=="Quests" then return questBox[key] end
-            if key=="windowAlpha" then return windowAlpha end
             if key=="fontScale" then return scale end
         end,
         On=function(event,fn) listeners[event]=fn end,
@@ -101,23 +98,18 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
         Input=function(parent) return nativeControl("EditBox",parent) end}
     B=setup(true,api);B.UI:Render();local choice=B.action
     eq(B.UI.frame.daylightOpts,nil);eq(B.UI.tracker.background.color[4],0.4)
-    eq(B.UI.navFrame.daylightOpts.noBorder,false)
+    eq(B.UI.navFrame.daylightOpts,nil)
     eq(B.UI.title.fontFace,face);assert(B.UI.tracker.chapter:IsShown())
-    eq(B.UI.navFrame.daylightOpts.panel,true);eq(B.UI.navFrame.daylightOpts.bgAlpha,0.40)
-    windowAlpha=0.35;listeners.SettingChanged("general","windowAlpha");eq(B.UI.navFrame.daylightOpts.bgAlpha,0.40)
-    questBox.boxAlphaOwn,questBox.boxAlpha,questBox.boxBorder=true,0.45,false
-    listeners.SettingChanged("Quests","boxBorder")
-    eq(B.UI.navFrame.daylightOpts.noBorder,true);eq(B.UI.navFrame.daylightOpts.bgAlpha,0.40)
+    eq(B.UI.tracker.navBackground.color[4],0.40)
     B.settings.alpha=0.5;B.UI:ApplyStyle()
     eq(B.UI.details.alpha,1);eq(B.UI.tracker.navBearing.alpha,0.5);eq(B.UI.nav.alpha,0.5);eq(B.UI.navFrame.alpha or 1,1)
     eq(B.UI.tracker.headerLine.color[2],B.UI.colors.gold[2]);eq(B.UI.title.fontSize,14);eq(B.UI.tracker.location.fontSize,15)
     eq(B.UI.title.fontFlags,"");eq(B.UI.title.shadowColor[4],0.6)
-    local before=B.UI.navFrame.skinCalls;B.UI.navFrame.scripts.OnSizeChanged();eq(B.UI.navFrame.skinCalls,before+1)
     face="UpdatedDaylightFont";scale=1.2
     for fs,role in pairs(texts) do fs:SetFont(face,sizes[role]*scale,"");fs:SetShadowColor(0,0,0,0) end
     listeners.StyleChanged();eq(B.UI.title.fontFace,face);eq(B.action,choice)
     eq(B.UI.frame.daylightOpts,nil)
-    eq(B.UI.title.fontSize,14*1.2);eq(B.UI.title.shadowColor[4],0.6);eq(B.UI.tracker.navDetail.fontSize,16*1.2);eq(B.UI.tracker.navDetail.fontFlags,"OUTLINE")
+    eq(B.UI.title.fontSize,14*1.2);eq(B.UI.title.shadowColor[4],0.6);eq(B.UI.tracker.navDetail.fontSize,12*1.2);eq(B.UI.tracker.navDetail.fontFlags,"")
     B.settings.fontScale=1.1;listeners.Login();eq(B.UI.title.fontSize,14*1.2*1.1)
     B.UI.details.scripts.OnSizeChanged()
     eq(B.UI.details.daylightOpts.window,true);eq(B.UI.details.daylightOpts.bgAlpha,0.4)
@@ -126,16 +118,16 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     local color=control(B,"backgroundStyle").button
     color.scripts.OnClick(color);menuItems["深蓝"]()
     B.UI.Settings.backgroundTransparency:SetValue(30);listeners.StyleChanged();B.UI:LayoutTracker()
-    eq(B.UI.tracker.background.color[4],0.7);eq(B.UI.navFrame.daylightOpts.bgAlpha,0.7)
+    eq(B.UI.tracker.background.color[4],0.7);eq(B.UI.tracker.navBackground.color[4],0.7)
     eq(B.UI.tracker.nearby.daylightOpts.bgAlpha,0.7);eq(B.UI.details.daylightOpts.bgAlpha,0.7)
-    eq(B.UI.navFrame.daylightOpts.bgColor[3],0.14);eq(B.UI.tracker.background.color[3],0.14)
-    B:SetOption("backgroundStyle","default");eq(B.UI.navFrame.daylightOpts.bgColor,nil)
+    eq(B.UI.tracker.navBackground.color[3],0.14);eq(B.UI.tracker.background.color[3],0.14)
+    B:SetOption("backgroundStyle","default");eq(B.UI.tracker.navBackground.color[3],B.UI.colors.navigation[3])
     local link=B.UI.tracker.career.view
     eq(link.hiddenLayer,"BACKGROUND");eq(link.fill.color[4],0)
     link.scripts.OnEnter(link);eq(link.fill.color[4],0.40)
     link.scripts.OnLeave(link);eq(link.fill.color[4],0)
     B.UI.Settings.backgroundTransparency:SetValue(100)
-    eq(B.UI.navFrame.daylightOpts.bgAlpha,0);eq(B.UI.details.daylightOpts.bgAlpha,0)
+    eq(B.UI.tracker.navBackground.color[4],0);eq(B.UI.details.daylightOpts.bgAlpha,0)
     for _,button in ipairs({B.UI.tracker.menu,B.UI.tracker.collapse}) do
         eq(button.fill.color[4],0)
         button.scripts.OnLeave(button);eq(button.fill.color[4],0)
@@ -716,6 +708,10 @@ test("任务目标按钮按真实NPC身份更新，战斗结束同步且拒绝�
     Q:Update();eq(Q.targetActive.id,10)
     local list=Q.targetList;local row=list.rows[1]
     eq(list.parent,B.UI.navAnchor);eq(row.label:GetText(),"矿工约翰");eq(row.face.creature,10)
+    B.UI:SetTrackerNavigation(nil,nil,nil,B.action)
+    eq(list:GetWidth(),B.UI.navFrame:GetWidth());eq(list.point[5],0)
+    eq(row:GetWidth(),list:GetWidth());eq(row.label.fontSize,13)
+    eq(list.fill.color[4],B.UI.tracker.navBackground.color[4])
     row.face.scripts.OnModelLoaded(row.face);eq(row.face.zoom,1);eq(row.fallback.shown,false)
     assert(row.macrotext1:find("/cleartarget\n/targetexact 矿工约翰\n/tm",1,true))
     local written=row.attributeWrites;Q:Update();eq(row.attributeWrites,written)

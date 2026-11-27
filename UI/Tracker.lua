@@ -931,9 +931,7 @@ function UI:CreateTracker()
     end)
     f:SetScript("OnLeave",function() GameTooltip:Hide() end)
     local T=self.tracker
-    T.background=f:CreateTexture(nil,"BACKGROUND")
-    T.background:SetAllPoints(f)
-    self:BindBackground(T.background,palette.hud,"trackerTransparency",T.background.SetColorTexture)
+    T.background=self:FlatBackground(f,palette.hud,"trackerTransparency")
     T.nearby=CreateFrame("Button",nil,f,"BackdropTemplate")
     local notice=T.nearby
     notice:SetPoint("TOP",UIParent,"TOP",0,-150);notice:SetClampedToScreen(true);notice:SetFrameStrata("HIGH")
@@ -1230,16 +1228,15 @@ function UI:CreateTracker()
         else self:QuestClick(button.questId,mouse) end
     end)
     nav:SetSize(268,48)
-    if self.daylight then self:DaylightShell(nav,palette.navigation[4],nil,"hudTransparency")
-    else self:Rounded(nav,spacing.radius);self:BindBackground(nav,palette.navigation,"hudTransparency");nav.material:Hide() end
+    T.navBackground=self:FlatBackground(nav,palette.navigation,"hudTransparency")
     T.navIcon=nav:CreateTexture(nil,"ARTWORK")
-    T.navTitle=text(nav,"task",palette.white)
-    T.navETA=text(nav,"caption",palette.muted);T.navETA:SetJustifyH("CENTER")
-    T.navDetail=text(nav,"body",palette.white)
+    T.navTitle=text(nav,"guideAction",palette.white)
+    T.navETA=text(nav,"guideNote",palette.muted);T.navETA:SetJustifyH("CENTER")
+    T.navDetail=text(nav,"guideLabel",palette.muted)
     T.navRule=nav:CreateTexture(nil,"ARTWORK")
     T.navNextIcon=nav:CreateTexture(nil,"ARTWORK")
-    T.navNext=text(nav,"caption",palette.muted)
-    self.nav=text(nav,"caption","accent");self.nav:SetJustifyH("RIGHT")
+    T.navNext=text(nav,"guideLabel",palette.muted)
+    self.nav=text(nav,"guideLabel","accent");self.nav:SetJustifyH("RIGHT")
     T.navBearing=nav:CreateTexture(nil,"ARTWORK")
     T.navBearing:SetTexture(media.."bearing.tga")
     nav:Hide()
@@ -1847,10 +1844,10 @@ function UI:LayoutTracker()
     local requestedHeight=T.resizing and self.frame:GetHeight() or A.settings.trackerHeight or 0
     self.frame:SetWidth(width)
     local scale=self:FontScale()
-    local pad=14*scale
+    local pad=spacing.guidePadding*scale
     width=width-2*pad
     local inner=width-spacing.scrollbar
-    local indent=25*scale
+    local indent=spacing.guideIndent*scale
     local bodyWidth=inner-indent
     local collapsed=self.folded or (self.inCombat and A.settings.combatFold)
     local density=A.settings.density or "normal"
@@ -2471,7 +2468,11 @@ function UI:SetTrackerNavigation(distance,angle,unverified,action)
     local guide=action~=nil and not A.char.paused
     self.navFrame.questId=guide and questVerbs[action.kind] and action.questId or nil
     local itemHeight=A.QuestAssist and A.QuestAssist:NavigationItems(action,guide) or 0
-    self.navFrame:SetShown(guide or itemHeight>0)
+    local shown=guide or itemHeight>0
+    if self.navFrame:IsShown()~=shown then
+        self.navFrame:SetShown(shown)
+        self:ClampNavigation()
+    end
     if not guide and itemHeight==0 then return end
     local T=self.tracker
     local title,detail,following,icon,nextIcon,meta
@@ -2497,7 +2498,7 @@ function UI:SetTrackerNavigation(distance,angle,unverified,action)
         T.navMetaWidth=meta and math.ceil(self.nav:GetStringWidth())+spacing.gap*scale or 0
     end
     local nextText=following and ("下一步  "..following) or ""
-    local inset=spacing.padding*scale
+    local inset=spacing.guidePadding*scale
     local metaRight=angle and inset+20*scale or inset
     local reserved=bearing and inset or T.navMetaWidth+metaRight
     local width=self.navAnchor:GetWidth()
@@ -2506,7 +2507,7 @@ function UI:SetTrackerNavigation(distance,angle,unverified,action)
         T.navScale,T.navReserved,T.navKind,T.navNextKind=scale,reserved,icon,nextIcon
         T.navWidth,T.navItemHeight=width,itemHeight
         T.navCentered,T.navHasETA=bearing,showETA
-        local left=bearing and inset or inset+spacing.indent*scale
+        local left=bearing and inset or inset+spacing.guideIndent*scale
         local textWidth=width-left-inset
         local function place(widget,x,y)
             widget:ClearAllPoints();widget:SetPoint("TOPLEFT",self.navFrame,"TOPLEFT",x,-y)
@@ -2549,13 +2550,13 @@ function UI:SetTrackerNavigation(distance,angle,unverified,action)
             y=y+1+spacing.gap*scale
             setHUDIcon(T.navNextIcon,nextIcon,true);T.navNextIcon:SetSize(spacing.smallIcon*scale,spacing.smallIcon*scale)
             place(T.navNextIcon,inset+2*scale,y+scale)
-            local nextLeft=inset+spacing.indent*scale
+            local nextLeft=inset+spacing.guideIndent*scale
             T.navNext:SetWidth(width-nextLeft-inset);place(T.navNext,nextLeft,y);y=y+math.max(spacing.smallIcon*scale,T.navNext:GetStringHeight())
         end
         local height=y+inset+itemHeight
         if self.navFrame:GetWidth()~=width or self.navFrame:GetHeight()~=height then
             self.navFrame:SetSize(width,height)
-            if not InCombatLockdown() then self.navAnchor:SetClampRectInsets(0,0,math.max(0,height-48),0) end
+            self:ClampNavigation()
         end
     end
     T.navBearing:SetShown(angle~=nil)
