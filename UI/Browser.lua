@@ -36,8 +36,7 @@ local function rewardLines(q)
     for _,key in ipairs({"items","choices"}) do
         local links={}
         for _,item in ipairs(rewards[key] or {}) do
-            local name=C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(item.id)
-            if not name and A.Data.db and A.Data.db.Item then name=A.Data.db.Item.Get(item.id,"name") end
+            local name=A.Items.DisplayName(item.id)
             links[#links+1]=itemLink({id=item.id,name=name})..((item.count or 1)>1 and " ×"..item.count or "")
         end
         if #links>0 then result[#result+1]=color(muted,key=="choices" and "可选奖励" or "奖励").."    "..table.concat(links,"  ") end

@@ -718,9 +718,7 @@ function Q:Update(quiet)
     self.rewardLines=rewards
     if self.info then
         local lines=A.settings.items and Q.Describe(rows,A.settings,function(id)
-            local name=C_Item.GetItemNameByID(id)
-            if not name and not A.requestedItems[id] then A.requestedItems[id]=true;C_Item.RequestLoadItemDataByID(id) end
-            return name or ("物品 #"..id)
+            return A.Items.DisplayName(id,true) or ("物品 #"..id)
         end) or {}
         if pages>1 then lines[#lines+1]=string.format("物品按钮第 %d/%d 组",self.page,pages) end
         self.detailsText=table.concat(lines,"\n")
@@ -728,7 +726,7 @@ function Q:Update(quiet)
         self.itemSummary=lines[1]
         local first=self.active and self.active[1]
         if first and self.itemSummary then
-            local name=C_Item.GetItemNameByID(first)
+            local name=A.Items.DisplayName(first)
             if name then
                 self.itemSummary=name..(A.settings.missingChecks~=false and (A.state.bags[first] or 0)==0 and " · 缺少物品" or "")
             end

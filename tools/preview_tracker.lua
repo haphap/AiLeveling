@@ -162,6 +162,7 @@ local A={settings={fontScale=1,density="normal",arrow=true,distanceUnits="meters
     }},Selection={CanChoose=function() return true end}}
 if arg[2]=="large" then A.settings.fontScale=1.2 end
 local action={kind="objective",questId=7,title="狗头人的威胁",text="清理矿洞外的狗头人，完成后返回北郡修道院。",position={map=1429,x=0.5,y=0.5,entityName="北郡矿洞"}}
+assert(loadfile("Items.lua"))("AiLeveling",A)
 assert(loadfile("Navigation.lua"))("AiLeveling",A)
 A.Navigation.Current=function() return action end
 A.Navigation.Distance=function(_,a,b)
@@ -303,6 +304,9 @@ if dungeonPreview then
     if arg[2]=="loot" then
         A.previewLootNames={[872]="切石者",[5187]="拉克佐之锤",[273289]="食人魔腰布"}
         C_Item=C_Item or {}
+        A.requestedItems={}
+        C_Item.RequestLoadItemDataByID=function() end
+        C_Item.GetItemStats=function() return {} end
         C_Item.GetItemInfo=function(id)
             local name=A.previewLootNames[id]
             if name then return name,(id==5187 and "|cffffffff" or "|cff1eff00").."|Hitem:"..id.."|h["..name.."]|h|r" end
@@ -523,6 +527,9 @@ if A.previewTab then
         for _,row in ipairs(view.rows) do
             assert(tasks[row.questId] and row.text:GetText()==tasks[row.questId].title)
             assert(row.status:GetText()~="")
+            if row.questId==168 and row.facts:IsShown() then
+                assert(row.facts:GetText():find("|Hitem:270007|h[破旧的矿工腰索]|h",1,true))
+            end
         end
         assert(view.tasks:GetText():find(tostring(browser.selected.rewards.count),1,true))
         browser.levelFilter:Click()

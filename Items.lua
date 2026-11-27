@@ -2,6 +2,26 @@ local _, A = ...
 A.Items = {}
 local I = A.Items
 
+local function chineseName(name)
+    return type(name)=="string" and name:find("[\228-\233][\128-\191][\128-\191]")
+end
+
+-- Quest panels may open before the client has cached the item's localized name.
+function I.DisplayName(id,request)
+    local name=C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)
+    if canaccessvalue and not canaccessvalue(name) then name=nil end
+    if not name and request and not A.requestedItems[id] then
+        A.requestedItems[id]=true
+        C_Item.RequestLoadItemDataByID(id)
+    end
+    if A.QuestItemZhCN then name=A.QuestItemZhCN(id,name) end
+    if name and (not A.QuestItemZhCN or chineseName(name)) then return name end
+    local items=A.Data and A.Data.db and A.Data.db.Item
+    local provider=items and items.Get(id,"name")
+    if chineseName(provider) then return provider end
+    return name or provider
+end
+
 function I:SpellText(id)
     if not (C_Spell and C_Spell.GetSpellDescription) then return end
     local ok,text=pcall(function()

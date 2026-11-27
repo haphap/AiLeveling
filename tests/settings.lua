@@ -461,6 +461,16 @@ test("关闭数量与缺失文字不取消物品需求和规划约束",function(
     eq(Q.wanted[1],500)
     local result=plan(B.state,B.Data,{minutes=60,gearPreference="xp",missingChecks=false})
     eq(result.best,nil);eq(B.state.bags[500],2)
+    local oldLocale=GetLocale
+    GetLocale=function() return "zhCN" end
+    assert(loadfile("Data/QuestTitles_zhCN.lua"))("AiLeveling",B)
+    GetLocale=oldLocale
+    B.items[500].name=nil
+    B.Data.db={Item={Get=function(id) if id==500 then return "任务道具中文名" end end}}
+    Q:Update()
+    eq(Q.itemSummary,"任务道具中文名");assert(Q.detailsText:find("任务道具中文名",1,true))
+    B.items[500].name="Client fallback";Q:Update();eq(Q.itemSummary,"任务道具中文名")
+    B.items[500].name="客户端正式名";Q:Update();eq(Q.itemSummary,"客户端正式名")
     B.finish()
 end)
 test("战斗中显示设置不改变受保护容器和按钮属性",function()
