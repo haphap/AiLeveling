@@ -89,15 +89,15 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     eq(B.UI.navFrame.daylightOpts.noBorder,true);eq(B.UI.navFrame.daylightOpts.bgAlpha,0.40)
     B.settings.alpha=0.5;B.UI:ApplyStyle()
     eq(B.UI.details.alpha,1);eq(B.UI.tracker.navBearing.alpha,0.5);eq(B.UI.nav.alpha,0.5);eq(B.UI.navFrame.alpha or 1,1)
-    eq(B.UI.tracker.headerLine.color[2],B.UI.colors.gold[2]);eq(B.UI.title.fontSize,13);eq(B.UI.tracker.location.fontSize,15)
-    eq(B.UI.title.fontFlags,"");eq(B.UI.title.shadowColor[4],0.6)
+    eq(B.UI.tracker.headerLine.color[2],B.UI.colors.gold[2]);eq(B.UI.title.fontSize,17);eq(B.UI.tracker.location.fontSize,20)
+    eq(B.UI.title.fontFlags,"OUTLINE");eq(B.UI.title.shadowColor[4],1)
     local before=B.UI.frame.skinCalls;B.UI.frame.scripts.OnSizeChanged();eq(B.UI.frame.skinCalls,before+1)
     face="UpdatedDaylightFont";scale=1.2
     for fs,role in pairs(texts) do fs:SetFont(face,sizes[role]*scale,"");fs:SetShadowColor(0,0,0,0) end
     listeners.StyleChanged();eq(B.UI.title.fontFace,face);eq(B.action,choice)
     eq(B.UI.frame.daylightOpts.noBorder,true)
-    eq(B.UI.title.fontSize,13*1.2);eq(B.UI.title.shadowColor[4],0)
-    B.settings.fontScale=1.1;listeners.Login();eq(B.UI.title.fontSize,13*1.2*1.1)
+    eq(B.UI.title.fontSize,17*1.2);eq(B.UI.title.shadowColor[4],1);eq(B.UI.tracker.navDetail.fontSize,16*1.2);eq(B.UI.tracker.navDetail.fontFlags,"OUTLINE")
+    B.settings.fontScale=1.1;listeners.Login();eq(B.UI.title.fontSize,17*1.2*1.1)
     B.UI.details.scripts.OnSizeChanged()
     eq(B.UI.details.daylightOpts.window,true);eq(B.UI.details.daylightOpts.bgAlpha,0.90)
     eq(B.UI.Browser.detail.fontSize,16*1.2*1.1);eq(B.UI.Browser.detail.fontFace,face)
@@ -108,7 +108,9 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     link.scripts.OnLeave(link);eq(link.fill.color[4],0)
     eq(B.UI.Browser.search.hiddenLayer,"BACKGROUND");eq(B.UI.Browser.search.fill.color[4],0.40)
     eq(B.UI.colors.sidebar[4],0.40);eq(B.UI.colors.selected[4],0.40)
-    B.UI:TrackerMenu(B.UI.frame);assert(menuItems["详细面板"]);menuItems["详细面板"]()
+    B.UI:TrackerMenu(B.UI.frame)
+    local detailsLabel=B.UI.tracker.experience:IsShown() and "详细面板" or "详细面板 · "..B.UI.tracker.experience:GetText()
+    assert(menuItems[detailsLabel]);menuItems[detailsLabel]()
     assert(B.UI.Browser.frame:IsShown());assert(B.UI.details:IsShown())
     local book=B.UI.Browser
     local button=book.buttons[1]

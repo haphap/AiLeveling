@@ -698,9 +698,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
 end
 
 local function text(parent,size,color)
-    local value=UI:Text(parent,size,color or palette.white,"OUTLINE")
-    if not UI.daylight then value:SetShadowColor(0,0,0,1);value:SetShadowOffset(1,-1) end
-    return value
+    return UI:Text(parent,size,color or palette.white,"OUTLINE")
 end
 
 local function gearLinks(value)
@@ -935,11 +933,8 @@ function UI:CreateTracker()
     else notice:SetBackdropColor(unpack(palette.hud));notice:SetBackdropBorderColor(unpack(palette.line)) end
     notice.mark=notice:CreateTexture(nil,"ARTWORK");notice.mark:SetColorTexture(unpack(palette.gold))
     notice.icon=notice:CreateTexture(nil,"ARTWORK")
-    notice.heading=self:Text(notice,"caption",palette.gold);notice.heading:SetText("顺便完成")
-    notice.body=self:Text(notice,"body",palette.white);notice.body:SetMaxLines(1)
-    for _,label in ipairs(not self.daylight and {notice.heading,notice.body} or {}) do
-        label:SetShadowColor(0,0,0,0.6);label:SetShadowOffset(1,-1)
-    end
+    notice.heading=text(notice,"caption",palette.gold);notice.heading:SetText("顺便完成")
+    notice.body=text(notice,"body",palette.white);notice.body:SetMaxLines(1)
     notice.ignored={};notice:RegisterForClicks("LeftButtonUp","RightButtonUp")
     notice:SetScript("OnEnter",function()
         GameTooltip:SetOwner(notice,"ANCHOR_BOTTOM");GameTooltip:SetText("顺便完成")
@@ -999,7 +994,7 @@ function UI:CreateTracker()
     T.resize:SetScript("OnLeave",function() GameTooltip:Hide() end)
     T.content=CreateFrame("Frame",nil,f);T.content:SetPoint("TOPLEFT",spacing.padding,-spacing.padding)
     T.location=text(T.content,self.daylight and "heading" or "title",palette.white)
-    T.location:SetPoint("TOPLEFT");T.location:SetMaxLines(1)
+    T.location:SetPoint("TOPLEFT");T.location:SetMaxLines(2)
     T.area=text(T.content,"caption",palette.muted);T.area:SetMaxLines(1)
     T.experience=text(T.content,"caption",palette.muted);T.experience:SetJustifyH("RIGHT")
     T.collapse=self:Button(T.content,"−",20,function() self.folded=not self.folded;self:LayoutTracker() end,"body")
@@ -1223,7 +1218,7 @@ function UI:CreateTracker()
     else self:Rounded(nav,spacing.radius);nav:SetBackdropColor(unpack(palette.navigation));nav.material:Hide() end
     T.navIcon=nav:CreateTexture(nil,"ARTWORK")
     T.navTitle=text(nav,"task",palette.white)
-    T.navDetail=text(nav,"caption",palette.muted)
+    T.navDetail=text(nav,"body",palette.white)
     T.navRule=nav:CreateTexture(nil,"ARTWORK")
     T.navNextIcon=nav:CreateTexture(nil,"ARTWORK")
     T.navNext=text(nav,"caption",palette.muted)
@@ -1253,10 +1248,10 @@ local function renderObjectives(owner,parent,pool,objectives,sharedIndex)
                 if f.purchase then GameTooltip:AddLine(f.purchase,1,0.82,0.35,true);GameTooltip:Show() end
             end)
             row:SetScript("OnLeave",function() GameTooltip:Hide() end)
-            row.text=text(row,UI.daylight and "caption" or "body",palette.white);row.text:SetPoint("TOPLEFT");row.text:SetNonSpaceWrap(false)
+            row.text=text(row,"body",palette.white);row.text:SetPoint("TOPLEFT");row.text:SetNonSpaceWrap(false)
             row.purchaseText=text(row,"caption",palette.gold);row.purchaseText:SetMaxLines(1)
             row.icon=row:CreateTexture(nil,"ARTWORK")
-            row.count=text(row,UI.daylight and "caption" or "body",palette.white);row.count:SetJustifyH("RIGHT")
+            row.count=text(row,"body",palette.white);row.count:SetJustifyH("RIGHT")
             row.check=text(row,"task",palette.muted);row.check:SetJustifyH("RIGHT")
             row.active=row:CreateTexture(nil,"ARTWORK");row.active:SetColorTexture(unpack(palette.focus))
             pool[i]=row
@@ -1690,7 +1685,7 @@ function UI:RenderTracker(along)
     if reminder then guidance=reminder..(guidance~="" and ("\n"..guidance) or "") end
     self.body:SetMaxLines(reminder and 0 or 2)
     self.body:SetText(guidance)
-    self.body:SetTextColor(unpack((model.feedback or model.kind=="turnin") and palette.green or palette.muted))
+    self.body:SetTextColor(unpack((model.feedback or model.kind=="turnin") and palette.green or palette.white))
     T.questTitle.detail=model.dungeonName and "点击查看副本任务详情" or (place and (place.."\n") or "")..table.concat(lines,"\n")
     renderObjectives(T.questTitle,T.objectiveFrame,T.objectives,
         (model.kind=="objective" or current and not current.ready) and model.objectives or {})
@@ -1842,12 +1837,12 @@ function UI:LayoutTracker()
         height=height+goals
         row.progress:SetShown(not row.atStop and (row.progress:GetText() or "")~="")
         row.progress:ClearAllPoints();row.progress:SetPoint("TOPLEFT",indent,-height);row.progress:SetWidth(bodyWidth);row.progress:SetMaxLines(2)
-        if row.progress:IsShown() then height=height+math.min(row.progress:GetStringHeight(),36*scale)+4 end
+        if row.progress:IsShown() then height=height+row.progress:GetStringHeight()+4 end
         height=height+spacing.gap*scale
         row:ClearAllPoints();row:SetPoint("TOPLEFT",0,-y);row:SetHeight(height)
         return height
     end
-    local cardTop=36*scale
+    local cardTop=math.max(36*scale,T.location:GetStringHeight()+spacing.padding*scale)
     T.divider:ClearAllPoints();T.divider:SetPoint("TOPLEFT",0,-cardTop+7);T.divider:SetSize(width,1);T.headerLine:SetSize(38*scale,2)
     T.career:SetWidth(inner)
     T.career.heading:ClearAllPoints();T.career.heading:SetPoint("TOPLEFT");T.career.heading:SetWidth(inner)
@@ -1885,8 +1880,8 @@ function UI:LayoutTracker()
     T.skip:SetShown(self.QuestDeferral(T.questTitle.questId)=="暂时不做")
     if T.skip:IsShown() then
         local w=math.ceil(T.skip.text:GetStringWidth())+2*gap
-        T.skip:ClearAllPoints();T.skip:SetPoint("TOPRIGHT",0,-titleY);T.skip:SetSize(w,20*scale)
-        titleWidth=titleWidth-w-gap
+        T.skip:ClearAllPoints();T.skip:SetPoint("TOPRIGHT",0,0);T.skip:SetSize(w,20*scale)
+        if not T.focusLabel:IsShown() then titleWidth=titleWidth-w-gap end
     end
     if T.primaryLabel:IsShown() then
         self.title:SetWidth(0)

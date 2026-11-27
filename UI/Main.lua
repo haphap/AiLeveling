@@ -62,11 +62,11 @@ function UI:StyleFont(entry)
         entry.text:SetShadowOffset(sample:GetShadowOffset())
         entry.text:SetShadowColor(sample:GetShadowColor())
     end
-    if entry.detail then
+    if entry.detail or entry.flags=="OUTLINE" then
         size=math.max(size,(entry.size+2)*(api and api.GetSetting("general","fontScale") or 1))
         flags=entry.flags or ""
         entry.text:SetShadowOffset(1,-1)
-        entry.text:SetShadowColor(0,0,0,0.8)
+        entry.text:SetShadowColor(0,0,0,entry.detail and 0.8 or 1)
     end
     entry.text:SetFont(face,size*(A.settings.fontScale or 1),flags or "")
 end

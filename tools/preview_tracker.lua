@@ -151,7 +151,7 @@ if os.getenv("AILEVELING_PREVIEW_DAYLIGHT")=="1" then
 end
 
 local A={settings={fontScale=1,density="normal",arrow=true,distanceUnits="meters"},char={},indexReady=true,
-    state={class="PALADIN",level=8,xp=3200,maxXP=5040,runSpeed=7,position={map=1429,x=0.46,y=0.42},quests={
+    state={completed={},class="PALADIN",level=8,xp=3200,maxXP=5040,runSpeed=7,position={map=1429,x=0.46,y=0.42},quests={
         [7]={title="狗头人的威胁",level=8,objectives={{text="消灭狗头人歹徒",type="monster",numFulfilled=6,numRequired=10},{text="消灭狗头人苦力",type="monster",numFulfilled=4,numRequired=4,finished=true}}},
         [33]={title="林中的群狼",level=9,objectives={{type="item",text="收集狼肉",numFulfilled=3,numRequired=8}}},
         [18]={title="矿工归来",level=10,ready=true,objectives={}},
@@ -455,8 +455,8 @@ if dungeonHUD then
     A.UI:SetTrackerNavigation(nil);A.UI:RenderTracker()
     local T=A.UI.tracker
     if sevenQuests then
-        assert(T.location:GetText():find("诺莫瑞根",1,true) and T.queueLabel:GetText()=="进行中 6 · 未接取 1")
-        assert(#T.model.rows==7 and T.rows[7].progress:GetText():find("克努比",1,true))
+        assert(T.location:GetText():find("诺莫瑞根",1,true) and T.queueLabel:GetText()=="已接 6/7 · 还差 1 项")
+        assert(#T.model.rows==7 and T.rows[2].progress:GetText():find("克努比",1,true))
         assert(T.rows[7]:IsShown() and T.rows[7].parent==T.queueChild)
     else
         local log={}
@@ -561,7 +561,7 @@ local function visit(w,visible,clip)
     visible=visible and w.shown
     if not visible then return end
     local rect=box(w)
-    local record={kind=w.kind,rect=rect,text=w.value,size=w.size,spacing=w.spacing,color=w.color,background=w.background,border=w.border,justify=w.justify,maxLines=w.maxLines,nonSpaceWrap=w.nonSpaceWrap,clip=clip,layer=w.layer,texture=w.texture,uv=w.uv,tileX=w.tileX,tileY=w.tileY}
+    local record={kind=w.kind,rect=rect,text=w.value,size=w.size,fontFlags=w.fontFlags,spacing=w.spacing,color=w.color,background=w.background,border=w.border,justify=w.justify,maxLines=w.maxLines,nonSpaceWrap=w.nonSpaceWrap,clip=clip,layer=w.layer,texture=w.texture,uv=w.uv,tileX=w.tileX,tileY=w.tileY}
     if w.kind=="Texture" and w.alpha then
         local color=w.color or {1,1,1}
         record.color={color[1],color[2],color[3],(color[4] or 1)*w.alpha}

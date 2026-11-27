@@ -94,6 +94,7 @@ def main():
                    fill=color(row.get('color')), width=round(row['thickness'] * SCALE))
         if row.get('text'):
             font = ImageFont.truetype(FONT, max(1, round(row['size'] * SCALE)))
+            outlined = "OUTLINE" in (row.get("fontFlags") or "")
             lines, line_width = [[]], 0
             ink = color(row.get('color'))
             for token in re.split(r'(\|c[0-9a-fA-F]{8}|\|r|\|T[^|]+\|t)', re.sub(r'\|H[^|]+\|h(.*?)\|h', r'\1', row['text'])):
@@ -128,7 +129,7 @@ def main():
                         overlay.alpha_composite(char, (round(xx), round(yy+(row['size']*SCALE-char.height)/2)))
                     else:
                         d.text((xx, yy + row['size'] * SCALE), char, font=font, fill=ink, anchor='ls',
-                               stroke_width=1, stroke_fill=(0, 0, 0, 150))
+                               stroke_width=SCALE if outlined else 1, stroke_fill=(0, 0, 0, 255 if outlined else 150))
                     xx += advance
         if row.get('clip'):
             c = row['clip']
