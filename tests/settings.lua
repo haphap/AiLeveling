@@ -80,6 +80,7 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
         Input=function(parent) return nativeControl("EditBox",parent) end}
     B=setup(true,api);B.UI:Render();local choice=B.action
     assert(B.UI.frame.daylightOpts and B.UI.details.daylightOpts)
+    eq(B.UI.frame.daylightOpts.noBorder,true);eq(B.UI.navFrame.daylightOpts.noBorder,false)
     eq(B.UI.frame.daylightOpts.bgAlpha,0.4);eq(B.UI.title.fontFace,face);assert(B.UI.tracker.header:IsShown())
     eq(B.UI.navFrame.daylightOpts.panel,true);eq(B.UI.navFrame.daylightOpts.bgAlpha,0.40)
     windowAlpha=0.35;listeners.SettingChanged("general","windowAlpha");eq(B.UI.navFrame.daylightOpts.bgAlpha,0.40)
@@ -94,6 +95,7 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     face="UpdatedDaylightFont";scale=1.2
     for fs,role in pairs(texts) do fs:SetFont(face,sizes[role]*scale,"");fs:SetShadowColor(0,0,0,0) end
     listeners.StyleChanged();eq(B.UI.title.fontFace,face);eq(B.action,choice)
+    eq(B.UI.frame.daylightOpts.noBorder,true)
     eq(B.UI.title.fontSize,13*1.2);eq(B.UI.title.shadowColor[4],0)
     B.settings.fontScale=1.1;listeners.Login();eq(B.UI.title.fontSize,13*1.2*1.1)
     B.UI.details.scripts.OnSizeChanged()

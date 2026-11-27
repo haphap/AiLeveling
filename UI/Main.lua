@@ -195,7 +195,9 @@ function UI:DaylightShell(frame,alpha,windowColor)
     local opts=alpha and {panel=true,bgAlpha=alpha} or {window=true,bgAlpha=(windowColor or colors.bg)[4],bgColor=windowColor}
     local function paint() api.Skin(frame,opts) end
     local refresh=paint
-    if frame==self.navFrame then
+    if frame==self.frame then
+        opts.noBorder=true
+    elseif frame==self.navFrame then
         refresh=function()
             opts.noBorder=api.GetSetting("Quests","boxBorder")==false
             paint()
