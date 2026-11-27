@@ -10,9 +10,6 @@ local function questLink(id,title) return color(blue,"|Hquest:"..id..":0|h["..ti
 local function itemLink(item)
     return item.link or color(blue,"|Hitem:"..item.id.."|h["..(item.name or "物品 #"..item.id).."]|h")
 end
-local function time(seconds)
-    return seconds and string.format("%d分%02d秒",math.floor(seconds/60),math.ceil(seconds)%60) or nil
-end
 local function skillName(id)
     return A.Trainers and A.Trainers.skills[id] or ({[164]="锻造",[171]="炼金",[182]="草药学",[186]="采矿",[356]="钓鱼",[762]="骑术"})[id] or "专业 #"..id
 end
@@ -53,7 +50,7 @@ local function enableDetailLinks(frame)
         local source=link:match("^ailquesturl:(%d+)$")
         if source then
             local locale=GetLocale()=="zhCN" and "cn" or "www"
-            A.UI:ShowText("https://"..locale..".wowhead.com/forever/quest="..source)
+            A.UI:ShowText("https://"..locale..".wowhead.com/forever/quest="..source,"Wowhead 任务链接")
             return
         end
         local id=tonumber(link:match("^quest:(%d+)"))
@@ -91,6 +88,8 @@ function B:Create(parent)
     self.list:SetPoint("TOPLEFT",0,-70);self.list:SetSize(382,420)
     self.child=CreateFrame("Frame",nil,self.list);self.child:SetSize(382,460);self.list:SetScrollChild(self.child)
     self.list:HookScript("OnVerticalScroll",function(_,offset) self:DrawRows(offset) end)
+    self.questHeader=CreateFrame("Frame",nil,self.frame)
+    enableDetailLinks(self.questHeader)
     self.info=CreateFrame("ScrollFrame",nil,self.frame,"UIPanelScrollFrameTemplate")
     self.info:SetPoint("TOPLEFT",434,-14);self.info:SetSize(326,368)
     self.infoChild=CreateFrame("Frame",nil,self.info);self.infoChild:SetSize(330,382);self.info:SetScrollChild(self.infoChild)
@@ -319,9 +318,9 @@ function B:Refresh(mode,reuse,opening)
     reuse=reuse and self.mode==mode and self.entriesRevision==A.state.revision and self.entriesPlan==A.plan
     if self.mode~=mode then
         self.message=nil
-        local listWidth=mode==4 and 218 or 274
+        local listWidth=mode==4 and 204 or 232
         local split=listWidth+24
-        self.frame:ClearAllPoints();self.frame:SetPoint("TOPLEFT",148,-22);self.frame:SetSize(830,554)
+        self.frame:ClearAllPoints();self.frame:SetPoint("TOPLEFT",metrics.detailInset,-22);self.frame:SetSize(1000-metrics.detailInset-22,554)
         self.summary:ClearAllPoints();self.summary:SetPoint("TOPLEFT",0,-77)
         self.summary:SetWidth(listWidth);self.summary:SetJustifyH("LEFT")
         self.search:ClearAllPoints();self.search:SetPoint("TOPLEFT",0,-39);self.search:SetWidth(listWidth+4)
@@ -332,20 +331,20 @@ function B:Refresh(mode,reuse,opening)
         self.list:ClearAllPoints();self.list:SetPoint("TOPLEFT",0,-listY)
         self.list:SetSize(listWidth,self.frame:GetHeight()-listY);self.child:SetWidth(listWidth)
         self.divider:ClearAllPoints();self.divider:SetPoint("TOPLEFT",split,0);self.divider:SetPoint("BOTTOMLEFT",split,0)
-        self.info:ClearAllPoints();self.info:SetPoint("TOPLEFT",split+16,0)
+        self.questHeader:ClearAllPoints();self.questHeader:SetPoint("TOPLEFT",split+16,0)
         local right=self.frame:GetWidth()-split-16-40
-        self.info:SetWidth(right);self.infoChild:SetWidth(right)
+        self.questHeader:SetWidth(right);self.info:SetWidth(right);self.infoChild:SetWidth(right)
         self.title:SetWidth(right-28);self.detail:SetWidth(right)
         self.list:SetVerticalScroll(0);self.info:SetVerticalScroll(0)
     end
     self.mode=mode
     local requested=mode==4 and A.UI.Dungeon.selected
-    if mode==4 and (requested or opening) then
+    if requested then
         A.UI.Dungeon.selected=nil
-        if requested then self.levelOnly=false end
+        self.levelOnly=false
         self.selection[4]=requested
         self:ClearSearch()
-        if requested and self.dungeonDetail then self.dungeonDetail.showLoot=false end
+        if self.dungeonDetail then self.dungeonDetail.showLoot=false end
     end
     local rows
     if reuse then rows=self.entries
@@ -489,11 +488,11 @@ end
 
 function B:Action(index,label,run,enabled)
     local b=self.buttons[index];b.text:SetText(label);b.run=run;b:SetEnabled(enabled~=false);b:Show()
-    b.baseColor=index==1 and colors.selected or colors.button;b:SetBackdropColor(unpack(b.baseColor))
-    b.text:SetTextColor(unpack(enabled==false and colors.muted or index==1 and colors.gold or colors.white))
+    b.baseColor=index==1 and enabled~=false and colors.primary or colors.button;b:SetBackdropColor(unpack(b.baseColor))
+    b.text:SetTextColor(unpack(enabled==false and colors.muted or index==1 and colors.ink or colors.white))
 end
 
-function B:PlaceActions(y)
+function B:PlaceActions(y,rightAligned)
     local x,bottom=0,y
     for i,button in ipairs(self.buttons) do
         if button:IsShown() then
@@ -501,7 +500,8 @@ function B:PlaceActions(y)
             local w=math.min(self.info:GetWidth(),math.ceil(button.text:GetStringWidth())+24)
             button.text:SetWidth(w-24)
             if x>0 and x+w>self.info:GetWidth() then x=0;y=bottom end
-            button:ClearAllPoints();button:SetPoint("TOPLEFT",x,-y)
+            button:ClearAllPoints()
+            if rightAligned then button:SetPoint("TOPRIGHT",-x,-y) else button:SetPoint("TOPLEFT",x,-y) end
             button:SetSize(w,math.max(metrics.button,math.ceil(button.text:GetStringHeight())+8))
             if i>1 then
                 button.baseColor=colors.panel;button:SetBackdropColor(unpack(colors.panel))
@@ -519,6 +519,14 @@ function B:Detail()
     if self.dungeonDetail then self.dungeonDetail:Hide() end
     self.goals:Hide();self.goalHeading:Hide();if self.meta then self.meta:Hide() end
     local e=self.selected
+    local quest=e and e.choice
+    local parent=quest and self.questHeader or self.infoChild
+    if self.title:GetParent()~=parent then
+        self.title:SetParent(parent)
+        for _,button in ipairs(self.buttons) do button:SetParent(parent) end
+    end
+    self.questHeader:SetShown(quest and true or false)
+    self.info:ClearAllPoints();self.info:SetPoint("TOPLEFT",self.questHeader,"TOPLEFT")
     self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT",e and e.dungeon and 12 or 0,e and e.dungeon and -8 or 0)
     self.title:SetText(e and e.title or "暂无项目")
     if self.dungeonBanner then self.dungeonBanner:Hide() end
@@ -545,12 +553,25 @@ function B:Detail()
         local timing=e.choice.executionTiming or e.choice.timing
         local status=e.sub
         if e.current then status=status:gsub("^.- · ","",1) end
-        local meta=status..(timing and timing.seconds and (" · 路程 "..time(timing.seconds)) or "")
-        if not self.meta then self.meta=A.UI:Text(self.infoChild,"caption",colors.muted) end
+        local meta=status..(timing and timing.seconds and (" · 路程 "..A.UI.ClockText(timing.seconds)) or "")
+        if not self.meta then self.meta=A.UI:Text(self.questHeader,"caption",colors.muted) end
         self.meta:ClearAllPoints();self.meta:SetPoint("TOPLEFT",0,-detailTop);self.meta:SetWidth(self.info:GetWidth())
-        self.meta:SetText(meta);self.meta:Show()
-        detailTop=detailTop+self.meta:GetStringHeight()+metrics.section
         local active=(A.state.quests or {})[e.questId]
+        local nextAction=e.choice.executionAction or e.choice.actions and e.choice.actions[1]
+        local instruction=nextAction and nextAction.text
+        if nextAction then
+            local point=nextAction.recipient or nextAction.position
+            local verb=({accept="接取于 ",turnin="交付给 "})[nextAction.kind]
+            if verb and point and point.entityName then instruction=verb..color(blue,point.entityName) end
+        end
+        if not instruction and active and not active.ready then
+            for _,goal in ipairs(active.objectives or {}) do
+                if not goal.finished and goal.text then instruction=goal.text;break end
+            end
+        end
+        self.meta:SetText(meta..(instruction and ("\n"..instruction) or ""));self.meta:Show()
+        local headerTop=detailTop+self.meta:GetStringHeight()+metrics.gap
+        detailTop=0
         local db=A.Data.db and A.Data.db.Quest
         local description,objective
         if A.State and A.State.QuestText then description,objective=A.State:QuestText(e.questId) end
@@ -616,6 +637,10 @@ function B:Detail()
         if A.char.locked or A.char.itinerary or A.char.taskBatch or A.char.gearTarget or A.Navigation.manual or A.char.serviceStop or A.char.paused then
             self:Action(3,"恢复练级导航",function() A.Selection:Automatic();self:Refresh(self.mode) end)
         end
+        local headerHeight=self:PlaceActions(headerTop)+metrics.gap
+        self.questHeader:SetHeight(headerHeight)
+        self.info:SetPoint("TOPLEFT",self.questHeader,"BOTTOMLEFT")
+        self.info:SetHeight(self.frame:GetHeight()-18-headerHeight)
     elseif e.dungeon then
         local batch=A.char.taskBatch
         local current=batch and batch.id==e.key
@@ -668,7 +693,7 @@ function B:Detail()
             lines[#lines+1]=table.concat(items,"\n")
         end
         if nextStop then tasks("出发前交付",visit.handins,"turnin") end
-        if r.seconds then lines[#lines+1]="前往首个任务  "..time(r.seconds) end
+        if r.seconds then lines[#lines+1]="前往首个任务  "..A.UI.ClockText(r.seconds) end
         tasks("到达后接取",r.pickups,"accept")
         local active={}
         for _,c in ipairs(r.choices) do if c.status=="objective" then active[#active+1]=c end end
@@ -710,7 +735,7 @@ function B:Detail()
     self.detail:ClearAllPoints();self.detail:SetPoint("TOPLEFT",0,-detailTop)
     self.detail:SetText(table.concat(lines,"\n\n"))
     local height=detailTop+(#lines>0 and self.detail:GetStringHeight()+12 or 0)
-    height=self:PlaceActions(height)
+    if not quest then height=self:PlaceActions(height) end
     self.infoChild:SetHeight(math.max(1,height))
 end
 
@@ -825,7 +850,7 @@ function B:DungeonDetail(e)
         self.dungeonBanner:SetPoint("TOPLEFT");self.dungeonBanner:SetTexture("Interface\\AddOns\\AiLeveling\\Media\\hud-header.tga")
         self.dungeonArt=self.infoChild:CreateTexture(nil,"BACKGROUND",nil,1)
         self.dungeonArt:SetPoint("TOPRIGHT",self.dungeonBanner,"TOPRIGHT")
-        self.dungeonArt:SetVertexColor(0.68,0.65,0.59,0.52)
+        self.dungeonArt:SetVertexColor(0.55,0.52,0.49,0.48)
         view.levels=A.UI:Text(view,"body",colors.muted)
         view.tasks=A.UI:Text(view,"caption",colors.white)
         view.xp=A.UI:Text(view,"caption",colors.gold)
@@ -875,6 +900,7 @@ function B:DungeonDetail(e)
     view.levels:SetText(e.levels..(minimum and "  ·  "..minimum.."级可进入" or "")..(map and map.name and "  ·  "..map.name or ""))
     view.levels:ClearAllPoints();view.levels:SetPoint("TOPLEFT",12,0);view.levels:SetWidth(width-24)
     local y=view.levels:GetStringHeight()+metrics.gap
+    y=self:PlaceActions(top+y,true)-top+metrics.gap
     self.dungeonBanner:SetSize(width,top+y);self.dungeonBanner:Show()
     if view.artEntry~=entry then
         view.artEntry=entry;view.artFile=nil
@@ -889,7 +915,7 @@ function B:DungeonDetail(e)
             if view.artFile then self.dungeonArt:SetTexture(view.artFile);self.dungeonArt:SetTexCoord(0,1,0.30,0.70) end
         end
     end
-    self.dungeonArt:SetSize(164,top+y);self.dungeonArt:SetShown(view.artFile~=nil)
+    self.dungeonArt:SetSize(width,top+y);self.dungeonArt:SetShown(view.artFile~=nil)
     local available=not current and e.availableRewards
     local displayed=available or rewards
     view.tasks:ClearAllPoints();view.tasks:SetPoint("TOPLEFT",12,-y)
@@ -914,7 +940,7 @@ function B:DungeonDetail(e)
     end
     view.hint:ClearAllPoints();view.hint:SetPoint("TOPLEFT",0,-y)
     view.hint:SetWidth(width);view.hint:SetText(A.UI:Icon("entry",14).." "..(self.message or hint))
-    y=self:PlaceActions(top+y+view.hint:GetStringHeight()+metrics.gap)-top+metrics.gap
+    y=y+view.hint:GetStringHeight()+metrics.section
     if view.instance~=e.dungeon.instanceId then
         view.instance=e.dungeon.instanceId;view.boss=1;view.expanded=nil
     end
@@ -1045,7 +1071,7 @@ function B:DungeonDetail(e)
         if task.questLevel and task.questLevel>0 then meta[1]=task.questLevel.."级" end
         if task.relation=="preparation" then meta[#meta+1]="入本前准备" end
         if task.xp then meta[#meta+1]=color(gold,task.xp.." 经验") end
-        if seconds then meta[#meta+1]="路程 "..time(seconds) end
+        if seconds then meta[#meta+1]="路程 "..A.UI.ClockText(seconds) end
         if task.gear then meta[#meta+1]="装备提升" end
         if task.lowValue then meta[#meta+1]=task.lowValue.suggestion end
         row.meta:SetText(table.concat(meta," · "))

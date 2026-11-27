@@ -9,6 +9,7 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     B.Initialize=function(self) self.UI:Render() end
     eq(B:Start(),true)
     assert(B.UI.title:GetText()~="")
+    eq(B.UI.ClockText(59.6),"1:00")
     B.UI:ToggleDetails()
     assert(B.UI.details:IsShown())
     assert(B.UI.Browser.frame:IsShown());assert(B.UI.Browser.rows[1].text:GetText()~="")
@@ -134,6 +135,9 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     book:PlaceActions(0)
     eq(button.text.wordWrap,true);eq(button:GetWidth(),book.info:GetWidth());assert(button:GetHeight()>=68)
     local toggle=control(B,"quantity").button;toggle.scripts.OnClick();eq(B.settings.quantity,false);eq(toggle.checked,false)
+    B.UI:ShowText("测试报告","运行诊断");listeners.StyleChanged()
+    eq(B.UI.exporting,true);eq(B.UI.detailHeading:GetText(),"运行诊断")
+    eq(B.UI.copyBox:IsShown(),true);eq(B.UI.scroll:GetVerticalScroll(),0)
     B.finish()
 
 end)
@@ -442,7 +446,7 @@ test("窗口锁定阻止拖动且主详情分别保存位置并恢复",function(
     U.folded=false;U:LayoutTracker();eq(U.frame.height,400);eq(T.resize.shown,true)
     B:NormalizeSettings(B.settings);eq(B.settings.trackerWidth,420);eq(B.settings.trackerHeight,400)
     U.frame.scripts.OnMouseUp(nil,"RightButton");B.menu["恢复自动尺寸"].callback()
-    eq(B.settings.trackerWidth,0);eq(B.settings.trackerHeight,0);eq(U.frame.width,360)
+    eq(B.settings.trackerWidth,0);eq(B.settings.trackerHeight,0);eq(U.frame.width,340)
     U.frame.scripts.OnMouseUp(nil,"RightButton");B.menu["缩小字体 · 85%"].callback()
     U:TrackerMenu(U.frame);eq(B.menu["缩小字体"].enabled,false)
     B.menu["放大字体 · 100%"].callback();eq(B.settings.fontScale,1)

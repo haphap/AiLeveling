@@ -5,16 +5,16 @@ local S=A.UI.Settings
 function S:Create(parent)
     self.frame=CreateFrame("Frame",nil,parent)
     self.frame:SetPoint("TOPLEFT",18,-94);self.frame:SetPoint("BOTTOMRIGHT",-18,18)
-    self.groups,self.controls={},{}
+    self.groups,self.controls,self.groupTabs={},{},{}
     local names={"路线规划","界面显示","任务辅助","数据与兼容","背包整理","队伍协作","地图与导航"}
     for tab,i in ipairs({1,2,7,3,4,5,6}) do
         local group=CreateFrame("Frame",nil,self.frame)
-        group:SetPoint("TOPLEFT",0,-40);group:SetPoint("BOTTOMRIGHT")
+        group:SetPoint("TOPLEFT",180,0);group:SetPoint("BOTTOMRIGHT")
         self.groups[i]=group
-        local b=A.UI:Button(self.frame,names[i],90,function()
-            for j,f in ipairs(self.groups) do f:SetShown(i==j) end
-        end)
-        b:SetPoint("TOPLEFT",(tab-1)*96,0);group:SetShown(i==1)
+        local b=A.UI:ListButton(self.frame,names[i],158,function() self:SelectGroup(i) end,"body")
+        b:SetPoint("TOPLEFT",0,-(tab-1)*36);b:SetHeight(34)
+        b.text:ClearAllPoints();b.text:SetPoint("LEFT",12,0)
+        self.groupTabs[i]=b;group:SetShown(i==1)
     end
     local function position(row,rows)
         rows=rows or 8
@@ -138,14 +138,14 @@ function S:Create(parent)
         if A.ready then A.State:Refresh(true) end
     end)
     resume:SetPoint("TOPLEFT",position(2))
-    local diagnostic=A.UI:Button(self.groups[4],"查看可复制诊断",270,function() A.UI:ShowText(A:Diagnostics()) end)
+    local diagnostic=A.UI:Button(self.groups[4],"查看可复制诊断",270,function() A.UI:ShowText(A:Diagnostics(),"运行诊断") end)
     diagnostic:SetPoint("TOPLEFT",position(3))
     local defaults=A.UI:Button(self.groups[4],"恢复设置与窗口位置",270,function() A:RestoreSettings() end)
     defaults:SetPoint("TOPLEFT",position(4))
     check(4,"levelingStats","记录练级时间与经验",5)
-    local leveling=A.UI:Button(self.groups[4],"查看练级统计",270,function() A.UI:ShowText(A.LevelingTracker:Report()) end)
+    local leveling=A.UI:Button(self.groups[4],"查看练级统计",270,function() A.UI:ShowText(A.LevelingTracker:Report(),"练级统计") end)
     leveling:SetPoint("TOPLEFT",position(6))
-    local history=A.UI:Button(self.groups[4],"刷新并查看已完成任务",270,function() A.UI:ShowText(A:QuestHistory()) end)
+    local history=A.UI:Button(self.groups[4],"刷新并查看已完成任务",270,function() A.UI:ShowText(A:QuestHistory(),"已完成任务") end)
     history:SetPoint("TOPLEFT",position(7))
     self.profile=A.UI:Button(self.groups[4],"配置",270,function()
         local names={};for name in pairs(A.db.profiles) do names[#names+1]=name end
@@ -221,9 +221,16 @@ function S:Create(parent)
     self.frame:Hide()
 end
 
+function S:SelectGroup(index)
+    self.group=index
+    for i,group in ipairs(self.groups) do
+        group:SetShown(i==index);A.UI:MarkChoice(self.groupTabs[i],i==index)
+    end
+end
+
 function S:ShowParty()
     A.UI.details:Show();A.UI:SelectTab(5)
-    for i,group in ipairs(self.groups) do group:SetShown(i==6) end
+    self:SelectGroup(6)
     A.Party:RefreshUI()
 end
 
@@ -234,7 +241,7 @@ end
 
 function S:ShowBags()
     A.UI.details:Show();A.UI:SelectTab(5)
-    for i,group in ipairs(self.groups) do group:SetShown(i==5) end
+    self:SelectGroup(5)
     self:RefreshBags()
 end
 
@@ -258,6 +265,7 @@ function S:RefreshBags()
 end
 
 function S:Refresh()
+    self:SelectGroup(self.group or 1)
     self.profile:SetEnabled(A.db~=nil)
     self.deleteProfile:SetEnabled(A.db~=nil and A.char.profile~=A.db.defaultProfile)
     self.profile.text:SetText("配置："..(A.char.profile or "默认").."  ›")

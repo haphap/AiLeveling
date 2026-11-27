@@ -231,7 +231,7 @@ function C.Graph(id,data,state,limit)
     local rows={}
     for _,node in ipairs(queue) do
         rows[node.rank]=(rows[node.rank] or 0)+1
-        node.x,node.y=12+(node.rank-minRank)*204,12+(rows[node.rank]-1)*84
+        node.x,node.y=12+(node.rank-minRank)*264,12+(rows[node.rank]-1)*84
         local q=data:GetQuest(node.id)
         node.title=q and q.title or ("任务 #"..node.id.."（资料缺失）")
         node.status=q and A.State.Status(state,node.id) or "missing"
@@ -242,7 +242,7 @@ function C.Graph(id,data,state,limit)
         graph.nodes[#graph.nodes+1]=node
         graph.height=math.max(graph.height,node.y+76)
     end
-    graph.width=math.max(536,(maxRank-minRank+1)*204+96)
+    graph.width=math.max(536,(maxRank-minRank+1)*264+96)
     local seen={}
     for _,node in ipairs(queue) do
         for _,edge in ipairs(index.outgoing[node.id] or {}) do

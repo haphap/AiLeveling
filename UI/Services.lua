@@ -4,18 +4,22 @@ local U=A.UI.Services
 local labels={bind="旅店／设置炉石",train="训练师位置",learn="当前训练项目",unlockFlight="开通飞行点"}
 function U:Create(parent)
     self.frame=CreateFrame("Frame",nil,parent);self.frame:SetPoint("TOPLEFT",18,-94);self.frame:SetSize(570,72)
-    self.mode=A.UI:Button(self.frame,"切换服务",150,function()
-        self.kind=({bind="train",train="learn",learn="unlockFlight",unlockFlight="bind"})[self.kind];self.index=1;self.message=nil;A.UI:SelectTab(7)
-    end);self.mode:SetPoint("TOPLEFT")
-    self.previous=A.UI:Button(self.frame,"上一项",84,function() self:Move(-1) end);self.previous:SetPoint("TOPLEFT",160,0)
-    self.label=A.UI:Text(self.frame,"caption");self.label:SetPoint("TOPLEFT",252,-6);self.label:SetWidth(214)
-    self.next=A.UI:Button(self.frame,"下一项",84,function() self:Move(1) end);self.next:SetPoint("TOPLEFT",478,0)
-    self.choose=A.UI:Button(self.frame,"安排此服务",268,function()
+    self.tabs={}
+    for i,kind in ipairs({"bind","train","learn","unlockFlight"}) do
+        local tab=A.UI:ListButton(self.frame,labels[kind],138,function()
+            self.kind=kind;self.index=1;self.message=nil;A.UI.scroll:SetVerticalScroll(0);A.UI:SelectTab(7)
+        end)
+        tab:SetPoint("TOPLEFT",(i-1)*144,0);self.tabs[kind]=tab
+    end
+    self.previous=A.UI:Button(self.frame,"上一项",84,function() self:Move(-1) end);self.previous:SetPoint("TOPLEFT",0,-38)
+    self.label=A.UI:Text(self.frame,"caption");self.label:SetPoint("TOPLEFT",94,-44);self.label:SetWidth(82)
+    self.next=A.UI:Button(self.frame,"下一项",84,function() self:Move(1) end);self.next:SetPoint("TOPLEFT",166,-38)
+    self.choose=A.UI:Button(self.frame,"安排此服务",196,function()
         local ok,why=A.Services:Pick(self.preview,self.revision)
         self.message=ok and "已安排服务。" or why;A.UI:SelectTab(7)
-    end);self.choose:SetPoint("TOPLEFT",0,-36)
-    self.cancel=A.UI:Button(self.frame,"取消服务，继续原任务",282,function() A.Services:Cancel();A.UI:SelectTab(7) end)
-    self.cancel:SetPoint("TOPLEFT",280,-36);self.frame:Hide()
+    end);self.choose:SetPoint("TOPLEFT",268,-38)
+    self.cancel=A.UI:Button(self.frame,"取消服务，继续原任务",200,function() A.Services:Cancel();A.UI:SelectTab(7) end)
+    self.cancel:SetPoint("TOPLEFT",476,-38);self.frame:Hide()
 end
 function U:Move(delta)
     local count=#(self.rows or {});if count>0 then self.index=(self.index-1+delta)%count+1 end
@@ -24,7 +28,8 @@ end
 function U:Refresh()
     self.rows=A.Services:Choices(self.kind);self.index=math.max(1,math.min(self.index,#self.rows))
     self.preview,self.revision=self.rows[self.index],A.state.revision
-    self.mode.text:SetText(labels[self.kind]);self.label:SetText(string.format("%d / %d",#self.rows>0 and self.index or 0,#self.rows))
+    for kind,tab in pairs(self.tabs) do A.UI:MarkChoice(tab,kind==self.kind) end
+    self.label:SetText(string.format("%d / %d",#self.rows>0 and self.index or 0,#self.rows))
     self.previous:SetEnabled(#self.rows>1);self.next:SetEnabled(#self.rows>1)
     local ok,why=A.Services:CanPick(self.preview,self.revision);self.choose:SetEnabled(ok==true);self.blocked=not ok and why or nil
     self.choose.text:SetText(self.kind=="learn" and "安排学习此项后继续" or "安排此服务")

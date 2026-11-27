@@ -806,7 +806,8 @@ test("原生服务页可切换旅店与训练项目插入取消且页签隐藏�
         B:NormalizeCharacter(B.char);assert(B.char.serviceStop);eq(B.char.serviceStop.afterTask,nil)
     end
     U.cancel.scripts.OnClick();eq(B.char.serviceStop,nil)
-    U.mode.scripts.OnClick();eq(U.kind,"train");U.mode.scripts.OnClick();eq(U.kind,"learn")
+    B.UI.scroll:SetVerticalScroll(90);U.tabs.train.scripts.OnClick();eq(U.kind,"train");eq(B.UI.scroll:GetVerticalScroll(),0)
+    U.tabs.learn.scripts.OnClick();eq(U.kind,"learn")
     B.state.money=20;B.state.trainer={npcId=78,name="训练师",rows={{name="新技能",sub="等级 1",key="新技能\031等级 1",status="available",cost=30,playerTraining=true}}}
     B.UI:SelectTab(7);assert(B.UI.detailText.value:find("新技能",1,true))
     U.choose.scripts.OnClick();eq(B.char.serviceStop.kind,"train");assert(B.char.serviceStop.learnKey)

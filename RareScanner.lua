@@ -42,7 +42,7 @@ function R:Apply()
         self.button=f
         f:SetPoint("BOTTOMLEFT",A.UI.frame,"TOPLEFT",0,8)
         f:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1})
-        f:SetBackdropColor(0.035,0.05,0.065,A.UI.colors.hud[4])
+        A.UI:BindBackground(f,A.UI.colors.hud,"hudTransparency")
         f:RegisterForClicks("AnyUp","AnyDown");f:SetAttribute("type1","macro")
         f.heading=A.UI:Text(f,13,{1,0.82,0.35});f.heading:SetPoint("TOPLEFT",12,-9)
         f.name=A.UI:Text(f,17);f.name:SetPoint("TOPLEFT",12,-28);f.name:SetWidth(296)

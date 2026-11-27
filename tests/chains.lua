@@ -87,6 +87,7 @@ local function widget()
     w.SetMaxLetters=function(self,n) self.maxLetters=n end
     w.SetSize=function(self,width,height) self.width,self.height=width,height end
     w.SetText=function(self,text) self.textValue=text end;w.GetText=function(self) return self.textValue or "" end
+    w.SetShown=function(self,v) self.shown=v end
     w.Show=function(self) self.shown=true end;w.Hide=function(self) self.shown=false end
     w.SetEnabled=function(self,value) self.enabled=value end
     w.SetScript=function(self,event,callback) self.scripts[event]=callback end

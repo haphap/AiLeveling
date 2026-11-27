@@ -147,7 +147,7 @@ function T:Create(frame)
         self.panel:SetShown(not self.panel:IsShown());self:Refresh()
     end)
     toggle:SetPoint("BOTTOMLEFT",frame.LoadSystem,"BOTTOMLEFT",0,0)
-    local panel=A.UI:Panel("AiLevelingTalents",frame,320,316);self.panel=panel
+    local panel=A.UI:Panel("AiLevelingTalents",frame,320,316,A.UI.colors.detailBg,"detailTransparency");self.panel=panel
     panel:SetPoint("BOTTOMLEFT",toggle,"TOPLEFT",0,8);panel:SetFrameStrata("DIALOG")
     local title=A.UI:Text(panel,16,"accent");title:SetPoint("TOPLEFT",14,-12);title:SetText("天赋方案")
     local close=A.UI:Button(panel,"×",28,function() panel:Hide() end);close:SetPoint("TOPRIGHT",-8,-8)

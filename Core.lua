@@ -611,9 +611,9 @@ SLASH_AILEVELING1, SLASH_AILEVELING2 = "/ail", "/aileveling"
 SlashCmdList.AILEVELING = function(command)
     if A.startupError then A.UI:ShowStartupError(A.startupError);return end
     if not A.UI.frame then return end
-    if command == "status" then A.UI:ShowText(A:Diagnostics())
-    elseif command=="history" then A.UI:ShowText(A:QuestHistory())
-    elseif command=="stats" and A.LevelingTracker then A.UI:ShowText(A.LevelingTracker:Report())
+    if command == "status" then A.UI:ShowText(A:Diagnostics(),"运行诊断")
+    elseif command=="history" then A.UI:ShowText(A:QuestHistory(),"已完成任务")
+    elseif command=="stats" and A.LevelingTracker then A.UI:ShowText(A.LevelingTracker:Report(),"练级统计")
     elseif command=="bags" then A.UI.Settings:ShowBags()
     elseif command=="party" then A.UI.Settings:ShowParty()
     elseif command=="talents" then A.Talents:Show()
@@ -642,7 +642,7 @@ SlashCmdList.AILEVELING = function(command)
         if not A.indexReady then A:Message("任务索引尚未完成，请稍后盘点。"); return end
         A:Queue("index", function()
             local report = A.Data:Audit()
-            A.UI:ShowText(report)
+            A.UI:ShowText(report,"数据库覆盖情况")
         end)
     else A.UI:ToggleDetails() end
 end

@@ -75,9 +75,9 @@ function UI:Create(parent)
     end)
     self.restore:SetPoint("TOPLEFT",494,0)
     self.header=A.UI:Text(self.frame,"body")
-    self.header:SetPoint("TOPLEFT",0,-34);self.header:SetWidth(560);self.header:SetHeight(36);self.header:SetMaxLines(2)
+    self.header:SetPoint("TOPLEFT",0,-34);self.header:SetPoint("TOPRIGHT",-30,-34);self.header:SetHeight(36);self.header:SetMaxLines(2)
     self.viewport=CreateFrame("ScrollFrame",nil,self.frame,"UIPanelScrollFrameTemplate")
-    self.viewport:SetPoint("TOPLEFT",0,-72);self.viewport:SetSize(536,190)
+    self.viewport:SetPoint("TOPLEFT",0,-72);self.viewport:SetPoint("TOPRIGHT",-30,-72);self.viewport:SetHeight(190)
     self.canvas=CreateFrame("Frame",nil,self.viewport);self.canvas:SetSize(536,190);self.viewport:SetScrollChild(self.canvas)
     self.left=A.UI:Button(self.frame,"<",44,function() self:Pan(-1) end);self.left:SetPoint("TOPLEFT",0,-270)
     self.right=A.UI:Button(self.frame,">",44,function() self:Pan(1) end);self.right:SetPoint("TOPLEFT",50,-270)
@@ -93,8 +93,9 @@ function UI:Create(parent)
     self.visit:SetPoint("TOPLEFT",490,-270)
     self.infoScroll=CreateFrame("ScrollFrame",nil,self.frame,"UIPanelScrollFrameTemplate")
     self.infoScroll:SetPoint("TOPLEFT",0,-306);self.infoScroll:SetPoint("BOTTOMRIGHT",-30,0)
-    self.infoChild=CreateFrame("Frame",nil,self.infoScroll);self.infoChild:SetSize(530,80);self.infoScroll:SetScrollChild(self.infoChild)
-    self.info=A.UI:Text(self.infoChild,"caption");self.info:SetPoint("TOPLEFT");self.info:SetWidth(524)
+    self.infoChild=CreateFrame("Frame",nil,self.infoScroll);self.viewWidth=1000-A.UI.metrics.detailInset-18-30
+    self.infoChild:SetSize(self.viewWidth,80);self.infoScroll:SetScrollChild(self.infoChild)
+    self.info=A.UI:Text(self.infoChild,"caption");self.info:SetPoint("TOPLEFT");self.info:SetWidth(self.viewWidth)
     self.frame:Hide()
 end
 
@@ -105,7 +106,7 @@ function UI:Pan(direction)
         self:Refresh();self.infoScroll:SetVerticalScroll(0)
         return
     end
-    self.offset=clamp((self.offset or 0)+direction*204,(self.graph and self.graph.width or 536)-536)
+    self.offset=clamp((self.offset or 0)+direction*264,(self.graph and self.graph.width or self.viewWidth)-self.viewWidth)
     self.viewport:SetHorizontalScroll(self.offset)
     self:Refresh()
 end
@@ -165,14 +166,15 @@ function UI:Draw(graph)
             part:SetSize(math.max(2,math.abs(s[1]-s[3])),math.max(2,math.abs(s[2]-s[4])))
             part:SetColorTexture(unpack(edge.kind=="exclusive" and A.UI.colors.purple or A.UI.colors.muted));part:Show()
         end
-        line.label:ClearAllPoints();line.label:SetPoint("TOPLEFT",self.canvas,"TOPLEFT",mx+3,-(sy+ty)/2)
-        line.label:SetText(A.Chains.Label(edge));line.label:Show()
+        line.label:ClearAllPoints();line.label:SetPoint("BOTTOM",self.canvas,"TOPLEFT",mx,-(sy+ty)/2+3)
+        line.label:SetText(A.Chains.Label(edge))
+        line.label:SetShown(from.x~=to.x and math.abs(from.rank-to.rank)==1 and sy==ty)
         line.arrow:ClearAllPoints();line.arrow:SetPoint("TOPLEFT",self.canvas,"TOPLEFT",tx+(right and -9 or 1),-ty+6)
         line.arrow:SetText(right and ">" or "<");line.arrow:Show()
     end
     local focus=graph.byId[self.focus]
     local recenter=self.drawnFocus~=self.focus or self.drawnIndex~=A.Data.chainIndex
-    self.offset=clamp(recenter and (focus and focus.x-180 or 0) or (self.offset or 0),graph.width-536)
+    self.offset=clamp(recenter and (focus and focus.x+82-self.viewWidth/2 or 0) or (self.offset or 0),graph.width-self.viewWidth)
     self.viewport:SetHorizontalScroll(self.offset)
     self.viewport:SetVerticalScroll(clamp(recenter and (focus and focus.y-50 or 0) or self.viewport:GetVerticalScroll(),graph.height-190))
     self.drawnFocus,self.drawnIndex=self.focus,A.Data.chainIndex
@@ -239,7 +241,7 @@ function UI:Refresh()
     self.related.text:SetText(entry and string.format("关联 %d/%d：#%d · %s（点击切换）",self.relatedIndex,#entries,entry.id,A.Chains.Label(entry.edge)) or "当前没有已知关联")
     self.related:SetEnabled(#entries>0);self.visit:SetEnabled(entry~=nil)
     self.left:SetEnabled(self.preview~=nil or (self.offset or 0)>0)
-    self.right:SetEnabled(self.preview~=nil or (self.offset or 0)<((self.graph and self.graph.width or 536)-536))
+    self.right:SetEnabled(self.preview~=nil or (self.offset or 0)<((self.graph and self.graph.width or self.viewWidth)-self.viewWidth))
     self.info:SetText(table.concat(self:Details(),"\n\n"))
     self.infoChild:SetHeight(math.max(80,self.info:GetStringHeight()+16))
 end

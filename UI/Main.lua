@@ -3,14 +3,15 @@ A.UI = {fonts={},daylightFonts={},shells={}}
 local UI = A.UI
 local backgroundAlpha=0.40 -- 60% transparent
 UI.colors={
-    bg={0.040,0.044,0.073,backgroundAlpha}, sidebar={0.032,0.035,0.055,backgroundAlpha},
-    detailBg={0.040,0.044,0.073,0.90},
+    bg={0.078,0.094,0.145,backgroundAlpha}, sidebar={0.065,0.078,0.122,backgroundAlpha},
+    detailBg={0.090,0.106,0.161,0.90},
     panel={0,0,0,0}, button={0.095,0.102,0.145,backgroundAlpha},
+    primary={0.91,0.72,0.41,1}, primaryHover={1,0.82,0.52,1}, ink={0.085,0.075,0.10},
     hover={0.22,0.24,0.32,backgroundAlpha}, selected={0.19,0.22,0.30,backgroundAlpha},
-    rowHover={0.31,0.36,0.49,backgroundAlpha}, hud={0.042,0.046,0.067,backgroundAlpha},
-    navigation={0.045,0.049,0.078,backgroundAlpha},
-    white={0.96,0.96,0.99}, muted={0.71,0.75,0.84},
-    gold={1,0.84,0.32}, green={0.52,0.91,0.65}, blue={0.59,0.80,1}, purple={0.81,0.65,1},
+    rowHover={0.31,0.36,0.49,backgroundAlpha}, hud={0.086,0.102,0.153,backgroundAlpha},
+    navigation={0.086,0.102,0.153,backgroundAlpha},
+    white={247/255,248/255,253/255}, muted={195/255,202/255,221/255},
+    gold={0.96,0.78,0.43}, green={0.52,0.91,0.65}, blue={0.59,0.80,1}, purple={0.81,0.65,1},
     focus={0.40,0.69,0.96}, red={0.95,0.61,0.61},
     line={0.68,0.72,0.81,0.20}, border={0.55,0.59,0.69,0.28},
     gearText={0.765,0.793,0.868},
@@ -28,7 +29,7 @@ end
 UI.fontSizes={caption=12,body=14,task=15,heading=18,brand=18,title=20}
 local daylightRoles={caption="small",body="body",task="body",heading="head",brand="title",title="title"}
 UI.metrics={tight=4,gap=8,padding=12,section=16,indent=24,icon=16,smallIcon=12,
-    button=28,hit=24,scrollbar=16,radius=6,controlRadius=4}
+    detailInset=100,button=28,hit=24,scrollbar=16,radius=6,controlRadius=4}
 local metrics=UI.metrics
 local media="Interface\\AddOns\\AiLeveling\\Media\\"
 function UI:ClassColor()
@@ -201,7 +202,6 @@ function UI:BindBackground(frame,base,key,setColor)
     local function paint()
         local tint,alpha=background(key)
         local rgb=tint or base
-        if base==colors.sidebar then alpha=alpha*colors.sidebar[4]/colors.detailBg[4] end
         setColor(frame,rgb[1],rgb[2],rgb[3],alpha)
     end
     self.shells[#self.shells+1]=paint
@@ -291,7 +291,7 @@ function UI:Button(parent, label, width, callback, fontSize)
         b:SetBackdropColor(unpack(colors.button))
         b:HookScript("OnEnter",function()
             local base=b.baseColor or colors.button
-            b:SetBackdropColor(unpack(base[4]==0 and colors.rowHover or colors.hover))
+            b:SetBackdropColor(unpack(base==colors.primary and colors.primaryHover or base[4]==0 and colors.rowHover or colors.hover))
         end)
         b:HookScript("OnLeave",function() b:SetBackdropColor(unpack(b.baseColor or colors.button)) end)
         return b
@@ -309,7 +309,7 @@ function UI:Button(parent, label, width, callback, fontSize)
     b.text:SetText(label)
     b:SetScript("OnClick", callback)
     b:SetScript("OnEnter", function()
-        b:SetBackdropColor(unpack(b.baseColor==colors.panel and colors.rowHover or colors.hover))
+        b:SetBackdropColor(unpack(b.baseColor==colors.primary and colors.primaryHover or b.baseColor==colors.panel and colors.rowHover or colors.hover))
     end)
     b:SetScript("OnLeave", function()
         b:SetBackdropColor(unpack(b.baseColor or colors.button))
@@ -329,6 +329,12 @@ function UI:ListButton(parent,label,width,callback,role)
     b:SetScript("OnEnter",function() b:SetBackdropColor(unpack(colors.rowHover)) end)
     b:SetScript("OnLeave",function() b:SetBackdropColor(unpack(b.baseColor)) end)
     return b
+end
+
+function UI:MarkChoice(button,active)
+    button.baseColor=active and colors.selected or colors.panel
+    button:SetBackdropColor(unpack(button.baseColor))
+    button.text:SetTextColor(unpack(active and colors.gold or colors.muted))
 end
 
 function UI:Movable(handle,key,frame,button)
@@ -426,34 +432,35 @@ function UI:Create()
         self:Button(self.details, "×", 26, function() self.details:Hide() end,"title")
     close:SetPoint("TOPRIGHT", -14, -14)
     self.tabs = {}
-    local side=CreateFrame("Frame",nil,self.details);side:SetSize(120,584)
+    local side=CreateFrame("Frame",nil,self.details);side:SetSize(76,584)
     side:SetPoint("TOPLEFT",8,-8)
     self:Rounded(side,metrics.radius)
     self:BindBackground(side,colors.sidebar,"detailTransparency")
     local divider=self.details:CreateTexture(nil,"BACKGROUND")
-    divider:SetPoint("TOPLEFT",134,-14);divider:SetPoint("BOTTOMLEFT",134,14);divider:SetWidth(1)
+    divider:SetPoint("TOPLEFT",88,-14);divider:SetPoint("BOTTOMLEFT",88,14);divider:SetWidth(1)
     divider:SetColorTexture(unpack(colors.line))
     local header=self.details:CreateTexture(nil,"BACKGROUND")
-    header:SetPoint("TOPLEFT",148,-74);header:SetPoint("TOPRIGHT",-22,-74);header:SetHeight(1)
+    header:SetPoint("TOPLEFT",metrics.detailInset,-74);header:SetPoint("TOPRIGHT",-22,-74);header:SetHeight(1)
     header:SetColorTexture(unpack(colors.line));self.detailRule=header
     self.detailMark=side:CreateTexture(nil,"ARTWORK")
-    self.detailMark:SetTexture(media.."compass.tga");self.detailMark:SetSize(18,18);self.detailMark:SetPoint("TOPLEFT",4,-20)
-    local brand=self:Text(side,"body",colors.white);brand:SetPoint("TOPLEFT",25,-18);brand:SetText("AILeveling")
+    self.detailMark:SetTexture(media.."compass.tga");self.detailMark:SetSize(26,26);self.detailMark:SetPoint("TOP",0,-10)
     local labels={"练级任务","任务链","装备","地下城","设置","数据","服务","专业任务","职业任务","练级区域","坐骑任务"}
     local icons={"compass","chain","gear","entry","settings","xp","talk","profession","class","location","mount"}
     for n,i in ipairs({1,9,10,8,11,4,3,2,7,5,6}) do
-        local b=self:ListButton(side,self:Icon(icons[i],16).."  "..labels[i],116,function() self:SelectTab(i) end,"body")
-        b:SetPoint("TOPLEFT",2,-64-(n-1)*43);b:SetHeight(36)
-        b.text:ClearAllPoints();b.text:SetPoint("LEFT",5,0);b.text:SetJustifyH("LEFT")
+        local b=self:ListButton(side,labels[i],76,function() self:SelectTab(i) end,"caption")
+        b:SetPoint("TOPLEFT",0,-44-(n-1)*47);b:SetHeight(46)
+        b.icon=self:Text(b,"body");b.icon:SetPoint("TOP",0,-3)
+        b.icon:SetText(self:Icon(icons[i],14))
+        b.text:ClearAllPoints();b.text:SetPoint("TOP",b.icon,"BOTTOM",0,-2)
         self.tabs[i]=b
     end
     self.tabMark=side:CreateTexture(nil,"ARTWORK");self.tabMark:SetWidth(2)
     self.detailHeading=self:Text(self.details,"title",colors.white)
-    self.detailHeading:SetPoint("TOPLEFT",148,-22);self.detailHeading:SetText("练级任务")
+    self.detailHeading:SetPoint("TOPLEFT",metrics.detailInset,-22);self.detailHeading:SetText("练级任务")
     local underline=self.details:CreateTexture(nil,"ARTWORK")
     underline:SetPoint("TOPLEFT",self.detailHeading,"BOTTOMLEFT",0,-3);underline:SetSize(52,2);underline:SetColorTexture(unpack(colors.gold))
     self.detailSubtitle=self:Text(self.details,"body",colors.muted)
-    self.detailSubtitle:SetPoint("TOPLEFT",148,-54)
+    self.detailSubtitle:SetPoint("TOPLEFT",metrics.detailInset,-54)
     self.scroll = CreateFrame("ScrollFrame", nil, self.details, "UIPanelScrollFrameTemplate")
     self.scroll:SetPoint("TOPLEFT", 18, -96); self.scroll:SetPoint("BOTTOMRIGHT", -36, 18)
     self.scrollChild = CreateFrame("Frame", nil, self.scroll)
@@ -477,7 +484,8 @@ function UI:Create()
     if self.daylight then
         local function refresh()
             self:ApplyStyle();self:RenderTracker()
-            if self.details:IsShown() then self:SelectTab(self.selectedTab or 1,true) end
+            if self.exporting then self:SizeReport()
+            elseif self.details:IsShown() then self:SelectTab(self.selectedTab or 1,true) end
         end
         self.daylight.On("StyleChanged",refresh,"AiLeveling")
         self.daylight.On("Login",refresh,"AiLeveling")
@@ -521,22 +529,27 @@ function UI:ToggleDetails()
     if self.details:IsShown() then self:SelectTab(self.selectedTab or 1) end
 end
 
-function UI:ShowText(text)
+function UI:SizeReport()
+    local width=1000-metrics.detailInset-40
+    self.scrollChild:SetWidth(width);self.detailText:SetWidth(width);self.copyBox:SetWidth(width)
+    local height=math.max(380,self.detailText:GetStringHeight()+20)
+    self.scrollChild:SetHeight(height);self.copyBox:SetHeight(height)
+end
+
+function UI:ShowText(text,heading)
     self.details:Show(); self.Settings.frame:Hide(); self.scroll:Show()
     self.details:SetSize(1000,600)
     self.Browser.frame:Hide()
-    self.scroll:SetPoint("BOTTOMRIGHT",-36,18);self.scrollChild:SetWidth(560)
-    self.detailText:SetWidth(552)
+    self.scroll:SetPoint("BOTTOMRIGHT",-36,18)
+    self.detailHeading:SetText(heading or "报告");self.detailSubtitle:Hide();self.detailRule:Show()
     self.Chains.frame:Hide()
     self.Services.frame:Hide()
-    self.scroll:SetPoint("TOPLEFT",148,-96)
+    self.scroll:SetPoint("TOPLEFT",metrics.detailInset,-96)
     self.exporting = true
     self.detailText:SetText(text)
-    local height = math.max(380, self.detailText:GetStringHeight() + 20)
-    self.scrollChild:SetHeight(height)
-    self.detailText:Hide()
-    self.copyBox:SetHeight(height); self.copyBox:SetText(text); self.copyBox:Show()
-    self.copyBox:SetFocus(); self.copyBox:HighlightText()
+    self:SizeReport();self.detailText:Hide()
+    self.copyBox:SetText(text);self.copyBox:Show()
+    self.copyBox:SetFocus();self.copyBox:HighlightText();self.scroll:SetVerticalScroll(0)
 end
 
 function UI:SelectTab(index,reuse)
@@ -561,16 +574,16 @@ function UI:SelectTab(index,reuse)
     self.detailSubtitle:SetShown(not browse)
     self.detailRule:SetShown(not browse)
     self.details:SetSize(1000,600)
-    self.scroll:SetPoint("BOTTOMRIGHT",-36,18);self.scrollChild:SetWidth(750);self.detailText:SetWidth(742)
+    self.scroll:SetPoint("BOTTOMRIGHT",-36,18);self.scrollChild:SetWidth(1000-metrics.detailInset-40);self.detailText:SetWidth(self.scrollChild:GetWidth())
     self.Settings.frame:SetShown(index==5)
     self.Chains.frame:SetShown(index==2)
     self.Services.frame:SetShown(index==7)
     for _,panel in ipairs({self.Settings.frame,self.Chains.frame,self.Services.frame}) do
-        panel:ClearAllPoints();panel:SetPoint("TOPLEFT",148,-94);panel:SetPoint("BOTTOMRIGHT",-18,18)
+        panel:ClearAllPoints();panel:SetPoint("TOPLEFT",metrics.detailInset,-94);panel:SetPoint("BOTTOMRIGHT",-18,18)
     end
     self.Browser.frame:SetShown(browse)
     self.scroll:SetShown(not browse and index~=5 and index~=2)
-    self.scroll:SetPoint("TOPLEFT",148,index==7 and -178 or -96)
+    self.scroll:SetPoint("TOPLEFT",metrics.detailInset,index==7 and -178 or -96)
     if browse then self.Browser:Refresh(index,reuse,not reuse);return end
     if index == 5 then self.Settings:Refresh(); return end
     if index == 2 then self.Chains:Refresh();return end

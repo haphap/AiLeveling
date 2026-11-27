@@ -65,11 +65,13 @@ local function destination(action,styled)
     return name and (name..(area and " · "..area or "")) or zone,name or zone,area
 end
 
-local function clockText(seconds)
+function UI.ClockText(seconds)
     if seconds==nil then return "—" end
     seconds=math.max(0,math.ceil(seconds))
     return string.format("%d:%02d",math.floor(seconds/60),seconds%60)
 end
+
+local clockText=UI.ClockText
 
 local function placeName(point,fallback)
     local map=point and point.map and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(point.map)
@@ -1814,7 +1816,7 @@ function UI:LayoutTracker()
     end
     if T.guide then
         local screen=UIParent:GetWidth()*UIParent:GetEffectiveScale()/frameScale
-        width=math.max(width,math.min(360,screen*0.45))
+        width=math.max(width,math.min(340*self:FontScale(),screen-2*spacing.padding))
     end
     local requestedWidth=T.resizing and self.frame:GetWidth() or A.settings.trackerWidth or 0
     if requestedWidth>0 then width=math.max(260,math.min(800,requestedWidth)) end
