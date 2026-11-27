@@ -13,6 +13,8 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     B.UI:ToggleDetails()
     assert(B.UI.details:IsShown())
     assert(B.UI.Browser.frame:IsShown());assert(B.UI.Browser.rows[1].text:GetText()~="")
+    B.UI:SelectTab(10);eq(#B.UI.Browser.entries,0)
+    B.UI:SelectTab(1)
     local slider=B.UI.Settings.backgroundTransparency
     local before=B.refreshes
     B.settings.trackerTransparency,B.settings.detailTransparency=100,10

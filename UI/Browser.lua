@@ -364,7 +364,8 @@ function B:Refresh(mode,reuse,opening)
     elseif mode==3 then rows=self:GearRows()
     elseif mode==10 then
         rows={}
-        for _,region in ipairs(A.plan and A.plan.regions or A.Planner.TaskRegions(A.state,A.plan,A.Data)) do
+        local regions=A.plan and (A.plan.regions or A.Planner.TaskRegions(A.state,A.plan,A.Data))
+        for _,region in ipairs(regions or {}) do
             rows[#rows+1]={key="map:"..region.map,title=region.title,icon="location",region=region,
                 sub=string.format("%d项适级任务 · %s",#region.choices,color(gold,region.xp..(region.unknownXP>0 and "+经验" or "经验")))..(region.current and " · 当前区域" or "")..(#(region.revisit or {})>0 and (" · 回访"..#region.revisit.."项") or "")}
         end
