@@ -6,7 +6,7 @@ A.defaults = { minutes = 60, dungeons = true, role = "DAMAGER",
     scale = 1, alpha = 0.94, arrow = true, pins = true, items = true, highlight = true, worldHighlight = true, scanRares = true,
     combatFold = true, learn = true, waitMinutes = 10, damageStyle = "auto",
     fontScale=1,density="normal",lockWindow=false,trackerDocked=true,trackerWidth=0,trackerHeight=0,routes=true,minimapPins=true,mapTaskScope="all",waypointUI=true,maxSoulShards=100,
-    backgroundStyle="default",trackerTransparency=100,trackerButtonTransparency=100,hudTransparency=60,detailTransparency=10,
+    backgroundStyle="default",trackerTransparency=60,hudTransparency=60,detailTransparency=60,
     partySync=true,autoShareQuests=false,partyAnnouncements=false,dangerMap=true,emergency=true,markTargets=true,
     distanceUnits="yards",transportHints=true,quantity=true,missingChecks=true,rewardAdvice=true,sound=false,gearPreference="nearby",autoAccept=true,autoTurnIn=true,autoGossip=true,autoTaxi=true,autoTrain=true,autoBind=true,autoSellJunk=false,targets=true,levelingStats=true }
 A.jobs, A.dirty, A.requestedItems = {}, false, {}
@@ -23,7 +23,7 @@ function A:NormalizeSettings(settings)
     local bounds={scale={0.75,1.5},alpha={0.2,1},minutes={15,240},waitMinutes={0,60},fontScale={0.85,1.2},maxSoulShards={0,100},trackerWidth={0,800},trackerHeight={0,1200}}
     local percent={0,100}
     bounds.trackerTransparency,bounds.hudTransparency,bounds.detailTransparency=percent,percent,percent
-    bounds.trackerButtonTransparency=percent
+    settings.trackerButtonTransparency=nil
     for key,default in pairs(self.defaults) do
         local value=settings[key]
         local invalid=type(value)~=type(default)
@@ -239,6 +239,13 @@ function A:Replan(force, manual)
     end)
 end
 
+function A:SetBackgroundTransparency(value)
+    local settings=self.settings
+    if settings.trackerTransparency==value and settings.hudTransparency==value and settings.detailTransparency==value then return end
+    settings.trackerTransparency,settings.hudTransparency,settings.detailTransparency=value,value,value
+    self.UI:ApplyBackgrounds()
+end
+
 function A:SetOption(key, value)
     if key=="levelingStats" and self.LevelingTracker then self.LevelingTracker:Update("option") end
     self.settings[key] = value
@@ -246,7 +253,7 @@ function A:SetOption(key, value)
         self.UI:ApplyBackgrounds()
         return
     end
-    if key=="trackerTransparency" or key=="trackerButtonTransparency" or key=="hudTransparency" or key=="detailTransparency" then
+    if key=="trackerTransparency" or key=="hudTransparency" or key=="detailTransparency" then
         self.UI:ApplyBackgrounds(key)
         return
     end

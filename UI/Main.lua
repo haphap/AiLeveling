@@ -400,7 +400,7 @@ function UI:ShowStartupError(message)
     if self.navFrame then self.navFrame:Hide() end
     local f=self.startupPanel
     if not f then
-        f=self:Panel("AiLevelingStartupError",UIParent,560,240)
+        f=self:Panel("AiLevelingStartupError",UIParent,560,240,nil,"detailTransparency")
         self.startupPanel=f
         f:SetPoint("CENTER");f:SetFrameStrata("DIALOG")
         -- Use native fonts directly, even if custom text creation caused the failure.

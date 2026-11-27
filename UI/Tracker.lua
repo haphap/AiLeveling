@@ -1013,9 +1013,6 @@ function UI:CreateTracker()
     T.collapse=self:Button(T.content,"−",20,function() self.folded=not self.folded;self:LayoutTracker() end,"heading")
     T.menu=self:Button(T.content,"≡",22,function() self:TrackerMenu(f) end,"heading")
     for _,button in ipairs({T.collapse,T.menu}) do
-        button.trackerBackground=T.content:CreateTexture(nil,"BACKGROUND")
-        button.trackerBackground:SetAllPoints(button)
-        self:BindBackground(button.trackerBackground,palette.button,"trackerButtonTransparency",button.trackerBackground.SetColorTexture)
         button.baseColor=palette.panel
         button:SetBackdropColor(unpack(button.baseColor))
         button.text:SetTextColor(unpack(palette.white))

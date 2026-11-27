@@ -80,15 +80,9 @@ function S:Create(parent)
     check(2,"lockWindow","锁定窗口位置",4)
     check(2,"combatFold","战斗中收起解释区",5)
     choice(2,"backgroundStyle","背景颜色",{"default","charcoal","navy","brown"},{"默认","炭黑","深蓝","暖棕"},8,true)
-    local percents,labels={},{}
-    for n=0,100,10 do
-        percents[#percents+1]=n
-        labels[#labels+1]=n.."%"
-    end
-    choice(2,"trackerTransparency","任务栏背景透明度",percents,labels,9,true)
     local slider=CreateFrame("Slider",nil,self.groups[2])
-    self.buttonTransparency=slider
-    local x,y=position(10)
+    self.backgroundTransparency=slider
+    local x,y=position(9)
     slider:SetPoint("TOPLEFT",x,y-21);slider:SetSize(270,16)
     slider:SetOrientation("HORIZONTAL");slider:SetMinMaxValues(0,100)
     slider:SetValueStep(1);slider:SetObeyStepOnDrag(true)
@@ -97,18 +91,22 @@ function S:Create(parent)
     local thumb=slider:CreateTexture(nil,"ARTWORK");thumb:SetSize(10,16)
     thumb:SetColorTexture(unpack(A.UI.colors.gold));slider:SetThumbTexture(thumb)
     local label=A.UI:Text(slider,"caption");label:SetPoint("BOTTOMLEFT",slider,"TOPLEFT",0,1)
-    label:SetText("顶栏按钮背景透明度")
+    label:SetText("全局背景透明度")
     slider.percent=A.UI:Text(slider,"caption");slider.percent:SetPoint("BOTTOMRIGHT",slider,"TOPRIGHT",0,1)
-    slider:SetScript("OnValueChanged",function(_,value)
+    local function apply(value)
         value=math.floor(value+0.5)
+        A:SetBackgroundTransparency(value)
         slider.percent:SetText(value.."%")
-        if value~=A.settings.trackerButtonTransparency then A:SetOption("trackerButtonTransparency",value) end
+    end
+    slider:SetScript("OnValueChanged",function(_,value)
+        if not slider.syncing then apply(value) end
     end)
-    choice(2,"hudTransparency","下一步与附近提示背景透明度",percents,labels,11,true)
-    choice(2,"detailTransparency","详情窗口背景透明度",percents,labels,12,true)
+    slider:SetScript("OnMouseUp",function(_,button)
+        if button=="LeftButton" then apply(slider:GetValue()) end
+    end)
     local backgroundHint=A.UI:Text(self.groups[2],"caption")
-    backgroundHint:SetPoint("TOPLEFT",286,-206);backgroundHint:SetWidth(270)
-    backgroundHint:SetText("0% 为实心背景，100% 为全透明。此设置只改变底色。")
+    backgroundHint:SetPoint("TOPLEFT",286,-88);backgroundHint:SetWidth(270)
+    backgroundHint:SetText("拖动可同时调整所有面板的底色。0% 为实心，100% 为全透明。")
     choice(7,"mapTaskScope","AILeveling 任务标记",{"all","route","off"},{"全部候选任务","仅当前行程","关闭"},0)
     check(7,"pins","在大地图显示",1)
     check(7,"minimapPins","在小地图显示",2)
@@ -285,8 +283,13 @@ end
 
 function S:Refresh()
     self:SelectGroup(self.group or 1)
-    self.buttonTransparency:SetValue(A.settings.trackerButtonTransparency)
-    self.buttonTransparency.percent:SetText(A.settings.trackerButtonTransparency.."%")
+    local slider,settings=self.backgroundTransparency,A.settings
+    local value=settings.hudTransparency
+    slider.syncing=true
+    slider:SetValue(value)
+    slider.syncing=nil
+    local uniform=settings.trackerTransparency==value and settings.detailTransparency==value
+    slider.percent:SetText(uniform and value.."%" or "沿用各面板设置")
     self.profile:SetEnabled(A.db~=nil)
     self.deleteProfile:SetEnabled(A.db~=nil and A.char.profile~=A.db.defaultProfile)
     self.profile.text:SetText("配置："..(A.char.profile or "默认").."  ›")

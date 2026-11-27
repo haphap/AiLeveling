@@ -86,6 +86,7 @@ local function setup(fullUI,daylight,nameplates)
         local w=widget();w.kind,w.template,w.parent=kind,template,parent
         if kind=="Slider" then
             for _,method in ipairs({"SetOrientation","SetValueStep","SetObeyStepOnDrag","SetThumbTexture"}) do w[method]=function() end end
+            w.GetValue=function(self) return self.value end
             w.SetValue=function(self,value)
                 if self.value==value then return end
                 self.value=value
