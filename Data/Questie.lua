@@ -1064,6 +1064,10 @@ local rivergladesHunts={
     [257001]={x=.77,y=.73,siteName="鱼人小岛",label="老腐块出没区域",hint="在河林东南的鱼人小岛及周围水域寻找老腐块。"},
     [257901]={x=.8633,y=.3860,siteName="爆破引线港北侧海盗营地"}, -- Eastsea Buccaneer
     [257910]={x=.8695,y=.3914,siteName="爆破引线港北侧海盗营地"}, -- Eastsea Musketeer
+    [257915]={questId=95122,x=.7924,y=.3214,siteName="爆破引线港北侧海盗营地"}, -- Eastsea Raider
+    [257916]={questId=95122,x=.7985,y=.3232,siteName="爆破引线港北侧海盗营地"}, -- Eastsea Bombardier
+    [257861]={questId=95124,x=.9062,y=.2919,siteName="东侧海盗船",label="拉莫拉所在的上层甲板",
+        hint="登上东侧海盗船，在上层甲板寻找拉莫拉。"},
 }
 
 function D:ObjectiveTargets(q,state)
@@ -1090,7 +1094,7 @@ function D:ObjectiveTargets(q,state)
             if path and path[1] and usableSpawn(path[1]) then
                 points={{map=self.maps[16591],sourceAreaId=16591,x=path[1][1]/100,y=path[1][2]/100}}
             end
-        elseif site then
+        elseif site and (not site.questId or site.questId==q.id) then
             points={{map=self.maps[16591],sourceAreaId=16591,x=site.x,y=site.y,spawnArea=true,
                 siteName=site.siteName,label=site.label,travelHint=site.hint}}
         end
