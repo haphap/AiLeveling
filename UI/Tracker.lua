@@ -1592,8 +1592,8 @@ function UI:RenderTracker(along)
     T.currentMark:SetShown(model.questId~=nil)
     local currentIcon=model.dungeonName and not model.questId and "entry" or UI.QuestIcon(model.kind,action,model.objectives)
     self.title:SetText(questTitle(model.questId,model.title))
-    self.title:SetTextColor(unpack(model.kind=="turnin" and palette.green or model.kind=="accept" and
-        (guide and palette.goalName or palette.gold) or palette.white))
+    local namedQuest=model.questId and not A.error and (model.kind=="accept" or model.kind=="objective" or model.kind=="turnin")
+    self.title:SetTextColor(unpack(namedQuest and palette.quest or palette.white))
     T.focusLabel:SetTextColor(unpack(guide and palette.white or palette.gold))
     local place,name,area
     if model.kind and not A.error then place,name,area=destination(action,true) end
@@ -1647,7 +1647,7 @@ function UI:RenderTracker(along)
         if location then instruction=location..(instruction~="" and ("\n"..instruction) or "") end
     end
     T.thenText:SetText(following)
-    nextRow.title:SetText(title);nextRow.title:SetTextColor(unpack(palette[tone]))
+    nextRow.title:SetText(title);nextRow.title:SetTextColor(unpack(taskStep and nextId and not sameQuest and palette.quest or palette[tone]))
     local nextIcon=UI.QuestIcon(nextStep and nextStep.kind,nextStep,nextQuest and nextQuest.objectives)
     setHUDIcon(nextRow.icon,nextIcon);nextRow.progress:SetText(instruction)
     nextRow.detail=(nextRow.status or "").."\n"..instruction
@@ -1748,8 +1748,10 @@ function UI:RenderTracker(along)
         local title=questTitle(item.questId,item.title,item.candidate)
         local group=item.group
         local tone=item.kind=="turnin" and "green" or item.kind=="accept" and "gold" or group and "purple" or "white"
-        local color=(item.deferred or item.candidate and item.candidate.lowValue) and palette.muted or palette[tone]
-        row.title:SetText(group and (item.number..". "..title..(group=="focus" and "  |cff"..self.hex[tone]..item.status.."|r" or "")) or title);row.title:SetTextColor(unpack(color))
+        local color=(item.deferred or item.candidate and item.candidate.lowValue) and palette.muted or item.questId and palette.quest or palette[tone]
+        row.title:SetText(group and (item.number..". "..title..(group=="focus" and "  |cff"..self.hex[tone]..item.status.."|r" or "")) or title)
+        if group and color~=palette.muted then row.title:SetTextColor(UI.DungeonQuestColor(item.questLevel))
+        else row.title:SetTextColor(unpack(color)) end
         if group and item.number==1 then
             if not row.section then
                 row.section=text(row,"guideNote",palette.muted)
@@ -2206,10 +2208,10 @@ local function dungeonGuideSteps(d,state)
                 local q=A.Data:GetQuest(id,state)
                 names[#names+1]=q and q.title or ("#"..id)
             end
-            other[#other+1]={kind="accept",questId=row.id,title=row.title,stageLabel=status,related=status,
+            other[#other+1]={kind="accept",questId=row.id,title=row.title,questLevel=row.questLevel,stageLabel=status,related=status,
                 text=#names>0 and table.concat(names,"、") or row.reason}
         elseif row.group<=2 and not row.allowed then
-            other[#other+1]={kind=row.group==1 and "turnin" or "objective",questId=row.id,title=row.title,
+            other[#other+1]={kind=row.group==1 and "turnin" or "objective",questId=row.id,title=row.title,questLevel=row.questLevel,
                 stageLabel=status,text=row.reason,related=row.relation=="preparation" and "入本前准备"}
         elseif row.allowed and row.group<=3 then
             local point,item=row.position,row.pickupItem
@@ -2219,7 +2221,7 @@ local function dungeonGuideSteps(d,state)
             local kind=({"turnin","objective","accept"})[row.group]
             local instance=A.Dungeon.TaskInstance(point,state,A.Data,area)
             local here=instance==d or item and item.held
-            local action={kind=kind,questId=row.id,title=row.title,position=point,areaId=area,
+            local action={kind=kind,questId=row.id,title=row.title,questLevel=row.questLevel,position=point,areaId=area,
                 objectiveIndex=index,insideObjectives=hits,text=item and item.text}
             local group=other
             if here then
@@ -2356,7 +2358,7 @@ function UI:DungeonTrackerModel(state,action)
         end
         if #goals>0 and not step.stageLabel and not (step.position and step.position.travelHint) then hint=nil end
         seen[id]=step.title or ("任务 #"..id)
-        model.rows[#model.rows+1]={questId=id,title=seen[id],kind=kind,status=status,accepted=active~=nil,related=step.related,
+        model.rows[#model.rows+1]={questId=id,title=seen[id],questLevel=active and active.level or step.questLevel,kind=kind,status=status,accepted=active~=nil,related=step.related,
             progress=hint or "",objectives=goals,dungeonAction=(step.position or step.areaId or not step.stageLabel and step.text) and step or nil}
     end
     if focus and statuses[focus.kind] then
@@ -2425,7 +2427,7 @@ local function navigationInstruction(action,journey)
     local target=nav.Target(action)
     local hint=target and target.spawnArea and " · 出没区域" or target and target.approximate and (target.sourceKind=="patrol" and " · 巡逻路线" or " · 区域参考点") or ""
     local title=action.title or heading
-    if action.title and (action.kind=="accept" or action.kind=="turnin") then title=questVerbs[action.kind].."「"..title.."」" end
+    if action.title and (action.kind=="accept" or action.kind=="turnin") then title=questVerbs[action.kind].."「"..UI.QuestName(title).."」" end
     local detail=questStepHint(action)
     if action.kind=="objective" and target and target.sourceKind=="vendor" then
         detail=UI.ActionText(action,A.settings)
@@ -2441,10 +2443,14 @@ local function navigationInstruction(action,journey)
         end
     end
     if detail==title then detail=nil end
+    local loggedQuest=(A.state.quests or {})[action.questId]
+    if action.kind=="objective" and loggedQuest and title==loggedQuest.title then title=UI.QuestName(title) end
     local following
     if nextStep and nextStep.title and not (nav.StaleAction and nav.StaleAction(nextStep,A.state,sequence.plan)) then
         local verb=questVerbs[nextStep.kind]
-        following=verb and verb.."「"..nextStep.title.."」" or placeText(nextStep.title,nextStep.toName,nextStep.position and nextStep.position.siteName)
+        local quest=(A.state.quests or {})[nextStep.questId]
+        local name=(nextStep.kind=="accept" or nextStep.kind=="turnin" or quest and quest.title==nextStep.title) and UI.QuestName(nextStep.title) or nextStep.title
+        following=verb and verb.."「"..name.."」" or placeText(nextStep.title,nextStep.toName,nextStep.position and nextStep.position.siteName)
     end
     local place=action.toName or action.siteName or target and target.siteName
     if not questVerbs[action.kind] and not (action.questAction and action.title==action.questAction.title) then

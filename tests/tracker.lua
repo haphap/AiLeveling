@@ -98,8 +98,8 @@ test("步骤界面突出当前任务真实进度且后续列表去重可点击",
     eq(T.queuePanel.width,T.card.width)
     eq(T.rows[1].title.shown,true);eq(T.rows[2].objectiveFrame.shown,true);eq(T.rows[2].progress.shown,false)
     eq(T.objectives[1].check.shown,false);eq(T.progressRatio,0.3);eq(T.progress.shown,true)
-    assert(T.rows[1].title.color[2]>T.rows[1].title.color[1])
-    eq(T.rows[2].title.color[2],B.UI.colors.white[2])
+    eq(T.rows[1].title.color[2],B.UI.colors.quest[2])
+    eq(T.rows[2].title.color[2],B.UI.colors.quest[2])
     assert(T.queueScroll.width+16<=T.queuePanel.width);assert(T.card.width<=360)
     eq(T.location.width+25,T.card.width);eq(T.career.width,T.currentChild.width)
     local goal=T.objectives[1]
@@ -211,7 +211,10 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     eq(B.UI.Plan.preview.questId,4);eq(B.UI.details.shown,true);eq(B.char.locked,nil)
     local row
     for _,card in ipairs(B.UI.Browser.rows) do if card.questId==4 then row=card end end
-    assert(B.UI.Browser.title.value:find("|Hquest:4:0|h",1,true))
+    eq(row.text.value,B.UI.QuestName("未接任务"))
+    eq(B.UI.Browser.title.value,B.UI.QuestName("|Hquest:4:0|h未接任务|h"))
+    B.UI:ApplyStyle()
+    eq(row.text.value,"|cffffd673未接任务|r")
     local browser=B.UI.Browser
     local build,builds=browser.TaskRows,0
     browser.TaskRows=function(...) builds=builds+1;return build(...) end
@@ -597,6 +600,9 @@ test("副本接取清单在详情与跟踪框同步区分缺项、前置与交�
         rows[id]={id=id,title="副本任务"..id,group=id<7 and 2 or 3,allowed=true}
         if id<7 then s.quests[id]={title=rows[id].title,objectives={}} end
     end
+    rows[7].questLevel=40
+    local oldDifficulty=GetQuestDifficultyColor
+    GetQuestDifficultyColor=function(level) eq(level,40);return {r=1,g=.5,b=.25} end
     rows[7].position={entityName="接取人",map=1,x=.5,y=.5}
     rows[8]={id=8,title="野外准备",group=3,allowed=true,relation="preparation"}
     rows[9]={id=9,title="后续任务",group=4,reason="前置未交付"}
@@ -614,17 +620,25 @@ test("副本接取清单在详情与跟踪框同步区分缺项、前置与交�
         eq(U.tracker.model.queueLabel,view.pickups.value)
     end
     refresh();eq(U.tracker.rows[1].questId,7);assert(U.tracker.rows[1].progress.value:find("接取人",1,true))
+    eq(view.rows[1].text.color[2],.5);eq(U.tracker.rows[1].title.color[2],.5)
     rows[7].group=1;s.quests[7]={ready=true,objectives={}}
     refresh();eq(view.pickups.value,"已接 7/7 · 当前可接已接齐 · 需前置 1 · 可交付 1")
+    local function checkedRow()
+        for _,row in ipairs(view.rows) do if row.questId==7 then return row end end
+        error("副本清单缺少任务 7")
+    end
+    eq(checkedRow().text.color[2],.5);eq(checkedRow().status.color[2],U.colors.green[2])
+    GetQuestDifficultyColor=oldDifficulty
     s.quests[7]=nil;s.completed[7]=true;rows[7].group=5
     rows[9].group,rows[9].allowed,rows[9].reason=3,true,nil
     refresh();eq(view.pickups.value,"已接 6/7 · 还差 1 项 · 已交付 1");eq(view.rows[1].questId,9)
+    eq(checkedRow().text.color[2],U.colors.muted[2])
     s.completionKnown=false;refresh();eq(view.pickups.value,"正在核对副本任务…")
     B.finish()
 end)
 test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     local B=ready();local U=B.UI
-    U:SetNavigation(100,0.7,true);eq(U.navFrame.shown,true);eq(U.tracker.navTitle.value,"当前任务")
+    U:SetNavigation(100,0.7,true);eq(U.navFrame.shown,true);eq(U.tracker.navTitle.value,U.QuestName("当前任务"))
     eq(U.tracker.navBearing.rotation,-0.7)
     B.action={title="当前任务",kind="objective",position={approximate=true}}
     U:SetNavigation(100,0.7,true);eq(U.tracker.navTitle.value,"当前任务 · 区域参考点")
@@ -643,10 +657,10 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     B.Navigation.actions={transit,guide};B.Navigation.index=1
     U:SetNavigation(nil,nil,nil,transit);eq(U.nav.value,"1/2")
     local place="|cff"..U.hex.place
-    eq(T.navTitle.value,"搭乘开往"..place.."铁炉堡|r的地铁");eq(T.navNext.value,"下一步  交付「"..guide.title.."」")
+    eq(T.navTitle.value,"搭乘开往"..place.."铁炉堡|r的地铁");eq(T.navNext.value,"下一步  交付「"..U.QuestName(guide.title).."」")
     B.Navigation.index=2
     U:SetNavigation(nil,nil,nil,guide);eq(U.navFrame.shown,true);eq(U.nav.value,"2/2")
-    eq(T.navTitle.value,"交付「"..guide.title.."」");eq(T.navDetail.value,"在"..place.."清洁区|r使用清洁器交付任务。");eq(T.navNext.shown,false)
+    eq(T.navTitle.value,"交付「"..U.QuestName(guide.title).."」");eq(T.navDetail.value,"在"..place.."清洁区|r使用清洁器交付任务。");eq(T.navNext.shown,false)
     B.Navigation.actions=nil
     eq(T.rows[1].questId,4601);eq(T.rows[1].progress.value,guide.text)
     local previous=B.Dungeon
@@ -746,7 +760,7 @@ test("导航独立定位旋转关闭隐藏并保留窗口设置",function()
     B.action={kind="flight",title="正在飞行"};U:RenderTracker()
     eq(T.model.journey.seconds,125);eq(T.model.journey.steps[1].detail,"飞行中")
     B.Navigation.index=2;B.action=goal;U:RenderTracker();eq(T.journey.shown,false);eq(T.model.questId,4)
-    U:SetNavigation(nil,nil,nil,goal);eq(T.navTitle.value,"接取「新的任务」");eq(T.navDetail.value,"向「接取人」接取任务。")
+    U:SetNavigation(nil,nil,nil,goal);eq(T.navTitle.value,"接取「"..U.QuestName("新的任务").."」");eq(T.navDetail.value,"向「接取人」接取任务。")
     eq(B.state.quests[4],nil);eq(B.state.completed[4],nil)
     local savedMap=C_Map
     C_Map={GetMapInfo=function(id) if id==1417 then return {name="阿拉希高地"} end end}
@@ -847,7 +861,7 @@ test("交错行程按任务数汇总并显示每个目标与交付步骤",functi
     eq(B.state.quests[3].ready,nil)
     local T=B.UI.tracker
     assert(T.thenText.value:find("已接取",1,true));eq(T.thenButton.title.value,"[9] 后续目标")
-    eq(T.thenButton.title.color[1],B.UI.colors.white[1]);assert(T.thenButton.progress.value:find("林地",1,true))
+    eq(T.thenButton.title.color[1],B.UI.colors.quest[1]);assert(T.thenButton.progress.value:find("林地",1,true))
     eq(T.thenButton.objectives[1].text.value,"物品");eq(T.thenButton.objectives[1].count.value,"2/4")
     eq(T.thenButton.objectives[1].text.color[1],B.UI.colors.white[1])
     eq(T.thenText.shown,true);eq(T.thenButton.questId,3)

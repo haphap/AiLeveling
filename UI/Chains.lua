@@ -2,6 +2,9 @@ local _, A = ...
 A.UI.Chains = {}
 local UI=A.UI.Chains
 local status={active="进行中",ready="可交付",turnedIn="已交付",notStarted="未开始",unknown="状态加载中",missing="资料缺失"}
+local function questName(node)
+    return A.UI.QuestName(node.title,node.skipped or node.deferredRoot or node.status=="turnedIn")
+end
 local function clamp(value,maximum) return math.max(0,math.min(value,math.max(0,maximum))) end
 
 function UI:CurrentId()
@@ -126,7 +129,7 @@ function UI:Draw(graph)
             card.text:ClearAllPoints();card.text:SetPoint("TOPLEFT",6,-6);card.text:SetWidth(152);card.text:SetMaxLines(1)
             card.title=A.UI:Text(card,"caption");card.title:SetPoint("TOPLEFT",6,-25);card.title:SetWidth(152);card.title:SetMaxLines(2)
             card:HookScript("OnEnter",function(f)
-                GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(f.node.title)
+                GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(questName(f.node))
                 GameTooltip:AddLine(status[f.node.status] or f.node.status,1,1,1)
                 GameTooltip:AddLine(f.node.eligible and "当前资格已满足" or (f.node.reason or "查看任务条件"),1,1,1,true)
                 GameTooltip:Show()
@@ -137,7 +140,7 @@ function UI:Draw(graph)
         card.questId,card.node=node.id,node
         card:ClearAllPoints();card:SetPoint("TOPLEFT",self.canvas,"TOPLEFT",node.x,-node.y)
         card.text:SetText("#"..node.id.." · "..(node.deferredRoot and "整链暂缓" or node.skipped=="ignored" and "已忽略" or node.skipped and "已暂缓" or status[node.status]))
-        card.title:SetText(node.title)
+        card.title:SetText(questName(node))
         card.baseColor=node.id==self.focus and A.UI.colors.selected or A.UI.colors.button
         card:SetBackdropColor(unpack(card.baseColor))
         local tone=(node.deferredRoot or node.skipped) and A.UI.colors.muted or
@@ -189,13 +192,13 @@ function UI:Details()
         lines[#lines+1]="范围包含后续分支汇合任务；保留原生任务记录，单任务暂缓独立保存。"
         for i=((self.page or 1)-1)*12+1,math.min((self.page or 1)*12,#p.ids) do
             local id=p.ids[i];local q=A.Data:GetQuest(id)
-            lines[#lines+1]="#"..id.." "..(q and q.title or "资料缺失").." ["..(status[A.State.Status(A.state,id)] or "未知").."]"
+            lines[#lines+1]="#"..id.." "..(q and A.UI.QuestName(q.title) or "资料缺失").." ["..(status[A.State.Status(A.state,id)] or "未知").."]"
         end
         return lines
     end
     local node=self.graph and self.graph.byId[self.focus]
     if not node then lines[#lines+1]="输入任务 ID，或返回当前任务后浏览关联。";return lines end
-    lines[#lines+1]=node.title.." ["..(status[node.status] or node.status).."]"
+    lines[#lines+1]=questName(node).." ["..(status[node.status] or node.status).."]"
     lines[#lines+1]=node.eligible and "当前资格已满足" or (node.reason or "查看任务条件")
     lines[#lines+1]="全部：完成所有前置任务；任一：完成其中一个前置任务。"
     if self.graph.truncated or self.graph.edgesTruncated then lines[#lines+1]="当前视图已限量；点击节点重新聚焦，或通过关联选择器逐项查看未画出的关系。" end
@@ -228,7 +231,7 @@ function UI:Refresh()
         self.graphKey=key;self:Draw(self.graph)
     end
     local node=self.graph and self.graph.byId[self.focus]
-    self.header:SetText(node and ("#"..node.id.." · "..node.title.."\n"..(status[node.status] or node.status).."；单击节点聚焦，滚轮上下浏览") or "选择任务后查看前置、后续与互斥关系")
+    self.header:SetText(node and ("#"..node.id.." · "..questName(node).."\n"..(status[node.status] or node.status).."；单击节点聚焦，滚轮上下浏览") or "选择任务后查看前置、后续与互斥关系")
     self.back:SetEnabled(#self.history>0)
     local q=self.focus and A.ready and A.Data:GetQuest(self.focus) or nil
     self.lock:SetEnabled(q~=nil and not (node and (node.skipped or node.deferredRoot)) and not (q and not q.repeatable and node and node.status=="turnedIn"))

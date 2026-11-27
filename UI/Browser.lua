@@ -6,7 +6,14 @@ local gold,blue,green,muted=A.UI.hex.gold,A.UI.hex.blue,A.UI.hex.green,A.UI.hex.
 local colors=A.UI.colors
 local metrics=A.UI.metrics
 local function color(c,s) return "|cff"..c..tostring(s).."|r" end
-local function questLink(id,title) return color(blue,"|Hquest:"..id..":0|h["..title.."]|h") end
+local function questLink(id,title,level,dimmed)
+    local link="|Hquest:"..id..":0|h["..title.."]|h"
+    if level then
+        local r,g,b=A.UI.DungeonQuestColor(level,dimmed)
+        return color(string.format("%02x%02x%02x",math.floor(r*255+.5),math.floor(g*255+.5),math.floor(b*255+.5)),link)
+    end
+    return A.UI.QuestName(link,dimmed)
+end
 local function itemLink(item)
     if item.link then return item.link end
     local name=item.name
@@ -185,7 +192,8 @@ function B:TaskRows(mode)
         end
         rows[#rows+1]={key="q:"..id,title=choice.title or q and q.title or "任务 #"..id,sub=table.concat(meta," · "),
             icon=complete and "done" or A.UI.QuestIcon(status=="可交付" and "turnin" or state.quests[id] and "objective" or "accept",
-                id==currentId and action or choice.executionAction,state.quests[id] and state.quests[id].objectives),tone=c,
+                id==currentId and action or choice.executionAction,state.quests[id] and state.quests[id].objectives),
+            dimmed=skipped or complete or (not allowed and not state.quests[id]),
             choice=choice,q=q,allowed=allowed,reason=why,prerequisite=pre,questId=id,current=id==currentId and not skipped}
     end
     local choices={}
@@ -471,7 +479,7 @@ function B:DrawRows(offset)
             end)
             row:HookScript("OnEnter",function(f)
                 f:SetBackdropColor(unpack(colors.rowHover))
-                GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(f.entry.title)
+                GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(f.entry.questId and A.UI.QuestName(f.entry.title,f.entry.dimmed) or f.entry.title)
                 GameTooltip:AddLine(f.entry.sub or "",0.85,0.9,1,true);GameTooltip:Show()
             end)
             row:HookScript("OnLeave",function(f) f:SetBackdropColor(unpack(f.baseColor));GameTooltip:Hide() end)
@@ -486,7 +494,7 @@ function B:DrawRows(offset)
             local top=metrics.tight*scale
             row.icon:ClearAllPoints();row.icon:SetPoint("TOPLEFT",pad,-top)
             row.text:ClearAllPoints();row.text:SetPoint("TOPLEFT",inset,-top);row.text:SetWidth(width-inset-pad)
-            row.text:SetText(entry.title);row.text:SetTextColor(unpack(entry.questId and entry.tone==green and colors.green or colors.white))
+            row.text:SetText(entry.questId and A.UI.QuestName(entry.title,entry.dimmed) or entry.title)
             row.icon:SetText(A.UI:Icon(entry.icon,metrics.icon));row.sub:SetText(entry.sub or "")
             row.sub:ClearAllPoints();row.sub:SetPoint("TOPLEFT",row.text,"BOTTOMLEFT",0,-2*scale);row.sub:SetWidth(width-inset-pad)
             row.line:ClearAllPoints();row.line:SetPoint("BOTTOMLEFT",pad,0);row.line:SetPoint("BOTTOMRIGHT",-pad,0)
@@ -562,7 +570,7 @@ function B:Detail()
         self:Action(2,"查看地下城",function() A.UI.Dungeon.selected=c.dungeonId;A.UI:SelectTab(4) end)
     elseif e.choice then
         local q=e.q or A.Data:GetQuest(e.questId,A.state)
-        self.title:SetText("|Hquest:"..e.questId..":0|h"..e.title.."|h")
+        self.title:SetText(A.UI.QuestName("|Hquest:"..e.questId..":0|h"..e.title.."|h",e.dimmed))
         local timing=e.choice.executionTiming or e.choice.timing
         local status=e.sub
         if e.current then status=status:gsub("^.- · ","",1) end
@@ -842,7 +850,8 @@ local function dungeonQuestText(task)
             if kind=="all" or kind=="any" or kind=="next" then
                 local other=A.Data:GetQuest(related.id,A.state)
                 local label=related.incoming and (kind=="any" and "前置（任选）" or "前置") or "后续"
-                field(label,questLink(related.id,other and other.title or ("任务 #"..related.id)))
+                local done=(A.state.completed or {})[related.id] and not (A.state.quests or {})[related.id]
+                field(label,questLink(related.id,other and other.title or ("任务 #"..related.id),other and other.questLevel,done))
                 hasChain=true
             end
         end
@@ -925,7 +934,7 @@ function B:DungeonDetail(e)
     if (not hint or hint=="") and nextStep then
         local action=nextStep.action
         local verb=({accept="接取 ",turnin="交付 ",objective="完成 "})[action.kind]
-        hint=verb and (verb..action.title) or A.UI.ActionText(action,A.settings)
+        hint=verb and (verb..A.UI.QuestName(action.title)) or A.UI.ActionText(action,A.settings)
     end
     if not hint or hint=="" or hint=="选择并准备关联任务。" then
         hint=rewards.count==0 and "暂无可安排任务" or rewards.ready==rewards.count and "任务已完成，可安排交付" or
@@ -1016,7 +1025,7 @@ function B:DungeonDetail(e)
             row:HookScript("OnEnter",function(f)
                 f:SetBackdropColor(unpack(colors.rowHover))
                 local task=f.task
-                GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(task.title)
+                GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText(task.title,A.UI.DungeonQuestColor(task.questLevel,task.group==5 or f.deferred))
                 GameTooltip:AddLine(A.UI.DungeonPickupStatus(task,A.state),unpack(tones[task.group]))
                 if task.reason then GameTooltip:AddLine(task.reason,1,0.8,0.5,true) end
                 if task.requireCheck then GameTooltip:AddLine("向任务发布者查看任务",0.8,0.8,0.8,true) end
@@ -1051,7 +1060,7 @@ function B:DungeonDetail(e)
         local expanded=view.expanded==task.id
         row.baseColor=expanded and colors.selected or colors.panel;row:SetBackdropColor(unpack(row.baseColor))
         local statusWidth=90*A.UI:FontScale()
-        row.text:SetWidth(width-36-statusWidth);row.text:SetText(task.title);row.text:SetTextColor(unpack(tones[task.group] or colors.muted))
+        row.text:SetWidth(width-36-statusWidth);row.text:SetText(task.title);row.text:SetTextColor(A.UI.DungeonQuestColor(task.questLevel,task.group==5 or row.deferred))
         local active=(A.state.quests or {})[task.id]
         local icon=task.group==5 and "done" or A.UI.QuestIcon(task.group==1 and "turnin" or task.group==2 and "objective" or "accept",nil,active and active.objectives)
         row.icon:SetText(A.UI:Icon(icon,14))

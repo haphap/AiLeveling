@@ -10,7 +10,7 @@ UI.colors={
     rowHover={0.31,0.36,0.49,backgroundAlpha}, hud={0.086,0.102,0.153,backgroundAlpha},
     navigation={0.086,0.102,0.153,backgroundAlpha},
     white={247/255,248/255,253/255}, muted={195/255,202/255,221/255},
-    goalName={1,0.74,0.57}, gold={0.96,0.78,0.43}, green={0.52,0.91,0.65}, blue={0.59,0.80,1}, purple={0.81,0.65,1},
+    quest={1,0.84,0.45}, gold={0.96,0.78,0.43}, green={0.52,0.91,0.65}, blue={0.59,0.80,1}, purple={0.81,0.65,1},
     focus={0.40,0.69,0.96}, red={0.95,0.61,0.61},
     line={0.68,0.72,0.81,0.20}, border={0.55,0.59,0.69,0.28},
     gearText={0.765,0.793,0.868},
@@ -25,6 +25,17 @@ UI.hex={}
 for name,color in pairs(colors) do
     UI.hex[name]=string.format("%02x%02x%02x",math.floor(color[1]*255+0.5),math.floor(color[2]*255+0.5),math.floor(color[3]*255+0.5))
 end
+function UI.QuestName(text,dimmed)
+    return "|cff"..(dimmed and UI.hex.muted or UI.hex.quest)..text.."|r"
+end
+
+function UI.DungeonQuestColor(level,dimmed)
+    if dimmed then return unpack(colors.muted) end
+    local c=type(level)=="number" and level>0 and GetQuestDifficultyColor and GetQuestDifficultyColor(level)
+    if c then return c.r,c.g,c.b end
+    return unpack(colors.quest)
+end
+
 UI.fontSizes={caption=12,body=14,task=15,heading=18,brand=18,title=20}
 local guideSizes={guideName=15,guideAction=14,guideBody=13,guideLabel=12,guideNote=11}
 local detailRoles={title="guideName",heading="guideName",task="guideAction",body="guideBody",caption="guideLabel"}
