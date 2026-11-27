@@ -426,35 +426,34 @@ function UI:Create()
         self:Button(self.details, "×", 26, function() self.details:Hide() end,"title")
     close:SetPoint("TOPRIGHT", -14, -14)
     self.tabs = {}
-    local side=CreateFrame("Frame",nil,self.details);side:SetSize(164,584)
+    local side=CreateFrame("Frame",nil,self.details);side:SetSize(120,584)
     side:SetPoint("TOPLEFT",8,-8)
     self:Rounded(side,metrics.radius)
     self:BindBackground(side,colors.sidebar,"detailTransparency")
     local divider=self.details:CreateTexture(nil,"BACKGROUND")
-    divider:SetPoint("TOPLEFT",180,-14);divider:SetPoint("BOTTOMLEFT",180,14);divider:SetWidth(1)
+    divider:SetPoint("TOPLEFT",134,-14);divider:SetPoint("BOTTOMLEFT",134,14);divider:SetWidth(1)
     divider:SetColorTexture(unpack(colors.line))
     local header=self.details:CreateTexture(nil,"BACKGROUND")
-    header:SetPoint("TOPLEFT",194,-74);header:SetPoint("TOPRIGHT",-22,-74);header:SetHeight(1)
+    header:SetPoint("TOPLEFT",148,-74);header:SetPoint("TOPRIGHT",-22,-74);header:SetHeight(1)
     header:SetColorTexture(unpack(colors.line));self.detailRule=header
     self.detailMark=side:CreateTexture(nil,"ARTWORK")
-    self.detailMark:SetTexture(media.."compass.tga");self.detailMark:SetSize(24,24);self.detailMark:SetPoint("TOPLEFT",12,-16)
-    local brand=self:Text(side,"brand",colors.gold);brand:SetPoint("TOPLEFT",42,-18);brand:SetText("AILeveling")
-    local subtitle=self:Text(side,"caption",colors.muted);subtitle:SetPoint("TOPLEFT",12,-50);subtitle:SetText("少跑路 · 多经验")
+    self.detailMark:SetTexture(media.."compass.tga");self.detailMark:SetSize(18,18);self.detailMark:SetPoint("TOPLEFT",4,-20)
+    local brand=self:Text(side,"body",colors.white);brand:SetPoint("TOPLEFT",25,-18);brand:SetText("AILeveling")
     local labels={"练级任务","任务链","装备","地下城","设置","数据","服务","专业任务","职业任务","练级区域","坐骑任务"}
     local icons={"compass","chain","gear","entry","settings","xp","talk","profession","class","location","mount"}
     for n,i in ipairs({1,9,10,8,11,4,3,2,7,5,6}) do
-        local b=self:ListButton(side,self:Icon(icons[i],16).."  "..labels[i],148,function() self:SelectTab(i) end,"body")
-        b:SetPoint("TOPLEFT",8,-84-(n-1)*40);b:SetHeight(30)
-        b.text:ClearAllPoints();b.text:SetPoint("LEFT",10,0);b.text:SetJustifyH("LEFT")
+        local b=self:ListButton(side,self:Icon(icons[i],16).."  "..labels[i],116,function() self:SelectTab(i) end,"body")
+        b:SetPoint("TOPLEFT",2,-64-(n-1)*43);b:SetHeight(36)
+        b.text:ClearAllPoints();b.text:SetPoint("LEFT",5,0);b.text:SetJustifyH("LEFT")
         self.tabs[i]=b
     end
     self.tabMark=side:CreateTexture(nil,"ARTWORK");self.tabMark:SetWidth(2)
     self.detailHeading=self:Text(self.details,"title",colors.white)
-    self.detailHeading:SetPoint("TOPLEFT",194,-22);self.detailHeading:SetText("练级任务")
+    self.detailHeading:SetPoint("TOPLEFT",148,-22);self.detailHeading:SetText("练级任务")
     local underline=self.details:CreateTexture(nil,"ARTWORK")
     underline:SetPoint("TOPLEFT",self.detailHeading,"BOTTOMLEFT",0,-3);underline:SetSize(52,2);underline:SetColorTexture(unpack(colors.gold))
     self.detailSubtitle=self:Text(self.details,"body",colors.muted)
-    self.detailSubtitle:SetPoint("TOPLEFT",194,-54)
+    self.detailSubtitle:SetPoint("TOPLEFT",148,-54)
     self.scroll = CreateFrame("ScrollFrame", nil, self.details, "UIPanelScrollFrameTemplate")
     self.scroll:SetPoint("TOPLEFT", 18, -96); self.scroll:SetPoint("BOTTOMRIGHT", -36, 18)
     self.scrollChild = CreateFrame("Frame", nil, self.scroll)
@@ -530,7 +529,7 @@ function UI:ShowText(text)
     self.detailText:SetWidth(552)
     self.Chains.frame:Hide()
     self.Services.frame:Hide()
-    self.scroll:SetPoint("TOPLEFT",194,-96)
+    self.scroll:SetPoint("TOPLEFT",148,-96)
     self.exporting = true
     self.detailText:SetText(text)
     local height = math.max(380, self.detailText:GetStringHeight() + 20)
@@ -558,20 +557,20 @@ function UI:SelectTab(index,reuse)
     self.detailHeading:SetText(names[index])
     self.detailSubtitle:SetText(({[1]="当前安排与可选任务",[3]="当前装备、背包提升与任务奖励",[4]="选择副本，查看等级和任务安排",
         [8]="按专业查看条件、奖励与前置",[9]="当前职业的任务与解锁奖励",[10]="比较适合当前等级的任务区域",[11]="坐骑奖励及其前置任务"})[index] or "")
-    self.detailSubtitle:SetShown(index~=1 and index~=9)
-    self.detailRule:SetShown(index~=1 and index~=9)
+    local browse=index==1 or index==3 or index==4 or index>=8
+    self.detailSubtitle:SetShown(not browse)
+    self.detailRule:SetShown(not browse)
     self.details:SetSize(1000,600)
     self.scroll:SetPoint("BOTTOMRIGHT",-36,18);self.scrollChild:SetWidth(750);self.detailText:SetWidth(742)
     self.Settings.frame:SetShown(index==5)
     self.Chains.frame:SetShown(index==2)
     self.Services.frame:SetShown(index==7)
     for _,panel in ipairs({self.Settings.frame,self.Chains.frame,self.Services.frame}) do
-        panel:ClearAllPoints();panel:SetPoint("TOPLEFT",194,-94);panel:SetPoint("BOTTOMRIGHT",-18,18)
+        panel:ClearAllPoints();panel:SetPoint("TOPLEFT",148,-94);panel:SetPoint("BOTTOMRIGHT",-18,18)
     end
-    local browse=index==1 or index==3 or index==4 or index>=8
     self.Browser.frame:SetShown(browse)
     self.scroll:SetShown(not browse and index~=5 and index~=2)
-    self.scroll:SetPoint("TOPLEFT",194,index==7 and -178 or -96)
+    self.scroll:SetPoint("TOPLEFT",148,index==7 and -178 or -96)
     if browse then self.Browser:Refresh(index,reuse,not reuse);return end
     if index == 5 then self.Settings:Refresh(); return end
     if index == 2 then self.Chains:Refresh();return end

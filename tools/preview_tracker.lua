@@ -78,6 +78,7 @@ local function widget(kind,parent)
     function w:Hide() self.shown=false end;function w:Show() self.shown=true end
     function w:IsEnabled() return self.enabled~=false end
     function w:Click() if self.enabled~=false and self.scripts and self.scripts.OnClick then self.scripts.OnClick(self,"LeftButton") end end
+    function w:GetParent() return self.parent end
     function w:SetParent(parent)
         for i,child in ipairs(self.parent and self.parent.children or {}) do if child==self then table.remove(self.parent.children,i);break end end
         self.parent=parent;parent.children[#parent.children+1]=self
@@ -93,7 +94,7 @@ local function widget(kind,parent)
     function w:SetThickness(value) self.thickness=value end
     function w:SetStartPoint(point,relative,x,y) self.start={point=point,relative=relative,x=x,y=y} end
     function w:SetEndPoint(point,relative,x,y) self.finish={point=point,relative=relative,x=x,y=y} end
-    for _,name in ipairs({"RegisterEvent","SetResizable","SetResizeBounds","SetClampedToScreen","SetClampRectInsets","SetJustifyV","SetBackdrop","SetShadowColor","SetShadowOffset","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag","SetHyperlinksEnabled",
+    for _,name in ipairs({"RegisterEvent","SetResizable","SetResizeBounds","SetClampedToScreen","SetClampRectInsets","SetJustifyV","SetBackdrop","SetShadowColor","SetShadowOffset","SetMovable","EnableMouse","EnableMouseWheel","RegisterForDrag","SetHyperlinksEnabled","SetWordWrap",
         "SetFrameStrata","SetVerticalScroll","SetFontObject","SetMultiLine","SetAutoFocus","SetTextInsets","SetNumeric","SetMaxLetters","ClearFocus","SetFocus","HighlightText","RegisterForClicks","SetAttribute","SetScale","SetDesaturated","SetCooldown","ClearModel","SetCreature","Clear"}) do w[name]=function() end end
     return w
 end
@@ -246,7 +247,7 @@ if dungeonPreview then
     A.state.completed={};A.state.skipped={};A.state.quests={[167]={ready=true},[166]={}}
     local quests={
         [166]={id=166,title="迪菲亚兄弟会",questLevel=22},
-        [167]={id=167,title="我的兄弟……",questLevel=20},
+        [167]={id=167,title="啊，兄弟……",questLevel=20},
         [168]={id=168,title="收集记忆",questLevel=18},
         [214]={id=214,title="红色丝质面罩",questLevel=17,preQuestSingle={155}},
     }
@@ -254,14 +255,25 @@ if dungeonPreview then
     A.state.items={[100]={id=100,name="示例任务奖励",usable=true,equipLoc="INVTYPE_HEAD",stats={ITEM_MOD_STRENGTH_SHORT=7}}}
     for _,quest in pairs(quests) do quest.taskFacts={level=quest.questLevel,xp={{1,1500}},rewards={}} end
     quests[166].taskFacts.rewards.choices={{id=100,count=1}}
+    quests[168].taskFacts.xp={{1,1350}}
+    quests[168].taskFacts.rewards.choices={{id=2037},{id=2036},{id=270007}}
     A.state.position={map=1453,x=0.5,y=0.5};A.state.runSpeed=7
     C_Map.GetMapInfo=function(id) return {name=({[1453]="暴风城",[1436]="西部荒野",[9999]="死亡矿井"})[id] or "任务区域",mapType=id==9999 and 4 or 3} end
     A.Navigation.Distance=function() return 1400 end
+    C_Map.OpenWorldMap=function(id) A.previewMap=id end
+    local giver="维尔德·蓟草"
+    local rewardNames={[2037]="掘地工之靴",[2036]="陈旧的矿工手套",[270007]="Worn Miner's Waistcord"}
     A.Data={maps={[40]=1436,[1581]=9999},GetQuest=function(_,id) return quests[id] end,
+        db={Quest={Get=function(id,field)
+            if id==168 and field=="objectivesText" then return {"给暴风城的维尔德·蓟草带回4张矿业工会会员卡。"} end
+        end},Npc={Get=function() end},Item={Get=function(id) return rewardNames[id] end}},
+        QuestContact=function(_,id)
+            if id==168 or id==167 then return {entityName=giver} end
+        end,
         Target=function(_,q,state)
             local active=state.quests[q.id]
             return {map=active and not active.ready and 9999 or 1453,x=0.6,y=0.5,entityKind="npc",entityId=q.id,
-                entityName=active and (active.ready and "示例交付人" or "副本目标") or "示例接取人"}
+                entityName=(q.id==168 or q.id==167) and giver or active and (active.ready and "示例交付人" or "副本目标") or "示例接取人"}
         end}
     for _,file in ipairs({"State.lua","Data/Dungeons.lua","Data/DungeonLoot.lua","Planner/Eligibility.lua","Planner/Travel.lua","Planner/Dungeon.lua","Planner/DungeonTasks.lua","Planner/Gear.lua","Planner/TaskGuide.lua","UI/Dungeon.lua"}) do
         assert(loadfile(file))("AiLeveling",A)
@@ -511,6 +523,20 @@ if A.previewTab then
             assert(row.status:GetText()~="")
         end
         assert(view.tasks:GetText():find(tostring(browser.selected.rewards.count),1,true))
+        browser.levelFilter:Click()
+        assert(#browser.filtered>0 and #browser.filtered<#browser.entries)
+        for _,entry in ipairs(browser.filtered) do assert(entry.levelGap==0) end
+        browser.levelFilter:Click()
+        view.map:Click();assert(A.previewMap==1436 and not A.UI.details:IsShown())
+        A.UI.details:Show()
+        if arg[2]~="entry-blocked" then
+            local navigate=A.Navigation.Navigate
+            local point
+            A.Navigation.Navigate=function(_,action) point=action.position;return true end
+            browser.buttons[4]:Click()
+            assert(point and point.map==1436 and math.abs(point.x-0.425)<0.00001 and math.abs(point.y-0.717)<0.00001)
+            A.Navigation.Navigate=navigate;A.UI.details:Show()
+        end
         if arg[2]=="loot" then
             view.loot:Click()
             assert(browser.detail:GetText():find("|Hitem:5187",1,true))
@@ -539,7 +565,11 @@ if A.previewTab then
             local pickup
             for _,row in ipairs(view.rows) do if row.questId==168 then pickup=row end end
             assert(view.rows[1]==pickup)
-            assert(pickup.route.text:GetText():find("接取：暴风城 · 示例接取人",1,true))
+            assert(pickup.route.text:GetText():find("接取：暴风城 · 维尔德·蓟草",1,true))
+            assert(pickup.facts:IsShown() and pickup.facts:GetText():find("矿业工会会员卡",1,true))
+            assert(pickup.facts:GetText():find("接取与交付",1,true) and pickup.facts:GetText():find("掘地工之靴",1,true))
+            pickup:Click();assert(not pickup.facts:IsShown())
+            pickup:Click();assert(pickup.facts:IsShown())
             local navigate=A.Dungeon.ContinueTask
             local chosen
             A.Dungeon.ContinueTask=function(_,d,id) chosen=id;return true end
