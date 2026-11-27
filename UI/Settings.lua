@@ -85,10 +85,11 @@ function S:Create(parent)
         percents[#percents+1]=n
         labels[#labels+1]=n.."%"
     end
-    choice(2,"hudTransparency","任务栏与下一步背景透明度",percents,labels,9,true)
-    choice(2,"detailTransparency","详情窗口背景透明度",percents,labels,10,true)
+    choice(2,"trackerTransparency","任务栏背景透明度",percents,labels,9,true)
+    choice(2,"hudTransparency","下一步与附近提示背景透明度",percents,labels,10,true)
+    choice(2,"detailTransparency","详情窗口背景透明度",percents,labels,11,true)
     local backgroundHint=A.UI:Text(self.groups[2],"caption")
-    backgroundHint:SetPoint("TOPLEFT",286,-126);backgroundHint:SetWidth(270)
+    backgroundHint:SetPoint("TOPLEFT",286,-166);backgroundHint:SetWidth(270)
     backgroundHint:SetText("0% 为实心背景，100% 为全透明。此设置只改变底色。")
     choice(7,"mapTaskScope","AILeveling 任务标记",{"all","route","off"},{"全部候选任务","仅当前行程","关闭"},0)
     check(7,"pins","在大地图显示",1)

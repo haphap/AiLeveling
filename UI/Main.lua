@@ -220,9 +220,7 @@ function UI:DaylightShell(frame,alpha,windowColor,key)
         api.Skin(frame,opts)
     end
     local refresh=paint
-    if frame==self.frame then
-        opts.noBorder=true
-    elseif frame==self.navFrame then
+    if frame==self.navFrame then
         refresh=function()
             opts.noBorder=api.GetSetting("Quests","boxBorder")==false
             paint()

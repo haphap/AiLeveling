@@ -13,12 +13,16 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     B.UI:ToggleDetails()
     assert(B.UI.details:IsShown())
     assert(B.UI.Browser.frame:IsShown());assert(B.UI.Browser.rows[1].text:GetText()~="")
+    local tracker=control(B,"trackerTransparency").button
     local hud=control(B,"hudTransparency").button
     local detail=control(B,"detailTransparency").button
     local before=B.refreshes
+    eq(B.UI.tracker.background.color[4],0);eq(B.UI.frame.surface,nil)
+    tracker.scripts.OnClick(tracker);B.menu["40%"].callback()
+    eq(B.UI.tracker.background.color[4],0.6);eq(B.UI.navFrame.surface[1].color[4],0.4)
     hud.scripts.OnClick(hud);B.menu["100%"].callback()
-    eq(B.UI.frame.surface[1].color[4],0);eq(B.UI.navFrame.surface[1].color[4],0)
-    eq(B.UI.tracker.header.color[4],0);eq(B.UI.details.surface[1].color[4],0.9)
+    eq(B.UI.tracker.background.color[4],0.6);eq(B.UI.navFrame.surface[1].color[4],0)
+    eq(B.UI.details.surface[1].color[4],0.9)
     detail.scripts.OnClick(detail);B.menu["0%"].callback()
     eq(B.UI.details.surface[1].color[4],1);eq(B.UI.details.alpha,1)
     eq(B.refreshes,before);eq(B.settings.alpha,0.94)
@@ -89,9 +93,9 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
         Switch=function(parent) local b=CreateFrame("Button",nil,parent);b.SetOn=function(on) b.checked=on end;return b end,
         Input=function(parent) return nativeControl("EditBox",parent) end}
     B=setup(true,api);B.UI:Render();local choice=B.action
-    assert(B.UI.frame.daylightOpts and B.UI.details.daylightOpts)
-    eq(B.UI.frame.daylightOpts.noBorder,true);eq(B.UI.navFrame.daylightOpts.noBorder,false)
-    eq(B.UI.frame.daylightOpts.bgAlpha,0.4);eq(B.UI.title.fontFace,face);assert(B.UI.tracker.chapter:IsShown());eq(B.UI.tracker.header:IsShown(),false)
+    eq(B.UI.frame.daylightOpts,nil);eq(B.UI.tracker.background.color[4],0)
+    eq(B.UI.navFrame.daylightOpts.noBorder,false)
+    eq(B.UI.title.fontFace,face);assert(B.UI.tracker.chapter:IsShown())
     eq(B.UI.navFrame.daylightOpts.panel,true);eq(B.UI.navFrame.daylightOpts.bgAlpha,0.40)
     windowAlpha=0.35;listeners.SettingChanged("general","windowAlpha");eq(B.UI.navFrame.daylightOpts.bgAlpha,0.40)
     questBox.boxAlphaOwn,questBox.boxAlpha,questBox.boxBorder=true,0.45,false
@@ -101,24 +105,25 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     eq(B.UI.details.alpha,1);eq(B.UI.tracker.navBearing.alpha,0.5);eq(B.UI.nav.alpha,0.5);eq(B.UI.navFrame.alpha or 1,1)
     eq(B.UI.tracker.headerLine.color[2],B.UI.colors.gold[2]);eq(B.UI.title.fontSize,17);eq(B.UI.tracker.location.fontSize,20)
     eq(B.UI.title.fontFlags,"OUTLINE");eq(B.UI.title.shadowColor[4],1)
-    local before=B.UI.frame.skinCalls;B.UI.frame.scripts.OnSizeChanged();eq(B.UI.frame.skinCalls,before+1)
+    local before=B.UI.navFrame.skinCalls;B.UI.navFrame.scripts.OnSizeChanged();eq(B.UI.navFrame.skinCalls,before+1)
     face="UpdatedDaylightFont";scale=1.2
     for fs,role in pairs(texts) do fs:SetFont(face,sizes[role]*scale,"");fs:SetShadowColor(0,0,0,0) end
     listeners.StyleChanged();eq(B.UI.title.fontFace,face);eq(B.action,choice)
-    eq(B.UI.frame.daylightOpts.noBorder,true)
+    eq(B.UI.frame.daylightOpts,nil)
     eq(B.UI.title.fontSize,17*1.2);eq(B.UI.title.shadowColor[4],1);eq(B.UI.tracker.navDetail.fontSize,16*1.2);eq(B.UI.tracker.navDetail.fontFlags,"OUTLINE")
     B.settings.fontScale=1.1;listeners.Login();eq(B.UI.title.fontSize,17*1.2*1.1)
     B.UI.details.scripts.OnSizeChanged()
     eq(B.UI.details.daylightOpts.window,true);eq(B.UI.details.daylightOpts.bgAlpha,0.90)
     eq(B.UI.Browser.detail.fontSize,16*1.2*1.1);eq(B.UI.Browser.detail.fontFace,face)
-    eq(B.UI.frame.daylightOpts.bgAlpha,0.4);eq(B.UI.tracker.nearby.daylightOpts.bgAlpha,0.4)
+    eq(B.UI.tracker.background.color[4],0);eq(B.UI.tracker.nearby.daylightOpts.bgAlpha,0.4)
     local color=control(B,"backgroundStyle").button
     color.scripts.OnClick(color);menuItems["深蓝"]()
-    B:SetOption("hudTransparency",30);listeners.StyleChanged();B.UI.frame.scripts.OnSizeChanged()
-    eq(B.UI.frame.daylightOpts.bgAlpha,0.7);eq(B.UI.navFrame.daylightOpts.bgAlpha,0.7)
+    B:SetOption("hudTransparency",30);listeners.StyleChanged();B.UI:LayoutTracker()
+    eq(B.UI.tracker.background.color[4],0);eq(B.UI.navFrame.daylightOpts.bgAlpha,0.7)
     eq(B.UI.tracker.nearby.daylightOpts.bgAlpha,0.7);eq(B.UI.details.daylightOpts.bgAlpha,0.9)
-    eq(B.UI.navFrame.daylightOpts.bgColor[3],0.14);eq(B.UI.frame.daylightOpts.noBorder,true)
-    B:SetOption("backgroundStyle","default");eq(B.UI.frame.daylightOpts.bgColor,nil)
+    eq(B.UI.navFrame.daylightOpts.bgColor[3],0.14);eq(B.UI.tracker.background.color[3],0.14)
+    B:SetOption("trackerTransparency",40);eq(B.UI.tracker.background.color[4],0.6);eq(B.UI.frame.daylightOpts,nil)
+    B:SetOption("backgroundStyle","default");eq(B.UI.navFrame.daylightOpts.bgColor,nil)
     local link=B.UI.tracker.career.view
     eq(link.hiddenLayer,"BACKGROUND");eq(link.fill.color[4],0)
     link.scripts.OnEnter(link);eq(link.fill.color[4],0.40)
