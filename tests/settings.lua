@@ -129,8 +129,8 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     link.scripts.OnEnter(link);eq(link.fill.color[4],0.40)
     link.scripts.OnLeave(link);eq(link.fill.color[4],0)
     for _,button in ipairs({B.UI.tracker.menu,B.UI.tracker.collapse}) do
-        eq(button.fill.color[4],B.UI.colors.trackerControl[4])
-        button.scripts.OnLeave(button);eq(button.fill.color[4],B.UI.colors.trackerControl[4])
+        eq(button.fill.color[4],0)
+        button.scripts.OnLeave(button);eq(button.fill.color[4],0)
     end
     eq(B.UI.Browser.search.hiddenLayer,"BACKGROUND");eq(B.UI.Browser.search.fill.color[4],0.40)
     eq(B.UI.colors.sidebar[4],0.40);eq(B.UI.colors.selected[4],0.40)

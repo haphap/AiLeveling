@@ -1013,11 +1013,10 @@ function UI:CreateTracker()
     T.collapse=self:Button(T.content,"−",20,function() self.folded=not self.folded;self:LayoutTracker() end,"heading")
     T.menu=self:Button(T.content,"≡",22,function() self:TrackerMenu(f) end,"heading")
     for _,button in ipairs({T.collapse,T.menu}) do
-        button.baseColor=palette.trackerControl
+        button.baseColor=palette.panel
         button:SetBackdropColor(unpack(button.baseColor))
         button.text:SetTextColor(unpack(palette.white))
         button:HookScript("OnEnter",function()
-            button:SetBackdropColor(unpack(palette.trackerControlHover))
             GameTooltip:SetOwner(button,"ANCHOR_TOP");GameTooltip:SetText(button==T.menu and "行程菜单" or "收起／展开")
             GameTooltip:Show()
         end)
