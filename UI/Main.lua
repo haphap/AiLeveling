@@ -189,11 +189,36 @@ function UI:Rounded(frame,radius,border)
     end
 end
 
-function UI:DaylightShell(frame,alpha,windowColor)
+local backgroundTints={charcoal={0.035,0.035,0.035},navy={0.035,0.075,0.14},brown={0.12,0.075,0.045}}
+local function background(key)
+    local settings=A.settings or {}
+    local percent=settings[key] or A.defaults[key]
+    return backgroundTints[settings.backgroundStyle],(100-percent)/100
+end
+
+function UI:BindBackground(frame,base,key,setColor)
+    setColor=setColor or frame.SetBackdropColor
+    local function paint()
+        local tint,alpha=background(key)
+        local rgb=tint or base
+        if base==colors.sidebar then alpha=alpha*colors.sidebar[4]/colors.detailBg[4] end
+        setColor(frame,rgb[1],rgb[2],rgb[3],alpha)
+    end
+    self.shells[#self.shells+1]=paint
+    paint()
+end
+
+function UI:DaylightShell(frame,alpha,windowColor,key)
     local api=self.daylight
     if not api then return end
     local opts=alpha and {panel=true,bgAlpha=alpha} or {window=true,bgAlpha=(windowColor or colors.bg)[4],bgColor=windowColor}
-    local function paint() api.Skin(frame,opts) end
+    local function paint()
+        if key then
+            local tint,opacity=background(key)
+            opts.bgColor,opts.bgAlpha=tint or windowColor,opacity
+        end
+        api.Skin(frame,opts)
+    end
     local refresh=paint
     if frame==self.frame then
         opts.noBorder=true
@@ -211,11 +236,15 @@ function UI:DaylightShell(frame,alpha,windowColor)
     frame:HookScript("OnSizeChanged",paint)
 end
 
-function UI:Panel(name, parent, width, height,background)
+function UI:Panel(name, parent, width, height,background,key)
     local f = CreateFrame("Frame", name, parent or UIParent, "BackdropTemplate")
     f:SetSize(width, height)
-    if self.daylight then self:DaylightShell(f,nil,background)
-    else self:Rounded(f,metrics.radius,colors.border);f:SetBackdropColor(unpack(background or colors.bg)) end
+    if self.daylight then self:DaylightShell(f,nil,background,key)
+    else
+        self:Rounded(f,metrics.radius,colors.border)
+        local base=background or colors.bg
+        if key then self:BindBackground(f,base,key) else f:SetBackdropColor(unpack(base)) end
+    end
     return f
 end
 
@@ -386,7 +415,7 @@ end
 
 function UI:Create()
     self:CreateTracker()
-    self.details = self:Panel("AiLevelingDetails", UIParent, 1000, 600,colors.detailBg)
+    self.details = self:Panel("AiLevelingDetails", UIParent, 1000, 600,colors.detailBg,"detailTransparency")
     self.details:SetPoint("CENTER")
     local p=A.settings.detailPosition
     if p then self.details:ClearAllPoints();self.details:SetPoint(p[1],UIParent,p[2],p[3],p[4]) end
@@ -399,7 +428,8 @@ function UI:Create()
     self.tabs = {}
     local side=CreateFrame("Frame",nil,self.details);side:SetSize(164,584)
     side:SetPoint("TOPLEFT",8,-8)
-    self:Rounded(side,metrics.radius);side:SetBackdropColor(unpack(colors.sidebar))
+    self:Rounded(side,metrics.radius)
+    self:BindBackground(side,colors.sidebar,"detailTransparency")
     local divider=self.details:CreateTexture(nil,"BACKGROUND")
     divider:SetPoint("TOPLEFT",180,-14);divider:SetPoint("BOTTOMLEFT",180,14);divider:SetWidth(1)
     divider:SetColorTexture(unpack(colors.line))
@@ -455,11 +485,13 @@ function UI:Create()
     end
 end
 
+function UI:ApplyBackgrounds()
+    for _,refresh in ipairs(self.shells) do refresh() end
+end
+
 function UI:ApplyStyle()
     if not self.frame then return end
-    if self.daylight then
-        for _,refresh in ipairs(self.shells) do refresh() end
-    end
+    self:ApplyBackgrounds()
     self.frame:SetScale(A.settings.scale)
     self.frame:SetAlpha(1)
     self.details:SetScale(A.settings.scale)

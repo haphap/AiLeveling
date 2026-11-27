@@ -12,6 +12,15 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     B.UI:ToggleDetails()
     assert(B.UI.details:IsShown())
     assert(B.UI.Browser.frame:IsShown());assert(B.UI.Browser.rows[1].text:GetText()~="")
+    local hud=control(B,"hudTransparency").button
+    local detail=control(B,"detailTransparency").button
+    local before=B.refreshes
+    hud.scripts.OnClick(hud);B.menu["100%"].callback()
+    eq(B.UI.frame.surface[1].color[4],0);eq(B.UI.navFrame.surface[1].color[4],0)
+    eq(B.UI.tracker.header.color[4],0);eq(B.UI.details.surface[1].color[4],0.9)
+    detail.scripts.OnClick(detail);B.menu["0%"].callback()
+    eq(B.UI.details.surface[1].color[4],1);eq(B.UI.details.alpha,1)
+    eq(B.refreshes,before);eq(B.settings.alpha,0.94)
     B.UI.frame.scripts.OnMouseUp(nil,"RightButton");B.menu["详细面板"].callback()
     eq(B.UI.details:IsShown(),false)
     B.menu["暂停引导"].callback();eq(B.char.paused,true)
@@ -102,6 +111,13 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     eq(B.UI.details.daylightOpts.window,true);eq(B.UI.details.daylightOpts.bgAlpha,0.90)
     eq(B.UI.Browser.detail.fontSize,16*1.2*1.1);eq(B.UI.Browser.detail.fontFace,face)
     eq(B.UI.frame.daylightOpts.bgAlpha,0.4);eq(B.UI.tracker.nearby.daylightOpts.bgAlpha,0.4)
+    local color=control(B,"backgroundStyle").button
+    color.scripts.OnClick(color);menuItems["深蓝"]()
+    B:SetOption("hudTransparency",30);listeners.StyleChanged();B.UI.frame.scripts.OnSizeChanged()
+    eq(B.UI.frame.daylightOpts.bgAlpha,0.7);eq(B.UI.navFrame.daylightOpts.bgAlpha,0.7)
+    eq(B.UI.tracker.nearby.daylightOpts.bgAlpha,0.7);eq(B.UI.details.daylightOpts.bgAlpha,0.9)
+    eq(B.UI.navFrame.daylightOpts.bgColor[3],0.14);eq(B.UI.frame.daylightOpts.noBorder,true)
+    B:SetOption("backgroundStyle","default");eq(B.UI.frame.daylightOpts.bgColor,nil)
     local link=B.UI.tracker.career.view
     eq(link.hiddenLayer,"BACKGROUND");eq(link.fill.color[4],0)
     link.scripts.OnEnter(link);eq(link.fill.color[4],0.40)

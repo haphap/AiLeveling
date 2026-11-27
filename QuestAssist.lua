@@ -221,7 +221,7 @@ function Q:LayoutTargetList(mark)
         return
     end
     if not list then
-        list=A.UI:Panel(nil,A.UI.navAnchor,200,34)
+        list=A.UI:Panel(nil,A.UI.navAnchor,200,34,nil,"hudTransparency")
         list:SetPoint("TOPLEFT",A.UI.navAnchor,"BOTTOMLEFT",0,-4);list:SetClampedToScreen(true)
         list.rows={};self.targetList=list
         list.page=A.UI:Text(list,11)

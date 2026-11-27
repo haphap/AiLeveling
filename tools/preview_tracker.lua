@@ -130,7 +130,9 @@ if os.getenv("AILEVELING_PREVIEW_DAYLIGHT")=="1" then
         local fs=parent:CreateFontString(nil,"OVERLAY");fs:SetFont("preview",sizes[role],"");return fs
     end
     api.Skin=function(frame,opts)
-        frame:SetBackdropColor(.078,.078,.09,opts.bgAlpha or .85);frame:SetBackdropBorderColor(.024,.024,.027,1)
+        local rgb=opts.bgColor or {.078,.078,.09}
+        frame:SetBackdropColor(rgb[1],rgb[2],rgb[3],opts.bgAlpha or .85)
+        if not opts.noBorder then frame:SetBackdropBorderColor(.024,.024,.027,1) end
     end
     api.Button=function(parent,label,height)
         local b=CreateFrame("Button",nil,parent);b:SetHeight(height);b:SetBackdropColor(.133,.133,.153,.94)
@@ -150,7 +152,7 @@ if os.getenv("AILEVELING_PREVIEW_DAYLIGHT")=="1" then
     DaylightUI={API=api}
 end
 
-local A={settings={fontScale=1,density="normal",arrow=true,distanceUnits="meters"},char={},indexReady=true,
+local A={settings={fontScale=1,density="normal",arrow=true,distanceUnits="meters",hudTransparency=60,detailTransparency=10},char={},indexReady=true,
     state={completed={},class="PALADIN",level=8,xp=3200,maxXP=5040,runSpeed=7,position={map=1429,x=0.46,y=0.42},quests={
         [7]={title="狗头人的威胁",level=8,objectives={{text="消灭狗头人歹徒",type="monster",numFulfilled=6,numRequired=10},{text="消灭狗头人苦力",type="monster",numFulfilled=4,numRequired=4,finished=true}}},
         [33]={title="林中的群狼",level=9,objectives={{type="item",text="收集狼肉",numFulfilled=3,numRequired=8}}},

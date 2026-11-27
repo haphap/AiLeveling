@@ -36,22 +36,34 @@ function S:Create(parent)
         end)
         self.controls[#self.controls+1]={button=b,key=key}
     end
-    local function cycle(group,key,label,values,names,row)
-        local b=A.UI:Button(self.groups[group],label,270,function()
+    local function choice(group,key,label,values,names,row,menu)
+        local function selectValue(value)
+            A:SetOption(key,value)
+            self:Refresh()
+        end
+        local b=A.UI:Button(self.groups[group],label,270,function(owner)
+            if menu then
+                A.UI:Menu(owner,function(_,list)
+                    for i,value in ipairs(values) do
+                        list:CreateButton(names[i],function() selectValue(value) end)
+                    end
+                end)
+                return
+            end
             local index=1
             for i,v in ipairs(values) do if A.settings[key]==v then index=i%#values+1;break end end
-            A:SetOption(key,values[index]);self:Refresh()
+            selectValue(values[index])
         end)
         b:SetHeight(34);b.text:SetWidth(260);b.text:SetMaxLines(2)
         b:SetPoint("TOPLEFT",position(row))
         self.controls[#self.controls+1]={button=b,key=key,label=label,values=values,names=names}
     end
-    cycle(1,"minutes","游戏时间",{15,30,45,60,90,120,180,240},{"15 分钟","30 分钟","45 分钟","60 分钟","90 分钟","120 分钟","180 分钟","240 分钟"},0)
-    cycle(1,"role","副本职责",{"DAMAGER","TANK","HEALER"},{"输出","坦克","治疗"},1)
+    choice(1,"minutes","游戏时间",{15,30,45,60,90,120,180,240},{"15 分钟","30 分钟","45 分钟","60 分钟","90 分钟","120 分钟","180 分钟","240 分钟"},0)
+    choice(1,"role","副本职责",{"DAMAGER","TANK","HEALER"},{"输出","坦克","治疗"},1)
     check(1,"dungeons","允许自动推荐副本",2)
-    cycle(1,"waitMinutes","等队估计",{0,5,10,15,20,30,45,60},{"0 分钟","5 分钟","10 分钟","15 分钟","20 分钟","30 分钟","45 分钟","60 分钟"},3)
-    cycle(1,"damageStyle","输出属性",{"auto","strength","agility","ranged","caster","hybrid"},{"自动","近战力量","近战敏捷","远程物理","施法输出","混合属性"},4)
-    cycle(1,"gearPreference","装备偏好",{"nearby","xp"},{"接近经验率时比较装备","按经验率选择"},5)
+    choice(1,"waitMinutes","等队估计",{0,5,10,15,20,30,45,60},{"0 分钟","5 分钟","10 分钟","15 分钟","20 分钟","30 分钟","45 分钟","60 分钟"},3)
+    choice(1,"damageStyle","输出属性",{"auto","strength","agility","ranged","caster","hybrid"},{"自动","近战力量","近战敏捷","远程物理","施法输出","混合属性"},4)
+    choice(1,"gearPreference","装备偏好",{"nearby","xp"},{"接近经验率时比较装备","按经验率选择"},5)
     local auto=A.UI:Button(self.groups[1],"恢复自动选择",270,function()
         local ok,why=A.Selection:Automatic();if not ok then A:Message(why) end
     end)
@@ -61,20 +73,31 @@ function S:Create(parent)
     hint:SetText("在行程页选择任务组合与顺序，在任务链页锁定目标或暂缓整链。\n\n在副本页结束当前行程后，恢复自动升级。")
     local talents=A.UI:Button(self.groups[1],"打开天赋方案",270,function() A.Talents:Show() end)
     talents:SetPoint("TOPLEFT",286,-140)
-    cycle(2,"fontScale","字号",{0.85,1,1.1,1.2},{"85%","100%","110%","120%"},0)
-    cycle(2,"scale","界面缩放",{0.75,0.85,1,1.15,1.3,1.5},{"75%","85%","100%","115%","130%","150%"},1)
-    cycle(2,"alpha","导航箭头与距离不透明度",{0.2,0.5,0.75,0.85,0.94,1},{"20%","50%","75%","85%","94%","100%"},2)
-    cycle(2,"density","卡片密度",{"compact","normal","expanded"},{"紧凑","标准","展开"},3)
+    choice(2,"fontScale","字号",{0.85,1,1.1,1.2},{"85%","100%","110%","120%"},0)
+    choice(2,"scale","界面缩放",{0.75,0.85,1,1.15,1.3,1.5},{"75%","85%","100%","115%","130%","150%"},1)
+    choice(2,"alpha","导航箭头与距离不透明度",{0.2,0.5,0.75,0.85,0.94,1},{"20%","50%","75%","85%","94%","100%"},2)
+    choice(2,"density","卡片密度",{"compact","normal","expanded"},{"紧凑","标准","展开"},3)
     check(2,"lockWindow","锁定窗口位置",4)
     check(2,"combatFold","战斗中收起解释区",5)
-    cycle(7,"mapTaskScope","AILeveling 任务标记",{"all","route","off"},{"全部候选任务","仅当前行程","关闭"},0)
+    choice(2,"backgroundStyle","背景颜色",{"default","charcoal","navy","brown"},{"默认","炭黑","深蓝","暖棕"},8,true)
+    local percents,labels={},{}
+    for n=0,100,10 do
+        percents[#percents+1]=n
+        labels[#labels+1]=n.."%"
+    end
+    choice(2,"hudTransparency","任务栏与下一步背景透明度",percents,labels,9,true)
+    choice(2,"detailTransparency","详情窗口背景透明度",percents,labels,10,true)
+    local backgroundHint=A.UI:Text(self.groups[2],"caption")
+    backgroundHint:SetPoint("TOPLEFT",286,-126);backgroundHint:SetWidth(270)
+    backgroundHint:SetText("0% 为实心背景，100% 为全透明。此设置只改变底色。")
+    choice(7,"mapTaskScope","AILeveling 任务标记",{"all","route","off"},{"全部候选任务","仅当前行程","关闭"},0)
     check(7,"pins","在大地图显示",1)
     check(7,"minimapPins","在小地图显示",2)
     check(7,"routes","显示目的地连线",3)
     check(7,"dangerMap","显示危险怪与巡逻位置",4)
     check(7,"arrow","显示内置方向箭头",8)
     check(7,"waypointUI","优先使用 WaypointUI 导航",9)
-    cycle(7,"distanceUnits","距离单位",{"yards","meters"},{"码","米"},10)
+    choice(7,"distanceUnits","距离单位",{"yards","meters"},{"码","米"},10)
     check(7,"transportHints","显示交通使用说明",11)
     local mapHint=A.UI:Text(self.groups[7],"caption")
     mapHint:SetPoint("TOPLEFT",0,-224);mapHint:SetWidth(268)
@@ -154,7 +177,7 @@ function S:Create(parent)
     self.profileHint=A.UI:Text(self.groups[4],"caption");self.profileHint:SetPoint("TOPLEFT",286,-200);self.profileHint:SetWidth(268)
     self.summary=A.UI:Text(self.groups[4],"caption");self.summary:SetPoint("TOPLEFT",286,-248);self.summary:SetWidth(268)
     check(5,"autoSellJunk","到店出售垃圾（灰色及手动标记）",0)
-    cycle(5,"maxSoulShards","灵魂碎片保留",{0,5,10,15,20,30,40,100},{"0","5","10","15","20","30","40","100"},1)
+    choice(5,"maxSoulShards","灵魂碎片保留",{0,5,10,15,20,30,40,100},{"0","5","10","15","20","30","40","100"},1)
     self.bagSummary=A.UI:Text(self.groups[5],"body");self.bagSummary:SetPoint("TOPLEFT",286,-4);self.bagSummary:SetWidth(268)
     local instruction=A.UI:Text(self.groups[5],"caption");instruction:SetPoint("TOPLEFT",0,-96);instruction:SetWidth(554)
     instruction:SetText("拖入物品或输入物品 ID／链接，选择垃圾或保留。\n任务物品与炉石始终保留；灵魂袋内的碎片保留。")

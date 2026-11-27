@@ -921,16 +921,16 @@ function UI:CreateTracker()
         GameTooltip:AddLine("左键拖动面板，右下角调整宽高\n右键：字号、暂停、收起与详细面板",1,1,1,true);GameTooltip:Show()
     end)
     f:SetScript("OnLeave",function() GameTooltip:Hide() end)
-    if self.daylight then self:DaylightShell(f,palette.hud[4])
-    else self:Rounded(f,spacing.radius);f:SetBackdropColor(unpack(palette.hud));f.material:Hide() end
+    if self.daylight then self:DaylightShell(f,palette.hud[4],nil,"hudTransparency")
+    else self:Rounded(f,spacing.radius);self:BindBackground(f,palette.hud,"hudTransparency");f.material:Hide() end
     local T=self.tracker
     T.nearby=CreateFrame("Button",nil,f,"BackdropTemplate")
     local notice=T.nearby
     notice:SetPoint("TOP",UIParent,"TOP",0,-150);notice:SetClampedToScreen(true);notice:SetFrameStrata("HIGH")
     notice:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1,
         insets={left=1,right=1,top=1,bottom=1}})
-    if self.daylight then notice:SetBackdrop(nil);self:DaylightShell(notice,palette.hud[4])
-    else notice:SetBackdropColor(unpack(palette.hud));notice:SetBackdropBorderColor(unpack(palette.line)) end
+    if self.daylight then notice:SetBackdrop(nil);self:DaylightShell(notice,palette.hud[4],nil,"hudTransparency")
+    else self:BindBackground(notice,palette.hud,"hudTransparency");notice:SetBackdropBorderColor(unpack(palette.line)) end
     notice.mark=notice:CreateTexture(nil,"ARTWORK");notice.mark:SetColorTexture(unpack(palette.gold))
     notice.icon=notice:CreateTexture(nil,"ARTWORK")
     notice.heading=text(notice,"caption",palette.gold);notice.heading:SetText("顺便完成")
@@ -1064,7 +1064,7 @@ function UI:CreateTracker()
     T.focusLabel=text(T.card,"caption",palette.gold)
     T.focusLabel:SetText("当前追踪")
     T.header=T.card:CreateTexture(nil,"BACKGROUND")
-    T.header:SetColorTexture(unpack(palette.navigation))
+    self:BindBackground(T.header,palette.navigation,"hudTransparency",T.header.SetColorTexture)
     T.actionIcon=T.card:CreateTexture(nil,"ARTWORK")
     T.currentMark=T.card:CreateTexture(nil,"ARTWORK")
     T.primaryLabel=text(T.card,"caption",palette.muted)
@@ -1214,8 +1214,8 @@ function UI:CreateTracker()
         else self:QuestClick(button.questId,mouse) end
     end)
     nav:SetSize(268,48)
-    if self.daylight then self:DaylightShell(nav,palette.navigation[4])
-    else self:Rounded(nav,spacing.radius);nav:SetBackdropColor(unpack(palette.navigation));nav.material:Hide() end
+    if self.daylight then self:DaylightShell(nav,palette.navigation[4],nil,"hudTransparency")
+    else self:Rounded(nav,spacing.radius);self:BindBackground(nav,palette.navigation,"hudTransparency");nav.material:Hide() end
     T.navIcon=nav:CreateTexture(nil,"ARTWORK")
     T.navTitle=text(nav,"task",palette.white)
     T.navDetail=text(nav,"body",palette.white)
