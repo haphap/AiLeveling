@@ -8,7 +8,10 @@ local metrics=A.UI.metrics
 local function color(c,s) return "|cff"..c..tostring(s).."|r" end
 local function questLink(id,title) return color(blue,"|Hquest:"..id..":0|h["..title.."]|h") end
 local function itemLink(item)
-    return item.link or color(blue,"|Hitem:"..item.id.."|h["..(item.name or "物品 #"..item.id).."]|h")
+    if item.link then return item.link end
+    local name=item.name
+    if A.QuestItemZhCN then name=A.QuestItemZhCN(item.id,name) end
+    return color(blue,"|Hitem:"..item.id.."|h["..(name or "物品 #"..item.id).."]|h")
 end
 local function skillName(id)
     return A.Trainers and A.Trainers.skills[id] or ({[164]="锻造",[171]="炼金",[182]="草药学",[186]="采矿",[356]="钓鱼",[762]="骑术"})[id] or "专业 #"..id
@@ -604,8 +607,9 @@ function B:Detail()
         end
         for _,stage in ipairs(e.choice.stages or {}) do
             if not (active and active.objectives and active.objectives[stage.objectiveIndex or 0]) and stage.purchase and (not stage.need or stage.need<=0 or (stage.have or 0)<stage.need) then
-                local item=A.Data.db and A.Data.db.Item.Get(stage.targetId,"name") or stage.text or "任务物品"
-                lines[#lines+1]=color(gold,(item or "任务物品").." · "..A.UI.PurchaseText(stage.purchase))
+                local item=A.Data.db and A.Data.db.Item.Get(stage.targetId,"name")
+                if A.QuestItemZhCN then item=A.QuestItemZhCN(stage.targetId,item) end
+                lines[#lines+1]=color(gold,(item or stage.text or "任务物品").." · "..A.UI.PurchaseText(stage.purchase))
             end
             local where=stage.recipient or stage.position
             if stage.kind~="objective" and where and where.entityName then

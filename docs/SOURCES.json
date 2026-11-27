@@ -1021,6 +1021,18 @@
       "provisional": [87318, 88757, 88758]
     },
     {
+      "id": "Forever-zhCN-quest-and-reward-names",
+      "checked": "2026-11-27",
+      "file": "Data/QuestTitles_zhCN.lua",
+      "provider": "QuestieDB Forever 1.1.5, Alliance and Horde, plus AiLeveling's client quest cache",
+      "scope": "192 additional short quest titles and 775 missing reward names indexed by ID. Native Chinese names take precedence. Internal NYI, DND and REUSEME titles and 21 reward IDs without a verified name are excluded.",
+      "questLookup": "https://nether.wowhead.com/forever/tooltip/quest/{id}?locale=4",
+      "itemLookup": "https://wago.tools/db2/ItemSparse/csv?build=1.60.1.70862&locale=zhCN",
+      "additionalMatches": "For items, 583 names in client builds 70862 and 70938, 39 from Forever item tooltips and 153 from the Forever community database. Quest supplements use matching expansions' identical ID and English title, equivalent titles, numbered series, or their uniquely named rewards. 98914 and 98915 belong to Theramore.",
+      "communityLookup": "https://www.x1x.tw/wow/zh-CN/",
+      "provisional": [81885, 82135, 84124, 92094, 95771, 96027, 96028, 97180, 97182, 97185, 98919]
+    },
+    {
       "id": "Undying-dungeon-recommended-levels",
       "checked": "2026-11-16",
       "version": "0.33.0",

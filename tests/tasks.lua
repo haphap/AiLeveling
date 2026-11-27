@@ -149,11 +149,15 @@ test("NPC 实际接取列表避开不可接任务并保留其他发布者与已�
     GetLocale=function() return "enUS" end
     assert(loadfile("Data/QuestTitles_zhCN.lua"))("AiLeveling",B)
     local id,en=79976,"This Must Be The Place"
-    eq(d:QuestTitle(id,nil,en),en)
+    eq(d:QuestTitle(id,nil,en),en);eq(B.QuestItemZhCN,nil)
     GetLocale=function() return "zhCN" end
     assert(loadfile("Data/QuestTitles_zhCN.lua"))("AiLeveling",B)
     HaveQuestData=function() return false end
     eq(d:QuestTitle(id,nil,en),"一定就是这里")
+    eq(d:QuestTitle(78917,nil,"The Heart of the Void"),"虚空之心")
+    eq(B.QuestItemZhCN(270007,"Worn Miner's Waistcord"),"破旧的矿工腰索")
+    eq(B.QuestItemZhCN(270007,"客户端中文名"),"客户端中文名")
+    eq(B.QuestItemZhCN(999999,"Future item"),"Future item")
     eq(d:QuestTitle(id,"任务 #79976",en),"一定就是这里")
     d.cache[id]={id=id,title="一定就是这里"}
     GetQuestID=function() return id end;GetTitleText=function() return en end

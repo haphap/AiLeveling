@@ -1386,6 +1386,7 @@ function UI:UpdateNearby(along)
     local source=point.entityName or entity and point.entityId and entity.Get(point.entityId,"name")
     local kind,id=step.targetKind or point.targetKind,step.targetId or point.targetId
     local item=point.targetName or kind=="item" and db and db.Item and id and db.Item.Get(id,"name")
+    if kind=="item" and A.QuestItemZhCN then item=A.QuestItemZhCN(id,item) end
     if not item and goal.type=="item" then item=title:gsub("^收集%s*","") end
     if item then
         if point.sourceKind=="vendor" then title="购买 "..item

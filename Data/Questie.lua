@@ -577,6 +577,7 @@ end
 
 local function contactName(self,entity,id)
     local name=entity.Get(id,"name")
+    if entity==self.db.Item and A.QuestItemZhCN then return A.QuestItemZhCN(id,name) end
     if entity==self.db.Object and A.contactObjectsZhCN and not chineseTitle(name) then return A.contactObjectsZhCN[id] or name end
     return name
 end
@@ -717,7 +718,7 @@ function D:Target(q, state)
         for _,item in ipairs(sources[3] or {}) do
             local held=((state.bags or {})[item] or 0)>0
             if held or not pickupItem and not next(sources[1] or {}) and not next(sources[2] or {}) then
-                local name=self.db.Item.Get(item,"name") or ("物品 #"..item)
+                local name=contactName(self,self.db.Item,item) or ("物品 #"..item)
                 pickupItem={id=item,held=held,text=(held and "使用「" or "获得并使用「")..name.."」接取任务。"}
                 if held then
                     local p=state.position
@@ -1128,7 +1129,7 @@ function D:ObjectiveTargets(q,state)
                 point.entityKind,point.entityId=kind,id
                 point.targetKind,point.targetId=identity.kind,identity.id
                 point.sourceKind=sourceKind or point.sourceKind
-                if sourceKind=="vendor" then point.targetName=self.db.Item.Get(identity.id,"name") end
+                if sourceKind=="vendor" then point.targetName=contactName(self,self.db.Item,identity.id) end
             end
             checkpoint()
         end
@@ -1353,7 +1354,7 @@ function D:ReferenceObjectiveTargets(q,state)
     for kind=1,3 do
         local entity=kind==1 and self.db.Npc or (kind==2 and self.db.Object or self.db.Item)
         for _,row in ipairs(entries[kind] or {}) do
-            local name=entity.Get(row[1],"name")
+            local name=contactName(self,entity,row[1])
             local description={text=name or ("目标 #"..row[1]),finished=false,
                 targetKind=({"npc","object","item"})[kind],targetId=row[1]}
             local need=row.count

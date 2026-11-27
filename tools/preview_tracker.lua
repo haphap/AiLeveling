@@ -262,6 +262,8 @@ if dungeonPreview then
     A.Navigation.Distance=function() return 1400 end
     C_Map.OpenWorldMap=function(id) A.previewMap=id end
     local giver="维尔德·蓟草"
+    GetLocale=function() return "zhCN" end
+    assert(loadfile("Data/QuestTitles_zhCN.lua"))("AiLeveling",A)
     local rewardNames={[2037]="掘地工之靴",[2036]="陈旧的矿工手套",[270007]="Worn Miner's Waistcord"}
     A.Data={maps={[40]=1436,[1581]=9999},GetQuest=function(_,id) return quests[id] end,
         db={Quest={Get=function(id,field)
