@@ -57,6 +57,46 @@ test("练级区域在首轮行程前和副本内可浏览，搜索不重算路�
     C_Map=oldMap;B.finish()
 end)
 
+test("区域接取地图按真实地图分组，合并附近任务并及时撤掉已接标记",function()
+    local B=setup(true)
+    local browser,oldMap,oldExploration=B.UI.Browser,C_Map,C_MapExplorationInfo
+    C_Map={GetMapInfo=function(id) return {name="地图"..id,mapType=3} end,
+        GetMapArtLayers=function(id) if id==1 then return {{layerWidth=500,layerHeight=250,tileWidth=256,tileHeight=256}} end end,
+        GetMapArtLayerTextures=function() return {111,112} end}
+    C_MapExplorationInfo={GetExploredMapTextures=function() return {{fileDataIDs={113},offsetX=400,offsetY=12,textureWidth=110,textureHeight=31}} end}
+    local q={};for id=1,9 do q[id]=F.Quest(id) end
+    B.Data=F.Data(q);B.Data.maps={[11]=1};B.Data.byArea={[11]={1,2,3,4,5,6,7,8,9}}
+    B.Eligibility=A.Eligibility;B.indexReady=true;B.state.completed[6]=true;q[7].requiredLevel=60
+    local calls,chosen=0
+    function B.Data:Target(quest,state,home)
+        eq(home,1);calls=calls+1
+        if quest.id==5 then return {map=1,x=.1,y=.2,startItemId=10},nil,{text="使用任务物品"} end
+        if quest.id==8 then return {areaOnly=true,map=1,x=.5,y=.5} end
+        if quest.id==9 then return nil,true end
+        assert(quest.id>=2 and quest.id<=4)
+        return {map=quest.id==4 and 2 or 1,x=.3+quest.id*.001,y=.6,entityName="发布者"}
+    end
+    B.Navigation.Pickup=function(_,action) chosen=action;return true end
+    assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
+    B.UI.details:Show();B.UI:SelectTab(10);eq(calls,0)
+    browser.buttons[2].run()
+    local view=browser.regionMap
+    eq(#view.maps[1],2);eq(#view.maps[2],1);eq(#view.other,2);eq(#view.canvas.pins,1)
+    eq(view.canvas.tiles[3].texture,113);eq(view.canvas.pins[1].count:GetText(),2)
+    browser:Detail();eq(calls,6)
+    local pin=view.canvas.pins[1]
+    pin.scripts.OnClick(pin);B.menu[q[3].title].callback()
+    eq(chosen.questId,3);eq(chosen.position.x,.303)
+    B.UI.details:Show()
+    B.state.quests[3]={};B.state.revision=B.state.revision+1;browser:Detail()
+    eq(#pin.rows,1);eq(pin.count:GetText(),"")
+    view.selector.scripts.OnClick(view.selector);B.menu["地图2 · 1 项"].callback()
+    assert(not view.canvas:IsShown());assert(view.note:GetText():find("底图暂不可用",1,true))
+    assert(browser.regionSections[1].columns[1]:GetText():find(q[4].title,1,true))
+    browser.buttons[2].run();assert(browser.regionChart:IsShown() and not view:IsShown())
+    C_Map,C_MapExplorationInfo=oldMap,oldExploration;B.finish()
+end)
+
 test("完整界面显示任务和详情，初始化失败显示可复制错误",function()
     local B=setup(true)
     B.Initialize=function(self) self.UI:Render() end

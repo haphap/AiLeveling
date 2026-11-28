@@ -153,7 +153,7 @@ local function setup(fullUI,daylight,nameplates)
     assert(loadfile("UI/Settings.lua"))("AiLeveling",B)
     local U=B.UI
     if fullUI then
-        for _,name in ipairs({"Dungeon","Gear","Plan","Chains","Services","Browser"}) do
+        for _,name in ipairs({"Dungeon","Gear","Plan","Chains","Services","Browser","RegionMap"}) do
             assert(loadfile("UI/"..name..".lua"))("AiLeveling",B)
         end
         U:Create()

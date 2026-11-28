@@ -742,6 +742,7 @@ function B:Detail()
     local regionLists
     local detailTop=self.title:GetStringHeight()+18
     local regionPage=e and self.mode==10
+    if not regionPage then self.regionMapOpen=false end
     local guiding=regionPage and A.char.regionTarget and A.char.regionTarget.map==(e.map or e.region and e.region.map)
     if regionPage then
         self:Action(1,guiding and "结束区域规划" or "开始区域规划",function()
@@ -750,10 +751,22 @@ function B:Detail()
             if not ok then A:Message(why) end
             self:Refresh(10)
         end,(guiding or A.ready and A.indexReady and A.state.completionKnown~=false and not A.state.inInstance) and true or false)
+        local mapReady=A.indexReady and A.state.completionKnown~=false
+        self:Action(2,self.regionMapOpen and "任务列表" or "接取地图",function()
+            self.regionMapOpen=not self.regionMapOpen
+            self.info:SetVerticalScroll(0);self:Detail()
+        end,mapReady or self.regionMapOpen)
         local actionsHeight=self:PlaceActions(0,true)
-        self.title:SetWidth(math.max(1,self.info:GetWidth()-self.buttons[1]:GetWidth()-metrics.gap))
+        self.title:SetWidth(math.max(1,self.info:GetWidth()-self.buttons[1]:GetWidth()-self.buttons[2]:GetWidth()-2*metrics.gap))
         detailTop=math.max(self.title:GetStringHeight()+18,actionsHeight+metrics.gap)
+        if self.regionMapOpen and mapReady then
+            if self.regionChart then self.regionChart:Hide() end
+            self.detail:Hide()
+            self.infoChild:SetHeight(self:ShowRegionMap(e,detailTop,questLink))
+            return
+        end
     end
+    if self.regionMap then self.regionMap:Hide() end
     local stats,filter
     if e and e.catalogZone and A.state.completionKnown~=false then
         stats=regionProgress(e.catalogZone,A.state)

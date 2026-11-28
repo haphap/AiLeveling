@@ -687,7 +687,7 @@ local function contactHint(point,spawn,turnin)
     return point
 end
 
-function D:Target(q, state)
+function D:Target(q, state, pickupMap)
     local status = A.State.Status(state, q.id)
     local active = state.quests[q.id]
     local observations=not active and state.questOffers
@@ -734,7 +734,14 @@ function D:Target(q, state)
     local function nearer(point,priority)
         if priority<bestPriority then return false end
         local distance=A.Navigation:Distance(state.position,point)
-        if priority==bestPriority and not nearerSource(state,point,distance,best,bestDistance) then return false end
+        if best and priority==bestPriority then
+            if pickupMap then
+                -- Browsing a zone prefers a giver on that map and needs no travel plan.
+                if (point.map==pickupMap)~=(best.map==pickupMap) then
+                    if best.map==pickupMap then return false end
+                elseif not distance or bestDistance and distance>=bestDistance then return false end
+            elseif not nearerSource(state,point,distance,best,bestDistance) then return false end
+        end
         best,bestDistance,bestPriority=point,distance,priority
         return true
     end
