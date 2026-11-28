@@ -38,11 +38,13 @@ function R:Apply()
         return
     end
     if not self.button then
-        local f=CreateFrame("Button","AiLevelingRareAlert",UIParent,"SecureActionButtonTemplate,BackdropTemplate")
+        local f=CreateFrame("Button","AiLevelingRareAlert",UIParent,"SecureActionButtonTemplate")
         self.button=f
         f:SetPoint("BOTTOMLEFT",A.UI.frame,"TOPLEFT",0,8)
-        f:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1})
-        A.UI:BindBackground(f,A.UI.colors.hud,"hudTransparency")
+        A.UI:PanelBackground(f,A.UI.colors.hud,"hudTransparency")
+        f.accent=f:CreateTexture(nil,"ARTWORK")
+        f.accent:SetPoint("TOPLEFT",1,-A.UI.metrics.radius);f.accent:SetPoint("BOTTOMLEFT",1,A.UI.metrics.radius)
+        f.accent:SetWidth(2)
         f:RegisterForClicks("AnyUp","AnyDown");f:SetAttribute("type1","macro")
         f.heading=A.UI:Text(f,13,{1,0.82,0.35});f.heading:SetPoint("TOPLEFT",12,-9)
         f.name=A.UI:Text(f,17);f.name:SetPoint("TOPLEFT",12,-28);f.name:SetWidth(296)
@@ -61,7 +63,7 @@ function R:Apply()
     f.heading:SetText((row.elite and "发现稀有精英" or "发现稀有")..(row.level and (" · "..row.level.." 级") or ""))
     f.name:SetText(row.name)
     f:SetSize(320,math.max(82,54+f.name:GetStringHeight()))
-    f:SetScale(A.settings.scale or 1);f:SetBackdropBorderColor(A.UI:Accent())
+    f:SetScale(A.settings.scale or 1);f.accent:SetColorTexture(A.UI:Accent())
     f:SetAttribute("macrotext1","/targetexact "..row.name);f:Show()
 end
 

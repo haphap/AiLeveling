@@ -152,6 +152,30 @@ function UI:Icon(name,size)
     return "|T"..UI.IconTexture(name)..":"..size..":"..size..":0:0|t"
 end
 
+local function roundedFill(frame,radius)
+    local surface={}
+    local function texture()
+        local t=frame:CreateTexture(nil,"BACKGROUND",nil,-7)
+        t:SetTexture("Interface\\Buttons\\WHITE8X8")
+        surface[#surface+1]=t
+        return t
+    end
+    for _,corner in ipairs({{"TOPLEFT",0,1,0,1},{"TOPRIGHT",1,0,0,1},
+        {"BOTTOMLEFT",0,1,1,0},{"BOTTOMRIGHT",1,0,1,0}}) do
+        local t=texture();t:SetSize(radius,radius);t:SetPoint(corner[1])
+        t:SetTexture(media.."corner.tga");t:SetTexCoord(unpack(corner,2))
+        surface[corner[1]]=t
+    end
+    local center=texture();center:SetPoint("TOPLEFT",radius,0);center:SetPoint("BOTTOMRIGHT",-radius,0)
+    local left=texture();left:SetPoint("TOPLEFT",0,-radius);left:SetPoint("BOTTOMRIGHT",frame,"BOTTOMLEFT",radius,radius)
+    local right=texture();right:SetPoint("TOPLEFT",frame,"TOPRIGHT",-radius,-radius);right:SetPoint("BOTTOMRIGHT",0,radius)
+    return surface
+end
+
+local function tintFill(surface,...)
+    for _,t in ipairs(surface) do t:SetVertexColor(...) end
+end
+
 function UI:Rounded(frame,radius,border)
     if self.daylight then
         if border then self:DaylightShell(frame,0) end
@@ -161,21 +185,7 @@ function UI:Rounded(frame,radius,border)
         end
         return
     end
-    frame.surface={}
-    local function texture()
-        local t=frame:CreateTexture(nil,"BACKGROUND",nil,-7)
-        t:SetTexture("Interface\\Buttons\\WHITE8X8")
-        frame.surface[#frame.surface+1]=t
-        return t
-    end
-    for _,corner in ipairs({{"TOPLEFT",0,1,0,1},{"TOPRIGHT",1,0,0,1},
-        {"BOTTOMLEFT",0,1,1,0},{"BOTTOMRIGHT",1,0,1,0}}) do
-        local t=texture();t:SetSize(radius,radius);t:SetPoint(corner[1])
-        t:SetTexture(media.."corner.tga");t:SetTexCoord(unpack(corner,2))
-    end
-    local center=texture();center:SetPoint("TOPLEFT",radius,0);center:SetPoint("BOTTOMRIGHT",-radius,0)
-    local left=texture();left:SetPoint("TOPLEFT",0,-radius);left:SetPoint("BOTTOMRIGHT",frame,"BOTTOMLEFT",radius,radius)
-    local right=texture();right:SetPoint("TOPLEFT",frame,"TOPRIGHT",-radius,-radius);right:SetPoint("BOTTOMRIGHT",0,radius)
+    frame.surface=roundedFill(frame,radius)
     local material=frame:CreateTexture(nil,"BACKGROUND",nil,-6)
     material:SetTexture("Interface\\FrameGeneral\\UI-Background-Rock")
     material:SetHorizTile(true);material:SetVertTile(true)
@@ -203,7 +213,7 @@ function UI:Rounded(frame,radius,border)
         end
     end
     frame.SetBackdropColor=function(self,...)
-        for _,t in ipairs(self.surface) do t:SetVertexColor(...) end
+        tintFill(self.surface,...)
         local _,_,_,alpha=...
         material:SetVertexColor(0.65,0.70,0.82,(alpha or 1)*0.12)
         if border then
@@ -230,10 +240,9 @@ function UI:BindBackground(frame,base,key,setColor)
     paint()
 end
 
-function UI:FlatBackground(frame,base,key)
-    local fill=frame:CreateTexture(nil,"BACKGROUND")
-    fill:SetAllPoints(frame)
-    self:BindBackground(fill,base,key,fill.SetColorTexture)
+function UI:PanelBackground(frame,base,key)
+    local fill=roundedFill(frame,metrics.radius)
+    self:BindBackground(fill,base,key,tintFill)
     return fill
 end
 
@@ -256,7 +265,7 @@ end
 function UI:Panel(name, parent, width, height,background,key)
     local f = CreateFrame("Frame", name, parent or UIParent, "BackdropTemplate")
     f:SetSize(width, height)
-    if self.daylight then self:DaylightShell(f,nil,background,key)
+    if self.daylight then self:PanelBackground(f,background or colors.bg,key or "detailTransparency")
     else
         self:Rounded(f,metrics.radius,colors.border)
         local base=background or colors.bg
@@ -457,7 +466,7 @@ function UI:Create()
     self:CreateTracker()
     self.details=CreateFrame("Frame","AiLevelingDetails",UIParent)
     self.details:SetSize(1000,600)
-    self.detailBackground=self:FlatBackground(self.details,colors.hud,"detailTransparency")
+    self.detailBackground=self:PanelBackground(self.details,colors.hud,"detailTransparency")
     self.details:SetPoint("CENTER")
     local p=A.settings.detailPosition
     if p then self.details:ClearAllPoints();self.details:SetPoint(p[1],UIParent,p[2],p[3],p[4]) end

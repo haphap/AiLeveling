@@ -224,7 +224,18 @@ function Q:LayoutTargetList(mark)
         -- Secure rows share the card's fixed lower edge while the guide above resizes in combat.
         list=CreateFrame("Frame",nil,A.UI.navAnchor)
         list:SetPoint("TOPLEFT",A.UI.navAnchor,"BOTTOMLEFT",0,0)
-        list.fill=A.UI:FlatBackground(list,A.UI.colors.navigation,"hudTransparency")
+        list.fill=A.UI:PanelBackground(list,A.UI.colors.navigation,"hudTransparency")
+        -- Round the outside of the stack, including when either card is visible on its own.
+        local nav=A.UI.navFrame
+        local function joinCards()
+            local path=nav:IsShown() and list:IsShown() and "Interface\\Buttons\\WHITE8X8" or A.UI.IconTexture("corner")
+            local upper=A.UI.tracker.navBackground
+            upper.BOTTOMLEFT:SetTexture(path);upper.BOTTOMRIGHT:SetTexture(path)
+            list.fill.TOPLEFT:SetTexture(path);list.fill.TOPRIGHT:SetTexture(path)
+        end
+        nav:HookScript("OnShow",joinCards);nav:HookScript("OnHide",joinCards)
+        list:HookScript("OnShow",joinCards);list:HookScript("OnHide",joinCards)
+        joinCards()
         list.rule=A.UI.navFrame:CreateTexture(nil,"ARTWORK")
         list.rule:SetColorTexture(unpack(A.UI.colors.line));list.rule:SetHeight(1)
         list.rows={};self.targetList=list
