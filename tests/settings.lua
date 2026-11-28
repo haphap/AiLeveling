@@ -80,7 +80,7 @@ test("区域统计下的地图和列表联动，按当前任务阶段更新位�
     end
     function B.Data:ObjectiveTargets(quest,state)
         eq(state.browseMap,1)
-        return {{map=1,x=.1,y=.1,objectiveIndex=1},{map=1,x=.9,y=.1,objectiveIndex=2}}
+        return {{map=1,x=.302,y=.6,objectiveIndex=1},{map=1,x=.9,y=.1,objectiveIndex=2}}
     end
     B.Navigation.Navigate=function(_,action) chosen=action;return true end
     assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
@@ -95,12 +95,14 @@ test("区域统计下的地图和列表联动，按当前任务阶段更新位�
     eq(view.canvas:GetWidth(),600);eq(view.canvas:GetHeight(),300)
     eq(view.canvas.pins[1].x,480);eq(view.canvas.pins[1].y,270)
     local pin=view.canvas.pins[2];eq(pin.number:GetText(),"2");assert(pin.badge:IsShown())
+    eq(pin.icon.texture,B.UI.IconTexture("accept"))
     pin.scripts.OnClick(pin);B.menu["接取 · "..q[3].title].callback()
     eq(chosen.questId,3);eq(chosen.kind,"accept");eq(chosen.position.x,.303)
     B.UI.details:Show()
     B.state.quests[3]={objectives={{text="甲"},{text="乙"}}};B.state.revision=B.state.revision+1
     chart.legend[3].scripts.OnClick()
     eq(#view.maps[1],2);assert(not view.maps[2])
+    eq(pin.icon.texture,B.UI.IconTexture("active"))
     assert(not pin.badge:IsShown())
     assert(browser.title:GetText():find("本图 1 项",1,true) and not browser.title:GetText():find("|H",1,true))
     pin.scripts.OnClick(pin);eq(chosen.kind,"objective");eq(chosen.objectiveIndex,2)
@@ -108,6 +110,7 @@ test("区域统计下的地图和列表联动，按当前任务阶段更新位�
     eq(#view.maps[1],0);assert(not pin:IsShown() and view.canvas:IsShown())
     chart.legend[2].scripts.OnClick()
     eq(#view.maps[1],2);eq(view.maps[1][1].point.x,.8)
+    eq(view.canvas.pins[1].icon.texture,B.UI.IconTexture("turnin"))
     assert(browser.regionSections[1].columns[1]:GetText():find("收件人",1,true))
     local p=view.canvas.pins[1];p.scripts.OnClick(p);B.menu["交付 · "..q[3].title].callback();eq(chosen.kind,"turnin")
     B.UI.details:Show();B.state.quests[3]=nil;B.state.completed[3]=true;B.state.revision=B.state.revision+1
@@ -121,6 +124,12 @@ test("区域统计下的地图和列表联动，按当前任务阶段更新位�
     assert(browser.title:GetText():find(browser.selected.title,1,true) and browser.title:GetText():find("地图2 1 项",1,true))
     assert(not view.canvas:IsShown());assert(view.note:GetText():find("底图暂不可用",1,true))
     chart.legend[4].scripts.OnClick();assert(view.canvas:IsShown() and chart:IsShown());eq(view.shownMap,1)
+    -- A visit adds this off-catalog objective after the pickup at the same spot.
+    q[10]=F.Quest(10);B.state.quests[10]={objectives={{text="甲"},{text="乙"}}}
+    browser.selected.region={map=1,choices={{questId=10}},pickups={},handins={},revisit={}}
+    B.state.revision=B.state.revision+1;browser:Detail()
+    local mixed=view.canvas.pins[2]
+    eq(mixed.rows[1].key,"open");eq(#mixed.rows,2);eq(mixed.icon.texture,B.UI.IconTexture("active"))
     C_Map,C_MapExplorationInfo=oldMap,oldExploration;B.finish()
 end)
 

@@ -334,6 +334,7 @@ function N:MapPoints()
     local status=self:RouteStatus(self.plan,A.state)
     local upcoming=self.upcomingManual==self.manual and (self.manual or not status) and self.upcomingQuest or nil
     local function add(action,required,catalog,lowOffer)
+        if action and action.kind=="accept" and (A.state.quests or {})[action.questId] then return end
         if action and A.ShortestPath and A.ShortestPath:For(action) and action~=current then return end
         if N.StaleAction(action,A.state,sequence.plan) then return end
         local pos=N.Target(action)
@@ -895,11 +896,14 @@ function N:DrawPins()
     for order,point in ipairs(self:MapPoints()) do
         local action,pos=point.action,point.position
         local nearby=availableAction(action) and action
-        if not nearby then
+        if not nearby or (not point.order and #point.actions>1) then
+            local best=0
             for _,other in ipairs(point.actions) do
                 if availableAction(other) then
-                    nearby=other
-                    if other.kind~="accept" or not (point.lowOffers and point.lowOffers[other.questId]) then break end
+                    local priority=other.kind=="turnin" and 4 or other.kind=="objective" and 3 or
+                        (point.lowOffers and point.lowOffers[other.questId]) and 1 or 2
+                    if priority>best then nearby,best=other,priority end
+                    if best==4 then break end
                 end
             end
         end

@@ -207,7 +207,7 @@ def compass(polygon, oval, line, base, shade, light):
 
 
 for name, colors, painter in [
-    ('accept',gold,exclamation),('turnin',jade,question),('done',jade,check),
+    ('accept',gold,exclamation),('active',water,crosshair),('turnin',jade,question),('done',jade,check),
     ('objective',steel,sword),('collect',violet,sack),('talk',water,speech),
     ('interact',amber,hand),('spell',violet,lightning),('location',steel,pin),
     ('target',amber,crosshair),('entry',silver,gate),('class',jade,shield),

@@ -286,7 +286,7 @@ test("普通任务地图点只显示可执行的接取、目标和交付",functi
     local kill={kind="objective",questId=108,objectiveIndex=2,targetKind="npc",targetId=1000,
         title="击杀目标",position={map=1,x=0.2,y=0.4}}
     local turnin={kind="turnin",questId=109,title="已完成",position={map=1,x=0.3,y=0.4}}
-    B.state.quests[108]={objectives={{finished=false},{finished=false}}};B.state.quests[109]={ready=true}
+    B.state.quests[108]={objectives={{type="item",finished=false},{type="monster",finished=false}}};B.state.quests[109]={ready=true}
     choices[#choices+1]={questId=108,actions={collect},stages={collect,kill,
         {kind="turnin",questId=108,expected=true,position={map=2,x=0.1,y=0.1}}}}
     choices[#choices+1]={questId=109,actions={turnin},stages={turnin}}
@@ -301,6 +301,10 @@ test("普通任务地图点只显示可执行的接取、目标和交付",functi
     eq(pins[1].texture.texture,B.UI.IconTexture("collect"))
     eq(pins[2].texture.texture,pins[1].texture.texture)
     eq(pins[3].texture.texture,B.UI.IconTexture("accept"))
+    local pickupSpot=choices[1].actions[1].position
+    kill.position=pickupSpot;B.Navigation:DrawPins()
+    for _,i in ipairs({3,4}) do eq(pins[i].action,kill);eq(pins[i].texture.texture,B.UI.IconTexture("objective")) end
+    kill.position={map=1,x=.2,y=.4}
     assert(B.Navigation:Navigate(choices[1].actions[1]));eq(#B.Navigation:MapPoints(),11)
     eq(B.Navigation:Current(),choices[1].actions[1]);eq(pins[1].point.current,true)
     B.Navigation:ClearManual();B.state.quests[108].objectives[1].finished=true;B.state.revision=B.state.revision+1

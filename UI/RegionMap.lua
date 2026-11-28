@@ -3,8 +3,8 @@ local UI=A.UI
 local B=UI.Browser
 
 local phases={
-    open={kind="accept",label="接取"},active={kind="objective",label="目标"},
-    ready={kind="turnin",label="交付"},done={kind="done",label="已交付"},
+    open={kind="accept",label="接取",priority=1},active={kind="objective",icon="active",label="目标",priority=2},
+    ready={kind="turnin",label="交付",priority=3},done={kind="done",label="已交付",priority=0},
 }
 
 local function mapName(map)
@@ -198,17 +198,18 @@ local function placePins(canvas,rows,width,height)
         if not pin then
             used=used+1
             pin=canvas.pins[used] or newPin(canvas);canvas.pins[used]=pin
-            pin.x,pin.y,pin.rows=x,y,{}
-            local kind=phases[r.key].kind
-            local icon=r.key=="active" and UI.QuestIcon(kind,{kind=kind,questId=r.quest.id,objectiveIndex=r.point.objectiveIndex,position=r.point}) or kind
-            pin.icon:SetTexture(UI.IconTexture(icon))
-            pin.icon:SetDesaturated(r.blocked~=nil)
+            pin.x,pin.y,pin.rows,pin.primary=x,y,{},r
             pin:SetPoint("CENTER",canvas,"TOPLEFT",x,-y);pin:SetSize(size,size);pin:Show()
-        elseif not r.blocked then pin.icon:SetDesaturated(false) end
+        elseif phases[r.key].priority>phases[pin.primary.key].priority or (pin.primary.blocked and not r.blocked) then
+            pin.primary=r
+        end
         table.insert(pin.rows,r)
     end
     for i=1,used do
         local pin=canvas.pins[i]
+        local phase=phases[pin.primary.key]
+        pin.icon:SetTexture(UI.IconTexture(phase.icon or phase.kind))
+        pin.icon:SetDesaturated(pin.primary.blocked~=nil)
         UI:SetMapPinNumber(pin,#pin.rows>1 and #pin.rows,width)
     end
     for i=used+1,#canvas.pins do canvas.pins[i]:Hide() end
