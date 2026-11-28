@@ -284,32 +284,36 @@ function UI:Text(parent, size, color, flags)
     return text
 end
 
-function UI:SetMapPinNumber(pin,value,mapWidth,current)
-    local badge=pin.badge
+function UI:SetMapPinNumber(pin,value,mapWidth,current,quantity)
+    local field=quantity and "countBadge" or "badge"
+    local badge=pin[field]
     if not value then
         if badge then badge:Hide() end
         return
     end
     if not badge then
-        badge=CreateFrame("Frame",nil,pin);pin.badge=badge
+        badge=CreateFrame("Frame",nil,pin);pin[field]=badge
         badge:EnableMouse(false)
         local disc=badge:CreateTexture(nil,"BACKGROUND")
         disc:SetTexture(media.."map-markers.tga");disc:SetTexCoord(0,.5,0,1);disc:SetAllPoints()
         disc:SetVertexColor(.055,.075,.12)
         badge.rim=badge:CreateTexture(nil,"BORDER")
         badge.rim:SetTexture(media.."map-markers.tga");badge.rim:SetTexCoord(.5,1,0,1);badge.rim:SetAllPoints()
-        pin.number=badge:CreateFontString(nil,"OVERLAY");pin.number:SetPoint("CENTER")
-        pin.number:SetTextColor(1,1,1)
+        badge.number=badge:CreateFontString(nil,"OVERLAY");badge.number:SetPoint("CENTER")
+        badge.number:SetTextColor(1,1,1)
+        if not quantity then pin.number=badge.number end
     end
     local scale=self:FontScale()
-    local size=math.max(13,math.floor(15*scale+.5))
-    if badge.fontSize~=size then pin.number:SetFont(STANDARD_TEXT_FONT,size,"OUTLINE");badge.fontSize=size end
-    pin.number:SetText(tostring(value))
-    local h=size+5
-    local w=math.max(h,math.ceil(pin.number:GetStringWidth())+8)
+    local size=quantity and math.max(11,math.floor(12*scale+.5)) or math.max(13,math.floor(15*scale+.5))
+    if badge.fontSize~=size then badge.number:SetFont(STANDARD_TEXT_FONT,size,"OUTLINE");badge.fontSize=size end
+    badge.number:SetText(quantity and "×"..value or tostring(value))
+    local h=size+(quantity and 3 or 5)
+    local w=math.max(h,math.ceil(badge.number:GetStringWidth())+(quantity and 5 or 8))
     local dx,dy=pin:GetWidth()/2-2*scale,pin:GetHeight()/2-2*scale
     -- Turn the badge inward at the edge without moving the quest pin.
-    if mapWidth then
+    if quantity then
+        dx,dy=0,-(pin:GetHeight()+h)/2+2*scale
+    elseif mapWidth then
         dx,dy=math.max(dx,w/2),math.max(dy,h/2)
         if pin.x+dx+w/2>mapWidth then dx=-dx end
         if pin.y-dy-h/2<0 then dy=-dy end

@@ -314,11 +314,19 @@ test("普通任务地图点只显示可执行的接取、目标和交付",functi
     for _,i in ipairs({3,4}) do
         local pin=pins[i];eq(pin.action,turnin);eq(pin.sides[1].action,kill)
         local offer=pin.sides[2];eq(#offer.phaseActions,2);eq(offer.action.kind,"accept")
+        eq(pin.countBadge.number.value,"×1");eq(pin.sides[1].countBadge.number.value,"×1")
+        eq(offer.countBadge.number.value,"×2")
         offer.scripts.OnClick(offer,"LeftButton")
         assert(B.menu[book.title] and B.menu[other.title] and not B.menu[kill.title])
     end
     B.menu[other.title].callback();eq(B.Navigation:Current(),other)
     B.Navigation:ClearManual()
+    local collectSpot=collect.position
+    collect.position=pickupSpot;B.Navigation:DrawPins()
+    for _,i in ipairs({1,2}) do
+        local pin=pins[i];eq(pin.action,collect);eq(#pin.phaseActions,2);eq(pin.countBadge.number.value,"×1")
+    end
+    collect.position=collectSpot
     other.position,turnin.position=otherSpot,recipient
     kill.position={map=1,x=.2,y=.4};B.Navigation:DrawPins()
     assert(not pins[3].sides[1]:IsShown() and not pins[4].sides[2]:IsShown())

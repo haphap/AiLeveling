@@ -103,7 +103,7 @@ test("区域统计下的地图和列表联动，按当前任务阶段更新位�
     chart.legend[3].scripts.OnClick()
     eq(#view.maps[1],2);assert(not view.maps[2])
     eq(pin.icon.texture,B.UI.IconTexture("active"))
-    assert(not pin.badge:IsShown())
+    assert(pin.badge:IsShown());eq(pin.number:GetText(),"1")
     assert(browser.title:GetText():find("本图 1 项",1,true) and not browser.title:GetText():find("|H",1,true))
     pin.scripts.OnClick(pin);eq(chosen.kind,"objective");eq(chosen.objectiveIndex,2)
     B.UI.details:Show();B.state.quests[3].ready=true;B.state.revision=B.state.revision+1;browser:Detail()
@@ -142,6 +142,7 @@ test("区域统计下的地图和列表联动，按当前任务阶段更新位�
     B.UI.details:Show();B.state.revision=B.state.revision+1;browser:Detail()
     local ready=view.canvas.pins[1]
     eq(ready.icon.texture,B.UI.IconTexture("turnin"));eq(#ready.rows,1)
+    for _,mark in ipairs({ready,active,offer}) do eq(mark.number:GetText(),"1");assert(mark.badge:IsShown()) end
     assert(ready.x<active.x and active.x<offer.x)
     chart.legend[3].scripts.OnClick()
     assert(not offer:IsShown() and not view.canvas.pins[4]:IsShown())

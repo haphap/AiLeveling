@@ -211,11 +211,10 @@ local function placePins(canvas,rows,width,height)
     end
     local used,links=0,0
     for _,site in ipairs(sites) do
-        local gap=size*1.15
-        for _,group in pairs(site.groups) do if group.count>1 then gap=size*1.55;break end end
+        local gap=size*1.55
         local span=(site.count-1)*gap
         local x,y=site.sumX/site.count,site.sumY/site.count
-        if span>0 then x=math.max(size/2,math.min(width-size/2-span,x-span/2)) end
+        if span>0 then x=math.max(size/2,math.min(width-gap-span,x-span/2)) end
         for slot=1,site.count-1 do
             links=links+1;canvas.links=canvas.links or {}
             local line=canvas.links[links] or canvas:CreateTexture(nil,"OVERLAY");canvas.links[links]=line
@@ -231,7 +230,7 @@ local function placePins(canvas,rows,width,height)
                 pin:SetPoint("CENTER",canvas,"TOPLEFT",x,-y);pin:SetSize(size,size)
                 pin.icon:SetTexture(UI.IconTexture(phases[key].icon or phases[key].kind))
                 pin.icon:SetDesaturated(group.blocked)
-                UI:SetMapPinNumber(pin,group.count>1 and group.count,width)
+                UI:SetMapPinNumber(pin,group.count,width)
                 pin:Show();x=x+gap
             end
         end

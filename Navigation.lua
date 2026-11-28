@@ -869,18 +869,19 @@ local function syncNativeOffers()
 end
 
 -- Only split actions the character can perform now. Future stages stay on the itinerary.
-local function mixedQuestActions(actions,nearby)
-    if not nearby or #actions<2 then return end
-    local mixed=false
+local function questActionsByKind(actions,nearby)
+    if not nearby then return end
+    local groups,seen={},{}
     for _,action in ipairs(actions) do
-        if action.kind~=nearby.kind and availableAction(action) then mixed=true;break end
-    end
-    if not mixed then return end
-    local groups={}
-    for _,action in ipairs(actions) do
-        if availableAction(action) then
-            local list=groups[action.kind] or {}
-            groups[action.kind]=list;list[#list+1]=action
+        if action.questId and availableAction(action) then
+            local list=groups[action.kind]
+            if not list then list={count=0};groups[action.kind]=list end
+            list[#list+1]=action
+            -- An accepted quest can have several objectives at the same spot.
+            if not seen[action.questId] then
+                list.count=list.count+1;seen[action.questId]=true
+            end
+            if action.kind~=nearby.kind then groups.mixed=true end
         end
     end
     return groups
@@ -888,7 +889,8 @@ end
 
 local function stylePin(pin,point,action,r,g,b,hitOnly,groups)
     pin.point,pin.action=point,action
-    pin.phaseActions=groups and groups[action.kind]
+    local phase=groups and groups[action.kind]
+    pin.phaseActions=phase and (groups.mixed or #phase>1) and phase or nil
     if not pin.mini then showGlyph(pin,true) end
     pin:SetAlpha(hitOnly and 0 or 1)
     local size=(pin.mini and 19 or 24)+(point.current and 4 or point.lowOnly and -4 or 0)
@@ -897,10 +899,13 @@ local function stylePin(pin,point,action,r,g,b,hitOnly,groups)
     pin.ring:SetSize(size+(point.current and 5 or 0),size+(point.current and 5 or 0))
     if point.current then pin.ring:SetVertexColor(r,g,b) else pin.ring:SetVertexColor(0.43,0.39,0.37) end
     if not pin.mini then A.UI:SetMapPinNumber(pin,point.order,nil,point.current) end
+    A.UI:SetMapPinNumber(pin,phase and phase.count,nil,false,true)
     pin.texture:SetTexture(actionTexture(action))
     pin.texture:SetDesaturated(point.lowOnly==true)
     local used=0
     if groups then
+        local previousX=0
+        local previousWidth=math.max(size,phase and pin.countBadge:GetWidth() or 0)
         for _,kind in ipairs({"turnin","objective","accept"}) do
             local actions=groups[kind]
             if actions and kind~=action.kind then
@@ -916,7 +921,10 @@ local function stylePin(pin,point,action,r,g,b,hitOnly,groups)
                 side:SetSize(w,w);side.texture:SetSize(w-3,w-3);side.ring:SetSize(w,w)
                 side.ring:SetVertexColor(.43,.39,.37);side.texture:SetTexture(actionTexture(side.action))
                 side.texture:SetDesaturated(not not dim);showGlyph(side,true)
-                local dx=(size+w)/2+2+(used-1)*(w+2)
+                A.UI:SetMapPinNumber(side,actions.count,nil,false,true)
+                local width=math.max(w,side.countBadge:GetWidth())
+                local dx=previousX+(previousWidth+width)/2+2
+                previousX,previousWidth=dx,width
                 side:SetPoint("CENTER",pin,"CENTER",point.position.x>.5 and -dx or dx,0);side:Show()
             end
         end
@@ -969,7 +977,7 @@ function N:DrawPins()
         end
         -- A walk ending at the quest pin should show what to do on arrival.
         if nearby and (not point.current or nearby.questId==action.questId and (action.kind=="move" or action.kind=="approach")) then action=nearby end
-        local groups=mixedQuestActions(point.actions,nearby)
+        local groups=questActionsByKind(point.actions,nearby)
         local index=(order-1)*2
         -- Keep grouped quest tooltips even when WaypointUI draws the destination.
         local delegated=point.current and self.waypointDisplay=="itinerary" and #point.actions==1
