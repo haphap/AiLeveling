@@ -254,10 +254,11 @@ test("后续任务按真实日志区分已接和未接且接取后更新进度",
     T.region.scripts.OnClick();eq(browser.selection[10],"map:2")
     browser.search:SetText("其他地方");browser.search.scripts.OnTextChanged(browser.search)
     eq(#browser.filtered,0);T.region:Click();eq(browser.selected.region.map,2);eq(browser.search:GetText(),"")
-    assert(browser.detail.value:find("出发前交付",1,true))
-    assert(browser.detail.value:find("到达后接取",1,true))
-    assert(browser.detail.value:find("22级回访",1,true))
-    assert(browser.detail.value:find("|Hquest:4:0|h",1,true))
+    local sections=browser.regionSections
+    assert(sections[1].heading.value:find("出发前交付",1,true))
+    assert(sections[2].heading.value:find("到达后接取",1,true))
+    assert(sections[2].columns[1].value:find("|Hquest:4:0|h",1,true))
+    assert(sections[4].columns[1].value:find("22级回访",1,true))
     current.revisit[2]={choice=B.plan.taskChoices[4],level=24}
     B.plan.regionPlan.destination=nil;B.UI:RenderTracker()
     eq(rows[3].value.value,"22级起 · 2项任务");eq(rows[2].value.shown,false)

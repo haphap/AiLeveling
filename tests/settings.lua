@@ -33,12 +33,19 @@ test("练级区域在首轮行程前和副本内可浏览，搜索不重算路�
     eq(chart.values[1]:GetText(),"20%");eq(chart.values[2]:GetText(),"4 项");eq(chart.values[3]:GetText(),"≥ 400")
     assert(chart.note:GetText():find("1 项经验待确认",1,true))
     chart.legend[2].scripts.OnClick()
-    assert(browser.detail:GetText():find("|Hquest:6:",1,true) and not browser.detail:GetText():find("|Hquest:1:",1,true))
+    local sections=browser.regionSections
+    assert(sections[1].columns[1]:GetText():find("|Hquest:6:",1,true) and not sections[2]:IsShown())
     chart.legend[2].scripts.OnClick()
-    assert(browser.detail:GetText():find("|Hquest:1:",1,true))
+    assert(sections[2].columns[1]:GetText():find("|Hquest:1:",1,true))
+    eq(sections[1].point[3],sections[2].point[3]);assert(sections[2].point[2]>0)
+    assert(sections[3].columns[2]:IsShown() and sections[3].point[3]<sections[2].point[3])
+    local width=browser.info:GetWidth()
+    browser.info:SetWidth(300);browser:Detail()
+    assert(sections[2].point[3]<sections[1].point[3] and not sections[3].columns[2]:IsShown())
+    browser.info:SetWidth(width)
     B.state.completed[2]=true;browser:Detail()
     eq(chart.values[1]:GetText(),"40%");eq(chart.values[3]:GetText(),"400")
-    B.state.completionKnown=false;browser:Detail();assert(not chart:IsShown())
+    B.state.completionKnown=false;browser:Detail();assert(not chart:IsShown() and not sections[1]:IsShown())
     B.state.completionKnown=true
     local visit={map=2,title="区域2",choices={{questId=3,title=quests[3].title}},pickups={},handins={},revisit={},xp=0,unknownXP=0}
     B.plan={regions={visit}};B.UI:RefreshDetails()

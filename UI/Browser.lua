@@ -695,19 +695,63 @@ function B:RegionChart(zone,top,stats)
     return top+chart:GetHeight()+gap
 end
 
-local function regionQuestList(lines,group,heading,dimmed)
-    if #group==0 then return end
-    local entries={color(muted,heading.."  ·  "..#group.." 项")}
-    for _,q in ipairs(group) do
-        local active=A.state.quests[q.id]
-        local level=q.questLevel and q.questLevel>0 and ("["..q.questLevel.."] ") or ""
-        entries[#entries+1]=level..questLink(q.id,active and active.title or q.title,nil,dimmed)
+-- Keep each quest link and its wrapped description together in one column.
+function B:LayoutRegionLists(groups,top)
+    self.regionSections=self.regionSections or {}
+    local scale,width=A.UI:FontScale(),self.info:GetWidth()
+    local gutter=metrics.section*scale
+    local half=math.floor((width-gutter)/2)
+    local wide=half>=180*scale
+    local function draw(i,x,y,span,split)
+        local group,section=groups[i],self.regionSections[i]
+        if not section then
+            section=CreateFrame("Frame",nil,self.infoChild);self.regionSections[i]=section
+            enableDetailLinks(section)
+            section.heading=A.UI:Text(section,"guideAction",colors.white)
+            section.heading:SetPoint("TOPLEFT")
+            section.columns={A.UI:Text(section,"guideBody",colors.white),A.UI:Text(section,"guideBody",colors.white)}
+        end
+        section:SetPoint("TOPLEFT",x,-y);section:SetWidth(span);section:Show()
+        section.heading:SetWidth(span)
+        local count=#group.items
+        section.heading:SetText(color(group.tint,group.label).."   "..color(muted,count.." 项"))
+        local bodyY=section.heading:GetStringHeight()+metrics.gap*scale
+        local cut=split and math.ceil(count/2) or count
+        local height=0
+        for col,body in ipairs(section.columns) do
+            local first,last=col==1 and 1 or cut+1,col==1 and cut or count
+            body:SetShown(first<=last)
+            if first<=last then
+                body:SetPoint("TOPLEFT",col==1 and 0 or half+gutter,-bodyY)
+                body:SetWidth(cut<count and half or span)
+                body:SetSpacing(metrics.tight*scale);body:SetWordWrap(true)
+                body:SetText(table.concat(group.items,"\n",first,last))
+                height=math.max(height,body:GetStringHeight())
+            end
+        end
+        section:SetHeight(bodyY+height)
+        return bodyY+height
     end
-    lines[#lines+1]=table.concat(entries,"\n")
+    local i=1
+    while i<=#groups do
+        local a,b=groups[i],groups[i+1]
+        local paired=wide and a.pair and b and b.pair and #a.items<=6 and #b.items<=6
+        local height
+        if paired then
+            height=math.max(draw(i,0,top,half),draw(i+1,half+gutter,top,half))
+            i=i+2
+        else
+            height=draw(i,0,top,width,wide)
+            i=i+1
+        end
+        top=top+height+gutter
+    end
+    return top
 end
 
 function B:Detail()
     for _,button in ipairs(self.buttons) do button:Hide() end
+    for _,section in ipairs(self.regionSections or {}) do section:Hide() end
     self.info:SetHeight(self.frame:GetHeight()-18);self.detail:Show()
     if self.dungeonDetail then self.dungeonDetail:Hide() end
     self.goals:Hide();self.goalHeading:Hide();if self.meta then self.meta:Hide() end
@@ -725,6 +769,7 @@ function B:Detail()
     self.title:SetText(e and e.title or "暂无项目")
     self.detail:SetWidth(self.info:GetWidth())
     local lines={}
+    local regionLists
     local detailTop=self.title:GetStringHeight()+18
     local regionPage=e and self.mode==10
     local guiding=regionPage and A.char.regionTarget and A.char.regionTarget.map==(e.map or e.region and e.region.map)
@@ -910,24 +955,34 @@ function B:Detail()
         return
     elseif e.catalogZone and (filter or not e.region) then
         if stats then
-            for _,i in ipairs({2,3,4,1}) do
-                local status=regionStates[i]
-                if not filter or filter==status.key then
-                    regionQuestList(lines,stats[status.key],status.label,status.key=="done")
-                    if filter and #stats[status.key]==0 then lines[#lines+1]="本区没有"..status.label.."的任务。" end
+            regionLists={}
+            local function add(status,tint,dimmed,pair)
+                local key,label=status.key,status.label
+                if filter and filter~=key then return end
+                local items={}
+                for _,q in ipairs(stats[key]) do
+                    local live=A.state.quests[q.id]
+                    local level=(q.questLevel or 0)>0 and color(muted,"["..q.questLevel.."]").."  " or ""
+                    items[#items+1]=level..questLink(q.id,live and live.title or q.title,nil,dimmed)
                 end
+                if #items>0 then regionLists[#regionLists+1]={label=label,tint=tint,items=items,pair=pair}
+                elseif filter then lines[#lines+1]="本区没有"..label.."的任务。" end
             end
-            if not filter then regionQuestList(lines,stats.closed,"已关闭",true) end
+            add(regionStates[2],gold,false,true)
+            add(regionStates[3],blue,false,true)
+            add(regionStates[4],muted)
+            add(regionStates[1],green,true)
+            add({key="closed",label="已关闭"},muted,true)
         else lines[#lines+1]="正在同步角色的交付记录，稍后会显示区域进度。" end
     elseif e.region then
         local r=e.region
+        regionLists={}
         if e.catalogZone and not stats then lines[#lines+1]="正在同步角色的交付记录…" end
         local visit=A.plan and A.plan.regionPlan
         local nextStop=visit and visit.destination==r
         lines[#lines+1]=color(gold,string.format("本轮 %d项 · %s",#r.choices,r.xp..(r.unknownXP>0 and "+经验" or "经验")))
         local function tasks(label,choices,kind)
             if #choices==0 then return end
-            lines[#lines+1]=color(kind=="turnin" and green or kind=="accept" and blue or muted,label)
             local items={}
             for _,entry in ipairs(choices) do
                 local c=kind=="revisit" and entry.choice or entry
@@ -938,7 +993,7 @@ function B:Detail()
                     kind=="turnin" and (c.status=="turnin" and "现在交付" or "本轮完成后交付") or status
                 items[#items+1]=questLink(c.questId,c.title).."\n"..color(muted,detail..(kind~="revisit" and point and point.entityName and (" · "..point.entityName) or ""))
             end
-            lines[#lines+1]=table.concat(items,"\n")
+            regionLists[#regionLists+1]={label=label,tint=kind=="turnin" and green or kind=="accept" and blue or muted,items=items,pair=true}
         end
         if nextStop then tasks("出发前交付",visit.handins,"turnin") end
         if r.seconds then lines[#lines+1]="前往首个任务  "..A.UI.ClockText(r.seconds) end
@@ -980,6 +1035,7 @@ function B:Detail()
     self.detail:ClearAllPoints();self.detail:SetPoint("TOPLEFT",0,-detailTop)
     self.detail:SetText(table.concat(lines,"\n\n"))
     local height=detailTop+(#lines>0 and self.detail:GetStringHeight()+12 or 0)
+    if regionLists then height=self:LayoutRegionLists(regionLists,height) end
     if not quest and not regionPage then height=self:PlaceActions(height) end
     self.infoChild:SetHeight(math.max(1,height))
 end
