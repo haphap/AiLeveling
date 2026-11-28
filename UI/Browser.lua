@@ -314,6 +314,70 @@ function B:GearRows()
     return rows
 end
 
+-- Geographic quest-log categories are useful even when the route planner has no outdoor visit.
+function B:RegionCatalog()
+    local data,state=A.Data,A.state
+    if not A.indexReady or not data.byArea then return {} end
+    local cache=self.regionCatalog
+    if cache and cache.index==data.byArea and cache.race==state.raceMask and cache.class==state.classMask then return cache.maps end
+    local maps={}
+    for area,ids in pairs(data.byArea) do
+        local map=data.maps and data.maps[area]
+        local info=map and map>0 and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(map)
+        if info and info.name and info.mapType==3 and not A.Dungeon.TaskInstance(nil,state,data,area)
+            and not A.Dungeon.TaskPvP(nil,state,data,area) then
+            for _,id in ipairs(ids) do
+                local q=data:GetQuest(id)
+                if q and not (q.taskFacts and q.taskFacts.hidden) and A.Eligibility.InMask(q.requiredRaces,state.raceMask)
+                    and A.Eligibility.InMask(q.requiredClasses,state.classMask) then
+                    local zone=maps[map]
+                    if not zone then zone={title=info.name,quests={}};maps[map]=zone end
+                    zone.quests[#zone.quests+1]=q
+                end
+            end
+        end
+    end
+    for _,zone in pairs(maps) do
+        table.sort(zone.quests,function(a,b)
+            local al,bl=a.questLevel or 0,b.questLevel or 0
+            if al~=bl then return al<bl end
+            return a.id<b.id
+        end)
+    end
+    self.regionCatalog={index=data.byArea,race=state.raceMask,class=state.classMask,maps=maps}
+    return maps
+end
+
+function B:RegionRows()
+    local rows,seen={},{}
+    local catalog=self:RegionCatalog()
+    local here=A.state.position and A.state.position.map
+    local regions=not A.state.inInstance and A.plan and A.plan.regions
+    for _,r in ipairs(regions or {}) do
+        local revisits=#(r.revisit or {})
+        if #r.choices>0 or revisits>0 then
+            seen[r.map]=true
+            local sub=string.format("本轮 %d 项任务 · 经验 %s",#r.choices,color(gold,A.UI.DungeonXPText(r)))
+            rows[#rows+1]={key="map:"..r.map,title=r.title,icon="location",region=r,
+                sub=sub..(r.map==here and " · 当前区域" or "")..(revisits>0 and (" · 回访 "..revisits.." 项") or "")}
+        end
+    end
+    local other={}
+    for map,zone in pairs(catalog) do
+        if not seen[map] then
+            other[#other+1]={key="map:"..map,title=zone.title,icon="location",catalogZone=zone,map=map,
+                sub=(map==here and "当前区域 · " or "").."收录 "..#zone.quests.." 项任务"}
+        end
+    end
+    table.sort(other,function(a,b)
+        if (a.map==here)~=(b.map==here) then return a.map==here end
+        if a.title~=b.title then return a.title<b.title end
+        return a.map<b.map
+    end)
+    for _,row in ipairs(other) do rows[#rows+1]=row end
+    return rows
+end
+
 function B:ClearSearch()
     if self.query and self.query~="" then
         self.query=""
@@ -326,6 +390,7 @@ end
 function B:Refresh(mode,reuse,opening)
     gold,blue,green,muted=A.UI.hex.gold,A.UI.hex.blue,A.UI.hex.green,A.UI.hex.muted
     reuse=reuse and self.mode==mode and self.entriesRevision==A.state.revision and self.entriesPlan==A.plan
+    if mode==10 and self.entriesIndexReady~=A.indexReady then reuse=false end
     local scale=A.UI:FontScale()
     local modeChanged=self.mode~=mode
     if modeChanged then self.message=nil end
@@ -370,18 +435,13 @@ function B:Refresh(mode,reuse,opening)
     if reuse then rows=self.entries
     elseif mode==4 then rows=self:DungeonRows()
     elseif mode==3 then rows=self:GearRows()
-    elseif mode==10 then
-        rows={}
-        local regions=A.plan and (A.plan.regions or A.Planner.TaskRegions(A.state,A.plan,A.Data))
-        for _,region in ipairs(regions or {}) do
-            rows[#rows+1]={key="map:"..region.map,title=region.title,icon="location",region=region,
-                sub=string.format("%d项适级任务 · %s",#region.choices,color(gold,region.xp..(region.unknownXP>0 and "+经验" or "经验")))..(region.current and " · 当前区域" or "")..(#(region.revisit or {})>0 and (" · 回访"..#region.revisit.."项") or "")}
-        end
+    elseif mode==10 then rows=self:RegionRows()
     else
         if mode==11 then self:IndexMounts() end
         rows=self:TaskRows(mode)
     end
     self.entries=rows
+    self.entriesIndexReady=A.indexReady
     self.entriesRevision,self.entriesPlan=A.state.revision,A.plan
     if self.query and self.query~="" then
         local filtered={}
@@ -418,7 +478,9 @@ function B:Refresh(mode,reuse,opening)
             A.char.gearTarget and "装备目标" or "自动安排"
         summary=status.." · "..#rows.." 项可查看"
     end
-    if #rows==0 and self.query and self.query~="" then
+    if mode==10 and #rows==0 and #self.entries==0 then
+        summary=A.error and "区域资料不可用" or not A.indexReady and "正在载入区域目录…" or "暂无区域资料"
+    elseif #rows==0 and self.query and self.query~="" then
         summary="没有匹配的"..(({[3]="装备",[4]="地下城",[10]="练级区域"})[mode] or "任务")
     end
     self.summary:SetText(summary)
@@ -555,7 +617,10 @@ function B:Detail()
     self.detail:SetWidth(self.info:GetWidth())
     local lines={}
     local detailTop=self.title:GetStringHeight()+18
-    if not e then lines[1]=self.query and self.query~="" and "清空搜索或换一个关键词。" or "角色状态更新后，相关内容会显示在这里。"
+    if not e and self.mode==10 and #self.entries==0 then
+        self.title:SetText(self.summary:GetText())
+        lines[1]=A.error or (not A.indexReady and "任务索引就绪后会自动显示区域。" or "任务库中没有可显示的区域。")
+    elseif not e then lines[1]=self.query and self.query~="" and "清空搜索或换一个关键词。" or "角色状态更新后，相关内容会显示在这里。"
     elseif e.dungeonCandidate then
         local c=e.dungeonCandidate
         lines[#lines+1]=e.sub
@@ -693,6 +758,18 @@ function B:Detail()
         end
         self:DungeonDetail(e)
         return
+    elseif e.catalogZone then
+        lines[#lines+1]=A.state.inInstance and "当前在副本内，可在这里浏览野外任务。" or
+            (not A.plan and "区域行程尚未生成，可先浏览本区任务。" or "本轮行程未安排这个区域。")
+        local entries={}
+        for _,q in ipairs(e.catalogZone.quests) do
+            local active=(A.state.quests or {})[q.id]
+            local done=not active and (A.state.completed or {})[q.id]
+            local status=active and (active.ready and color(green,"可交付") or "已接取") or done and "已交付"
+            local level=q.questLevel and q.questLevel>0 and ("["..q.questLevel.."] ") or ""
+            entries[#entries+1]=level..questLink(q.id,active and active.title or q.title,nil,done)..(status and (" · "..status) or "")
+        end
+        lines[#lines+1]=table.concat(entries,"\n")
     elseif e.region then
         local r=e.region
         local visit=A.plan and A.plan.regionPlan

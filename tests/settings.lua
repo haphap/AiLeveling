@@ -4,6 +4,31 @@ local function control(B,key)
     error("设置缺少入口："..key)
 end
 
+test("练级区域在首轮行程前和副本内可浏览，搜索不重算路线",function()
+    local B=setup(true)
+    local browser,oldMap=B.UI.Browser,C_Map
+    C_Map={GetMapInfo=function(map) return {name="区域"..map,mapType=map==3 and 4 or 3} end}
+    local quests={};for id=1,5 do quests[id]=F.Quest(id) end
+    quests[5].requiredRaces=2
+    B.Data=F.Data(quests);B.Eligibility=A.Eligibility
+    B.Data.byArea={[11]={1},[12]={2,5},[21]={3},[31]={4}}
+    B.Data.maps={[11]=1,[12]=1,[21]=2,[31]=3}
+    B.Planner={TaskRegions=function() error("浏览区域触发了路线计算") end}
+    B.UI.details:Show();B.UI:SelectTab(10)
+    eq(browser.summary:GetText(),"正在载入区域目录…")
+    B.indexReady=true;B.UI:RefreshDetails()
+    eq(browser.summary:GetText(),"2 个练级区域");eq(browser.selected.map,1)
+    eq(#browser.selected.catalogZone.quests,2);assert(browser.detail:GetText():find("|Hquest:1:",1,true))
+    local visit={map=2,title="区域2",choices={{questId=3,title=quests[3].title}},pickups={},handins={},revisit={},xp=0,unknownXP=0}
+    B.plan={regions={visit}};B.UI:RefreshDetails()
+    eq(#browser.entries,2);eq(browser.entries[1].region,visit)
+    B.state.inInstance=true;B.state.revision=B.state.revision+1;B.UI:RefreshDetails()
+    eq(browser.entries[1].map,1);eq(#browser.entries,2)
+    browser.query="缺席";browser:Refresh(10,true)
+    eq(browser.summary:GetText(),"没有匹配的练级区域")
+    C_Map=oldMap;B.finish()
+end)
+
 test("完整界面显示任务和详情，初始化失败显示可复制错误",function()
     local B=setup(true)
     B.Initialize=function(self) self.UI:Render() end
