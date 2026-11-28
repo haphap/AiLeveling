@@ -575,7 +575,7 @@ function D:TaskBatchSnapshot(state,previous)
     if previous and previous.inInstance and not state.inInstance then
         local d=D.Catalog()["reference:"..tostring(previous.instanceId)]
         if d and not batch and not (self.dismissedHandins==d.instanceId or A.char.paused or A.char.locked or
-            A.char.serviceStop or A.char.gearTarget or A.char.itinerary or A.Navigation.manual or state.dead) then
+            A.char.serviceStop or A.char.regionTarget or A.char.gearTarget or A.char.itinerary or A.Navigation.manual or state.dead) then
             batch=exitHandins(d,next(state.quests) and state or previous)
             A.char.taskBatch=batch
         end

@@ -13,7 +13,7 @@ end
 function P.TaskChoices(state,data,ids,onlySelected,options)
     local choices,seen={},{}
     local unlocks=A.TaskGuide and A.TaskGuide.UnlockRecommendations(state,data,data.ids or ids) or {}
-    local automatic=not (state.locked or state.preparingQuest or state.taskBatch or state.gearTarget or state.inInstance)
+    local automatic=not (state.locked or state.regionTarget or state.preparingQuest or state.taskBatch or state.gearTarget or state.inInstance)
     local thread,isMain=coroutine.running()
     local deadline=clock()+1
     local function add(id)
@@ -465,11 +465,53 @@ function P.TaskRegions(state,plan,data)
     return regions,visit
 end
 
+-- A regional trip follows quest membership across map boundaries, including its required pickups.
+local function regionChoices(target,state,data,options)
+    local ids,seen,parents={},{},{}
+    local remaining,reason=0,nil
+    if state.completionKnown==false then return {},"正在同步任务交付记录" end
+    local thread,isMain=coroutine.running()
+    local deadline=clock()+1
+    for _,id in ipairs(target.ids) do
+        local q=data:GetQuest(id)
+        local live=state.quests[id]
+        if not q and not state.completed[id] then
+            remaining=remaining+1
+            reason=reason or "任务资料待确认"
+        elseif q and not state.completed[id] and not A.Eligibility.Closed(q,state) and
+            (live or (q.requiredMaxLevel or 0)==0 or state.level<=q.requiredMaxLevel) then
+            remaining=remaining+1
+            local allowed,why=A.Eligibility.Check(q,state,data)
+            local frontier
+            if not live and (q.questLevel or 0)>state.level+2 then
+                why="建议 "..math.max(q.requiredLevel or 0,q.questLevel-2).." 级再来"
+            elseif allowed and (live or not (q.startedBy and q.startedBy[3] and #q.startedBy[3]>0)) then
+                frontier={id}
+            else
+                frontier=A.Chains.Preparation(id,data,state)
+                if allowed and #frontier==0 then frontier={id} end
+            end
+            for _,nextId in ipairs(frontier or {}) do
+                if not seen[nextId] then ids[#ids+1]=nextId;seen[nextId]=true end
+                if nextId~=id and not parents[nextId] then parents[nextId]=q end
+            end
+            reason=reason or why
+        end
+        if thread and not isMain and clock()>=deadline then coroutine.yield();deadline=clock()+1 end
+    end
+    table.sort(ids)
+    local choices=P.TaskChoices(state,data,ids,true,options)
+    for _,choice in ipairs(choices) do choice.preparingQuest=parents[choice.questId] end
+    local status=remaining==0 and "区域任务已收尾" or
+        ("尚余 "..remaining.." 项 · "..(reason or "请查看任务的接取条件和目标位置"))
+    return choices,status
+end
+
 function P.Build(state, data, options)
     state=copy(state);state.objectiveTargets={}
     -- Reuse immutable travel geometry within this snapshot; discard it after the build.
     state.travelCache={walks={},flights={},routes={}}
-    if state.level >= 60 then return { revision = state.revision, complete = true } end
+    if state.level >= 60 and not state.regionTarget then return { revision = state.revision, complete = true } end
     local gearSource=state.gearTarget and A.Gear.GetSource and A.Gear.GetSource(state.gearTarget,data,state)
     if type(state.gearTarget)=="string" and (state.gearTarget:match("^reward:") or state.gearTarget:match("^drop:")) and not gearSource then
         local reason="所选装备来源暂不可用；可恢复升级目标。"
@@ -498,19 +540,21 @@ function P.Build(state, data, options)
     end
     local batchChoices,batch
     if state.taskBatch and A.Dungeon.TaskBatchChoices then batchChoices,batch=A.Dungeon.TaskBatchChoices(state,data) end
-    local ids=batch and {} or data:Candidates(state)
-    local result={revision=state.revision,preparingQuest=preparation,origin=state.position and {map=state.position.map}}
-    result.taskChoices=batchChoices or P.TaskChoices(state,data,ids,nil,options)
+    local region=state.regionTarget
+    local result={revision=state.revision,preparingQuest=preparation,origin=state.position and {map=state.position.map},regionTarget=region}
+    local regionStatus
+    if region then result.taskChoices,regionStatus=regionChoices(region,state,data,options)
+    else result.taskChoices=batchChoices or P.TaskChoices(state,data,data:Candidates(state),nil,options) end
     if state.position and A.Flights and A.Flights.UnlockCandidates then
         result.flightUnlocks=A.Flights.UnlockCandidates(state,{[state.position.map]=true},A.Navigation)
     end
-    local preferred=not batch and A.Gear.PreferTask and A.Gear.PreferTask(result.taskChoices,state,options)
+    local preferred=not region and not batch and A.Gear.PreferTask and A.Gear.PreferTask(result.taskChoices,state,options)
     if preferred then
         for index,choice in ipairs(result.taskChoices) do if choice==preferred then table.remove(result.taskChoices,index);break end end
         table.insert(result.taskChoices,1,preferred);result.preferenceApplied=true
     end
     result.taskBatch=batch
-    if not state.inInstance then result.regions,result.regionPlan=P.TaskRegions(state,result,data) end
+    if not (region or state.inInstance) then result.regions,result.regionPlan=P.TaskRegions(state,result,data) end
     local choices=batch and A.Dungeon.TaskBatchStage(result.taskChoices,state,data) or
         result.regionPlan and result.regionPlan.choices or result.taskChoices
     if state.inInstance and not (batch or state.locked or state.gearTarget) and A.Dungeon.InstanceHandins then
@@ -632,7 +676,10 @@ function P.Build(state, data, options)
         result.fallback={kind="selectionBlocked",title=batch.title.."任务等待处理",
             text=(batch.blocked[1] or "当前任务尚无可执行目标").."；可在副本页查看任务条件或结束安排。"}
     end
-    if A.Dungeon.SuggestTaskBatch then
+    if region and not result.best and not result.fallback then
+        result.fallback={kind="selectionBlocked",title=region.title.." · "..regionStatus,text="在练级区域页可结束区域规划，恢复自动练级。"}
+    end
+    if not region and A.Dungeon.SuggestTaskBatch then
         local suggested,choices=A.Dungeon.SuggestTaskBatch(state,data,options)
         result.suggestedDungeon=result.suggestedDungeon or suggested
         result.dungeonChoices=choices

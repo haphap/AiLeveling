@@ -3,7 +3,7 @@ A.Selection = {}
 local S=A.Selection
 
 function S:Clear()
-    A.char.itinerary,A.char.locked,A.char.taskBatch=nil,nil,nil
+    A.char.itinerary,A.char.locked,A.char.taskBatch,A.char.regionTarget=nil,nil,nil,nil
     if A.Dungeon then A.Dungeon.taskActivity=nil end
 end
 
@@ -16,7 +16,8 @@ function S:Snapshot(state)
     local id=A.char.locked
     local q=id and A.Data:GetQuest(id)
     if id and (not q or not q.repeatable) and state.completed[id] and not state.quests[id] then self:Clear();state.locked=nil end
-    return ""
+    state.regionTarget=not state.inInstance and A.char.regionTarget or nil
+    return state.regionTarget and "region:"..state.regionTarget.map or ""
 end
 
 function S.CanChoose(candidate,revision)
@@ -48,15 +49,37 @@ function S:Lock(candidate,revision)
     return false,"当前行动由自动规划安排"
 end
 
-function S:Automatic()
-    if A.state.inInstance and A.Dungeon then A.Dungeon.dismissedHandins=A.state.instanceId end
-    self:Clear()
+local function selectLeveling(region)
+    S:Clear()
+    A.char.regionTarget=region
     A.char.serviceStop=nil
     if A.Services then A.Services.binding=nil end
     A.char.gearTarget,A.char.gearBaseline=nil,nil
     A.char.paused=false;A.Navigation.manual=nil
     if A.ready then A.State:Refresh(true) end
     return true
+end
+
+function S:Automatic()
+    if A.state.inInstance and A.Dungeon then A.Dungeon.dismissedHandins=A.state.instanceId end
+    return selectLeveling(nil)
+end
+
+function S:StartRegion(entry)
+    if not A.ready or not A.indexReady or A.state.completionKnown==false then return false,"区域任务记录正在载入" end
+    if A.state.inInstance then return false,"离开副本后可开始区域规划" end
+    local visit=entry.region
+    local map=entry.map or visit and visit.map
+    if not map then return false,"没有区域资料" end
+    local ids={}
+    if entry.catalogZone then
+        for _,q in ipairs(entry.catalogZone.quests) do ids[#ids+1]=q.id end
+    elseif visit then
+        for _,c in ipairs(visit.choices) do ids[#ids+1]=c.questId end
+        for _,r in ipairs(visit.revisit or {}) do ids[#ids+1]=r.choice.questId end
+    end
+    if #ids==0 then return false,"本区没有收录任务" end
+    return selectLeveling({map=map,title=entry.title,ids=ids})
 end
 
 function S:LockQuest(id)

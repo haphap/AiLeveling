@@ -51,6 +51,35 @@ test("恢复自动与任务暂缓清理旧锁定并保留副本控制",function(
     B.char.serviceStop={};assert(B.Selection:Automatic());eq(B.char.itinerary,nil);eq(B.char.paused,false);eq(B.char.serviceStop,nil)
 end)
 
+test("整区规划从跨区前置接续到下一项，保留忽略并可退出",function()
+    local B=fixture()
+    local state,data=B.state,B.Data
+    B.indexReady=true
+    local root,follow=data:GetQuest(2),data:GetQuest(3)
+    root.preQuestGroup={1};follow.preQuestGroup={2}
+    local entry={map=2,title="目标区域",catalogZone={quests={root,follow}}}
+    local unrelated=F.Quest(9)
+    state.quests[9]={ready=true,objectives={}}
+    data.Target=function(_,q) return {map=q.id==1 and 1 or 2,x=0.5,y=0.5} end
+    B.char.skipped[3]="ignored";state.skipped=B.char.skipped
+    assert(B.Selection:StartRegion(entry))
+    local function check(id,kind)
+        local p=plan(state,data)
+        for _,c in ipairs(p.taskChoices) do assert(c.questId~=unrelated.id) end
+        eq(p.fallback.questId,id);eq(p.fallback.kind,kind)
+        return p
+    end
+    eq(check(1,"accept").preparingQuest.id,2)
+    state.quests[1]={objectives={}};check(1,"objective")
+    state.quests[1].ready=true;check(1,"turnin")
+    state.quests[1]=nil;state.completed[1]=true;check(2,"accept")
+    state.inInstance=true;B.Selection:Snapshot(state);eq(state.regionTarget,nil)
+    state.inInstance=false;B.Selection:Snapshot(state);eq(state.regionTarget.map,2)
+    state.completed[2]=true;check(nil,"selectionBlocked")
+    B.Selection:ResumeQuest(3);check(3,"accept")
+    state.completed[3]=true;assert(check(nil,"selectionBlocked").fallback.title:find("已收尾",1,true))
+    B.Selection:Automatic();eq(state.regionTarget,nil);eq(B.char.regionTarget,nil)
+end)
 test("列表选中真实任务后统一检查时效，副本须明确接受",function()
     local B=fixture();assert(loadfile("UI/Main.lua"))("AiLeveling",B)
     assert(loadfile("UI/Plan.lua"))("AiLeveling",B)

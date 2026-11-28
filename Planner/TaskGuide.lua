@@ -408,7 +408,7 @@ end
 
 function G.UnlockRecommendations(state,data,ids)
     local result={}
-    if state.locked or state.preparingQuest or state.gearTarget or state.taskBatch or state.inInstance then return result end
+    if state.locked or state.regionTarget or state.preparingQuest or state.gearTarget or state.taskBatch or state.inInstance then return result end
     local thread,main=coroutine.running()
     for index,id in ipairs(ids) do
         local q=data:GetQuest(id)
@@ -484,6 +484,7 @@ function G.LowValue(q,state,data,choice,nearbyRate)
     local xp,base=G.XP(q,state.level,state),G.XP(q,q.questLevel,state)
     if not xp or not base or base<=0 then return end
     local obsolete=gap>=6 and xp<=base*0.25
+    if state.regionTarget then return end -- Explicit region completion includes low-XP tasks.
     -- Count the whole remaining journey, including the return to the recipient.
     local travel=choice and choice.timing and choice.timing.seconds
     local lowXP=xp<=base*0.5 or type(state.maxXP)=="number" and state.maxXP>0 and xp<=state.maxXP*0.02

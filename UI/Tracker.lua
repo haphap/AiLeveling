@@ -453,6 +453,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
     elseif plan.serviceDeferred then model.hint=plan.serviceDeferred
     elseif plan.taskBatch and plan.taskBatch.waiting then model.hint="等队时先做附近任务；队伍就绪后继续副本"
     elseif plan.taskBatch then model.hint=plan.taskBatch.title.." · 任务安排剩余 "..plan.taskBatch.remaining.." 项"
+    elseif state.regionTarget then model.hint="区域规划 · "..state.regionTarget.title
     elseif state.locked and action and state.locked==action.questId then model.hint="按你锁定的任务继续" end
     local groups,byQuest={},{}
     local choices={}
@@ -507,7 +508,7 @@ function UI.TrackerModel(state,plan,action,paused,along)
     local seen={}
     if action and action.questId and not currentGroup then seen[action.questId]=true end
     local function add(id,source)
-        if not id or seen[id] then return end
+        if not id or seen[id] or state.regionTarget and not choices[id] then return end
         seen[id]=true
         local q=quests[id]
         local status=UI.QuestStatus(state,id,plan)
@@ -762,7 +763,7 @@ function UI:ClassReminderMenu(owner)
 end
 
 function UI.DungeonReminders(state,plan)
-    if A.settings.dungeons==false or A.char.paused or A.error or state.inInstance or state.taskBatch or state.gearTarget then return {} end
+    if A.settings.dungeons==false or A.char.paused or A.error or state.inInstance or state.regionTarget or state.taskBatch or state.gearTarget then return {} end
     return plan.dungeonChoices or (plan.suggestedDungeon and {plan.suggestedDungeon}) or {}
 end
 
@@ -870,7 +871,7 @@ function UI:TrackerMenu(owner)
         local label,change,canIgnore=self.QuestDeferral(id)
         if label then menu:CreateButton(label,function() change(A.Selection,id) end) end
         if canIgnore then menu:CreateButton("忽略此任务",function() A.Selection:Skip(id,true) end) end
-        if A.char.taskBatch or A.char.locked or A.char.itinerary then
+        if A.char.taskBatch or A.char.regionTarget or A.char.locked or A.char.itinerary then
             menu:CreateButton(A.char.taskBatch and "返回正常练级" or "恢复自动安排",function()
                 local ok,why=A.Selection:Automatic();if not ok then A:Message(why) end
             end)

@@ -164,7 +164,7 @@ function B:TaskRows(mode)
     local currentId=action and action.questId
     local requested=mode==1 and tonumber((A.UI.Plan.key or ""):match("^q:(%d+)$"))
     local currentLabel=A.char.paused and "已暂停" or A.char.locked and "已锁定" or
-        A.char.taskBatch and "整组指引" or "推荐先做"
+        A.char.regionTarget and "区域规划" or A.char.taskBatch and "整组指引" or "推荐先做"
     local function add(choice,q)
         local id=choice.questId
         if seen[id] then return end
@@ -362,14 +362,19 @@ function B:RegionRows()
                 sub=sub..(r.map==here and " · 当前区域" or "")..(revisits>0 and (" · 回访 "..revisits.." 项") or "")}
         end
     end
+    local target=A.char.regionTarget
+    if target and not catalog[target.map] and not seen[target.map] then
+        rows[#rows+1]={key="map:"..target.map,map=target.map,title=target.title,icon="location",sub="区域规划中"}
+    end
     local other={}
     for map,zone in pairs(catalog) do
         if not seen[map] then
             other[#other+1]={key="map:"..map,title=zone.title,icon="location",catalogZone=zone,map=map,
-                sub=(map==here and "当前区域 · " or "").."收录 "..#zone.quests.." 项任务"}
+                sub=(target and target.map==map and "区域规划中 · " or map==here and "当前区域 · " or "").."收录 "..#zone.quests.." 项任务"}
         end
     end
     table.sort(other,function(a,b)
+        if target and (a.map==target.map)~=(b.map==target.map) then return a.map==target.map end
         if (a.map==here)~=(b.map==here) then return a.map==here end
         if a.title~=b.title then return a.title<b.title end
         return a.map<b.map
@@ -475,7 +480,7 @@ function B:Refresh(mode,reuse,opening)
     if mode==1 then
         local status=A.char.paused and "引导已暂停" or A.char.locked and "单任务锁定" or
             A.Navigation.manual and "手动导航" or A.char.taskBatch and "副本任务安排" or
-            A.char.gearTarget and "装备目标" or "自动安排"
+            A.char.regionTarget and ("区域规划 · "..A.char.regionTarget.title) or A.char.gearTarget and "装备目标" or "自动安排"
         summary=status.." · "..#rows.." 项可查看"
     end
     if mode==10 and #rows==0 and #self.entries==0 then
@@ -716,16 +721,51 @@ function B:Detail()
     self.questHeader:SetShown(quest and true or false)
     self.info:ClearAllPoints();self.info:SetPoint("TOPLEFT",self.questHeader,quest and "BOTTOMLEFT" or "TOPLEFT")
     self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT")
+    self.title:SetWidth(self.info:GetWidth()-28)
     self.title:SetText(e and e.title or "暂无项目")
     self.detail:SetWidth(self.info:GetWidth())
     local lines={}
     local detailTop=self.title:GetStringHeight()+18
+    local regionPage=e and self.mode==10
+    local guiding=regionPage and A.char.regionTarget and A.char.regionTarget.map==(e.map or e.region and e.region.map)
+    if regionPage then
+        self:Action(1,guiding and "结束区域规划" or "开始区域规划",function()
+            local ok,why
+            if guiding then ok,why=A.Selection:Automatic() else ok,why=A.Selection:StartRegion(e) end
+            if not ok then A:Message(why) end
+            self:Refresh(10)
+        end,(guiding or A.ready and A.indexReady and A.state.completionKnown~=false and not A.state.inInstance) and true or false)
+        local actionsHeight=self:PlaceActions(0,true)
+        self.title:SetWidth(math.max(1,self.info:GetWidth()-self.buttons[1]:GetWidth()-metrics.gap))
+        detailTop=math.max(self.title:GetStringHeight()+18,actionsHeight+metrics.gap)
+    end
     local stats,filter
     if e and e.catalogZone and A.state.completionKnown~=false then
         stats=regionProgress(e.catalogZone,A.state)
         detailTop=self:RegionChart(e.catalogZone,detailTop,stats)
         filter=self.regionChart.filter
     elseif self.regionChart then self.regionChart:Hide();self.regionChart.zone=nil end
+    if guiding and not filter then
+        local plan=A.plan
+        if A.state.inInstance then lines[#lines+1]="出本后继续区域规划。"
+        elseif plan and plan.regionTarget==A.char.regionTarget and plan.fallback then
+            local steps={}
+            local function step(action)
+                if not action then return end
+                local verb=({accept="接取",objective="完成",turnin="交付"})[action.kind]
+                steps[#steps+1]=verb and action.questId and (verb.."  "..questLink(action.questId,action.title)) or action.title
+            end
+            step(plan.fallback)
+            local queue=plan.taskQueue and plan.taskQueue.steps or {}
+            local first=queue[1] and (queue[1].stage or queue[1].choice.actions[1])
+            if first and plan.fallback.questId==first.questId and plan.fallback.kind==first.kind then
+                for i=2,math.min(3,#queue) do step(queue[i].stage or queue[i].choice.actions[1]) end
+            end
+            lines[#lines+1]=color(blue,"区域行程").."\n"..table.concat(steps,"\n")
+        elseif plan and plan.regionTarget==A.char.regionTarget and plan.maintenance then
+            lines[#lines+1]="完成补给后继续区域规划。"
+        else lines[#lines+1]="正在安排本区任务…" end
+    end
     self.detail:SetSpacing(stats and 3*A.UI:FontScale() or 0)
     if not e and self.mode==10 and #self.entries==0 then
         self.title:SetText(self.summary:GetText())
@@ -831,7 +871,7 @@ function B:Detail()
         if label then self:Action(2,label,function() preference(change) end) end
         if canIgnore then self:Action(5,"忽略此任务",function() preference(A.Selection.Skip,true) end) end
         self:Action(4,"查看任务链",function() A.UI.Chains:Focus(e.questId) end)
-        if A.char.locked or A.char.itinerary or A.char.taskBatch or A.char.gearTarget or A.Navigation.manual or A.char.serviceStop or A.char.paused then
+        if A.char.locked or A.char.regionTarget or A.char.itinerary or A.char.taskBatch or A.char.gearTarget or A.Navigation.manual or A.char.serviceStop or A.char.paused then
             self:Action(3,"恢复练级导航",function() A.Selection:Automatic();self:Refresh(self.mode) end)
         end
         local headerHeight=self:PlaceActions(headerTop)+metrics.gap
@@ -909,9 +949,6 @@ function B:Detail()
         tasks("本轮集中交付",r.handins,"turnin")
         tasks("留待回访",r.revisit,"revisit")
         if nextStop and visit.current~=r then tasks("离开本区后留待回访",visit.revisit,"revisit") end
-        self:Action(1,r.current and "指引本轮任务" or "前往首个任务",function()
-            local ok,why=A.Selection:LockQuest(r.first.questId);self.message=not ok and why or nil;self:Refresh(self.mode)
-        end,r.first~=nil)
     elseif e.item then
         lines[#lines+1]=itemLink(e.item);lines[#lines+1]=e.sub
         if e.skill then lines[#lines+1]=e.skill end
@@ -943,7 +980,7 @@ function B:Detail()
     self.detail:ClearAllPoints();self.detail:SetPoint("TOPLEFT",0,-detailTop)
     self.detail:SetText(table.concat(lines,"\n\n"))
     local height=detailTop+(#lines>0 and self.detail:GetStringHeight()+12 or 0)
-    if not quest then height=self:PlaceActions(height) end
+    if not quest and not regionPage then height=self:PlaceActions(height) end
     self.infoChild:SetHeight(math.max(1,height))
 end
 

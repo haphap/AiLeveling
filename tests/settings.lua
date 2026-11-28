@@ -24,6 +24,11 @@ test("练级区域在首轮行程前和副本内可浏览，搜索不重算路�
     B.indexReady=true;B.UI:RefreshDetails()
     eq(browser.summary:GetText(),"2 个练级区域");eq(browser.selected.map,1)
     eq(#browser.selected.catalogZone.quests,6)
+    assert(loadfile("Planner/Selection.lua"))("AiLeveling",B)
+    eq(browser.buttons[1].text:GetText(),"开始区域规划")
+    browser.buttons[1].run()
+    eq(#B.char.regionTarget.ids,6);eq(browser.buttons[1].text:GetText(),"结束区域规划")
+    browser.buttons[1].run();eq(B.char.regionTarget,nil)
     local chart=browser.regionChart
     eq(chart.values[1]:GetText(),"20%");eq(chart.values[2]:GetText(),"4 项");eq(chart.values[3]:GetText(),"≥ 400")
     assert(chart.note:GetText():find("1 项经验待确认",1,true))

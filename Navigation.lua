@@ -164,7 +164,7 @@ function N:ClearManual(replan)
 end
 
 local function leveling(state)
-    return not (state.locked or state.preparingQuest or state.taskBatch or state.gearTarget or state.serviceStop or
+    return not (state.locked or state.regionTarget or state.preparingQuest or state.taskBatch or state.gearTarget or state.serviceStop or
         state.inInstance or state.dead or state.onTaxi)
 end
 

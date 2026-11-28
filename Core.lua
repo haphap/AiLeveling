@@ -92,6 +92,9 @@ function A:NormalizeCharacter(char)
     local target=char.gearTarget
     if (type(target)~="string" or target=="") and (type(target)~="number" or target<=0 or target>=math.huge or target%1~=0) then char.gearTarget=nil end
     if type(char.gearBaseline)~="number" or char.gearBaseline<0 or char.gearBaseline>19 or char.gearBaseline%1~=0 then char.gearBaseline=nil;char.gearTarget=nil end
+    local region=char.regionTarget
+    if region and (type(region)~="table" or type(region.map)~="number" or type(region.title)~="string" or
+        type(region.ids)~="table" or #region.ids==0) then char.regionTarget=nil end
     if char.itinerary then char.itinerary=nil;char.locked=nil end
     if char.taskBatch and (not self.Dungeon.ValidTaskBatch or not self.Dungeon.ValidTaskBatch(char.taskBatch)) then char.taskBatch=nil end
     if type(char.serviceStop)=="table" then char.serviceStop.afterTask=nil end

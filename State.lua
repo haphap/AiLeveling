@@ -430,10 +430,10 @@ function State:Refresh(force, manual)
     fingerprint[#fingerprint+1]="map:"..tostring(s.position and s.position.map)
     if A.Services then fingerprint[#fingerprint+1]=A.Services:Snapshot(s) end
     local stop=s.serviceStop
-    if s.locked or s.taskBatch or s.gearTarget or stop or s.inInstance or s.dead then
+    if s.locked or s.taskBatch or s.regionTarget or s.gearTarget or stop or s.inInstance or s.dead then
         s.routeFocus=table.concat({s.locked or "",s.taskBatch and s.taskBatch.id or "",s.gearTarget or "",
             stop and stop.kind or "",stop and stop.npcId or "",stop and stop.taxiId or "",stop and stop.learnKey or "",
-            s.inInstance and (s.instanceId or "instance") or "",s.dead and "dead" or ""},":")
+            s.inInstance and (s.instanceId or "instance") or "",s.dead and "dead" or "",s.regionTarget and s.regionTarget.map or ""},":")
     end
     for kind, sample in pairs(A.char.samples) do
         s.samples[kind] = {}
