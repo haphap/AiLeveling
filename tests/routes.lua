@@ -297,7 +297,7 @@ test("普通任务地图点只显示可执行的接取、目标和交付",functi
     eq(#B.Navigation:MapPoints(),10);eq(B.Navigation:Pickup(book),false)
     B.state.bags[215815]=nil;eq(#B.Navigation:MapPoints(),11)
     local pins=B.Navigation.pins
-    eq(pins[1].number.value,"1");eq(pins[3].number.value,"")
+    eq(pins[1].number.value,"1");assert(not pins[3].badge or not pins[3].badge:IsShown())
     eq(pins[1].texture.texture,B.UI.IconTexture("collect"))
     eq(pins[2].texture.texture,pins[1].texture.texture)
     eq(pins[3].texture.texture,B.UI.IconTexture("accept"))

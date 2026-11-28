@@ -626,12 +626,6 @@ local function mapPin(mini)
     pin.ring=pin:CreateTexture(nil,"BORDER")
     cell(pin.ring,1);pin.ring:SetPoint("CENTER")
     pin.texture=pin:CreateTexture(nil,"ARTWORK");pin.texture:SetPoint("CENTER")
-    if not mini then
-        pin.badge=pin:CreateTexture(nil,"ARTWORK",nil,1)
-        cell(pin.badge,0);pin.badge:SetSize(15,15);pin.badge:SetPoint("CENTER",pin,"TOPRIGHT",-1,-2)
-        pin.number=pin:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
-        pin.number:SetPoint("CENTER",pin.badge)
-    end
     pin:Hide();pin:EnableMouse(true)
     pin:RegisterForClicks("LeftButtonUp","RightButtonUp")
     pin:SetScript("OnClick",function(f,button)
@@ -864,11 +858,7 @@ local function stylePin(pin,point,action,r,g,b,hitOnly)
     pin.texture:SetSize(size-4,size-4)
     pin.ring:SetSize(size+(point.current and 5 or 0),size+(point.current and 5 or 0))
     if point.current then pin.ring:SetVertexColor(r,g,b) else pin.ring:SetVertexColor(0.43,0.39,0.37) end
-    if pin.badge then
-        pin.badge:SetShown(point.order~=nil);pin.number:SetText(point.order and tostring(point.order) or "")
-        if point.current then pin.badge:SetVertexColor(r,g,b);pin.number:SetTextColor(0.08,0.07,0.09)
-        else pin.badge:SetVertexColor(0.16,0.16,0.19);pin.number:SetTextColor(1,1,1) end
-    end
+    if not pin.mini then A.UI:SetMapPinNumber(pin,point.order,nil,point.current) end
     pin.texture:SetTexture(actionTexture(action))
     pin.texture:SetDesaturated(point.lowOnly==true)
 end

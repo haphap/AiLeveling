@@ -284,6 +284,41 @@ function UI:Text(parent, size, color, flags)
     return text
 end
 
+function UI:SetMapPinNumber(pin,value,mapWidth,current)
+    local badge=pin.badge
+    if not value then
+        if badge then badge:Hide() end
+        return
+    end
+    if not badge then
+        badge=CreateFrame("Frame",nil,pin);pin.badge=badge
+        badge:EnableMouse(false)
+        local disc=badge:CreateTexture(nil,"BACKGROUND")
+        disc:SetTexture(media.."map-markers.tga");disc:SetTexCoord(0,.5,0,1);disc:SetAllPoints()
+        disc:SetVertexColor(.055,.075,.12)
+        badge.rim=badge:CreateTexture(nil,"BORDER")
+        badge.rim:SetTexture(media.."map-markers.tga");badge.rim:SetTexCoord(.5,1,0,1);badge.rim:SetAllPoints()
+        pin.number=badge:CreateFontString(nil,"OVERLAY");pin.number:SetPoint("CENTER")
+        pin.number:SetTextColor(1,1,1)
+    end
+    local scale=self:FontScale()
+    local size=math.max(13,math.floor(15*scale+.5))
+    if badge.fontSize~=size then pin.number:SetFont(STANDARD_TEXT_FONT,size,"OUTLINE");badge.fontSize=size end
+    pin.number:SetText(tostring(value))
+    local h=size+5
+    local w=math.max(h,math.ceil(pin.number:GetStringWidth())+8)
+    local dx,dy=pin:GetWidth()/2-2*scale,pin:GetHeight()/2-2*scale
+    -- Turn the badge inward at the edge without moving the quest pin.
+    if mapWidth then
+        dx,dy=math.max(dx,w/2),math.max(dy,h/2)
+        if pin.x+dx+w/2>mapWidth then dx=-dx end
+        if pin.y-dy-h/2<0 then dy=-dy end
+    end
+    badge:ClearAllPoints();badge:SetPoint("CENTER",pin,"CENTER",dx,dy);badge:SetSize(w,h)
+    if current then badge.rim:SetVertexColor(1,.78,.32) else badge.rim:SetVertexColor(.64,.72,.84) end
+    badge:Show()
+end
+
 -- Keep the native label, focus ring and input handlers above a single local fill.
 local function daylightControlFill(frame)
     frame:DisableDrawLayer("BACKGROUND")

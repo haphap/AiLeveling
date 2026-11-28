@@ -161,7 +161,6 @@ local function newPin(canvas)
     disc:SetTexCoord(0,.5,0,1);disc:SetVertexColor(.10,.12,.18)
     local icon=pin:CreateTexture(nil,"ARTWORK");icon:SetPoint("CENTER");icon:SetSize(16,16)
     pin.icon=icon
-    pin.count=UI:Text(pin,"guideLabel",UI.colors.white);pin.count:SetPoint("BOTTOMLEFT",pin,"TOPRIGHT",-6,-9)
     pin:SetScript("OnEnter",function(b)
         GameTooltip:SetOwner(b,"ANCHOR_RIGHT")
         GameTooltip:SetText("区域任务")
@@ -207,7 +206,10 @@ local function placePins(canvas,rows,width,height)
             pin:SetPoint("CENTER",canvas,"TOPLEFT",x,-y);pin:SetSize(size,size);pin:Show()
         elseif not r.blocked then pin.icon:SetDesaturated(false) end
         table.insert(pin.rows,r)
-        pin.count:SetText(#pin.rows>1 and #pin.rows or "")
+    end
+    for i=1,used do
+        local pin=canvas.pins[i]
+        UI:SetMapPinNumber(pin,#pin.rows>1 and #pin.rows,width)
     end
     for i=used+1,#canvas.pins do canvas.pins[i]:Hide() end
 end
