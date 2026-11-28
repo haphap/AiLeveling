@@ -100,18 +100,18 @@ local function textureSize(n)
     return size
 end
 
-local function drawArt(canvas,map,width,maxHeight)
+local function drawArt(canvas,map,width)
     if not C_Map then return 0 end
     local art=C_Map.GetMapArtID and C_Map.GetMapArtID(map)
-    if canvas.map==map and canvas.art==art and canvas.widthUsed==width and canvas.maxHeight==maxHeight then return canvas:GetHeight() end
+    if canvas.map==map and canvas.art==art and canvas.widthUsed==width then return canvas:GetHeight() end
     for _,t in ipairs(canvas.tiles) do t:Hide() end
     local layers=C_Map.GetMapArtLayers and C_Map.GetMapArtLayers(map)
     local layer=layers and layers[1]
     local files=layer and C_Map.GetMapArtLayerTextures(map,1)
     if not files or #files==0 then canvas.map=nil;return 0 end
     local w,h,tw,th=layer.layerWidth,layer.layerHeight,layer.tileWidth,layer.tileHeight
-    local scale=math.min(width/w,maxHeight/h)
-    canvas:SetSize(w*scale,h*scale)
+    local scale=width/w
+    canvas:SetSize(width,h*scale)
     local used=0
     local function draw(files,x,y,span,height,overlay)
         local cols=math.ceil(span/tw)
@@ -139,7 +139,7 @@ local function drawArt(canvas,map,width,maxHeight)
             draw(area.fileDataIDs,area.offsetX,area.offsetY,area.textureWidth,area.textureHeight,area.isDrawOnTopLayer and 1 or 0)
         end
     end
-    canvas.map,canvas.art,canvas.widthUsed,canvas.maxHeight=map,art,width,maxHeight
+    canvas.map,canvas.art,canvas.widthUsed=map,art,width
     return h*scale
 end
 
@@ -260,9 +260,8 @@ function B:ShowRegionMap(entry,top,stats,filter)
     view.selector:SetSize(math.min(width,view.selector.text:GetStringWidth()+24),UI.metrics.button*UI:FontScale())
     local y=view.selector:GetHeight()+gap
     local canvas=view.canvas
-    local maxHeight=math.max(185*UI:FontScale(),self.info:GetHeight()-top-y-4*gap-UI.metrics.hit*UI:FontScale())
-    local height=drawArt(canvas,map,width,maxHeight)
-    canvas:SetPoint("TOP",view,"TOP",0,-y);canvas:SetShown(height>0)
+    local height=drawArt(canvas,map,width)
+    canvas:SetPoint("TOPLEFT",view,"TOPLEFT",0,-y);canvas:SetShown(height>0)
     if height>0 then placePins(canvas,rows,canvas:GetWidth(),height);y=y+height+gap end
     local note=height==0 and "底图暂不可用，可在列表查看地点" or #rows==0 and "本图暂无符合条件的任务点" or
         (filter=="done" and "点击已交付标记可查看任务详情" or "点击标记查看任务或导航")
