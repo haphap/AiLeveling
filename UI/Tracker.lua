@@ -1426,7 +1426,10 @@ function UI:RenderJourney(journey,dynamic)
     local T=self.tracker
     if not dynamic then
         local name
-        if journey and journey.goal then local _,target=destination(journey.goal,true);name=target end
+        if journey and journey.goal then
+            local place,target,area=destination(journey.goal,true)
+            name=area and area~=T.area:GetText() and place or target
+        end
         T.journeyDestination:SetText(name and ("前往 "..name) or "")
     end
     T.journeyTime=journey and clockText(journey.seconds) or ""
@@ -1596,7 +1599,7 @@ function UI:RenderTracker(along)
     local place,name,area
     if model.kind and not A.error then place,name,area=destination(action,true) end
     name=model.dungeonName and placeLabel(model.dungeonName) or name
-    T.location:SetText(name or "当前行程");T.placeIcon:SetShown(name~=nil)
+    T.location:SetText(name or "当前行程");T.hasPlace=name~=nil
     setHUDIcon(T.actionIcon,currentIcon)
     T.area:SetText(area or "")
     local nextStep,nextId,nextTitle=model.nextStep,model.nextId,model.nextTitle
@@ -1866,6 +1869,9 @@ function UI:LayoutTracker()
     T.chapter:SetShown(guide==true);T.chapterRule:SetShown(guide==true)
     T.chapter:ClearAllPoints();T.chapterRule:ClearAllPoints();T.divider:ClearAllPoints()
     T.location:ClearAllPoints();T.area:ClearAllPoints();T.experience:ClearAllPoints()
+    local chapterPlace=guide and placeLabel(T.chapter:GetText())
+    local showPlace=not guide or T.location:GetText()~=chapterPlace or (T.area:GetText() or "")~=""
+    T.location:SetShown(showPlace);T.placeIcon:SetShown(T.hasPlace and showPlace)
     local locationInset=T.placeIcon:IsShown() and indent or 0
     T.placeIcon:ClearAllPoints();T.placeIcon:SetSize(16*scale,16*scale)
     if guide then
@@ -1882,9 +1888,9 @@ function UI:LayoutTracker()
         T.chapterRule:SetPoint("TOPLEFT",0,-tabHeight-barHeight);T.chapterRule:SetWidth(width)
         T.placeIcon:SetPoint("TOPLEFT",-scale,-placeY-scale)
         T.location:SetPoint("TOPLEFT",locationInset,-placeY);T.location:SetWidth(width-locationInset)
-        local areaY=placeY+T.location:GetStringHeight()+3*scale
+        local areaY=placeY+(showPlace and T.location:GetStringHeight()+3*scale or 0)
         T.area:SetPoint("TOPLEFT",locationInset,-areaY);T.area:SetWidth(width-locationInset)
-        T.area:SetShown((T.area:GetText() or "")~="")
+        T.area:SetShown((T.area:GetText() or "")~="" and T.area:GetText()~=chapterPlace)
         cardTop=areaY+(T.area:IsShown() and T.area:GetStringHeight() or 0)+8*scale
         T.divider:SetPoint("TOPLEFT",0,-tabHeight)
         T.headerLine:SetSize(math.min(width,T.chapter:GetStringWidth()+gap),2)
@@ -2002,7 +2008,9 @@ function UI:LayoutTracker()
         T.journeySummary:SetWidth(inner-36*scale);T.journeySummary:SetMaxLines(1)
         T.journeySummary:SetText((T.journeyTime or "")..(T.journeyClosed and "  +" or "  −"))
         local journeyHeight=30*scale
-        local showDestination=not T.journeyClosed and T.journeyDestination:GetText()~=""
+        local destinationText=T.journeyDestination:GetText()
+        local showDestination=not T.journeyClosed and destinationText and destinationText~=""
+            and destinationText~="前往 "..(T.location:GetText() or "")
         T.journeyDestination:SetShown(showDestination)
         if showDestination then
             T.journeyDestination:ClearAllPoints();T.journeyDestination:SetPoint("TOPLEFT",indent,-journeyHeight-2*scale)

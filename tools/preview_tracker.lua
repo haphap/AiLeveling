@@ -521,7 +521,9 @@ if A.previewTab then
         local browser=A.UI.Browser
         local view=browser.dungeonDetail
         assert(view:IsShown() and not browser.detail:IsShown())
-        if arg[2]=="journey" then assert(view.hint:GetText():find("接取 收集记忆",1,true)) end
+        if arg[2]=="journey" then
+            assert(view.hint:IsShown() and view.hint:GetText():find("接取 "..A.UI.QuestName("收集记忆"),1,true))
+        end
         assert(#view.rows==#browser.selected.tasks)
         local tasks={};for _,task in ipairs(browser.selected.tasks) do tasks[task.id]=task end
         for _,row in ipairs(view.rows) do

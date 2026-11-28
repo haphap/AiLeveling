@@ -109,7 +109,7 @@ function B:Create(parent)
     self.title=A.UI:Text(self.infoChild,"title",colors.white);self.title:SetPoint("TOPLEFT");self.title:SetWidth(326)
     self.detail=A.UI:Text(self.infoChild,"body",colors.white);self.detail:SetWidth(326)
     self.goals=CreateFrame("Frame",nil,self.infoChild)
-    self.goalHeading=A.UI:Text(self.infoChild,"caption",colors.muted);self.goalHeading:SetText("任务目标")
+    self.goalHeading=A.UI:Text(self.infoChild,"caption",colors.muted);self.goalHeading:SetText("目标进度")
     self.buttons={}
     for i=1,5 do
         local create=i==1 and A.UI.Button or A.UI.ListButton
@@ -619,6 +619,12 @@ function B:RegionChart(zone,top,stats,filter)
                 chart.filter=chart.filter~=key and key or nil
                 self.info:SetVerticalScroll(0);self:Detail()
             end,"guideLabel")
+            b:HookScript("OnEnter",function(button)
+                GameTooltip:SetOwner(button,"ANCHOR_RIGHT")
+                GameTooltip:SetText(chart.filter==key and "清除筛选" or "只看"..status.label.."任务")
+                GameTooltip:Show()
+            end)
+            b:HookScript("OnLeave",function() GameTooltip:Hide() end)
             b.dot=b:CreateTexture(nil,"ARTWORK");b.dot:SetColorTexture(unpack(status.tint))
             b.dot:SetPoint("LEFT",4,0);b.dot:SetSize(7,7)
             b.text:ClearAllPoints();b.text:SetPoint("LEFT",b.dot,"RIGHT",6,0)
@@ -658,11 +664,11 @@ function B:RegionChart(zone,top,stats,filter)
         button:SetSize(width/4,metrics.hit*scale);button.text:SetText(status.label.."  "..count)
         A.UI:MarkChoice(button,chart.filter==status.key)
     end
-    local notes={"收录 "..#zone.quests.." 项",A.state.level>=60 and "已满级" or ("按 "..A.state.level.." 级逐项估算")}
+    local notes={A.state.level>=60 and "已满级" or ("按 "..A.state.level.." 级估算经验")}
+    if self.selected.region then table.insert(notes,1,"收录 "..#zone.quests.." 项") end
     if stats.unknown>0 then notes[#notes+1]=stats.unknown.." 项经验待确认" end
     if #stats.closed>0 then notes[#notes+1]=#stats.closed.." 项已关闭，不计入进度" end
     if stats.hasAlternatives then notes[#notes+1]="含互斥备选奖励" end
-    notes[#notes+1]=chart.filter and "再点选中状态可清除筛选" or "点上方状态可筛选任务"
     chart.note:SetText(table.concat(notes,"  ·  "));chart.note:SetWidth(width)
     local noteY=barY+barHeight+(metrics.tight+metrics.hit)*scale+gap
     chart.note:SetPoint("TOPLEFT",0,-noteY);chart:SetHeight(noteY+chart.note:GetStringHeight()+gap)
@@ -740,7 +746,7 @@ function B:Detail()
     self.info:ClearAllPoints();self.info:SetPoint("TOPLEFT",self.questHeader,quest and "BOTTOMLEFT" or "TOPLEFT")
     self.title:ClearAllPoints();self.title:SetPoint("TOPLEFT")
     self.title:SetWidth(self.info:GetWidth()-28)
-    self.title:SetText(e and e.title or "暂无项目")
+    self.title:SetText(e and e.title or "")
     self.detail:SetWidth(self.info:GetWidth())
     local lines={}
     local regionLists
@@ -795,8 +801,7 @@ function B:Detail()
     end
     self.detail:SetSpacing(stats and 3*A.UI:FontScale() or 0)
     if not e and self.mode==10 and #self.entries==0 then
-        self.title:SetText(self.summary:GetText())
-        lines[1]=A.error or (not A.indexReady and "任务索引就绪后会自动显示区域。" or "任务库中没有可显示的区域。")
+        lines[1]=A.error
     elseif not e then lines[1]=self.query and self.query~="" and "清空搜索或换一个关键词。" or "角色状态更新后，相关内容会显示在这里。"
     elseif e.dungeonCandidate then
         local c=e.dungeonCandidate
@@ -827,9 +832,9 @@ function B:Detail()
             local verb=({accept="接取于 ",turnin="交付给 "})[nextAction.kind]
             if verb and point and point.entityName then instruction=verb..color(blue,point.entityName) end
         end
-        if not instruction and active and not active.ready then
+        if instruction and nextAction.kind=="objective" and active then
             for _,goal in ipairs(active.objectives or {}) do
-                if not goal.finished and goal.text then instruction=goal.text;break end
+                if instruction==goal.text then instruction=nil;break end
             end
         end
         self.meta:SetText(meta..(instruction and ("\n"..instruction) or ""));self.meta:Show()
@@ -850,13 +855,14 @@ function B:Detail()
             local pre=A.Data:GetQuest(e.prerequisite)
             lines[#lines+1]="前置  "..questLink(e.prerequisite,pre and pre.title or "任务 #"..e.prerequisite)
         end
-        if not active and db then
-            if q and #(e.choice.stages or {})==0 and A.Data.QuestContact then
-                local giver=A.Data:QuestContact(q.id,"startedBy")
-                local recipient=A.Data:QuestContact(q.id,"finishedBy")
-                if giver and giver.entityName then lines[#lines+1]=A.UI:Icon("accept",16).." 接取于 "..color(blue,giver.entityName) end
-                if recipient and recipient.entityName then lines[#lines+1]=A.UI:Icon("pending",16).." 交付给 "..color(blue,recipient.entityName) end
-            end
+        local function addContact(verb,point,icon)
+            if not point or not point.entityName then return end
+            local contact=verb..color(blue,point.entityName)
+            if contact~=instruction then lines[#lines+1]=A.UI:Icon(icon,16).." "..contact end
+        end
+        if not active and db and q and #(e.choice.stages or {})==0 and A.Data.QuestContact then
+            addContact("接取于 ",A.Data:QuestContact(q.id,"startedBy"),"accept")
+            addContact("交付给 ",A.Data:QuestContact(q.id,"finishedBy"),"pending")
         end
         if active and active.objectives and #active.objectives>0 then
             self.goalHeading:ClearAllPoints();self.goalHeading:SetPoint("TOPLEFT",0,-detailTop);self.goalHeading:Show()
@@ -873,12 +879,12 @@ function B:Detail()
             end
             local where=stage.recipient or stage.position
             if stage.kind~="objective" and where and where.entityName then
-                lines[#lines+1]=A.UI:Icon(A.UI.QuestIcon(stage.kind,stage),16).." "..(stage.kind=="turnin" and "交付给 " or "接取于 ")..color(blue,where.entityName)
+                addContact(stage.kind=="turnin" and "交付给 " or "接取于 ",where,A.UI.QuestIcon(stage.kind,stage))
             elseif not active and stage.kind=="objective" and stage.text then lines[#lines+1]=A.UI:Icon(A.UI.QuestIcon(stage.kind,stage),14).." "..stage.text end
         end
         if e.choice.lowValue then lines[#lines+1]=color(gold,e.choice.lowValue.suggestion).." · "..e.choice.lowValue.reason end
         if e.choice.entryBlocked then lines[#lines+1]=e.choice.entryBlocked end
-        if e.reason then lines[#lines+1]=e.reason end
+        if e.reason and not status:find(e.reason,1,true) then lines[#lines+1]=e.reason end
         for _,line in ipairs(rewardLines(q)) do lines[#lines+1]=line end
         local planned=false
         for _,c in ipairs(A.plan and A.plan.taskChoices or {}) do if c==e.choice then planned=true;break end end
@@ -964,7 +970,6 @@ function B:Detail()
         if e.catalogZone and not stats then lines[#lines+1]="正在同步角色的交付记录…" end
         local visit=A.plan and A.plan.regionPlan
         local nextStop=visit and visit.destination==r
-        lines[#lines+1]=color(gold,string.format("本轮 %d项 · %s",#r.choices,r.xp..(r.unknownXP>0 and "+经验" or "经验")))
         local function tasks(label,choices,kind)
             if #choices==0 then return end
             local items={}
@@ -1110,7 +1115,7 @@ function B:DungeonDetail(e)
         view.tasks=A.UI:Text(view,"caption",colors.white)
         view.xp=A.UI:Text(view,"caption",colors.gold)
         view.hint=A.UI:Text(view,"body")
-        view.note=CreateFrame("Frame",nil,view);view.note:SetAllPoints(view.hint);view.note:EnableMouse(true)
+        view.note=CreateFrame("Frame",nil,view);view.note:EnableMouse(true)
         view.note:SetScript("OnEnter",function(f)
             GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetText("当前安排")
             for _,line in ipairs(view.tip) do GameTooltip:AddLine(line,0.9,0.85,0.8,true) end
@@ -1175,12 +1180,16 @@ function B:DungeonDetail(e)
         hint=verb and (verb..A.UI.QuestName(action.title)) or A.UI.ActionText(action,A.settings)
     end
     if not hint or hint=="" or hint=="选择并准备关联任务。" then
-        hint=rewards.count==0 and "暂无可安排任务" or rewards.ready==rewards.count and "任务已完成，可安排交付" or
-            rewards.active+rewards.ready<rewards.count and "先接取关联任务，再完成副本目标" or "完成副本目标后集中交付"
+        hint=rewards.count>0 and rewards.ready==rewards.count and "任务已完成，可安排交付" or nil
     end
     view.hint:ClearAllPoints();view.hint:SetPoint("TOPLEFT",0,-y)
-    view.hint:SetWidth(width);view.hint:SetText(A.UI:Icon("entry",14).." "..(self.message or hint))
-    y=y+view.hint:GetStringHeight()+metrics.section
+    hint=self.message or hint
+    view.hint:SetShown(hint~=nil)
+    if hint then
+        view.hint:SetWidth(width);view.hint:SetText(A.UI:Icon("entry",14).." "..hint)
+        y=y+view.hint:GetStringHeight()+metrics.gap
+    end
+    view.note:ClearAllPoints();view.note:SetAllPoints(hint and view.hint or view.tasks)
     if view.instance~=e.dungeon.instanceId then
         view.instance=e.dungeon.instanceId;view.boss=1;view.expanded=nil
     end
@@ -1204,7 +1213,9 @@ function B:DungeonDetail(e)
     view.tabMark:ClearAllPoints();view.tabMark:SetPoint("BOTTOMLEFT",tab,"BOTTOMLEFT",0,0);view.tabMark:SetSize(tab:GetWidth(),2)
     y=y+view.loot:GetHeight()+metrics.gap
     local _,group=A.Dungeon.GroupStatus(e.dungeon,A.state)
-    view.tip={self.message or hint,group}
+    view.tip={}
+    if hint then view.tip[1]=hint end
+    if group then view.tip[#view.tip+1]=group end
     for _,line in pairs({A.Dungeon.EncounterProgress(e.dungeon,A.state),A.Dungeon:TaskActivityText(e.key)}) do
         view.tip[#view.tip+1]=line
     end

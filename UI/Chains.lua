@@ -198,7 +198,6 @@ function UI:Details()
     end
     local node=self.graph and self.graph.byId[self.focus]
     if not node then lines[#lines+1]="输入任务 ID，或返回当前任务后浏览关联。";return lines end
-    lines[#lines+1]=questName(node).." ["..(status[node.status] or node.status).."]"
     lines[#lines+1]=node.eligible and "当前资格已满足" or (node.reason or "查看任务条件")
     lines[#lines+1]="全部：完成所有前置任务；任一：完成其中一个前置任务。"
     if self.graph.truncated or self.graph.edgesTruncated then lines[#lines+1]="当前视图已限量；点击节点重新聚焦，或通过关联选择器逐项查看未画出的关系。" end

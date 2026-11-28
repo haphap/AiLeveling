@@ -168,6 +168,9 @@ local function newPin(canvas)
         for _,row in ipairs(b.rows) do
             GameTooltip:AddDoubleLine(row.label,row.location,1,.82,.35,.8,.87,1)
         end
+        local first=b.rows[1]
+        local action=#b.rows>1 and "点击选择任务" or (first.key=="done" or first.blocked) and "点击查看任务详情" or "点击开始导航"
+        GameTooltip:AddLine(action)
         GameTooltip:Show()
     end)
     pin:SetScript("OnLeave",function() GameTooltip:Hide() end)
@@ -269,10 +272,14 @@ function B:ShowRegionMap(top)
     local canvas=view.canvas
     local height=drawArt(canvas,map,width)
     canvas:SetPoint("TOPLEFT",view,"TOPLEFT",0,-y);canvas:SetShown(height>0)
-    if height>0 then placePins(canvas,rows,canvas:GetWidth(),height);y=y+height+gap end
-    local note=height==0 and "底图暂不可用，可在列表查看地点" or #rows==0 and "本图暂无符合条件的任务点" or
-        (view.filter=="done" and "点击已交付标记可查看任务详情" or "点击标记查看任务或导航")
-    view.note:SetPoint("TOPLEFT",0,-y);view.note:SetWidth(width);view.note:SetText(note)
-    view:SetHeight(y+view.note:GetStringHeight()+gap)
+    if height>0 then placePins(canvas,rows,canvas:GetWidth(),height);y=height end
+    local note=height==0 and "底图暂不可用，可在列表查看地点" or #rows==0 and "本图暂无符合条件的任务点"
+    view.note:SetShown(not not note)
+    if note then
+        if height>0 then y=y+gap end
+        view.note:SetPoint("TOPLEFT",0,-y);view.note:SetWidth(width);view.note:SetText(note)
+        y=y+view.note:GetStringHeight()
+    end
+    view:SetHeight(y)
     return top+view:GetHeight()+gap,view.locations
 end
