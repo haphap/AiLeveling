@@ -509,8 +509,13 @@ end
 
 -- Compare actual journeys only when competing locations are on separate land.
 -- A more distant walk can still beat the ferry, or an unlocked flight can win.
-local function nearerSource(state,point,distance,best,bestDistance)
+local function nearerSource(state,point,distance,best,bestDistance,preferredMap)
     if not best then return true end
+    local map=preferredMap or state.browseMap
+    if map then
+        if (point.map==map)~=(best.map==map) then return point.map==map end
+        return distance and (not bestDistance or distance<bestDistance)
+    end
     local travel=state.routeState or state
     if state.position and travel.runSpeed and travel.clientVersion and not travel.inInstance and
         not point.areaOnly and not best.areaOnly and A.Flights and A.Flights.Routes and
@@ -707,7 +712,7 @@ function D:Target(q, state, pickupMap)
         if target then return target end
         if self:DeliveryOnly(q,state) then
             return self:Target(q,{position=state.position,faction=state.faction,completed=state.completed,
-                routeState=state.routeState or state,quests={[q.id]={ready=true}}})
+                routeState=state.routeState or state,browseMap=state.browseMap,quests={[q.id]={ready=true}}})
         end
         if not self:UnmappedTargetArea(q,state) then return self:QuestAreaTarget(q,state) end
         return
@@ -734,14 +739,7 @@ function D:Target(q, state, pickupMap)
     local function nearer(point,priority)
         if priority<bestPriority then return false end
         local distance=A.Navigation:Distance(state.position,point)
-        if best and priority==bestPriority then
-            if pickupMap then
-                -- Browsing a zone prefers a giver on that map and needs no travel plan.
-                if (point.map==pickupMap)~=(best.map==pickupMap) then
-                    if best.map==pickupMap then return false end
-                elseif not distance or bestDistance and distance>=bestDistance then return false end
-            elseif not nearerSource(state,point,distance,best,bestDistance) then return false end
-        end
+        if best and priority==bestPriority and not nearerSource(state,point,distance,best,bestDistance,pickupMap) then return false end
         best,bestDistance,bestPriority=point,distance,priority
         return true
     end

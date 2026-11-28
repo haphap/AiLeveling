@@ -2,40 +2,96 @@ local _,A=...
 local UI=A.UI
 local B=UI.Browser
 
--- Only resolve starters for the selected region, when its pickup map is open.
-local function pickupLocations(entry,home)
-    local data,state=A.Data,A.state
-    local maps,other,seen={[home]={}},{},{}
-    local function add(q)
-        if not q or seen[q.id] then return end
-        seen[q.id]=true
-        if state.quests[q.id] or state.completed[q.id] or not A.Eligibility.Check(q,state,data) then return end
-        local p,unavailable,item=data:Target(q,state,home)
-        if unavailable then return end
-        local row={quest=q,point=p}
-        local offers=p and p.entityId and (state.questOffers or {})[p.entityId]
-        local offer=offers and offers[q.id]
-        if p and p.map and p.x and p.y and p.x>=0 and p.x<=1 and p.y>=0 and p.y<=1 and
-            not p.startItemId and not p.areaOnly and
-            (not p.approximate or p.sourceKind=="patrol" or type(offer)=="table" and offer.nativeOffer==p) then
-            local who=p.entityName or "任务发布者"
-            row.location=string.format("%s  %.1f, %.1f",who,p.x*100,p.y*100)
-            if p.approximate then row.location=row.location..(p.sourceKind=="patrol" and " · 巡逻" or " · 对话位置") end
-            maps[p.map]=maps[p.map] or {}
-            table.insert(maps[p.map],row)
-        else
-            row.location=item and item.text or p and p.travelHint or "接取位置待确认"
-            other[#other+1]=row
-        end
-    end
-    for _,q in ipairs(entry.catalogZone and entry.catalogZone.quests or {}) do add(q) end
-    for _,c in ipairs(entry.region and entry.region.pickups or {}) do add(data:GetQuest(c.questId)) end
-    return maps,other
-end
+local phases={
+    open={kind="accept",label="接取"},active={kind="objective",label="目标"},
+    ready={kind="turnin",label="交付"},done={kind="done",label="已交付"},
+}
 
 local function mapName(map)
-    local info=C_Map.GetMapInfo(map)
+    local info=C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(map)
     return info and info.name or ("地图 #"..map)
+end
+
+local function regionLocations(entry,home,stats,filter)
+    local data=A.Data
+    local state=setmetatable({browseMap=home,objectiveTargets={}},{__index=A.state})
+    local maps,locations,seen={[home]={}},{},{}
+    local function add(q,key)
+        if not q or seen[q.id] or (filter and filter~=key) or (key=="done" and not filter) then return end
+        seen[q.id]=true
+        local phase=phases[key]
+        local notes={}
+        locations[q.id]=notes
+        local blocked
+        if key=="open" then
+            local ok,reason=A.Eligibility.Check(q,state,data)
+            if not ok then
+                blocked=reason or "暂不可接"
+                if not filter then notes[1]=blocked;return end
+            end
+        end
+        local function record(p,hint)
+            local offers=p and p.entityId and (state.questOffers or {})[p.entityId]
+            local offer=offers and offers[q.id]
+            local surveyed=p and (not p.approximate or p.sourceKind=="patrol" or p.sourceKind=="observation" or type(offer)=="table" and offer.nativeOffer==p)
+            if not (surveyed and p.map and p.x and p.y and p.x>=0 and p.x<=1 and p.y>=0 and p.y<=1 and not p.startItemId and not p.areaOnly) then
+                notes[#notes+1]=hint or p and p.travelHint or (phase.label.."位置待确认")
+                return
+            end
+            local goal=p.objectiveIndex and state.quests[q.id] and (state.quests[q.id].objectives or {})[p.objectiveIndex]
+            local title=state.quests[q.id] and state.quests[q.id].title or q.title
+            local goalName=goal and goal.text and goal.text:gsub("%s*%d+%s*/%s*%d+","")
+            local name=p.siteName or p.entityName or goalName or phase.label.."地点"
+            local location=string.format("%s  %.1f, %.1f",name,p.x*100,p.y*100)
+            if p.approximate then location=location.." · "..(p.sourceKind=="patrol" and "巡逻" or "参考位置") end
+            local label=phase.label.." · "..title
+            if goalName then label=label.." · "..goalName end
+            if blocked then label=label.." · "..blocked end
+            maps[p.map]=maps[p.map] or {}
+            table.insert(maps[p.map],{quest=q,point=p,key=key,blocked=blocked,title=title,label=label,location=location})
+            notes[#notes+1]=(p.map~=home and (mapName(p.map).." · ") or "")..location..(blocked and (" · "..blocked) or "")
+            return true
+        end
+        if key=="active" and data.ObjectiveTargets then
+            local points=data:ObjectiveTargets(q,state)
+            if #points>0 then
+                local located=false
+                for _,point in ipairs(points) do
+                    if record(point) then located=true end
+                end
+                if located then return end
+                -- The client may supply a waypoint even when every database match is area-only.
+                wipe(notes)
+            end
+        end
+        -- A completed quest is read at its recorded recipient, without changing the live log.
+        local source=state
+        if key=="done" then source=setmetatable({quests={[q.id]={ready=true}}},{__index=state}) end
+        local point,unavailable,item=data:Target(q,source,home)
+        if unavailable then notes[1]=blocked or (key=="open" and "当前不可接取" or "地点待确认");return end
+        record(point,item and item.text)
+    end
+    if stats then
+        for _,key in ipairs({"ready","active","open","done"}) do
+            if (not filter and key~="done") or filter==key then
+                for _,q in ipairs(stats[key]) do add(q,key) end
+            end
+        end
+    end
+    -- A visit can include a quest catalogued elsewhere but picked up or worked on here.
+    local visit=entry.region
+    if visit and not filter then
+        for _,group in ipairs({visit.choices or {},visit.pickups or {},visit.handins or {}}) do
+            for _,c in ipairs(group) do
+                local id=c.questId
+                local live=state.quests[id]
+                if not seen[id] and not state.completed[id] then
+                    add(data:GetQuest(id),live and (live.ready and "ready" or "active") or "open")
+                end
+            end
+        end
+    end
+    return maps,locations
 end
 
 local function textureSize(n)
@@ -44,17 +100,18 @@ local function textureSize(n)
     return size
 end
 
-local function drawArt(canvas,map,width)
+local function drawArt(canvas,map,width,maxHeight)
+    if not C_Map then return 0 end
     local art=C_Map.GetMapArtID and C_Map.GetMapArtID(map)
-    if canvas.map==map and canvas.art==art and canvas.widthUsed==width then return canvas:GetHeight() end
+    if canvas.map==map and canvas.art==art and canvas.widthUsed==width and canvas.maxHeight==maxHeight then return canvas:GetHeight() end
     for _,t in ipairs(canvas.tiles) do t:Hide() end
     local layers=C_Map.GetMapArtLayers and C_Map.GetMapArtLayers(map)
     local layer=layers and layers[1]
     local files=layer and C_Map.GetMapArtLayerTextures(map,1)
     if not files or #files==0 then canvas.map=nil;return 0 end
     local w,h,tw,th=layer.layerWidth,layer.layerHeight,layer.tileWidth,layer.tileHeight
-    local scale=width/w
-    canvas:SetSize(width,h*scale)
+    local scale=math.min(width/w,maxHeight/h)
+    canvas:SetSize(w*scale,h*scale)
     local used=0
     local function draw(files,x,y,span,height,overlay)
         local cols=math.ceil(span/tw)
@@ -82,19 +139,19 @@ local function drawArt(canvas,map,width)
             draw(area.fileDataIDs,area.offsetX,area.offsetY,area.textureWidth,area.textureHeight,area.isDrawOnTopLayer and 1 or 0)
         end
     end
-    canvas.map,canvas.art,canvas.widthUsed=map,art,width
+    canvas.map,canvas.art,canvas.widthUsed,canvas.maxHeight=map,art,width,maxHeight
     return h*scale
 end
 
 local function navigate(row)
     local q,p=row.quest,row.point
-    if not A.Eligibility.Check(q,A.state,A.Data) or A.state.completed[q.id] or A.state.quests[q.id] then
-        B:Detail();A:Message("这项任务当前不可接取。");return
-    end
-    if A.Navigation:Pickup({kind="accept",questId=q.id,title=q.title,position=p,
-        text=p.travelHint or ("前往"..(p.entityName or "任务发布者").."接取「"..q.title.."」。")}) then
+    if row.key=="done" or row.blocked then UI:QuestClick(q.id,"LeftButton");return end
+    local kind=phases[row.key].kind
+    local allowed=kind~="accept" or A.Eligibility.Check(q,A.state,A.Data)
+    if allowed and A.Navigation:Navigate({kind=kind,questId=q.id,title=row.title,position=p,
+        objectiveIndex=p.objectiveIndex,text=p.travelHint or (row.label.." · "..row.location)}) then
         UI.details:Hide()
-    else A:Message("当前无法开始这项接取导航。") end
+    else B:Detail();A:Message("当前无法开始这项任务导航。") end
 end
 
 local function newPin(canvas)
@@ -103,13 +160,13 @@ local function newPin(canvas)
     disc:SetTexture(UI.IconTexture("map-markers"))
     disc:SetTexCoord(0,.5,0,1);disc:SetVertexColor(.10,.12,.18)
     local icon=pin:CreateTexture(nil,"ARTWORK");icon:SetPoint("CENTER");icon:SetSize(16,16)
-    icon:SetTexture(UI.IconTexture("accept"))
+    pin.icon=icon
     pin.count=UI:Text(pin,"guideLabel",UI.colors.white);pin.count:SetPoint("BOTTOMLEFT",pin,"TOPRIGHT",-6,-9)
     pin:SetScript("OnEnter",function(b)
         GameTooltip:SetOwner(b,"ANCHOR_RIGHT")
-        GameTooltip:SetText("可接任务")
+        GameTooltip:SetText("区域任务")
         for _,row in ipairs(b.rows) do
-            GameTooltip:AddDoubleLine(row.quest.title,row.location,1,.82,.35,.8,.87,1)
+            GameTooltip:AddDoubleLine(row.label,row.location,1,.82,.35,.8,.87,1)
         end
         GameTooltip:Show()
     end)
@@ -118,7 +175,7 @@ local function newPin(canvas)
         if #b.rows==1 then navigate(b.rows[1]);return end
         MenuUtil.CreateContextMenu(b,function(_,menu)
             for _,row in ipairs(b.rows) do
-                menu:CreateButton(row.quest.title,function() navigate(row) end)
+                menu:CreateButton(row.label,function() navigate(row) end)
             end
         end)
     end)
@@ -127,6 +184,8 @@ end
 
 local function placePins(canvas,rows,width,height)
     local used,size=0,22*UI:FontScale()
+    if canvas.rows==rows and canvas.pinWidth==width and canvas.pinHeight==height and canvas.pinSize==size then return end
+    canvas.rows,canvas.pinWidth,canvas.pinHeight,canvas.pinSize=rows,width,height,size
     for _,r in ipairs(rows) do
         local x,y=r.point.x*width,r.point.y*height
         local pin
@@ -138,15 +197,19 @@ local function placePins(canvas,rows,width,height)
             used=used+1
             pin=canvas.pins[used] or newPin(canvas);canvas.pins[used]=pin
             pin.x,pin.y,pin.rows=x,y,{}
+            local kind=phases[r.key].kind
+            local icon=r.key=="active" and UI.QuestIcon(kind,{kind=kind,questId=r.quest.id,objectiveIndex=r.point.objectiveIndex,position=r.point}) or kind
+            pin.icon:SetTexture(UI.IconTexture(icon))
+            pin.icon:SetDesaturated(r.blocked~=nil)
             pin:SetPoint("CENTER",canvas,"TOPLEFT",x,-y);pin:SetSize(size,size);pin:Show()
-        end
+        elseif not r.blocked then pin.icon:SetDesaturated(false) end
         table.insert(pin.rows,r)
         pin.count:SetText(#pin.rows>1 and #pin.rows or "")
     end
     for i=used+1,#canvas.pins do canvas.pins[i]:Hide() end
 end
 
-function B:ShowRegionMap(entry,top,questLink)
+function B:ShowRegionMap(entry,top,stats,filter)
     local home=entry.map or entry.region.map
     local view=self.regionMap
     if not view then
@@ -156,7 +219,7 @@ function B:ShowRegionMap(entry,top,questLink)
         view.selector=UI:ListButton(view,"",180,function(b)
             MenuUtil.CreateContextMenu(b,function(_,menu)
                 for _,map in ipairs(view.mapIDs) do
-                    menu:CreateButton(mapName(map).." · "..#view.maps[map].." 项",function()
+                    menu:CreateButton(mapName(map).." · "..view.counts[map].." 项任务",function()
                         view.shownMap=map;self.info:SetVerticalScroll(0);self:Detail()
                     end)
                 end
@@ -170,11 +233,18 @@ function B:ShowRegionMap(entry,top,questLink)
             if view:IsVisible() then self:Detail() end
         end)
     end
-    if home~=view.home then view.shownMap=home end
-    if home~=view.home or view.zone~=entry.catalogZone or view.region~=entry.region or view.revision~=A.state.revision then
-        view.maps,view.other=pickupLocations(entry,home)
-        view.mapIDs={}
-        for map in pairs(view.maps) do table.insert(view.mapIDs,map) end
+    if home~=view.home or view.filter~=filter then view.shownMap=home end
+    if home~=view.home or view.zone~=entry.catalogZone or view.region~=entry.region or view.revision~=A.state.revision or view.filter~=filter then
+        view.maps,view.locations=regionLocations(entry,home,stats,filter)
+        view.filter=filter
+        view.mapIDs,view.counts={},{}
+        for map,rows in pairs(view.maps) do
+            local counted,count={},0
+            for _,row in ipairs(rows) do
+                if not counted[row.quest.id] then counted[row.quest.id]=true;count=count+1 end
+            end
+            table.insert(view.mapIDs,map);view.counts[map]=count
+        end
         table.sort(view.mapIDs,function(a,b)
             if a==home or b==home then return a==home and a~=b end
             return a<b
@@ -185,28 +255,19 @@ function B:ShowRegionMap(entry,top,questLink)
     local rows,width,gap=view.maps[map],self.info:GetWidth(),UI.metrics.gap*UI:FontScale()
     view:SetPoint("TOPLEFT",0,-top);view:SetWidth(width);view:Show()
     local multiple=#view.mapIDs>1
-    view.selector.text:SetText(mapName(map).." · "..#rows.." 项"..(multiple and "  ▾" or ""))
+    view.selector.text:SetText(mapName(map).." · "..view.counts[map].." 项任务"..(multiple and "  ▾" or ""))
     view.selector:SetEnabled(multiple)
     view.selector:SetSize(math.min(width,view.selector.text:GetStringWidth()+24),UI.metrics.button*UI:FontScale())
     local y=view.selector:GetHeight()+gap
     local canvas=view.canvas
-    local height=drawArt(canvas,map,width)
-    canvas:SetPoint("TOPLEFT",0,-y);canvas:SetShown(height>0)
-    if height>0 then placePins(canvas,rows,width,height);y=y+height+gap end
-    local note=#rows>0 and (height>0 and "点击接取标记可导航" or "地图底图暂不可用，请查看下方坐标") or "本图暂无可标出的接取点"
-    if multiple then note=note.." · 可切换接取地图" end
+    local maxHeight=math.max(185*UI:FontScale(),self.info:GetHeight()-top-y-4*gap-UI.metrics.hit*UI:FontScale())
+    local height=drawArt(canvas,map,width,maxHeight)
+    canvas:SetPoint("TOP",view,"TOP",0,-y);canvas:SetShown(height>0)
+    if height>0 then placePins(canvas,rows,canvas:GetWidth(),height);y=y+height+gap end
+    local note=height==0 and "底图暂不可用，可在列表查看地点" or #rows==0 and "本图暂无符合条件的任务点" or
+        (filter=="done" and "点击已交付标记可查看任务详情" or "点击标记查看任务或导航")
+    if multiple then note=note.." · 可切换至任务所在地图" end
     view.note:SetPoint("TOPLEFT",0,-y);view.note:SetWidth(width);view.note:SetText(note)
     view:SetHeight(y+view.note:GetStringHeight()+gap)
-    local groups={}
-    local function list(label,entries)
-        if #entries==0 then return end
-        local items={}
-        for _,r in ipairs(entries) do
-            items[#items+1]=questLink(r.quest.id,r.quest.title).."\n|cff"..UI.hex.muted..r.location.."|r"
-        end
-        groups[#groups+1]={label=label,tint=UI.hex.gold,items=items}
-    end
-    list("接取地点",rows)
-    list("其他接取方式与待确认地点",view.other)
-    return self:LayoutRegionLists(groups,top+view:GetHeight()+gap)
+    return top+view:GetHeight()+gap,view.locations
 end

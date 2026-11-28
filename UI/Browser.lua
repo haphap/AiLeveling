@@ -659,6 +659,7 @@ function B:RegionChart(zone,top,stats)
     if stats.unknown>0 then notes[#notes+1]=stats.unknown.." 项经验待确认" end
     if #stats.closed>0 then notes[#notes+1]=#stats.closed.." 项已关闭，不计入进度" end
     if stats.hasAlternatives then notes[#notes+1]="含互斥备选奖励" end
+    notes[#notes+1]=chart.filter and "再点选中状态可清除筛选" or "点上方状态可筛选任务"
     chart.note:SetText(table.concat(notes,"  ·  "));chart.note:SetWidth(width)
     local noteY=barY+barHeight+(metrics.tight+metrics.hit)*scale+gap
     chart.note:SetPoint("TOPLEFT",0,-noteY);chart:SetHeight(noteY+chart.note:GetStringHeight()+gap)
@@ -742,7 +743,6 @@ function B:Detail()
     local regionLists
     local detailTop=self.title:GetStringHeight()+18
     local regionPage=e and self.mode==10
-    if not regionPage then self.regionMapOpen=false end
     local guiding=regionPage and A.char.regionTarget and A.char.regionTarget.map==(e.map or e.region and e.region.map)
     if regionPage then
         self:Action(1,guiding and "结束区域规划" or "开始区域规划",function()
@@ -751,28 +751,20 @@ function B:Detail()
             if not ok then A:Message(why) end
             self:Refresh(10)
         end,(guiding or A.ready and A.indexReady and A.state.completionKnown~=false and not A.state.inInstance) and true or false)
-        local mapReady=A.indexReady and A.state.completionKnown~=false
-        self:Action(2,self.regionMapOpen and "任务列表" or "接取地图",function()
-            self.regionMapOpen=not self.regionMapOpen
-            self.info:SetVerticalScroll(0);self:Detail()
-        end,mapReady or self.regionMapOpen)
         local actionsHeight=self:PlaceActions(0,true)
-        self.title:SetWidth(math.max(1,self.info:GetWidth()-self.buttons[1]:GetWidth()-self.buttons[2]:GetWidth()-2*metrics.gap))
+        self.title:SetWidth(math.max(1,self.info:GetWidth()-self.buttons[1]:GetWidth()-metrics.gap))
         detailTop=math.max(self.title:GetStringHeight()+18,actionsHeight+metrics.gap)
-        if self.regionMapOpen and mapReady then
-            if self.regionChart then self.regionChart:Hide() end
-            self.detail:Hide()
-            self.infoChild:SetHeight(self:ShowRegionMap(e,detailTop,questLink))
-            return
-        end
     end
-    if self.regionMap then self.regionMap:Hide() end
     local stats,filter
     if e and e.catalogZone and A.state.completionKnown~=false then
         stats=regionProgress(e.catalogZone,A.state)
         detailTop=self:RegionChart(e.catalogZone,detailTop,stats)
         filter=self.regionChart.filter
     elseif self.regionChart then self.regionChart:Hide();self.regionChart.zone=nil end
+    local locations
+    if regionPage and A.indexReady and A.state.completionKnown~=false then
+        detailTop,locations=self:ShowRegionMap(e,detailTop,stats,filter)
+    elseif self.regionMap then self.regionMap:Hide() end
     if guiding and not filter then
         local plan=A.plan
         if A.state.inInstance then lines[#lines+1]="出本后继续区域规划。"
@@ -946,7 +938,9 @@ function B:Detail()
                 for _,q in ipairs(stats[key]) do
                     local live=A.state.quests[q.id]
                     local level=(q.questLevel or 0)>0 and color(muted,"["..q.questLevel.."]").."  " or ""
-                    items[#items+1]=level..questLink(q.id,live and live.title or q.title,nil,dimmed)
+                    local place=locations and locations[q.id]
+                    items[#items+1]=level..questLink(q.id,live and live.title or q.title,nil,dimmed)..
+                        (place and ("\n"..color(muted,table.concat(place,"\n"))) or "")
                 end
                 if #items>0 then regionLists[#regionLists+1]={label=label,tint=tint,items=items,pair=pair}
                 elseif filter then lines[#lines+1]="本区没有"..label.."的任务。" end

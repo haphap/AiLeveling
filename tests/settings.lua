@@ -57,7 +57,7 @@ test("练级区域在首轮行程前和副本内可浏览，搜索不重算路�
     C_Map=oldMap;B.finish()
 end)
 
-test("区域接取地图按真实地图分组，合并附近任务并及时撤掉已接标记",function()
+test("区域统计下的地图和列表联动，按当前任务阶段更新位置",function()
     local B=setup(true)
     local browser,oldMap,oldExploration=B.UI.Browser,C_Map,C_MapExplorationInfo
     C_Map={GetMapInfo=function(id) return {name="地图"..id,mapType=3} end,
@@ -67,33 +67,53 @@ test("区域接取地图按真实地图分组，合并附近任务并及时撤�
     local q={};for id=1,9 do q[id]=F.Quest(id) end
     B.Data=F.Data(q);B.Data.maps={[11]=1};B.Data.byArea={[11]={1,2,3,4,5,6,7,8,9}}
     B.Eligibility=A.Eligibility;B.indexReady=true;B.state.completed[6]=true;q[7].requiredLevel=60
+    B.state.quests[1]={ready=true}
     local calls,chosen=0
     function B.Data:Target(quest,state,home)
         eq(home,1);calls=calls+1
         if quest.id==5 then return {map=1,x=.1,y=.2,startItemId=10},nil,{text="使用任务物品"} end
         if quest.id==8 then return {areaOnly=true,map=1,x=.5,y=.5} end
         if quest.id==9 then return nil,true end
-        assert(quest.id>=2 and quest.id<=4)
+        if state.quests[quest.id] and state.quests[quest.id].ready then return {map=1,x=.8,y=.9,entityName="收件人"} end
+        assert(quest.id>=2 and quest.id<=4 or quest.id==7)
         return {map=quest.id==4 and 2 or 1,x=.3+quest.id*.001,y=.6,entityName="发布者"}
     end
-    B.Navigation.Pickup=function(_,action) chosen=action;return true end
+    function B.Data:ObjectiveTargets(quest,state)
+        eq(state.browseMap,1)
+        return {{map=1,x=.1,y=.1,objectiveIndex=1},{map=1,x=.9,y=.1,objectiveIndex=2}}
+    end
+    B.Navigation.Navigate=function(_,action) chosen=action;return true end
     assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
-    B.UI.details:Show();B.UI:SelectTab(10);eq(calls,0)
-    browser.buttons[2].run()
-    local view=browser.regionMap
-    eq(#view.maps[1],2);eq(#view.maps[2],1);eq(#view.other,2);eq(#view.canvas.pins,1)
-    eq(view.canvas.tiles[3].texture,113);eq(view.canvas.pins[1].count:GetText(),2)
-    browser:Detail();eq(calls,6)
-    local pin=view.canvas.pins[1]
-    pin.scripts.OnClick(pin);B.menu[q[3].title].callback()
-    eq(chosen.questId,3);eq(chosen.position.x,.303)
+    B.UI.details:Show();B.UI:SelectTab(10)
+    local view,chart=browser.regionMap,browser.regionChart
+    assert(chart:IsShown() and view:IsShown() and view.point[3]<chart.point[3])
+    eq(#view.maps[1],3);eq(#view.maps[2],1);eq(#view.canvas.pins,2)
+    assert(view.locations[5][1]:find("使用任务物品",1,true))
+    eq(view.canvas.tiles[3].texture,113)
+    local count=calls;browser:Detail();eq(calls,count)
+    local pin=view.canvas.pins[2];eq(pin.count:GetText(),2)
+    pin.scripts.OnClick(pin);B.menu["接取 · "..q[3].title].callback()
+    eq(chosen.questId,3);eq(chosen.kind,"accept");eq(chosen.position.x,.303)
     B.UI.details:Show()
-    B.state.quests[3]={};B.state.revision=B.state.revision+1;browser:Detail()
-    eq(#pin.rows,1);eq(pin.count:GetText(),"")
-    view.selector.scripts.OnClick(view.selector);B.menu["地图2 · 1 项"].callback()
+    B.state.quests[3]={objectives={{text="甲"},{text="乙"}}};B.state.revision=B.state.revision+1
+    chart.legend[3].scripts.OnClick()
+    eq(#view.maps[1],2);assert(not view.maps[2])
+    pin.scripts.OnClick(pin);eq(chosen.kind,"objective");eq(chosen.objectiveIndex,2)
+    B.UI.details:Show();B.state.quests[3].ready=true;B.state.revision=B.state.revision+1;browser:Detail()
+    eq(#view.maps[1],0);assert(not pin:IsShown() and view.canvas:IsShown())
+    chart.legend[2].scripts.OnClick()
+    eq(#view.maps[1],2);eq(view.maps[1][1].point.x,.8)
+    assert(browser.regionSections[1].columns[1]:GetText():find("收件人",1,true))
+    local p=view.canvas.pins[1];p.scripts.OnClick(p);B.menu["交付 · "..q[3].title].callback();eq(chosen.kind,"turnin")
+    B.UI.details:Show();B.state.quests[3]=nil;B.state.completed[3]=true;B.state.revision=B.state.revision+1
+    chart.legend[1].scripts.OnClick();eq(#view.maps[1],2)
+    B.UI.QuestClick=function(_,id) eq(id,3);chosen="详情" end
+    p.scripts.OnClick(p);B.menu["已交付 · "..q[3].title].callback();eq(chosen,"详情")
+    chart.legend[4].scripts.OnClick()
+    assert(view.locations[7][1]:find("等级不足",1,true) and not view.locations[3])
+    view.selector.scripts.OnClick(view.selector);B.menu["地图2 · 1 项任务"].callback()
     assert(not view.canvas:IsShown());assert(view.note:GetText():find("底图暂不可用",1,true))
-    assert(browser.regionSections[1].columns[1]:GetText():find(q[4].title,1,true))
-    browser.buttons[2].run();assert(browser.regionChart:IsShown() and not view:IsShown())
+    chart.legend[4].scripts.OnClick();assert(view.canvas:IsShown() and chart:IsShown());eq(view.shownMap,1)
     C_Map,C_MapExplorationInfo=oldMap,oldExploration;B.finish()
 end)
 
