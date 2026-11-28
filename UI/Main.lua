@@ -483,15 +483,20 @@ function UI:Create()
     divider:SetColorTexture(unpack(colors.line))
     self.detailMark=side:CreateTexture(nil,"ARTWORK")
     self.detailMark:SetTexture(media.."compass.tga");self.detailMark:SetSize(26,26);self.detailMark:SetPoint("TOP",0,-10)
-    local labels={"练级任务","任务链","装备","地下城","设置","数据","服务","专业任务","职业任务","练级区域","坐骑任务"}
-    local icons={"compass","chain","gear","entry","settings","xp","talk","profession","class","location","mount"}
-    for n,i in ipairs({1,9,10,8,11,4,3,2,7,5,6}) do
-        local b=self:ListButton(side,labels[i],76,function() self:SelectTab(i) end,"caption")
+    local pages={
+        {1,"练级任务","compass"}, {9,"职业任务","class"}, {10,"练级区域","location"},
+        {8,"专业任务","profession"}, {11,"坐骑任务","mount"}, {4,"地下城","entry"},
+        {2,"任务链","chain"}, {7,"服务","talk","附近服务"}, {5,"设置","settings"}, {6,"数据","xp","运行数据"},
+    }
+    for n,page in ipairs(pages) do
+        local id,label,icon,heading=unpack(page)
+        local b=self:ListButton(side,label,76,function() self:SelectTab(id) end,"caption")
+        b.heading=heading or label
         b:SetPoint("TOPLEFT",0,-44-(n-1)*47);b:SetHeight(46)
         b.icon=self:Text(b,"body");b.icon:SetPoint("TOP",0,-3)
-        b.icon:SetText(self:Icon(icons[i],14))
+        b.icon:SetText(self:Icon(icon,14))
         b.text:ClearAllPoints();b.text:SetPoint("TOP",b.icon,"BOTTOM",0,-2)
-        self.tabs[i]=b
+        self.tabs[id]=b
     end
     self.tabMark=side:CreateTexture(nil,"ARTWORK");self.tabMark:SetWidth(2)
     self.detailHeading=self:Text(self.details,"title",colors.white)
@@ -595,12 +600,13 @@ function UI:ShowText(text,heading)
 end
 
 function UI:SelectTab(index,reuse)
+    if not self.tabs[index] then index=1 end
     self.exporting = false
     self.copyBox:ClearFocus(); self.copyBox:Hide(); self.detailText:Show()
     if self.selectedTab~=index then self.Browser:ClearSearch();self.scroll:SetVerticalScroll(0) end
     self.selectedTab = index
     local r,g,b=unpack(colors.accent)
-    for i,tab in ipairs(self.tabs or {}) do
+    for i,tab in pairs(self.tabs) do
         tab.baseColor=i==index and colors.selected or {0,0,0,0}
         tab:SetBackdropColor(unpack(tab.baseColor))
         if i==index then tab.text:SetTextColor(r,g,b) else tab.text:SetTextColor(unpack(colors.muted)) end
@@ -608,9 +614,8 @@ function UI:SelectTab(index,reuse)
     local selected=self.tabs[index]
     self.tabMark:ClearAllPoints();self.tabMark:SetPoint("TOPLEFT",selected,"TOPLEFT");self.tabMark:SetPoint("BOTTOMLEFT",selected,"BOTTOMLEFT")
     self.tabMark:SetColorTexture(unpack(colors.gold))
-    local names={"练级任务","任务链","装备情况","地下城","设置","运行数据","附近服务","专业任务","职业任务","练级区域","坐骑任务"}
-    self.detailHeading:SetText(names[index])
-    local browse=index==1 or index==3 or index==4 or index>=8
+    self.detailHeading:SetText(selected.heading)
+    local browse=index==1 or index==4 or index>=8
     self.detailRule:SetWidth(self.details:GetWidth()-metrics.detailInset-2*metrics.guidePadding)
     self.details:SetSize(1000,600)
     self.scroll:SetPoint("BOTTOMRIGHT",-36,18);self.scrollChild:SetWidth(1000-metrics.detailInset-40);self.detailText:SetWidth(self.scrollChild:GetWidth())

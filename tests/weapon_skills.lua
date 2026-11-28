@@ -1,7 +1,7 @@
 return function(test,eq,F,A)
 local function fixture()
     local B={UI={},settings={}}
-    for _,file in ipairs({"Data/WeaponSkills.lua","State.lua","Planner/Gear.lua","QuestAssist.lua","UI/Main.lua","UI/Gear.lua"}) do
+    for _,file in ipairs({"Data/WeaponSkills.lua","State.lua","Planner/Gear.lua","QuestAssist.lua"}) do
         assert(loadfile(file))("AiLeveling",B)
     end
     local s=F.State();s.clientVersion,s.clientBuild,s.interface="1.60.1","70862",16001
@@ -64,7 +64,7 @@ test("远程武器使用远程熟练度，属性用途和投掷武器不套近�
     s.class="MAGE";s.equipment[16]=weapon(1,7,10)
     eq(#B.Gear.Upgrade(weapon(2,0,20),s).notes,0)
 end)
-test("整套双手替换和背包副手均保留熟练度权衡，装备详情显示实际数值",function()
+test("整套双手替换和背包副手均保留熟练度权衡",function()
     local B,s=fixture();s.equipment[16]=weapon(1,7,10)
     s.weaponSkills[172]={rank=1,maxRank=100,modifier=0,tempPoints=0}
     local candidate=weapon(2,1,20,"INVTYPE_2HWEAPON")
@@ -73,10 +73,6 @@ test("整套双手替换和背包副手均保留熟练度权衡，装备详情�
     local main,off=weapon(3,7,15),weapon(4,0,15,"INVTYPE_WEAPONOFFHAND")
     s.bagEquipment={off}
     local r=B.Gear.Upgrade(main,s);assert(r.replacements[17]);assert(table.concat(r.notes):find("单手斧",1,true))
-    s.bagEquipment={}
-    assert(loadfile("UI/Browser.lua"))("AiLeveling",B)
-    local row=B.UI.Browser:GearRows()[1];assert(row.skill:find("双手斧熟练度 1/100",1,true))
-
 end)
 test("武器熟练度权衡抑制自动装备绕路而手选目标保持",function()
     local B,s=fixture();s.equipment[16]=weapon(1,7,10);s.items={[7]=weapon(7,0,20)}

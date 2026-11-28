@@ -189,7 +189,7 @@ Data/Dungeons.lua 由 tools/build_dungeon_catalog.py 生成，独立于 Content.
 
 原生 `C_TooltipInfo.GetHyperlink` 在对应枚举存在时按完整物品链接读取 `ItemSpellTriggerOnUse`／`ItemSpellTriggerOnProc`，保留客户端说明为 `effects[{kind,text}]`。不按本地化文字猜测触发概率或强度。返回暂缺、空数据或读取异常标记 `effectsPending`；当前快照关联的 `TOOLTIP_DATA_UPDATE` 到来后合并刷新并重算。缺少接口时沿用 GetItemSpell 和已验证静态效果字段。
 
-整套比较同时列出被换下与换上的特殊效果，包含双手武器替换时卸下的副手；套装按更换前后实际件数比较，只提示改变的套装。效果未量化或资料待加载时，属性变化仍供装备页查看和手动选择，不作为自动装备偏好加分，也不据此判为低价值任务。原生 OnEquip 中的额外被动机制与原生套装归属尚未自动解析，继续需要已验证 effectText／setId；此项并未证明全部特殊效果覆盖。
+整套比较同时列出被换下与换上的特殊效果，包含双手武器替换时卸下的副手；套装按更换前后实际件数比较，只提示改变的套装。效果未量化或资料待加载时，比较结果保留已知的属性变化，不作为自动装备偏好加分，也不据此判为低价值任务。原生 OnEquip 中的额外被动机制与原生套装归属尚未自动解析，继续需要已验证 effectText／setId；此项并未证明全部特殊效果覆盖。
 
 ## 原生首领完成条件（0.1.87）
 

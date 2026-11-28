@@ -287,33 +287,6 @@ function B:DungeonRows()
     return rows
 end
 
-local slots={"头部","颈部","肩部","衬衣","胸部","腰部","腿部","脚部","手腕","手部","戒指","戒指","饰品","饰品","背部","主手","副手","远程","战袍"}
-function B:GearRows()
-    local rows={}
-    for _,item in ipairs(A.state.bagEquipment or {}) do
-        local c=A.Gear.Upgrade(item,A.state)
-        if c and not c.provisional and (c.delta>0 or #(c.notes or {})>0) then
-            rows[#rows+1]={key="bag:"..(item.instanceKey or item.id),title=item.name or "物品 #"..item.id,
-                sub=color(green,"背包可替换")..string.format(" · 评分 %+.1f",c.delta),icon="gear",item=item,comparison=c}
-        end
-    end
-    for _,id in ipairs(A.UI.Gear:Ids()) do
-        local source=A.Gear.GetSource(id)
-        local value=source and A.Gear.Source(source,A.state,A.Data)
-        if value then rows[#rows+1]={key="source:"..id,title=value.item.name or source.title,sub=(source.kind=="quest" and "任务奖励" or "副本掉落")..(value.upgrade.provisional and " · 属性加载中" or string.format(" · 评分 %+.1f",value.upgrade.delta)),
-            icon="gear",item=value.item,comparison=value.upgrade,source=source,sourceId=id} end
-    end
-    for slot=1,19 do
-        local item=(A.state.equipment or {})[slot]
-        if item then
-            local reference,skill=A.Gear.WeaponSkill(item,A.state)
-            local detail=reference and skill and string.format("%s熟练度 %d/%d（有效 %d）",reference.name,skill.rank,skill.maxRank,skill.rank+skill.modifier+skill.tempPoints)
-            rows[#rows+1]={key="slot:"..slot,title=item.name or "物品 #"..item.id,sub=color(muted,"已装备 · "..slots[slot]),icon="gear",item=item,slot=slot,skill=detail}
-        end
-    end
-    return rows
-end
-
 -- Geographic quest-log categories are useful even when the route planner has no outdoor visit.
 function B:RegionCatalog()
     local data,state=A.Data,A.state
@@ -411,7 +384,7 @@ function B:Refresh(mode,reuse,opening)
         self.summary:SetWidth(listWidth);self.summary:SetJustifyH("LEFT")
         self.search:ClearAllPoints();self.search:SetPoint("TOPLEFT",0,-searchY);self.search:SetSize(listWidth,searchHeight)
         self.searchHint:ClearAllPoints();self.searchHint:SetPoint("LEFT",self.search,"LEFT",A.UI.daylight and 26 or 10,0)
-        self.searchHint:SetText(({[3]="搜索装备名称或物品编号",[4]="搜索地下城名称",[10]="搜索区域名称"})[mode] or "搜索任务名称或编号")
+        self.searchHint:SetText(({[4]="搜索地下城名称",[10]="搜索区域名称"})[mode] or "搜索任务名称或编号")
         self.levelFilter:SetShown(mode==4)
         local listY=summaryY+math.ceil(metrics.hit*scale)
         if mode==4 then
@@ -439,7 +412,6 @@ function B:Refresh(mode,reuse,opening)
     local rows
     if reuse then rows=self.entries
     elseif mode==4 then rows=self:DungeonRows()
-    elseif mode==3 then rows=self:GearRows()
     elseif mode==10 then rows=self:RegionRows()
     else
         if mode==11 then self:IndexMounts() end
@@ -451,7 +423,7 @@ function B:Refresh(mode,reuse,opening)
     if self.query and self.query~="" then
         local filtered={}
         for _,row in ipairs(rows) do
-            local id=row.questId or row.item and row.item.id
+            local id=row.questId
             if row.title:lower():find(self.query,1,true) or id and tostring(id):find(self.query,1,true) then filtered[#filtered+1]=row end
         end
         rows=filtered
@@ -468,15 +440,13 @@ function B:Refresh(mode,reuse,opening)
     if mode==1 then
         key=A.UI.Plan.key
         if not key then for _,row in ipairs(rows) do if row.current then key=row.key;break end end end
-    elseif mode==3 and not key and A.char.gearTarget then
-        key="source:"..A.char.gearTarget
     end
     local selectedIndex=1
     for i,row in ipairs(rows) do if row.key==key then selectedIndex=i;break end end
     local previousKey=self.selected and self.selected.key
     self.selected=rows[selectedIndex]
     if mode==1 then A.UI.Plan.preview=self.selected and self.selected.choice end
-    local summary=#rows..(mode==10 and " 个练级区域" or mode==4 and " 个地下城" or mode==3 and " 件装备" or " 项任务")
+    local summary=#rows..(mode==10 and " 个练级区域" or mode==4 and " 个地下城" or " 项任务")
     if mode==1 then
         local status=A.char.paused and "引导已暂停" or A.char.locked and "单任务锁定" or
             A.Navigation.manual and "手动导航" or A.char.taskBatch and "副本任务安排" or
@@ -486,7 +456,7 @@ function B:Refresh(mode,reuse,opening)
     if mode==10 and #rows==0 and #self.entries==0 then
         summary=A.error and "区域资料不可用" or not A.indexReady and "正在载入区域目录…" or "暂无区域资料"
     elseif #rows==0 and self.query and self.query~="" then
-        summary="没有匹配的"..(({[3]="装备",[4]="地下城",[10]="练级区域"})[mode] or "任务")
+        summary="没有匹配的"..(({[4]="地下城",[10]="练级区域"})[mode] or "任务")
     end
     self.summary:SetText(summary)
     self.filtered=rows
@@ -1004,32 +974,6 @@ function B:Detail()
         tasks("本轮集中交付",r.handins,"turnin")
         tasks("留待回访",r.revisit,"revisit")
         if nextStop and visit.current~=r then tasks("离开本区后留待回访",visit.revisit,"revisit") end
-    elseif e.item then
-        lines[#lines+1]=itemLink(e.item);lines[#lines+1]=e.sub
-        if e.skill then lines[#lines+1]=e.skill end
-        if e.source then lines[#lines+1]="来源  "..e.source.title end
-        if e.comparison then
-            local c=e.comparison
-            lines[#lines+1]=c.provisional and "属性加载中" or color(c.delta>0 and green or muted,string.format("属性评分 %+.1f",c.delta))
-            local stats={}
-            local order={};for slot in pairs(c.replacements or {}) do order[#order+1]=slot end;table.sort(order)
-            for _,slot in ipairs(order) do
-                local replacement=c.replacements[slot]
-                local old=(A.state.equipment or {})[slot]
-                lines[#lines+1]=(slots[slot] or "槽位 "..slot).."  "..(old and itemLink(old) or "空").." → "..(replacement and itemLink(replacement) or "空")
-                for key,n in pairs(old and old.stats or {}) do stats[key]=(stats[key] or 0)-n end
-                for key,n in pairs(replacement and replacement.stats or {}) do stats[key]=(stats[key] or 0)+n end
-            end
-            local keys={};for key,n in pairs(stats) do if n~=0 then keys[#keys+1]=key end end;table.sort(keys)
-            for _,key in ipairs(keys) do lines[#lines+1]=color(stats[key]>0 and green or A.UI.hex.red,(_G[key] or key)..string.format(" %+.1f",stats[key])) end
-            for _,note in ipairs(c.notes or {}) do lines[#lines+1]=note end
-        end
-        if e.sourceId then self:Action(1,"安排获取此装备",function() local ok,why=A.Gear:SetTarget(e.sourceId);self.message=not ok and why or nil;self:Refresh(3) end) end
-        if A.char.gearTarget then self:Action(2,"恢复升级目标",function()
-            A.char.gearTarget,A.char.gearBaseline=nil,nil
-            if A.ready then A.State:Refresh(true) end
-            self:Refresh(3)
-        end) end
     end
     if self.message then lines[#lines+1]=color(gold,self.message) end
     self.detail:ClearAllPoints();self.detail:SetPoint("TOPLEFT",0,-detailTop)

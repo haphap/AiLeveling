@@ -67,7 +67,10 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
     assert(B.UI.details:IsShown())
     assert(B.UI.Browser.frame:IsShown());assert(B.UI.Browser.rows[1].text:GetText()~="")
     B.UI:SelectTab(10);eq(#B.UI.Browser.entries,0)
-    B.UI:SelectTab(1)
+    eq(B.UI.tabs[3],nil)
+    eq(B.UI.tabs[10].baseColor,B.UI.colors.selected)
+    B.UI:SelectTab(3);eq(B.UI.selectedTab,1)
+    eq(B.UI.detailHeading:GetText(),"练级任务")
     local slider=B.UI.Settings.backgroundTransparency
     local before=B.refreshes
     B.settings.trackerTransparency,B.settings.detailTransparency=100,10
@@ -88,6 +91,9 @@ test("完整界面显示任务和详情，初始化失败显示可复制错误",
         eq(B.UI.tracker.menu.surface[1].color[4],0)
     end
     eq(B.refreshes,before);eq(B.settings.alpha,0.94)
+    B.char.gearTarget="reward:2:101"
+    B.UI.frame.scripts.OnMouseUp(nil,"RightButton");assert(B.menu["恢复自动安排"])
+    B.char.gearTarget=nil
     B.UI.frame.scripts.OnMouseUp(nil,"RightButton");B.menu["详细面板"].callback()
     eq(B.UI.details:IsShown(),false)
     B.menu["暂停引导"].callback();eq(B.char.paused,true)

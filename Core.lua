@@ -564,7 +564,7 @@ frame:SetScript("OnUpdate", function(_, elapsed)
         if A.redrawAfterRefresh then
             A.redrawAfterRefresh=nil;A.dirty=true
             local browser=A.UI.Browser
-            if browser and (browser.mode==3 or browser.mode==4) then browser.entriesRevision=nil end
+            if browser and browser.mode==4 then browser.entriesRevision=nil end
         end
         if A.Merchant then A.Merchant:SellJunk() end
     end

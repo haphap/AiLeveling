@@ -871,7 +871,7 @@ function UI:TrackerMenu(owner)
         local label,change,canIgnore=self.QuestDeferral(id)
         if label then menu:CreateButton(label,function() change(A.Selection,id) end) end
         if canIgnore then menu:CreateButton("忽略此任务",function() A.Selection:Skip(id,true) end) end
-        if A.char.taskBatch or A.char.regionTarget or A.char.locked or A.char.itinerary then
+        if A.char.taskBatch or A.char.regionTarget or A.char.locked or A.char.itinerary or A.char.gearTarget then
             menu:CreateButton(A.char.taskBatch and "返回正常练级" or "恢复自动安排",function()
                 local ok,why=A.Selection:Automatic();if not ok then A:Message(why) end
             end)

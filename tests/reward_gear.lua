@@ -55,16 +55,6 @@ test("同构建首领掉落进入比较与手选导航，击败不当作拿到�
     B.Dungeon.encounterVisit={instanceId=389,difficulty=1,kills={[2732]="奥格弗林特"}}
     p=plan(s,d,balanced,B);assert(p.fallback.text:find("已击败",1,true))
     B.Gear:SyncTarget(s);eq(s.gearTarget,id);eq(s.gearAcquired,nil)
-    B.plan=p;assert(loadfile("UI/Main.lua"))("AiLeveling",B)
-    B.UI.Accent=function() return 1,1,1 end;B.UI.Icon=function() return "" end
-    assert(loadfile("UI/Gear.lua"))("AiLeveling",B)
-    assert(loadfile("UI/Browser.lua"))("AiLeveling",B)
-    local rows=B.UI.Browser:GearRows();local found
-    for _,row in ipairs(rows) do if row.sourceId==id then found=row end end
-    assert(found);eq(found.source.kind,"dungeon");eq(found.comparison.delta,7)
-    local lines
-    assert(loadfile("UI/Dungeon.lua"))("AiLeveling",B)
-    B.UI.Dungeon.entries={[dungeon.id]=dungeon};B.UI.Dungeon.selected=dungeon.id;B.UI.Dungeon.tasks={}
     s.clientVersion="other";eq(B.Gear.GetSource(id,d),nil);eq(B.Gear.Source(source,s,d),nil)
     p=plan(s,d,balanced,B);eq(p.fallback.kind,"selectionBlocked");eq(s.gearTarget,id)
     s.clientVersion="1.60.1";s.clientBuild="70862";s.bags[source.itemId]=1;B.Gear:SyncTarget(s)
@@ -133,19 +123,8 @@ test("装备目标暂缓和缺前置阻断保留用户选择且不回落其他�
     s.skipped[2]=true;eq(B.Gear:SetTarget("reward:2:101"),false)
 end)
 
-test("装备页从当前真实奖励提供选择并在任务详情显示装备提升",function()
-    local B,s,d=fixture();B.plan=plan(s,d,balanced,B);B.UI={};B.Navigation.Current=function() end
-    assert(loadfile("UI/Main.lua"))("AiLeveling",B)
-    assert(loadfile("UI/Gear.lua"))("AiLeveling",B)
-    assert(loadfile("UI/Plan.lua"))("AiLeveling",B)
-    assert(loadfile("UI/Browser.lua"))("AiLeveling",B)
-    local gear=B.UI.Gear;eq(#gear:Ids(),2)
-    local rows=B.UI.Browser:GearRows();local selected
-    for _,row in ipairs(rows) do if row.sourceId=="reward:2:101" then selected=row end end
-    assert(selected);eq(selected.source.choice,true);eq(selected.comparison.delta,7)
-    B.UI.Plan.preview=find(B.plan,2)
-    eq(B.Gear:SetTarget(selected.sourceId),true);B.plan={taskChoices={}}
-    eq(#gear:Ids(),1);eq(B.UI.Browser:GearRows()[1].sourceId,selected.sourceId)
+test("比较可选任务奖励，保留负提升和互斥选择的处理",function()
+    local B,s,d=fixture()
     local choice={};local q=d:GetQuest(2)
     B.Gear.TaskBenefits(choice,q,s,d);eq(choice.rewardPick.item.id,101)
     s.equipment[1]=item(99,20);s.bags[101]=1
@@ -209,15 +188,6 @@ test("低属性套装奖励保留效果比较与手动任务接续，不自动�
     local p=plan(s,d,balanced,B);local c=find(p,2);local id="reward:2:10399"
     assert(c.gearSources[id]);eq(c.gearSources[id].upgrade.delta,-3);eq(c.gear,nil);eq(p.fallback.questId,1)
     assert(table.concat(c.gearSources[id].upgrade.notes,"\n"):find("获得 2 件套效果",1,true))
-    B.plan=p;B.UI={};B.Navigation.Current=function() end
-    for _,file in ipairs({"UI/Main.lua","UI/Gear.lua","UI/Plan.lua"}) do assert(loadfile(file))("AiLeveling",B) end
-    assert(loadfile("UI/Browser.lua"))("AiLeveling",B)
-    local gear=B.UI.Gear
-    s.bagEquipment={s.items[10399]}
-    local row=B.UI.Browser:GearRows()[1]
-    eq(row.comparison.delta,-3);assert(table.concat(row.comparison.notes,"\n"):find("获得 2 件套效果",1,true))
-    eq(#gear:Ids(),1)
-    local lines
     eq(B.Gear:SetTarget(id),true);eq(plan(s,d,balanced,B).fallback.questId,2)
     s.bags[10399]=1;B.Gear:SyncTarget(s);eq(s.gearTarget,nil);eq(s.gearAcquired,10399)
     s.bags[10399]=nil;s.equipment[10]=nil
