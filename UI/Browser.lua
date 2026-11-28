@@ -358,7 +358,7 @@ function B:RegionRows()
         if #r.choices>0 or revisits>0 then
             seen[r.map]=true
             local sub=string.format("本轮 %d 项任务 · 经验 %s",#r.choices,color(gold,A.UI.DungeonXPText(r)))
-            rows[#rows+1]={key="map:"..r.map,title=r.title,icon="location",region=r,
+            rows[#rows+1]={key="map:"..r.map,title=r.title,icon="location",region=r,catalogZone=catalog[r.map],
                 sub=sub..(r.map==here and " · 当前区域" or "")..(revisits>0 and (" · 回访 "..revisits.." 项") or "")}
         end
     end
@@ -598,6 +598,109 @@ function B:PlaceActions(y,rightAligned)
     return bottom
 end
 
+local regionStates={
+    {key="done",label="已交付",tint=colors.green},
+    {key="ready",label="可交付",tint=colors.gold},
+    {key="active",label="进行中",tint=colors.blue},
+    {key="open",label="未接取",tint={0.54,0.60,0.70}},
+}
+local function regionProgress(zone,state)
+    local stats={done={},ready={},active={},open={},closed={},xp=0,unknown=0}
+    for _,q in ipairs(zone.quests) do
+        local live=state.quests[q.id]
+        local key
+        if state.completed[q.id] then key="done" -- Count each quest once, including repeatables.
+        elseif live then key=live.ready and "ready" or "active"
+        elseif A.Eligibility.Closed(q,state) or ((q.requiredMaxLevel or 0)>0 and state.level>q.requiredMaxLevel) then key="closed"
+        else key="open" end
+        local group=stats[key];group[#group+1]=q
+        if key~="done" and key~="closed" and state.level<60 then
+            local xp=A.TaskGuide.XP(q,state.level,state)
+            if xp~=nil then stats.xp=stats.xp+xp else stats.unknown=stats.unknown+1 end
+            if key=="open" and q.exclusiveTo and #q.exclusiveTo>0 then stats.hasAlternatives=true end
+        end
+    end
+    stats.total=#zone.quests-#stats.closed
+    stats.remaining=stats.total-#stats.done
+    return stats
+end
+
+function B:RegionChart(zone,top,stats)
+    local chart=self.regionChart
+    if not chart then
+        chart=CreateFrame("Frame",nil,self.infoChild);self.regionChart=chart
+        chart.labels,chart.values,chart.segments,chart.legend={},{},{},{}
+        for i,label in ipairs({"区域完成度","剩余任务","预计剩余经验"}) do
+            chart.labels[i]=A.UI:Text(chart,"guideLabel",colors.muted);chart.labels[i]:SetText(label)
+            chart.values[i]=A.UI:Text(chart,"guideMetric",i==3 and colors.gold or colors.white)
+        end
+        for i,status in ipairs(regionStates) do
+            local key=status.key
+            local segment=chart:CreateTexture(nil,"ARTWORK");segment:SetColorTexture(unpack(status.tint))
+            local b=A.UI:ListButton(chart,"",100,function()
+                chart.filter=chart.filter~=key and key or nil
+                self.info:SetVerticalScroll(0);self:Detail()
+            end,"guideLabel")
+            b.dot=b:CreateTexture(nil,"ARTWORK");b.dot:SetColorTexture(unpack(status.tint))
+            b.dot:SetPoint("LEFT",4,0);b.dot:SetSize(7,7)
+            b.text:ClearAllPoints();b.text:SetPoint("LEFT",b.dot,"RIGHT",6,0)
+            chart.segments[i],chart.legend[i]=segment,b
+        end
+        chart.note=A.UI:Text(chart,"guideNote",colors.muted)
+        chart.line=chart:CreateTexture(nil,"ARTWORK");chart.line:SetColorTexture(unpack(colors.line))
+        chart.line:SetHeight(1);chart.line:SetPoint("BOTTOMLEFT");chart.line:SetPoint("BOTTOMRIGHT")
+    end
+    if chart.zone~=zone then chart.zone,chart.filter=zone,nil end
+    local width,scale=self.info:GetWidth(),A.UI:FontScale()
+    local gap=metrics.gap*scale
+    chart:SetPoint("TOPLEFT",0,-top);chart:SetWidth(width);chart:Show()
+    local xp=BreakUpLargeNumbers and BreakUpLargeNumbers(stats.xp) or tostring(stats.xp)
+    if stats.unknown>0 then xp=stats.unknown==stats.remaining and "待确认" or "≥ "..xp end
+    local values={stats.total>0 and math.floor(#stats.done/stats.total*100).."%" or "—",stats.remaining.." 项",xp}
+    local bottom=0
+    for i,value in ipairs(values) do
+        local label,number=chart.labels[i],chart.values[i]
+        label:SetPoint("TOPLEFT",(i-1)*width/3,0)
+        number:SetPoint("TOPLEFT",label,"BOTTOMLEFT",0,-metrics.tight*scale)
+        number:SetWidth(width/3-gap);number:SetText(value)
+        bottom=math.max(bottom,label:GetStringHeight()+metrics.tight*scale+number:GetStringHeight())
+    end
+    local barY=bottom+gap
+    local barHeight=7*scale
+    local offset=0
+    for i,status in ipairs(regionStates) do
+        local count=#stats[status.key]
+        local segment,button=chart.segments[i],chart.legend[i]
+        segment:SetShown(count>0)
+        if count>0 then
+            local span=width*count/stats.total
+            segment:SetPoint("TOPLEFT",offset,-barY);segment:SetSize(span,barHeight);offset=offset+span
+        end
+        button:SetPoint("TOPLEFT",(i-1)*width/4,-barY-barHeight-metrics.tight*scale)
+        button:SetSize(width/4,metrics.hit*scale);button.text:SetText(status.label.."  "..count)
+        A.UI:MarkChoice(button,chart.filter==status.key)
+    end
+    local notes={"收录 "..#zone.quests.." 项",A.state.level>=60 and "已满级" or ("按 "..A.state.level.." 级逐项估算")}
+    if stats.unknown>0 then notes[#notes+1]=stats.unknown.." 项经验待确认" end
+    if #stats.closed>0 then notes[#notes+1]=#stats.closed.." 项已关闭，不计入进度" end
+    if stats.hasAlternatives then notes[#notes+1]="含互斥备选奖励" end
+    chart.note:SetText(table.concat(notes,"  ·  "));chart.note:SetWidth(width)
+    local noteY=barY+barHeight+(metrics.tight+metrics.hit)*scale+gap
+    chart.note:SetPoint("TOPLEFT",0,-noteY);chart:SetHeight(noteY+chart.note:GetStringHeight()+gap)
+    return top+chart:GetHeight()+gap
+end
+
+local function regionQuestList(lines,group,heading,dimmed)
+    if #group==0 then return end
+    local entries={color(muted,heading.."  ·  "..#group.." 项")}
+    for _,q in ipairs(group) do
+        local active=A.state.quests[q.id]
+        local level=q.questLevel and q.questLevel>0 and ("["..q.questLevel.."] ") or ""
+        entries[#entries+1]=level..questLink(q.id,active and active.title or q.title,nil,dimmed)
+    end
+    lines[#lines+1]=table.concat(entries,"\n")
+end
+
 function B:Detail()
     for _,button in ipairs(self.buttons) do button:Hide() end
     self.info:SetHeight(self.frame:GetHeight()-18);self.detail:Show()
@@ -617,6 +720,13 @@ function B:Detail()
     self.detail:SetWidth(self.info:GetWidth())
     local lines={}
     local detailTop=self.title:GetStringHeight()+18
+    local stats,filter
+    if e and e.catalogZone and A.state.completionKnown~=false then
+        stats=regionProgress(e.catalogZone,A.state)
+        detailTop=self:RegionChart(e.catalogZone,detailTop,stats)
+        filter=self.regionChart.filter
+    elseif self.regionChart then self.regionChart:Hide();self.regionChart.zone=nil end
+    self.detail:SetSpacing(stats and 3*A.UI:FontScale() or 0)
     if not e and self.mode==10 and #self.entries==0 then
         self.title:SetText(self.summary:GetText())
         lines[1]=A.error or (not A.indexReady and "任务索引就绪后会自动显示区域。" or "任务库中没有可显示的区域。")
@@ -758,20 +868,20 @@ function B:Detail()
         end
         self:DungeonDetail(e)
         return
-    elseif e.catalogZone then
-        lines[#lines+1]=A.state.inInstance and "当前在副本内，可在这里浏览野外任务。" or
-            (not A.plan and "区域行程尚未生成，可先浏览本区任务。" or "本轮行程未安排这个区域。")
-        local entries={}
-        for _,q in ipairs(e.catalogZone.quests) do
-            local active=(A.state.quests or {})[q.id]
-            local done=not active and (A.state.completed or {})[q.id]
-            local status=active and (active.ready and color(green,"可交付") or "已接取") or done and "已交付"
-            local level=q.questLevel and q.questLevel>0 and ("["..q.questLevel.."] ") or ""
-            entries[#entries+1]=level..questLink(q.id,active and active.title or q.title,nil,done)..(status and (" · "..status) or "")
-        end
-        lines[#lines+1]=table.concat(entries,"\n")
+    elseif e.catalogZone and (filter or not e.region) then
+        if stats then
+            for _,i in ipairs({2,3,4,1}) do
+                local status=regionStates[i]
+                if not filter or filter==status.key then
+                    regionQuestList(lines,stats[status.key],status.label,status.key=="done")
+                    if filter and #stats[status.key]==0 then lines[#lines+1]="本区没有"..status.label.."的任务。" end
+                end
+            end
+            if not filter then regionQuestList(lines,stats.closed,"已关闭",true) end
+        else lines[#lines+1]="正在同步角色的交付记录，稍后会显示区域进度。" end
     elseif e.region then
         local r=e.region
+        if e.catalogZone and not stats then lines[#lines+1]="正在同步角色的交付记录…" end
         local visit=A.plan and A.plan.regionPlan
         local nextStop=visit and visit.destination==r
         lines[#lines+1]=color(gold,string.format("本轮 %d项 · %s",#r.choices,r.xp..(r.unknownXP>0 and "+经验" or "经验")))

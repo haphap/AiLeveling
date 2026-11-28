@@ -37,7 +37,7 @@ function UI.DungeonQuestColor(level,dimmed)
 end
 
 UI.fontSizes={caption=12,body=14,task=15,heading=18,brand=18,title=20}
-local guideSizes={guideName=15,guideAction=14,guideBody=13,guideLabel=12,guideNote=11}
+local guideSizes={guideMetric=21,guideName=15,guideAction=14,guideBody=13,guideLabel=12,guideNote=11}
 local detailRoles={title="guideName",heading="guideName",task="guideAction",body="guideBody",caption="guideLabel"}
 local function inDetails(frame)
     if not UI.details then return false end

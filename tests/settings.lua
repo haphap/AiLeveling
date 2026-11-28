@@ -8,20 +8,36 @@ test("练级区域在首轮行程前和副本内可浏览，搜索不重算路�
     local B=setup(true)
     local browser,oldMap=B.UI.Browser,C_Map
     C_Map={GetMapInfo=function(map) return {name="区域"..map,mapType=map==3 and 4 or 3} end}
-    local quests={};for id=1,5 do quests[id]=F.Quest(id) end
+    local quests={};for id=1,9 do quests[id]=F.Quest(id) end
     quests[5].requiredRaces=2
     B.Data=F.Data(quests);B.Eligibility=A.Eligibility
-    B.Data.byArea={[11]={1},[12]={2,5},[21]={3},[31]={4}}
+    assert(loadfile("Planner/TaskGuide.lua"))("AiLeveling",B)
+    B.state.quests[1].rewardXP=125;B.state.quests[1].rewardXPLevel=20
+    B.state.quests[6]={ready=true,rewardXP=275,rewardXPLevel=20}
+    B.state.completed[7]=true;quests[8].exclusiveTo={7}
+    quests[9].questLevel=20;quests[9].taskFacts={level=20,xp={{1,0}}}
+    B.Data.byArea={[11]={1,6,7,8,9},[12]={2,5},[21]={3},[31]={4}}
     B.Data.maps={[11]=1,[12]=1,[21]=2,[31]=3}
     B.Planner={TaskRegions=function() error("浏览区域触发了路线计算") end}
     B.UI.details:Show();B.UI:SelectTab(10)
     eq(browser.summary:GetText(),"正在载入区域目录…")
     B.indexReady=true;B.UI:RefreshDetails()
     eq(browser.summary:GetText(),"2 个练级区域");eq(browser.selected.map,1)
-    eq(#browser.selected.catalogZone.quests,2);assert(browser.detail:GetText():find("|Hquest:1:",1,true))
+    eq(#browser.selected.catalogZone.quests,6)
+    local chart=browser.regionChart
+    eq(chart.values[1]:GetText(),"20%");eq(chart.values[2]:GetText(),"4 项");eq(chart.values[3]:GetText(),"≥ 400")
+    assert(chart.note:GetText():find("1 项经验待确认",1,true))
+    chart.legend[2].scripts.OnClick()
+    assert(browser.detail:GetText():find("|Hquest:6:",1,true) and not browser.detail:GetText():find("|Hquest:1:",1,true))
+    chart.legend[2].scripts.OnClick()
+    assert(browser.detail:GetText():find("|Hquest:1:",1,true))
+    B.state.completed[2]=true;browser:Detail()
+    eq(chart.values[1]:GetText(),"40%");eq(chart.values[3]:GetText(),"400")
+    B.state.completionKnown=false;browser:Detail();assert(not chart:IsShown())
+    B.state.completionKnown=true
     local visit={map=2,title="区域2",choices={{questId=3,title=quests[3].title}},pickups={},handins={},revisit={},xp=0,unknownXP=0}
     B.plan={regions={visit}};B.UI:RefreshDetails()
-    eq(#browser.entries,2);eq(browser.entries[1].region,visit)
+    eq(#browser.entries,2);eq(browser.entries[1].region,visit);assert(browser.entries[1].catalogZone)
     B.state.inInstance=true;B.state.revision=B.state.revision+1;B.UI:RefreshDetails()
     eq(browser.entries[1].map,1);eq(#browser.entries,2)
     browser.query="缺席";browser:Refresh(10,true)
