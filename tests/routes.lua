@@ -304,7 +304,24 @@ test("普通任务地图点只显示可执行的接取、目标和交付",functi
     local pickupSpot=choices[1].actions[1].position
     kill.position=pickupSpot;B.Navigation:DrawPins()
     for _,i in ipairs({3,4}) do eq(pins[i].action,kill);eq(pins[i].texture.texture,B.UI.IconTexture("objective")) end
-    kill.position={map=1,x=.2,y=.4}
+    for _,i in ipairs({3,4}) do
+        local side=pins[i].sides[1]
+        eq(side.texture.texture,B.UI.IconTexture("accept"));eq(side.action,book)
+    end
+    local other=choices[2].actions[1]
+    local otherSpot,recipient=other.position,turnin.position
+    other.position,turnin.position=pickupSpot,pickupSpot;B.Navigation:DrawPins()
+    for _,i in ipairs({3,4}) do
+        local pin=pins[i];eq(pin.action,turnin);eq(pin.sides[1].action,kill)
+        local offer=pin.sides[2];eq(#offer.phaseActions,2);eq(offer.action.kind,"accept")
+        offer.scripts.OnClick(offer,"LeftButton")
+        assert(B.menu[book.title] and B.menu[other.title] and not B.menu[kill.title])
+    end
+    B.menu[other.title].callback();eq(B.Navigation:Current(),other)
+    B.Navigation:ClearManual()
+    other.position,turnin.position=otherSpot,recipient
+    kill.position={map=1,x=.2,y=.4};B.Navigation:DrawPins()
+    assert(not pins[3].sides[1]:IsShown() and not pins[4].sides[2]:IsShown())
     assert(B.Navigation:Navigate(choices[1].actions[1]));eq(#B.Navigation:MapPoints(),11)
     eq(B.Navigation:Current(),choices[1].actions[1]);eq(pins[1].point.current,true)
     B.Navigation:ClearManual();B.state.quests[108].objectives[1].finished=true;B.state.revision=B.state.revision+1

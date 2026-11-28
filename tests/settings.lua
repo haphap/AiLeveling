@@ -128,8 +128,23 @@ test("区域统计下的地图和列表联动，按当前任务阶段更新位�
     q[10]=F.Quest(10);B.state.quests[10]={objectives={{text="甲"},{text="乙"}}}
     browser.selected.region={map=1,choices={{questId=10}},pickups={},handins={},revisit={}}
     B.state.revision=B.state.revision+1;browser:Detail()
-    local mixed=view.canvas.pins[2]
-    eq(mixed.rows[1].key,"open");eq(#mixed.rows,2);eq(mixed.icon.texture,B.UI.IconTexture("active"))
+    local active,offer=view.canvas.pins[2],view.canvas.pins[3]
+    eq(active.icon.texture,B.UI.IconTexture("active"));eq(offer.icon.texture,B.UI.IconTexture("accept"))
+    assert(offer.x-active.x>=active:GetWidth());eq(active.y,offer.y)
+    eq(#active.rows,1);eq(#offer.rows,1)
+    offer.scripts.OnClick(offer);eq(chosen.questId,2);eq(chosen.position.x,.302)
+    active.scripts.OnClick(active);eq(chosen.questId,10);eq(chosen.position.x,.302)
+    local target=B.Data.Target
+    function B.Data:Target(quest,...)
+        if quest.id==1 then return {map=1,x=.302,y=.6,entityName="收件人"} end
+        return target(self,quest,...)
+    end
+    B.UI.details:Show();B.state.revision=B.state.revision+1;browser:Detail()
+    local ready=view.canvas.pins[1]
+    eq(ready.icon.texture,B.UI.IconTexture("turnin"));eq(#ready.rows,1)
+    assert(ready.x<active.x and active.x<offer.x)
+    chart.legend[3].scripts.OnClick()
+    assert(not offer:IsShown() and not view.canvas.pins[4]:IsShown())
     C_Map,C_MapExplorationInfo=oldMap,oldExploration;B.finish()
 end)
 

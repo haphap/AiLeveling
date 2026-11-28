@@ -2,9 +2,10 @@ local _,A=...
 local UI=A.UI
 local B=UI.Browser
 
+local phaseOrder={"ready","active","open","done"}
 local phases={
-    open={kind="accept",label="接取",priority=1},active={kind="objective",icon="active",label="目标",priority=2},
-    ready={kind="turnin",label="交付",priority=3},done={kind="done",label="已交付",priority=0},
+    open={kind="accept",label="接取"},active={kind="objective",icon="active",label="目标"},
+    ready={kind="turnin",label="交付"},done={kind="done",label="已交付"},
 }
 
 local function mapName(map)
@@ -72,7 +73,7 @@ local function regionLocations(entry,home,stats,filter)
         record(point,item and item.text)
     end
     if stats then
-        for _,key in ipairs({"ready","active","open","done"}) do
+        for _,key in ipairs(phaseOrder) do
             if (not filter and key~="done") or filter==key then
                 for _,q in ipairs(stats[key]) do add(q,key) end
             end
@@ -185,33 +186,57 @@ local function newPin(canvas)
 end
 
 local function placePins(canvas,rows,width,height)
-    local used,size=0,22*UI:FontScale()
+    local size=22*UI:FontScale()
     if canvas.rows==rows and canvas.pinWidth==width and canvas.pinHeight==height and canvas.pinSize==size then return end
     canvas.rows,canvas.pinWidth,canvas.pinHeight,canvas.pinSize=rows,width,height,size
+    local sites={}
     for _,r in ipairs(rows) do
         local x,y=r.point.x*width,r.point.y*height
-        local pin
-        for i=1,used do
-            local b=canvas.pins[i]
-            if math.abs(x-b.x)<size and math.abs(y-b.y)<size then pin=b;break end
+        local site
+        for _,other in ipairs(sites) do
+            if math.abs(x-other.x)<size and math.abs(y-other.y)<size then site=other;break end
         end
-        if not pin then
-            used=used+1
-            pin=canvas.pins[used] or newPin(canvas);canvas.pins[used]=pin
-            pin.x,pin.y,pin.rows,pin.primary=x,y,{},r
-            pin:SetPoint("CENTER",canvas,"TOPLEFT",x,-y);pin:SetSize(size,size);pin:Show()
-        elseif phases[r.key].priority>phases[pin.primary.key].priority or (pin.primary.blocked and not r.blocked) then
-            pin.primary=r
+        if not site then
+            site={x=x,y=y,groups={},count=0,sumX=0,sumY=0};sites[#sites+1]=site
         end
-        table.insert(pin.rows,r)
+        local group=site.groups[r.key]
+        if not group then
+            group={rows={},ids={},count=0,blocked=true}
+            site.groups[r.key]=group;site.count=site.count+1
+            site.sumX,site.sumY=site.sumX+x,site.sumY+y
+        end
+        group.rows[#group.rows+1]=r
+        if not r.blocked then group.blocked=false end
+        if not group.ids[r.quest.id] then group.ids[r.quest.id]=true;group.count=group.count+1 end
     end
-    for i=1,used do
-        local pin=canvas.pins[i]
-        local phase=phases[pin.primary.key]
-        pin.icon:SetTexture(UI.IconTexture(phase.icon or phase.kind))
-        pin.icon:SetDesaturated(pin.primary.blocked~=nil)
-        UI:SetMapPinNumber(pin,#pin.rows>1 and #pin.rows,width)
+    local used,links=0,0
+    for _,site in ipairs(sites) do
+        local gap=size*1.15
+        for _,group in pairs(site.groups) do if group.count>1 then gap=size*1.55;break end end
+        local span=(site.count-1)*gap
+        local x,y=site.sumX/site.count,site.sumY/site.count
+        if span>0 then x=math.max(size/2,math.min(width-size/2-span,x-span/2)) end
+        for slot=1,site.count-1 do
+            links=links+1;canvas.links=canvas.links or {}
+            local line=canvas.links[links] or canvas:CreateTexture(nil,"OVERLAY");canvas.links[links]=line
+            line:SetColorTexture(.10,.12,.18,.95);line:SetSize(gap-size+2,size*.22)
+            line:SetPoint("LEFT",canvas,"TOPLEFT",x+(slot-1)*gap+size/2-1,-y);line:Show()
+        end
+        for _,key in ipairs(phaseOrder) do
+            local group=site.groups[key]
+            if group then
+                used=used+1
+                local pin=canvas.pins[used] or newPin(canvas);canvas.pins[used]=pin
+                pin.x,pin.y,pin.rows=x,y,group.rows
+                pin:SetPoint("CENTER",canvas,"TOPLEFT",x,-y);pin:SetSize(size,size)
+                pin.icon:SetTexture(UI.IconTexture(phases[key].icon or phases[key].kind))
+                pin.icon:SetDesaturated(group.blocked)
+                UI:SetMapPinNumber(pin,group.count>1 and group.count,width)
+                pin:Show();x=x+gap
+            end
+        end
     end
+    for i=links+1,#(canvas.links or {}) do canvas.links[i]:Hide() end
     for i=used+1,#canvas.pins do canvas.pins[i]:Hide() end
 end
 

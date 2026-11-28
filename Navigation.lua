@@ -582,8 +582,8 @@ local function showPinTip(pin)
     local quest=(primary.kind=="accept" or primary.kind=="objective" or primary.kind=="turnin") and A.state.quests[primary.questId]
     local title=quest and quest.title or primary.title or "目的地"
     GameTooltip:SetOwner(pin,"ANCHOR_RIGHT")
-    GameTooltip:SetText((point.current and "当前目标 · " or point.upcoming and "接下来 · " or "")..title)
-    for _,action in ipairs(point.actions) do
+    GameTooltip:SetText((not pin.side and (point.current and "当前目标 · " or point.upcoming and "接下来 · ") or "")..title)
+    for _,action in ipairs(pin.phaseActions or point.actions) do
         if not pin.mini or action==primary or availableAction(action) then
             local active=A.state.quests[action.questId]
             local label=action.kind=="accept" and (action.position and action.position.pickupLoot and "拾取任务物品" or "接取任务") or action.kind=="turnin" and
@@ -615,13 +615,22 @@ local function showPinTip(pin)
         GameTooltip:AddLine(place,0.8,0.8,0.82,true)
     end
     if pos.travelHint then GameTooltip:AddLine(pos.travelHint,1,1,1,true) end
-    GameTooltip:AddLine((isAreaTarget(primary) and "左键查看任务范围并导航" or "左键导航")..(N.manual and "  ·  右键返回原行程" or ""),0.9,0.77,0.57)
+    local hint=pin.phaseActions and #pin.phaseActions>1 and "左键选择任务" or isAreaTarget(primary) and "左键查看任务范围并导航" or "左键导航"
+    GameTooltip:AddLine(hint..(N.manual and "  ·  右键返回原行程" or ""),0.9,0.77,0.57)
     GameTooltip:Show()
 end
 
-local function mapPin(mini)
-    local pin=CreateFrame("Button",nil,UIParent)
-    pin.mini=mini
+local function navigatePin(action,point)
+    clearMapArea()
+    local routed=N:Navigate(action)
+    if not showMapArea(action,point) and not routed and action.questId then
+        if not N:NavigateQuest(action.questId) then A.UI:QuestClick(action.questId,"LeftButton") end
+    end
+end
+
+local function mapPin(mini,parent)
+    local pin=CreateFrame("Button",nil,parent or UIParent)
+    pin.mini,pin.side=mini,parent~=nil
     pin.face=pin:CreateTexture(nil,"BACKGROUND")
     cell(pin.face,0);pin.face:SetAllPoints();pin.face:SetVertexColor(0.09,0.09,0.12)
     pin.ring=pin:CreateTexture(nil,"BORDER")
@@ -636,15 +645,17 @@ local function mapPin(mini)
             N:ClearManual()
         elseif IsModifiedClick and IsModifiedClick("CHATLINK") and action.questId then
             A.UI:QuestClick(action.questId,button)
-        else
-            -- Navigating can recycle this pin. Keep the coordinates actually clicked.
-            local point=f.point.position
-            clearMapArea()
-            local routed=N:Navigate(action)
-            if not showMapArea(action,point) and not routed and action.questId then
-                if not N:NavigateQuest(action.questId) then A.UI:QuestClick(action.questId,button) end
-            end
-        end
+        elseif f.phaseActions and #f.phaseActions>1 then
+            A.UI:Menu(f,function(_,menu)
+                for _,a in ipairs(f.phaseActions) do
+                    local log=A.state.quests[a.questId]
+                    local goal=log and log.objectives and log.objectives[a.objectiveIndex]
+                    local title=log and log.title or a.title or ("任务 #"..a.questId)
+                    local target=N.Target(a) or f.point.position
+                    menu:CreateButton(title..(goal and goal.text and (" · "..goal.text) or ""),function() navigatePin(a,target) end)
+                end
+            end)
+        else navigatePin(action,N.Target(action) or f.point.position) end
     end)
     pin:SetScript("OnEnter",showPinTip)
     pin:SetScript("OnLeave",function() GameTooltip:Hide() end)
@@ -780,21 +791,28 @@ local function syncHandinPins()
             group[#group+1]=pin;native[id]=group
         end
     end
-    for _,pin in pairs(N.pins) do
-        if not pin.mini and pin:IsShown() and pin.action.kind=="turnin" then
-            local x,y=screenCenter(pin)
-            local radius=pin:GetWidth()*pin:GetEffectiveScale()*0.65
-            local covered=false
-            for _,action in ipairs(pin.point.actions) do
-                if x and action.kind=="turnin" then
+    local function sync(pin)
+        if pin.action.kind~="turnin" then return end
+        local x,y=screenCenter(pin)
+        if x then
+            local radius=pin:GetWidth()*pin:GetEffectiveScale()*.65
+            for _,action in ipairs(pin.phaseActions or pin.point.actions) do
+                if action.kind=="turnin" then
                     for _,other in ipairs(native[action.questId] or {}) do
                         local ox,oy=screenCenter(other)
-                        if ox and (x-ox)^2+(y-oy)^2<=radius^2 then covered=true;break end
+                        if ox and (x-ox)^2+(y-oy)^2<=radius^2 then showGlyph(pin,false);return end
                     end
                 end
-                if covered then break end
             end
-            showGlyph(pin,not (covered or pin.spfHandin))
+        end
+        showGlyph(pin,not pin.spfHandin)
+    end
+    for _,pin in pairs(N.pins) do
+        if not pin.mini and pin:IsShown() then
+            sync(pin)
+            if pin.sides then
+                for _,side in ipairs(pin.sides) do if side:IsShown() then sync(side) end end
+            end
         end
     end
 end
@@ -850,8 +868,27 @@ local function syncNativeOffers()
     end
 end
 
-local function stylePin(pin,point,action,r,g,b,hitOnly)
+-- Only split actions the character can perform now. Future stages stay on the itinerary.
+local function mixedQuestActions(actions,nearby)
+    if not nearby or #actions<2 then return end
+    local mixed=false
+    for _,action in ipairs(actions) do
+        if action.kind~=nearby.kind and availableAction(action) then mixed=true;break end
+    end
+    if not mixed then return end
+    local groups={}
+    for _,action in ipairs(actions) do
+        if availableAction(action) then
+            local list=groups[action.kind] or {}
+            groups[action.kind]=list;list[#list+1]=action
+        end
+    end
+    return groups
+end
+
+local function stylePin(pin,point,action,r,g,b,hitOnly,groups)
     pin.point,pin.action=point,action
+    pin.phaseActions=groups and groups[action.kind]
     if not pin.mini then showGlyph(pin,true) end
     pin:SetAlpha(hitOnly and 0 or 1)
     local size=(pin.mini and 19 or 24)+(point.current and 4 or point.lowOnly and -4 or 0)
@@ -862,6 +899,29 @@ local function stylePin(pin,point,action,r,g,b,hitOnly)
     if not pin.mini then A.UI:SetMapPinNumber(pin,point.order,nil,point.current) end
     pin.texture:SetTexture(actionTexture(action))
     pin.texture:SetDesaturated(point.lowOnly==true)
+    local used=0
+    if groups then
+        for _,kind in ipairs({"turnin","objective","accept"}) do
+            local actions=groups[kind]
+            if actions and kind~=action.kind then
+                used=used+1
+                pin.sides=pin.sides or {}
+                local side=pin.sides[used] or mapPin(pin.mini,pin);pin.sides[used]=side
+                side.point,side.action,side.phaseActions=point,actions[1],actions
+                local dim=kind=="accept" and point.lowOffers and point.lowOffers[side.action.questId]
+                if dim then
+                    for _,offer in ipairs(actions) do if not point.lowOffers[offer.questId] then side.action,dim=offer,false;break end end
+                end
+                local w=pin.mini and 17 or 21
+                side:SetSize(w,w);side.texture:SetSize(w-3,w-3);side.ring:SetSize(w,w)
+                side.ring:SetVertexColor(.43,.39,.37);side.texture:SetTexture(actionTexture(side.action))
+                side.texture:SetDesaturated(not not dim);showGlyph(side,true)
+                local dx=(size+w)/2+2+(used-1)*(w+2)
+                side:SetPoint("CENTER",pin,"CENTER",point.position.x>.5 and -dx or dx,0);side:Show()
+            end
+        end
+    end
+    if pin.sides then for i=used+1,#pin.sides do pin.sides[i]:Hide() end end
 end
 
 local function updateEdge(pin,pins)
@@ -909,6 +969,7 @@ function N:DrawPins()
         end
         -- A walk ending at the quest pin should show what to do on arrival.
         if nearby and (not point.current or nearby.questId==action.questId and (action.kind=="move" or action.kind=="approach")) then action=nearby end
+        local groups=mixedQuestActions(point.actions,nearby)
         local index=(order-1)*2
         -- Keep grouped quest tooltips even when WaypointUI draws the destination.
         local delegated=point.current and self.waypointDisplay=="itinerary" and #point.actions==1
@@ -918,16 +979,16 @@ function N:DrawPins()
         if A.settings.pins and (not delegated or areaHit) then
             local pin=self.pins[index+1] or mapPin(false);self.pins[index+1]=pin
             local handin=action.kind=="turnin"
-            if handin then self.hasHandinPins=true end
+            if handin or (groups and groups.turnin) then self.hasHandinPins=true end
             pin.spfHandin=handin and point.current and A.ShortestPath and A.ShortestPath:For(point.action)
-            stylePin(pin,point,action,r,g,b,areaHit)
+            stylePin(pin,point,action,r,g,b,areaHit,groups)
             if pin.spfHandin then showGlyph(pin,false) end
             self.hbdPins:AddWorldMapIconMap(self,pin,pos.map,pos.x,pos.y,1,
                 (areaHit or handin and (point.order or #point.actions>1)) and "PIN_FRAME_LEVEL_WAYPOINT_LOCATION" or nil)
         end
         if A.settings.minimapPins and (not delegated or areaHit) and (point.current or nearby) then
             local pin=self.pins[index+2] or mapPin(true);self.pins[index+2]=pin
-            stylePin(pin,point,point.current and action or nearby,r,g,b,areaHit)
+            stylePin(pin,point,point.current and action or nearby,r,g,b,areaHit,groups)
             if edge then
                 if not pin.arrow then
                     pin.arrow=pin:CreateTexture(nil,"OVERLAY");pin.arrow:SetTexture(media.."hud-chevron-up.tga")
