@@ -209,23 +209,24 @@ local function placePins(canvas,rows,width,height)
     for i=used+1,#canvas.pins do canvas.pins[i]:Hide() end
 end
 
-function B:ShowRegionMap(entry,top,stats,filter)
+function B:OpenRegionMapMenu(owner)
+    local view=self.regionMap
+    UI:Menu(owner,function(_,menu)
+        for _,map in ipairs(view.mapIDs) do
+            menu:CreateButton(mapName(map).." · "..view.counts[map].." 项任务",function()
+                view.shownMap=map;self.info:SetVerticalScroll(0);self:Detail()
+            end)
+        end
+    end)
+end
+
+function B:RegionMapTitle(entry,stats,filter)
     local home=entry.map or entry.region.map
     local view=self.regionMap
     if not view then
         view=CreateFrame("Frame",nil,self.infoChild);self.regionMap=view
         view.canvas=CreateFrame("Frame",nil,view)
         view.canvas.pins,view.canvas.tiles={},{}
-        view.selector=UI:ListButton(view,"",180,function(b)
-            MenuUtil.CreateContextMenu(b,function(_,menu)
-                for _,map in ipairs(view.mapIDs) do
-                    menu:CreateButton(mapName(map).." · "..view.counts[map].." 项任务",function()
-                        view.shownMap=map;self.info:SetVerticalScroll(0);self:Detail()
-                    end)
-                end
-            end)
-        end,"guideBody")
-        view.selector:SetPoint("TOPLEFT")
         view.note=UI:Text(view,"guideNote",UI.colors.muted)
         view:RegisterEvent("MAP_EXPLORATION_UPDATED")
         view:SetScript("OnEvent",function()
@@ -251,21 +252,26 @@ function B:ShowRegionMap(entry,top,stats,filter)
         end)
         view.home,view.zone,view.region,view.revision=home,entry.catalogZone,entry.region,A.state.revision
     end
-    local map=view.maps[view.shownMap] and view.shownMap or home
+    if not view.maps[view.shownMap] then view.shownMap=home end
+    local map=view.shownMap
+    local where=map==home and "本图" or mapName(map)
+    local title=entry.title.."  |cff"..UI.hex.muted.."·  "..where.." "..view.counts[map].." 项|r"
+    if #view.mapIDs>1 then return "|Hailregionmap:select|h"..title.."  ▼|h" end
+    return title
+end
+
+function B:ShowRegionMap(top)
+    local view=self.regionMap
+    local map=view.shownMap
     local rows,width,gap=view.maps[map],self.info:GetWidth(),UI.metrics.gap*UI:FontScale()
     view:SetPoint("TOPLEFT",0,-top);view:SetWidth(width);view:Show()
-    local multiple=#view.mapIDs>1
-    view.selector.text:SetText(mapName(map).." · "..view.counts[map].." 项任务"..(multiple and "  ▾" or ""))
-    view.selector:SetEnabled(multiple)
-    view.selector:SetSize(math.min(width,view.selector.text:GetStringWidth()+24),UI.metrics.button*UI:FontScale())
-    local y=view.selector:GetHeight()+gap
+    local y=0
     local canvas=view.canvas
     local height=drawArt(canvas,map,width)
     canvas:SetPoint("TOPLEFT",view,"TOPLEFT",0,-y);canvas:SetShown(height>0)
     if height>0 then placePins(canvas,rows,canvas:GetWidth(),height);y=y+height+gap end
     local note=height==0 and "底图暂不可用，可在列表查看地点" or #rows==0 and "本图暂无符合条件的任务点" or
-        (filter=="done" and "点击已交付标记可查看任务详情" or "点击标记查看任务或导航")
-    if multiple then note=note.." · 可切换至任务所在地图" end
+        (view.filter=="done" and "点击已交付标记可查看任务详情" or "点击标记查看任务或导航")
     view.note:SetPoint("TOPLEFT",0,-y);view.note:SetWidth(width);view.note:SetText(note)
     view:SetHeight(y+view.note:GetStringHeight()+gap)
     return top+view:GetHeight()+gap,view.locations

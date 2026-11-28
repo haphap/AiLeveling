@@ -53,7 +53,8 @@ end
 
 local function enableDetailLinks(frame)
     frame:SetHyperlinksEnabled(true)
-    frame:SetScript("OnHyperlinkClick",function(_,link,text,button)
+    frame:SetScript("OnHyperlinkClick",function(owner,link,text,button)
+        if link=="ailregionmap:select" then B:OpenRegionMapMenu(owner);return end
         local chain=tonumber(link:match("^ailchain:(%d+)$"))
         if chain then A.UI.Chains:Focus(chain);return end
         local source=link:match("^ailquesturl:(%d+)$")
@@ -67,7 +68,9 @@ local function enableDetailLinks(frame)
     end)
     frame:SetScript("OnHyperlinkEnter",function(f,link)
         if link:match("^ailquesturl:") or link:match("^ailchain:") then return end
-        GameTooltip:SetOwner(f,"ANCHOR_RIGHT");GameTooltip:SetHyperlink(link);GameTooltip:Show()
+        GameTooltip:SetOwner(f,"ANCHOR_RIGHT")
+        if link=="ailregionmap:select" then GameTooltip:SetText("切换任务地图") else GameTooltip:SetHyperlink(link) end
+        GameTooltip:Show()
     end)
     frame:SetScript("OnHyperlinkLeave",function() GameTooltip:Hide() end)
 end
@@ -600,7 +603,7 @@ local function regionProgress(zone,state)
     return stats
 end
 
-function B:RegionChart(zone,top,stats)
+function B:RegionChart(zone,top,stats,filter)
     local chart=self.regionChart
     if not chart then
         chart=CreateFrame("Frame",nil,self.infoChild);self.regionChart=chart
@@ -625,7 +628,7 @@ function B:RegionChart(zone,top,stats)
         chart.line=chart:CreateTexture(nil,"ARTWORK");chart.line:SetColorTexture(unpack(colors.line))
         chart.line:SetHeight(1);chart.line:SetPoint("BOTTOMLEFT");chart.line:SetPoint("BOTTOMRIGHT")
     end
-    if chart.zone~=zone then chart.zone,chart.filter=zone,nil end
+    chart.zone,chart.filter=zone,filter
     local width,scale=self.info:GetWidth(),A.UI:FontScale()
     local gap=metrics.gap*scale
     chart:SetPoint("TOPLEFT",0,-top);chart:SetWidth(width);chart:Show()
@@ -743,6 +746,12 @@ function B:Detail()
     local regionLists
     local detailTop=self.title:GetStringHeight()+18
     local regionPage=e and self.mode==10
+    local stats,filter
+    local showMap=regionPage and A.indexReady and A.state.completionKnown~=false
+    if e and e.catalogZone and A.state.completionKnown~=false then
+        stats=regionProgress(e.catalogZone,A.state)
+        filter=self.regionChart and self.regionChart.zone==e.catalogZone and self.regionChart.filter or nil
+    end
     local guiding=regionPage and A.char.regionTarget and A.char.regionTarget.map==(e.map or e.region and e.region.map)
     if regionPage then
         self:Action(1,guiding and "结束区域规划" or "开始区域规划",function()
@@ -753,17 +762,15 @@ function B:Detail()
         end,(guiding or A.ready and A.indexReady and A.state.completionKnown~=false and not A.state.inInstance) and true or false)
         local actionsHeight=self:PlaceActions(0,true)
         self.title:SetWidth(math.max(1,self.info:GetWidth()-self.buttons[1]:GetWidth()-metrics.gap))
+        if showMap then self.title:SetText(self:RegionMapTitle(e,stats,filter)) end
         detailTop=math.max(self.title:GetStringHeight()+18,actionsHeight+metrics.gap)
     end
-    local stats,filter
-    if e and e.catalogZone and A.state.completionKnown~=false then
-        stats=regionProgress(e.catalogZone,A.state)
-        detailTop=self:RegionChart(e.catalogZone,detailTop,stats)
-        filter=self.regionChart.filter
+    if stats then
+        detailTop=self:RegionChart(e.catalogZone,detailTop,stats,filter)
     elseif self.regionChart then self.regionChart:Hide();self.regionChart.zone=nil end
     local locations
-    if regionPage and A.indexReady and A.state.completionKnown~=false then
-        detailTop,locations=self:ShowRegionMap(e,detailTop,stats,filter)
+    if showMap then
+        detailTop,locations=self:ShowRegionMap(detailTop)
     elseif self.regionMap then self.regionMap:Hide() end
     if guiding and not filter then
         local plan=A.plan

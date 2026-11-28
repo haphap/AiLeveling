@@ -88,6 +88,7 @@ test("区域统计下的地图和列表联动，按当前任务阶段更新位�
     local view,chart=browser.regionMap,browser.regionChart
     assert(chart:IsShown() and view:IsShown() and view.point[3]<chart.point[3])
     eq(#view.maps[1],3);eq(#view.maps[2],1);eq(#view.canvas.pins,2)
+    assert(browser.title:GetText():find("本图 3 项",1,true) and browser.title:GetText():find("|Hailregionmap:select",1,true))
     assert(view.locations[5][1]:find("使用任务物品",1,true))
     eq(view.canvas.tiles[3].texture,113)
     local count=calls;browser.info:SetWidth(600);browser:Detail();eq(calls,count)
@@ -100,6 +101,7 @@ test("区域统计下的地图和列表联动，按当前任务阶段更新位�
     B.state.quests[3]={objectives={{text="甲"},{text="乙"}}};B.state.revision=B.state.revision+1
     chart.legend[3].scripts.OnClick()
     eq(#view.maps[1],2);assert(not view.maps[2])
+    assert(browser.title:GetText():find("本图 1 项",1,true) and not browser.title:GetText():find("|H",1,true))
     pin.scripts.OnClick(pin);eq(chosen.kind,"objective");eq(chosen.objectiveIndex,2)
     B.UI.details:Show();B.state.quests[3].ready=true;B.state.revision=B.state.revision+1;browser:Detail()
     eq(#view.maps[1],0);assert(not pin:IsShown() and view.canvas:IsShown())
@@ -113,7 +115,9 @@ test("区域统计下的地图和列表联动，按当前任务阶段更新位�
     p.scripts.OnClick(p);B.menu["已交付 · "..q[3].title].callback();eq(chosen,"详情")
     chart.legend[4].scripts.OnClick()
     assert(view.locations[7][1]:find("等级不足",1,true) and not view.locations[3])
-    view.selector.scripts.OnClick(view.selector);B.menu["地图2 · 1 项任务"].callback()
+    browser.infoChild.scripts.OnHyperlinkClick(browser.infoChild,"ailregionmap:select",nil,"LeftButton")
+    B.menu["地图2 · 1 项任务"].callback()
+    assert(browser.title:GetText():find(browser.selected.title,1,true) and browser.title:GetText():find("地图2 1 项",1,true))
     assert(not view.canvas:IsShown());assert(view.note:GetText():find("底图暂不可用",1,true))
     chart.legend[4].scripts.OnClick();assert(view.canvas:IsShown() and chart:IsShown());eq(view.shownMap,1)
     C_Map,C_MapExplorationInfo=oldMap,oldExploration;B.finish()
